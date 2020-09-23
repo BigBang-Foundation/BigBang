@@ -356,18 +356,18 @@ bool CDeFiForkReward::GetSpecificDecayCoinbase(const CProfile& profile, const in
     return true;
 }
 
-map<CDestination, int64> CDeFiForkReward::ComputeStakeReward(const int64 nMin, const int64 nReward,
-                                                             const std::map<CDestination, int64>& mapAddressAmount)
+CDeFiRewardSet CDeFiForkReward::ComputeStakeReward(const int64 nMin, const int64 nReward,
+                                                   const std::map<CDestination, int64>& mapAddressAmount)
 {
-    map<CDestination, int64> reward;
+    CDeFiRewardSet rewardSet;
 
     if (nReward == 0)
     {
-        return reward;
+        return rewardSet;
     }
 
     // sort by token
-    multimap<int64, pair<CDestination, uint32>> mapRank;
+    multimap<int64, pair<CDestination, uint64>> mapRank;
     for (auto& p : mapAddressAmount)
     {
         if (p.second >= nMin)
@@ -377,9 +377,9 @@ map<CDestination, int64> CDeFiForkReward::ComputeStakeReward(const int64 nMin, c
     }
 
     // tag rank
-    uint32 nRank = 1;
-    uint32 nPos = 0;
-    uint32 nTotal = 0;
+    uint64 nRank = 1;
+    uint64 nPos = 0;
+    uint64 nTotal = 0;
     int64 nToken = -1;
     for (auto& p : mapRank)
     {
@@ -402,33 +402,40 @@ map<CDestination, int64> CDeFiForkReward::ComputeStakeReward(const int64 nMin, c
     double fUnitReward = (double)nReward / nTotal;
     for (auto& p : mapRank)
     {
-        reward.insert(make_pair(p.second.first, (int64)(fUnitReward * p.second.second)));
+        CDeFiReward reward;
+        reward.dest = p.second.first;
+        reward.nAmount = p.first;
+        reward.nRank = p.second.second;
+        reward.nStakeReward = fUnitReward * p.second.second;
+        rewardSet.insert(std::move(reward));
     }
 
-    return reward;
+    return rewardSet;
 }
 
-map<CDestination, int64> CDeFiForkReward::ComputePromotionReward(const int64 nReward,
-                                                                 const map<CDestination, int64>& mapAddressAmount,
-                                                                 const std::map<int64, uint32>& mapPromotionTokenTimes,
-                                                                 CDeFiRelationGraph& relation)
+CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
+                                                       const map<CDestination, int64>& mapAddressAmount,
+                                                       const std::map<int64, uint32>& mapPromotionTokenTimes,
+                                                       CDeFiRelationGraph& relation)
 {
-    map<CDestination, int64> reward;
+    CDeFiRewardSet rewardSet;
 
     if (nReward == 0)
     {
-        return reward;
+        return rewardSet;
     }
 
     // compute promotion power
-    int64 nTotal = 0;
+    multimap<uint64, pair<CDestination, int64>> mapPower;
+    uint64 nTotal = 0;
     relation.PostorderTraversal([&](CDeFiRelationNode* pNode) {
         // amount
         auto it = mapAddressAmount.find(pNode->dest);
-        pNode->nAmount = (it == mapAddressAmount.end()) ? 0 : (it->second / COIN);
+        int64 nAmount = (it == mapAddressAmount.end()) ? 0 : (it->second / COIN);
 
         // power
         pNode->nPower = 0;
+        pNode->nAmount = nAmount;
         if (!pNode->setSubline.empty())
         {
             int64 nMax = -1;
@@ -451,8 +458,8 @@ map<CDestination, int64> CDeFiForkReward::ComputePromotionReward(const int64 nRe
                     continue;
                 }
 
-                int64 nLastToken = 0;
-                int64 nChildPower = 0;
+                uint64 nLastToken = 0;
+                uint64 nChildPower = 0;
                 for (auto& tokenTimes : mapPromotionTokenTimes)
                 {
                     if (n > tokenTimes.first)
@@ -476,7 +483,7 @@ map<CDestination, int64> CDeFiForkReward::ComputePromotionReward(const int64 nRe
         if (pNode->nPower > 0)
         {
             nTotal += pNode->nPower;
-            reward.insert(make_pair(pNode->dest, pNode->nPower));
+            mapPower.insert(make_pair(pNode->nPower, make_pair(pNode->dest, nAmount)));
         }
 
         return true;
@@ -486,13 +493,18 @@ map<CDestination, int64> CDeFiForkReward::ComputePromotionReward(const int64 nRe
     if (nTotal > 0)
     {
         double fUnitReward = (double)nReward / nTotal;
-        for (auto& p : reward)
+        for (auto& p : mapPower)
         {
-            p.second *= fUnitReward;
+            CDeFiReward reward;
+            reward.dest = p.second.first;
+            reward.nAmount = p.second.second;
+            reward.nPower = p.first;
+            reward.nPromotionReward = fUnitReward * p.first;
+            rewardSet.insert(std::move(reward));
         }
     }
 
-    return reward;
+    return rewardSet;
 }
 
 } // namespace bigbang

@@ -367,6 +367,10 @@ void CBlockMaker::ArrangeBlockTx(CBlock& block, const uint256& hashFork, const C
                 break;
             }
 
+            // save reward detailed
+            CODataStream os(txNew.vchData, 40);
+            os << reward.nAmount << reward.nRank << reward.nStakeReward << reward.nPower << reward.nPromotionReward;
+
             block.vtx.push_back(txNew);
             nRewardTxTotalFee += txNew.nTxFee;
             rewardTxSize += GetSerializeSize(txNew);

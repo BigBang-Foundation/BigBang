@@ -419,16 +419,17 @@ BOOST_AUTO_TEST_CASE(reward)
 
     // test stake reward
     // B = 1/1
-    map<CDestination, int64> reward;
     map<CDestination, int64> balance;
     balance = map<CDestination, int64>{
         { A, 0 },
         { B, 100 * COIN },
     };
-    reward = r.ComputeStakeReward(profile1.defi.nStakeMinToken, nReward, balance);
-    BOOST_CHECK(reward.size() == 1);
-    auto it = reward.begin();
-    BOOST_CHECK(it->first == B && it->second == nReward);
+    {
+        CDeFiRewardSet reward = r.ComputeStakeReward(profile1.defi.nStakeMinToken, nReward, balance);
+        BOOST_CHECK(reward.size() == 1);
+        auto it = reward.begin();
+        BOOST_CHECK(it->dest == B && it->nReward == nReward);
+    }
 
     // a1 = 1/5, a11 = 3/5, a111 = 1/5
     balance = map<CDestination, int64>{
@@ -437,14 +438,17 @@ BOOST_AUTO_TEST_CASE(reward)
         { a11, 1000 * COIN },
         { a111, 100 * COIN },
     };
-    reward = r.ComputeStakeReward(profile1.defi.nStakeMinToken, nReward, balance);
-    BOOST_CHECK(reward.size() == 3);
-    it = reward.find(a1);
-    BOOST_CHECK(it != reward.end() && it->second == 963483875);
-    it = reward.find(a11);
-    BOOST_CHECK(it != reward.end() && it->second == 2890451625);
-    it = reward.find(a111);
-    BOOST_CHECK(it != reward.end() && it->second == 963483875);
+    {
+        CDeFiRewardSet reward = r.ComputeStakeReward(profile1.defi.nStakeMinToken, nReward, balance);
+        BOOST_CHECK(reward.size() == 3);
+        auto& destIdx = reward.get<0>();
+        auto it = destIdx.find(a1);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 963483875);
+        it = destIdx.find(a11);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 2890451625);
+        it = destIdx.find(a111);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 963483875);
+    }
 
     // test promotion reward
     balance = map<CDestination, int64>{
@@ -485,29 +489,34 @@ BOOST_AUTO_TEST_CASE(reward)
 
     CDeFiRelationGraph relation;
     BOOST_CHECK(relation.ConstructRelationGraph(mapAddress));
-    reward = r.ComputePromotionReward(nReward, balance, profile1.defi.mapPromotionTokenTimes, relation);
+    {
+        CDeFiRewardSet reward = r.ComputePromotionReward(nReward, balance, profile1.defi.mapPromotionTokenTimes, relation);
+        BOOST_CHECK(reward.size() == 6);
 
-    BOOST_CHECK(reward.size() == 6);
-    it = reward.find(A);
-    BOOST_CHECK(it != reward.end() && it->second == 3039845494);
-    it = reward.find(a1);
-    BOOST_CHECK(it != reward.end() && it->second == 342283);
-    it = reward.find(a11);
-    BOOST_CHECK(it != reward.end() && it->second == 271466);
-    it = reward.find(a2);
-    BOOST_CHECK(it != reward.end() && it->second == 253762);
-    it = reward.find(a22);
-    BOOST_CHECK(it != reward.end() && it->second == 295225626);
-    it = reward.find(B);
-    BOOST_CHECK(it != reward.end() && it->second == 1481480742);
+        auto& destIdx = reward.get<0>();
+        auto it = destIdx.find(A);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 3039845494);
+        it = destIdx.find(a1);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 342283);
+        it = destIdx.find(a11);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 271466);
+        it = destIdx.find(a2);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 253762);
+        it = destIdx.find(a22);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 295225626);
+        it = destIdx.find(B);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 1481480742);
+    }
 
     // test all reward
     nReward = r.GetSectionReward(forkid2, uint256(2939, uint224(0)));
     CDeFiRelationGraph relationReward;
-    reward = r.ComputePromotionReward(nReward / 2, balance, profile2.defi.mapPromotionTokenTimes, relationReward);
-    for (auto& x : reward)
     {
-        cout << "promotion reward, destination: " << CAddress(x.first).ToString() << ", reward: " << x.second << endl;
+        CDeFiRewardSet reward = r.ComputePromotionReward(nReward / 2, balance, profile2.defi.mapPromotionTokenTimes, relationReward);
+        for (auto& x : reward)
+        {
+            cout << "promotion reward, destination: " << CAddress(x.dest).ToString() << ", reward: " << x.nReward << endl;
+        }
     }
 
     // boost::filesystem::remove_all(logPath);

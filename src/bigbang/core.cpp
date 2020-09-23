@@ -237,7 +237,11 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
             }
         }
     }
-    if (!tx.vchData.empty() && (tx.nType == CTransaction::TX_WORK || tx.nType == CTransaction::TX_STAKE || tx.nType == CTransaction::TX_DEFI_REWARD))
+    if (tx.nType == CTransaction::TX_DEFI_REWARD && (tx.vchData.size() != 40))
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi reward tx data length is not 40\n");
+    }
+    if (!tx.vchData.empty() && (tx.nType == CTransaction::TX_WORK || tx.nType == CTransaction::TX_STAKE))
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "tx data is not empty, tx type: %s\n", tx.GetTypeString().c_str());
     }

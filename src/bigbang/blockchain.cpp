@@ -612,6 +612,22 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
         view.AddTx(txid, tx, txContxt.destIn, txContxt.GetValueIn());
 
         StdTrace("BlockChain", "AddNewBlock: verify tx success, new tx: %s, new block: %s", txid.GetHex().c_str(), hash.GetHex().c_str());
+        // TODO: Remove the test log
+        if (tx.nType == CTransaction::TX_DEFI_REWARD)
+        {
+            char* p = (char*)&tx.vchData[0];
+            int64 nAmount = *(int64*)p;
+            p += 8;
+            uint64 nRank = *(uint64*)p;
+            p += 8;
+            int64 nStakeReward = *(int64*)p;
+            p += 8;
+            uint64 nPower = *(uint64*)p;
+            p += 8;
+            int64 nPromotionReward = *(int64*)p;
+            Debug("SHT Add reward, height: %d, dest: %s, reward: %ld, amount: %ld, rank: %lu, stake: %ld, power: %lu, promotion: %ld",
+                  block.GetBlockHeight(), CAddress(tx.sendTo).ToString().c_str(), tx.nTxFee + tx.nAmount, nAmount, nRank, nStakeReward, nPower, nPromotionReward);
+        }
 
         nTotalFee += tx.nTxFee;
     }
@@ -2186,7 +2202,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     }
 
     int64 nStakeReward = nReward * profile.defi.nStakeRewardPercent / 100;
-    map<CDestination, int64> stakeReward = defiReward.ComputeStakeReward(profile.defi.nStakeMinToken, nStakeReward, mapAddressAmount);
+    CDeFiRewardSet stakeReward = defiReward.ComputeStakeReward(profile.defi.nStakeMinToken, nStakeReward, mapAddressAmount);
 
     // get invitation relation
     map<CDestination, storage::CAddrInfo> mapAddress;
@@ -2204,29 +2220,24 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     }
 
     int64 nPromotionReward = nReward * profile.defi.nPromotionRewardPercent / 100;
-    map<CDestination, int64> promotionReward = defiReward.ComputePromotionReward(nPromotionReward, mapAddressAmount, profile.defi.mapPromotionTokenTimes, relation);
+    CDeFiRewardSet promotionReward = defiReward.ComputePromotionReward(nPromotionReward, mapAddressAmount, profile.defi.mapPromotionTokenTimes, relation);
 
+    CDeFiRewardSetByDest& destIdx = promotionReward.get<0>();
     for (auto& stake : stakeReward)
     {
-        auto it = promotionReward.find(stake.first);
-
-        int64 sr = stake.second;
-        int64 pr = 0;
-        if (it != promotionReward.end())
+        CDeFiReward reward = stake;
+        auto it = destIdx.find(stake.dest);
+        if (it != destIdx.end())
         {
-            pr = it->second;
-            promotionReward.erase(it);
+            reward.nPower = it->nPower;
+            reward.nPromotionReward = it->nPromotionReward;
+            reward.nReward += it->nPromotionReward;
+            destIdx.erase(it);
         }
-        int64 r = sr + pr;
 
         // check reward > txfee
-        if (r > NEW_MIN_TX_FEE)
+        if (reward.nReward > NEW_MIN_TX_FEE)
         {
-            CDeFiReward reward;
-            reward.dest = stake.first;
-            reward.nReward = r;
-            reward.nStakeReward = sr;
-            reward.nPromotionReward = pr;
             reward.hashAnchor = hash;
             s.insert(move(reward));
         }
@@ -2234,13 +2245,10 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
 
     for (auto& promotion : promotionReward)
     {
-        if (promotion.second > NEW_MIN_TX_FEE)
+        // check reward > txfee
+        if (promotion.nReward > NEW_MIN_TX_FEE)
         {
-            CDeFiReward reward;
-            reward.dest = promotion.first;
-            reward.nReward = promotion.second;
-            reward.nStakeReward = 0;
-            reward.nPromotionReward = promotion.second;
+            CDeFiReward reward = promotion;
             reward.hashAnchor = hash;
             s.insert(move(reward));
         }

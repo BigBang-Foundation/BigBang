@@ -33,7 +33,7 @@ public:
     uint256 txid;
     CDeFiRelationNode* pParent;
     std::set<CDeFiRelationNode*> setSubline;
-    int64 nPower;
+    uint64 nPower;
     int64 nAmount;
 };
 
@@ -155,13 +155,13 @@ public:
     void AddForkSection(const uint256& forkid, const uint256& hash, CDeFiRewardSet&& reward);
 
     // compute stake reward
-    std::map<CDestination, int64> ComputeStakeReward(const int64 nMin, const int64 nReward,
-                                                     const std::map<CDestination, int64>& mapAddressAmount);
+    CDeFiRewardSet ComputeStakeReward(const int64 nMin, const int64 nReward,
+                                      const std::map<CDestination, int64>& mapAddressAmount);
     // compute promotion reward
-    std::map<CDestination, int64> ComputePromotionReward(const int64 nReward,
-                                                         const std::map<CDestination, int64>& mapAddressAmount,
-                                                         const std::map<int64, uint32>& mapPromotionTokenTimes,
-                                                         CDeFiRelationGraph& relation);
+    CDeFiRewardSet ComputePromotionReward(const int64 nReward,
+                                          const std::map<CDestination, int64>& mapAddressAmount,
+                                          const std::map<int64, uint32>& mapPromotionTokenTimes,
+                                          CDeFiRelationGraph& relation);
 
 protected:
     MapForkReward forkReward;
