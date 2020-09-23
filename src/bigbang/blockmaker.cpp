@@ -345,7 +345,7 @@ void CBlockMaker::ArrangeBlockTx(CBlock& block, const uint256& hashFork, const C
     {
         CTransaction txDefault;
         txDefault.SetNull();
-        size_t txDefaultSize = GetSerializeSize(txDefault);
+        size_t txDefaultSize = GetSerializeSize(txDefault) + 40;
         int32 nMaxTx = nRestOfSize / txDefaultSize;
 
         list<CDeFiReward> rewards = pBlockChain->GetDeFiReward(hashFork, block.hashPrev, block.GetBlockHeight(), nMaxTx);
@@ -360,16 +360,14 @@ void CBlockMaker::ArrangeBlockTx(CBlock& block, const uint256& hashFork, const C
             txNew.sendTo = reward.dest;
             txNew.nTxFee = NEW_MIN_TX_FEE;
             txNew.nAmount = reward.nReward - txNew.nTxFee;
-            CODataStream ds(txNew.vchData);
+            // save reward detailed
+            CODataStream os(txNew.vchData, 40);
+            os << reward.nAmount << reward.nRank << reward.nStakeReward << reward.nPower << reward.nPromotionReward;
 
             if (rewardTxSize + GetSerializeSize(txNew) > nRestOfSize)
             {
                 break;
             }
-
-            // save reward detailed
-            CODataStream os(txNew.vchData, 40);
-            os << reward.nAmount << reward.nRank << reward.nStakeReward << reward.nPower << reward.nPromotionReward;
 
             block.vtx.push_back(txNew);
             nRewardTxTotalFee += txNew.nTxFee;
