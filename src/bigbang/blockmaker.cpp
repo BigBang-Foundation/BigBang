@@ -360,6 +360,7 @@ void CBlockMaker::ArrangeBlockTx(CBlock& block, const uint256& hashFork, const C
             txNew.sendTo = reward.dest;
             txNew.nTxFee = NEW_MIN_TX_FEE;
             txNew.nAmount = reward.nReward - txNew.nTxFee;
+            CODataStream ds(txNew.vchData);
 
             if (rewardTxSize + GetSerializeSize(txNew) > nRestOfSize)
             {
