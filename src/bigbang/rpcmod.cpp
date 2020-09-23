@@ -2528,7 +2528,8 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
             {
                 throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param times * maxsupply is overflow");
             }
-            if (to_string(nMaxPower).size() > 15)
+            // precision
+            if (to_string(nMaxPower).size() > 14)
             {
                 throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param times * maxsupply is more than 15 digits. It will lose precision");
             }

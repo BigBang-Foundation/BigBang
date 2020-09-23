@@ -538,12 +538,13 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
             {
                 return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param times of mappromotiontokentimes is equal 0");
             }
+            // precision
             int64 nMaxPower = defi.nMaxSupply / COIN * times.second;
             if (nMaxPower < (defi.nMaxSupply / COIN))
             {
                 return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param times * maxsupply is overflow");
             }
-            if (to_string(nMaxPower).size() > 15)
+            if (to_string(nMaxPower).size() > 14)
             {
                 return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param times * maxsupply is more than 15 digits. It will lose precision");
             }
