@@ -199,7 +199,10 @@ BOOST_AUTO_TEST_CASE(defi_relation_graph)
         };
 
         CDeFiRelationGraph defiGraph;
-        BOOST_CHECK(defiGraph.ConstructRelationGraph(mapAddressTree) == true);
+        for (auto& x : mapAddressTree)
+        {
+            BOOST_CHECK(defiGraph.Insert(x.first, x.second.destParent, x.second.destParent));
+        }
     }
 
     {
@@ -217,8 +220,11 @@ BOOST_AUTO_TEST_CASE(defi_relation_graph)
         mapAddressTree.insert(std::make_pair(A3, CAddrInfo(CDestination(), A, uint256((uint64_t*)md32))));
 
         CDeFiRelationGraph defiGraph;
-        BOOST_CHECK(defiGraph.ConstructRelationGraph(mapAddressTree) == true);
-        BOOST_CHECK(defiGraph.setRoot.size() == 1);
+        for (auto& x : mapAddressTree)
+        {
+            BOOST_CHECK(defiGraph.Insert(x.first, x.second.destParent, x.second.destParent));
+        }
+        BOOST_CHECK(defiGraph.mapRoot.size() == 1);
     }
 
     {
@@ -248,9 +254,12 @@ BOOST_AUTO_TEST_CASE(defi_relation_graph)
         mapAddressTree.insert(std::make_pair(AAA222, CAddrInfo(CDestination(), AA22, uint256((uint64_t*)md32))));
 
         CDeFiRelationGraph defiGraph;
-        BOOST_CHECK(defiGraph.ConstructRelationGraph(mapAddressTree) == true);
-        BOOST_CHECK(defiGraph.setRoot.size() == 1);
-        BOOST_CHECK(defiGraph.setRoot.find(A) != defiGraph.setRoot.end());
+        for (auto& x : mapAddressTree)
+        {
+            BOOST_CHECK(defiGraph.Insert(x.first, x.second.destParent, x.second.destParent));
+        }
+        BOOST_CHECK(defiGraph.mapRoot.size() == 1);
+        BOOST_CHECK(defiGraph.mapRoot.find(A) != defiGraph.mapRoot.end());
     }
 
     {
@@ -290,15 +299,18 @@ BOOST_AUTO_TEST_CASE(defi_relation_graph)
         mapAddressTree.insert(std::make_pair(B4, CAddrInfo(CDestination(), B, uint256((uint64_t*)md32))));
 
         CDeFiRelationGraph defiGraph;
-        BOOST_CHECK(defiGraph.ConstructRelationGraph(mapAddressTree) == true);
-        BOOST_CHECK(defiGraph.setRoot.size() == 2);
-        BOOST_CHECK(defiGraph.mapDestNode.size() == 15);
-        BOOST_CHECK(defiGraph.setRoot.find(A) != defiGraph.setRoot.end());
-        BOOST_CHECK(defiGraph.setRoot.find(B) != defiGraph.setRoot.end());
-        BOOST_CHECK(defiGraph.mapDestNode.find(A) != defiGraph.mapDestNode.end());
-        BOOST_CHECK(defiGraph.mapDestNode.find(B) != defiGraph.mapDestNode.end());
-        BOOST_CHECK(defiGraph.setRoot.find(B3) == defiGraph.setRoot.end());
-        BOOST_CHECK(defiGraph.setRoot.find(AA22) == defiGraph.setRoot.end());
+        for (auto& x : mapAddressTree)
+        {
+            BOOST_CHECK(defiGraph.Insert(x.first, x.second.destParent, x.second.destParent));
+        }
+        BOOST_CHECK(defiGraph.mapRoot.size() == 2);
+        BOOST_CHECK(defiGraph.mapNode.size() == 15);
+        BOOST_CHECK(defiGraph.mapRoot.find(A) != defiGraph.mapRoot.end());
+        BOOST_CHECK(defiGraph.mapRoot.find(B) != defiGraph.mapRoot.end());
+        BOOST_CHECK(defiGraph.mapNode.find(A) != defiGraph.mapNode.end());
+        BOOST_CHECK(defiGraph.mapNode.find(B) != defiGraph.mapNode.end());
+        BOOST_CHECK(defiGraph.mapRoot.find(B3) == defiGraph.mapRoot.end());
+        BOOST_CHECK(defiGraph.mapRoot.find(AA22) == defiGraph.mapRoot.end());
     }
 }
 
@@ -488,7 +500,10 @@ BOOST_AUTO_TEST_CASE(reward)
     };
 
     CDeFiRelationGraph relation;
-    BOOST_CHECK(relation.ConstructRelationGraph(mapAddress));
+    for (auto& x : mapAddress)
+    {
+        BOOST_CHECK(relation.Insert(x.first, x.second.destParent, x.second.destParent));
+    }
     {
         CDeFiRewardSet reward = r.ComputePromotionReward(nReward, balance, profile1.defi.mapPromotionTokenTimes, relation);
         BOOST_CHECK(reward.size() == 6);

@@ -4,7 +4,6 @@
 
 #include "blockbase.h"
 
-#include <boost/range/adaptor/reversed.hpp>
 #include <boost/timer/timer.hpp>
 #include <cstdio>
 
@@ -1985,58 +1984,6 @@ bool CBlockBase::AddDeFiRelation(const uint256& hashFork, CBlockView& view, boos
     return true;
 }
 
-bool CBlockBase::ListDeFiRelation(const uint256& hashFork, const CBlockView& view, map<CDestination, CAddrInfo>& mapAddress)
-{
-    CListAddressWalker walker;
-    if (!dbBlock.WalkThroughAddress(hashFork, walker))
-    {
-        StdLog("CBlockBase", "ListDeFiRelation: WalkThroughAddress fail, fork: %s", hashFork.GetHex().c_str());
-        return false;
-    }
-
-    vector<CBlockEx> vAdd;
-    vector<CBlockEx> vRemove;
-    view.GetBlockChanges(vAdd, vRemove);
-
-    for (const CBlockEx& block : boost::adaptors::reverse(vRemove))
-    {
-        for (int i = block.vtx.size() - 1; i >= 0; --i)
-        {
-            const CTransaction& tx = block.vtx[i];
-            if (tx.IsDeFiRelation())
-            {
-                uint256 txid = tx.GetHash();
-                auto it = walker.mapAddress.find(tx.sendTo);
-                if (it != walker.mapAddress.end() && it->second.txid == txid)
-                {
-                    walker.mapAddress.erase(it);
-                }
-            }
-        }
-    }
-
-    for (const CBlockEx& block : boost::adaptors::reverse(vAdd))
-    {
-        for (std::size_t i = 0; i < block.vtx.size(); i++)
-        {
-            const CTransaction& tx = block.vtx[i];
-            const CTxContxt& txContxt = block.vTxContxt[i];
-            if (tx.IsDeFiRelation() && tx.sendTo != txContxt.destIn)
-            {
-                uint256 txid = tx.GetHash();
-                auto it = walker.mapAddress.find(tx.sendTo);
-                if (it == walker.mapAddress.end())
-                {
-                    walker.mapAddress.insert(make_pair(tx.sendTo, CAddrInfo(CDestination(), txContxt.destIn, txid)));
-                }
-            }
-        }
-    }
-
-    mapAddress = std::move(walker.mapAddress);
-    return true;
-}
-
 bool CBlockBase::GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CAddrInfo& addrInfo)
 {
     CAddrInfo addressInfo;
@@ -2073,9 +2020,14 @@ bool CBlockBase::InitDeFiRelation(boost::shared_ptr<CBlockFork> spFork)
     auto& relation = spFork->GetRelation();
     relation.Clear();
 
-    map<CDestination, CAddrInfo> mapAddress;
-    ListDeFiRelation(spFork->GetOrigin()->GetBlockHash(), CBlockView(), mapAddress);
-    for (auto& r : mapAddress)
+    CListAddressWalker walker;
+    if (!dbBlock.WalkThroughAddress(spFork->GetOrigin()->GetBlockHash(), walker))
+    {
+        StdError("CBlockBase", "InitDeFiRelation: WalkThroughAddress fail, fork: %s", spFork->GetOrigin()->GetBlockHash().ToString().c_str());
+        return false;
+    }
+
+    for (auto& r : walker.mapAddress)
     {
         if (!relation.Insert(r.first, r.second.destParent, r.second.destParent))
         {

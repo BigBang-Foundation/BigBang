@@ -53,7 +53,7 @@ public:
     }
 
     // postorder traversal
-    // walker: bool (*function)(std::weak_ptr<CTreeNode<K, D>>)
+    // walker: bool (*function)(std::shared_ptr<CTreeNode<K, D>>)
     template <typename NodeWalker>
     bool PostorderTraversal(NodeWalker walker)
     {
@@ -130,7 +130,7 @@ public:
     }
 
     // postorder traversal
-    // walker: bool (*function)(std::weak_ptr<CTreeNode<D>>)
+    // walker: bool (*function)(std::shared_ptr<CTreeNode<D>>)
     template <typename NodeWalker>
     bool PostorderTraversal(NodeWalker walker)
     {
@@ -195,10 +195,13 @@ public:
 
     bool Insert(const K& key, const K& parent, const D& data, bool fCheck = true)
     {
-        K root;
-        if (!CheckInsert(key, parent, root))
+        if (fCheck)
         {
-            return false;
+            K root;
+            if (!CheckInsert(key, parent, root))
+            {
+                return false;
+            }
         }
 
         // parent
@@ -217,6 +220,7 @@ public:
         }
         else
         {
+            it->second->data = data;
             mapRoot.erase(key);
         }
 
@@ -226,13 +230,12 @@ public:
         return true;
     }
 
-    void
-    RemoveRelation(const K& key)
+    NodePtr RemoveRelation(const K& key)
     {
         auto it = mapNode.find(key);
         if (it == mapNode.end())
         {
-            return;
+            return nullptr;
         }
 
         NodePtr spNode = it->second;
@@ -240,13 +243,14 @@ public:
         if (spParent)
         {
             spParent->setChildren.erase(spNode);
-            // parent is root and no subline
+            // parent is root and no children
             if (spParent->setChildren.empty() && !spParent->spParent)
             {
                 mapRoot.erase(spParent->key);
                 mapNode.erase(spParent->key);
             }
 
+            spNode->data = D();
             spNode->spParent = nullptr;
             if (!spNode->setChildren.empty())
             {
@@ -254,9 +258,12 @@ public:
             }
             else
             {
-                mapNode.erase(spParent->key);
+                mapNode.erase(it);
             }
+            return spNode;
         }
+
+        return nullptr;
     }
 
     NodePtr GetRelation(const K& key)
@@ -293,7 +300,7 @@ public:
                 {
                     return false;
                 }
-                spNewNode->subsetChildren.insert(it->second);
+                spNewNode->setChildren.insert(it->second);
                 it->second->spParent = spNewNode;
             }
             return true;

@@ -5,6 +5,7 @@
 #ifndef STORAGE_BLOCKBASE_H
 #define STORAGE_BLOCKBASE_H
 
+#include <boost/range/adaptor/reversed.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
 #include <boost/thread/thread.hpp>
 #include <list>
@@ -288,12 +289,68 @@ public:
     bool CheckInputSingleAddressForTxWithChange(const uint256& txid);
     bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent);
     bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent);
+
+    // DeFi
+    template <typename D, typename Convert>
+    bool ListDeFiRelation(const uint256& hashFork, const CBlockView& view, xengine::CForest<CDestination, D>& relation, Convert convert)
+    {
+        boost::shared_ptr<CBlockFork> spFork;
+        {
+            xengine::CReadLock rlock(rwAccess);
+            spFork = GetFork(hashFork);
+            if (!spFork)
+            {
+                return false;
+            }
+        }
+
+        if (spFork->GetProfile().nForkType != FORK_TYPE_DEFI)
+        {
+            return false;
+        }
+        relation = spFork->GetRelation().Copy<D>();
+
+        std::vector<CBlockEx> vAdd;
+        std::vector<CBlockEx> vRemove;
+        view.GetBlockChanges(vAdd, vRemove);
+
+        for (const CBlockEx& block : vRemove)
+        {
+            for (int i = block.vtx.size() - 1; i >= 0; --i)
+            {
+                const CTransaction& tx = block.vtx[i];
+                if (tx.IsDeFiRelation())
+                {
+                    relation.RemoveRelation(tx.sendTo);
+                }
+            }
+        }
+
+        for (const CBlockEx& block : boost::adaptors::reverse(vAdd))
+        {
+            for (std::size_t i = 0; i < block.vtx.size(); i++)
+            {
+                const CTransaction& tx = block.vtx[i];
+                const CTxContxt& txContxt = block.vTxContxt[i];
+                if (tx.IsDeFiRelation())
+                {
+                    if (!relation.Insert(tx.sendTo, txContxt.destIn, convert(tx, txContxt.destIn)))
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
     bool ListForkAllAddressAmount(const uint256& hashFork, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount);
     bool AddDeFiRelation(const uint256& hashFork, CBlockView& view, boost::shared_ptr<CBlockFork> spFork);
-    bool ListDeFiRelation(const uint256& hashFork, const CBlockView& view, std::map<CDestination, CAddrInfo>& mapAddress);
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CAddrInfo& addrInfo);
     bool InitDeFiRelation(const uint256& hashFork);
     bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent);
+
     bool GetVotes(const uint256& hashGenesis, const CDestination& destDelegate, int64& nVotes);
     bool GetDelegateList(const uint256& hashGenesis, uint32 nCount, std::multimap<int64, CDestination>& mapVotes);
     bool GetDelegatePaymentList(const uint256& block_hash, std::multimap<int64, CDestination>& mapVotes);

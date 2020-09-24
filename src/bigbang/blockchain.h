@@ -72,7 +72,7 @@ public:
     bool GetPrimaryHeightBlockTime(const uint256& hashLastBlock, int nHeight, uint256& hashBlock, int64& nTime) override;
     bool IsVacantBlockBeforeCreatedForkHeight(const uint256& hashFork, const CBlock& block) override;
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) override;
-    bool ListDeFiRelation(const uint256& hashFork, std::map<CDestination, storage::CAddrInfo>& mapAddress) override;
+    bool ListDeFiRelation(const uint256& hashFork, xengine::CForest<CDestination, CDestination>& relation) override;
     bool InitDeFiRelation(const uint256& hashFork) override;
     bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent) override;
 

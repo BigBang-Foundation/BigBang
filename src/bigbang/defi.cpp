@@ -14,205 +14,6 @@ namespace bigbang
 {
 
 //////////////////////////////
-// CDeFiRelationGraph
-
-CDeFiRelationGraph::~CDeFiRelationGraph()
-{
-    Clear();
-}
-
-void CDeFiRelationGraph::Clear()
-{
-    for (auto it = mapDestNode.begin(); it != mapDestNode.end(); ++it)
-    {
-        if (it->second)
-        {
-            delete it->second;
-            it->second = nullptr;
-        }
-    }
-
-    mapDestNode.clear();
-    setRoot.clear();
-}
-
-bool CDeFiRelationGraph::ConstructRelationGraph(const std::map<CDestination, CAddrInfo>& mapAddress)
-{
-    for (const auto& vd : mapAddress)
-    {
-        if (!UpdateAddress(vd.first, vd.second.destParent, vd.second.txid))
-        {
-            StdLog("CDeFiRelationGraph", "ConstructRelationGraph: UpdateAddress fail");
-            return false;
-        }
-    }
-
-    if (!UpdateParent())
-    {
-        StdLog("CDeFiRelationGraph", "ConstructRelationGraph: UpdateParent fail");
-        return false;
-    }
-
-    return true;
-}
-
-bool CDeFiRelationGraph::InsertRelation(const CDestination& dest, const CDestination& destParent, const uint256& txid)
-{
-    auto it = mapDestNode.find(dest);
-    auto im = mapDestNode.find(destParent);
-
-    CDeFiRelationNode* pNode = nullptr;
-    if (it != mapDestNode.end())
-    {
-        pNode = it->second;
-
-        // already have parent
-        if (pNode->pParent)
-        {
-            return false;
-        }
-
-        // cyclic graph
-        if (im != mapDestNode.end())
-        {
-            for (CDeFiRelationNode* p = im->second; p; p = p->pParent)
-            {
-                if (p->dest == dest)
-                {
-                    return false;
-                }
-            }
-        }
-    }
-
-    // insert
-    if (im == mapDestNode.end())
-    {
-        im = mapDestNode.insert(make_pair(destParent, new CDeFiRelationNode(destParent, CDestination(), uint256()))).first;
-        setRoot.insert(destParent);
-    }
-
-    if (it == mapDestNode.end())
-    {
-        pNode = new CDeFiRelationNode(dest, destParent, txid);
-        it = mapDestNode.insert(make_pair(dest, pNode)).first;
-        pNode->pParent = im->second;
-    }
-    else
-    {
-        pNode->parent = destParent;
-        pNode->pParent = im->second;
-    }
-
-    im->second->setSubline.insert(pNode);
-    return true;
-}
-
-void CDeFiRelationGraph::RemoveRelation(const CDestination& dest)
-{
-    auto it = mapDestNode.find(dest);
-    if (it != mapDestNode.end())
-    {
-        CDeFiRelationNode* pNode = it->second;
-        CDeFiRelationNode* pParentNode = pNode->pParent;
-        if (pParentNode)
-        {
-            pNode->pParent = nullptr;
-            pNode->parent.SetNull();
-            setRoot.insert(dest);
-
-            pParentNode->setSubline.erase(pNode);
-            // parent is root and no subline
-            if (pParentNode->setSubline.empty() && !pParentNode->pParent)
-            {
-                setRoot.erase(pParentNode->dest);
-                mapDestNode.erase(pParentNode->dest);
-                delete pParentNode;
-            }
-        }
-    }
-}
-
-CDestination CDeFiRelationGraph::GetRelation(const CDestination& dest, uint256& txid)
-{
-    auto it = mapDestNode.find(dest);
-    if (it != mapDestNode.end())
-    {
-        txid = it->second->txid;
-        return it->second->parent;
-    }
-    else
-    {
-        return CDestination();
-    }
-}
-
-bool CDeFiRelationGraph::UpdateAddress(const CDestination& dest, const CDestination& parent, const uint256& txid)
-{
-    if (dest.IsNull() || parent.IsNull() || txid == 0)
-    {
-        StdError("CDeFiRelationGraph", "UpdateAddress: param error");
-        return false;
-    }
-    auto it = mapDestNode.find(dest);
-    if (it == mapDestNode.end())
-    {
-        CDeFiRelationNode* pNewAddr = new CDeFiRelationNode(dest, parent, txid);
-        if (pNewAddr == nullptr)
-        {
-            StdError("CDeFiRelationGraph", "UpdateAddress: new error, dest: %s", CAddress(dest).ToString().c_str());
-            return false;
-        }
-        mapDestNode.insert(make_pair(dest, pNewAddr));
-    }
-    else
-    {
-        StdError("CDeFiRelationGraph", "UpdateAddress: duplicate address, dest: %s", CAddress(dest).ToString().c_str());
-        return false;
-    }
-    return true;
-}
-
-bool CDeFiRelationGraph::UpdateParent()
-{
-    for (auto it = mapDestNode.begin(); it != mapDestNode.end(); ++it)
-    {
-        if (!it->second)
-        {
-            StdError("CDeFiRelationGraph", "UpdateParent: address is null, dest: %s", CAddress(it->first).ToString().c_str());
-            return false;
-        }
-        if (it->second->parent.IsNull())
-        {
-            continue;
-        }
-        auto mt = mapDestNode.find(it->second->parent);
-        if (mt != mapDestNode.end())
-        {
-            if (!mt->second)
-            {
-                StdError("CDeFiRelationGraph", "UpdateParent: parent address is null, dest: %s", CAddress(it->first).ToString().c_str());
-                return false;
-            }
-        }
-        else
-        {
-            CDeFiRelationNode* pNewAddr = new CDeFiRelationNode(it->second->parent, CDestination(), uint256());
-            if (pNewAddr == nullptr)
-            {
-                StdError("CDeFiRelationGraph", "UpdateParent: new error, dest: %s", CAddress(it->second->parent).ToString().c_str());
-                return false;
-            }
-            mt = mapDestNode.insert(make_pair(it->second->parent, pNewAddr)).first;
-            setRoot.insert(it->second->parent);
-        }
-        it->second->pParent = mt->second;
-        mt->second->setSubline.insert(it->second);
-    }
-    return true;
-}
-
-//////////////////////////////
 // CDeFiForkReward
 CDeFiRewardSet CDeFiForkReward::null;
 
@@ -516,8 +317,10 @@ CDeFiRewardSet CDeFiForkReward::ComputeStakeReward(const int64 nMin, const int64
 CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
                                                        const map<CDestination, int64>& mapAddressAmount,
                                                        const std::map<int64, uint32>& mapPromotionTokenTimes,
-                                                       CDeFiRelationGraph& relation)
+                                                       CForest<CDestination, CDeFiRelationRewardNode>& relation)
 {
+    typedef typename CForest<CDestination, CDeFiRelationRewardNode>::NodePtr NodePtr;
+
     CDeFiRewardSet rewardSet;
 
     if (nReward == 0)
@@ -528,29 +331,29 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
     // compute promotion power
     multimap<uint64, pair<CDestination, int64>> mapPower;
     uint64 nTotal = 0;
-    relation.PostorderTraversal([&](CDeFiRelationNode* pNode) {
+    relation.PostorderTraversal([&](NodePtr pNode) {
         // amount
-        auto it = mapAddressAmount.find(pNode->dest);
+        auto it = mapAddressAmount.find(pNode->key);
         int64 nAmount = (it == mapAddressAmount.end()) ? 0 : (it->second / COIN);
 
         // power
-        pNode->nPower = 0;
-        pNode->nAmount = nAmount;
-        if (!pNode->setSubline.empty())
+        pNode->data.nPower = 0;
+        pNode->data.nAmount = nAmount;
+        if (!pNode->setChildren.empty())
         {
             int64 nMax = -1;
-            for (auto& p : pNode->setSubline)
+            for (auto& p : pNode->setChildren)
             {
-                pNode->nAmount += p->nAmount;
+                pNode->data.nAmount += p->data.nAmount;
                 int64 n = 0;
-                if (p->nAmount <= nMax)
+                if (p->data.nAmount <= nMax)
                 {
-                    n = p->nAmount;
+                    n = p->data.nAmount;
                 }
                 else
                 {
                     n = nMax;
-                    nMax = p->nAmount;
+                    nMax = p->data.nAmount;
                 }
 
                 if (n < 0)
@@ -575,15 +378,15 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
                     }
                 }
                 nChildPower += (n - nLastToken);
-                pNode->nPower += nChildPower;
+                pNode->data.nPower += nChildPower;
             }
-            pNode->nPower += llround(pow(nMax, 1.0 / 3));
+            pNode->data.nPower += llround(pow(nMax, 1.0 / 3));
         }
 
-        if (pNode->nPower > 0)
+        if (pNode->data.nPower > 0)
         {
-            nTotal += pNode->nPower;
-            mapPower.insert(make_pair(pNode->nPower, make_pair(pNode->dest, nAmount)));
+            nTotal += pNode->data.nPower;
+            mapPower.insert(make_pair(pNode->data.nPower, make_pair(pNode->key, nAmount)));
         }
 
         return true;

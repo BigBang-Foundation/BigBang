@@ -2216,17 +2216,12 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     CDeFiRewardSet stakeReward = defiReward.ComputeStakeReward(profile.defi.nStakeMinToken, nStakeReward, mapAddressAmount);
 
     // get invitation relation
-    map<CDestination, storage::CAddrInfo> mapAddress;
-    if (!cntrBlock.ListDeFiRelation(forkid, view, mapAddress))
+    CDeFiRelationGraph relation;
+    if (!cntrBlock.ListDeFiRelation(forkid, view, relation, [](const CTransaction& tx, const CDestination& parentIn) {
+            return CDeFiRelationRewardNode(parentIn);
+        }))
     {
         Error("ComputeDeFiSection ListDeFiRelation error, fork: %s, hash: %s", forkid.ToString().c_str(), hash.ToString().c_str());
-        return s;
-    }
-
-    CDeFiRelationGraph relation;
-    if (!relation.ConstructRelationGraph(mapAddress))
-    {
-        Error("ComputeDeFiSection ConstructRelationGraph error, fork: %s, hash: %s", forkid.ToString().c_str(), hash.ToString().c_str());
         return s;
     }
 
@@ -2280,9 +2275,11 @@ bool CBlockChain::GetDeFiRelation(const uint256& hashFork, const CDestination& d
     return false;
 }
 
-bool CBlockChain::ListDeFiRelation(const uint256& hashFork, std::map<CDestination, storage::CAddrInfo>& mapAddress)
+bool CBlockChain::ListDeFiRelation(const uint256& hashFork, xengine::CForest<CDestination, CDestination>& relation)
 {
-    return cntrBlock.ListDeFiRelation(hashFork, storage::CBlockView(), mapAddress);
+    return cntrBlock.ListDeFiRelation(hashFork, storage::CBlockView(), relation, [](const CTransaction& tx, const CDestination& parentIn) {
+        return parentIn;
+    });
 }
 
 bool CBlockChain::InitDeFiRelation(const uint256& hashFork)

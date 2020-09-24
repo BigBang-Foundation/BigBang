@@ -138,7 +138,7 @@ public:
     virtual bool GetBlockInv(const uint256& hashFork, const CBlockLocator& locator, std::vector<uint256>& vBlockHash, std::size_t nMaxCount) = 0;
     virtual bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent) = 0;
     virtual bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) = 0;
-    virtual bool ListDeFiRelation(const uint256& hashFork, std::map<CDestination, storage::CAddrInfo>& mapAddress) = 0;
+    virtual bool ListDeFiRelation(const uint256& hashFork, xengine::CForest<CDestination, CDestination>& relation) = 0;
     virtual bool InitDeFiRelation(const uint256& hashFork) = 0;
     virtual bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent) = 0;
 

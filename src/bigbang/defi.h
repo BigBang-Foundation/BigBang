@@ -19,107 +19,21 @@
 namespace bigbang
 {
 
-class CDeFiRelationNode
+class CDeFiRelationRewardNode
 {
 public:
-    CDeFiRelationNode()
-      : pParent(nullptr), nPower(0), nAmount(0) {}
-    CDeFiRelationNode(const CDestination& destIn, const CDestination& parentIn, const uint256& txidIn)
-      : dest(destIn), parent(parentIn), txid(txidIn), pParent(nullptr), nPower(0), nAmount(0) {}
+    CDeFiRelationRewardNode()
+      : nPower(0), nAmount(0) {}
+    CDeFiRelationRewardNode(const CDestination& parentIn)
+      : parent(parentIn), nPower(0), nAmount(0) {}
 
 public:
-    CDestination dest;
     CDestination parent;
-    uint256 txid;
-    CDeFiRelationNode* pParent;
-    std::set<CDeFiRelationNode*> setSubline;
     uint64 nPower;
     int64 nAmount;
 };
 
-class CDeFiRelationGraph
-{
-public:
-    CDeFiRelationGraph() {}
-    ~CDeFiRelationGraph();
-
-    void Clear();
-    bool ConstructRelationGraph(const std::map<CDestination, storage::CAddrInfo>& mapAddress);
-    bool InsertRelation(const CDestination& dest, const CDestination& destParent, const uint256& txid);
-    void RemoveRelation(const CDestination& dest);
-    CDestination GetRelation(const CDestination& dest, uint256& txid);
-
-    // postorder traversal
-    // walker: bool (*function)(CDeFiRelationNode*)
-    template <typename NodeWalker>
-    bool PostorderTraversal(NodeWalker walker)
-    {
-        for (auto& dest : setRoot)
-        {
-            CDeFiRelationNode* pNode = mapDestNode[dest];
-            if (pNode == nullptr)
-            {
-                xengine::StdError("CDeFiRelationGraph", "PostorderTraversal no root address, dest: %s", CAddress(dest).ToString().c_str());
-                return false;
-            }
-
-            // postorder traversal
-            std::stack<CDeFiRelationNode*> st;
-            do
-            {
-                // if pNode != nullptr push and down, or pop and up.
-                if (pNode != nullptr)
-                {
-                    if (!pNode->setSubline.empty())
-                    {
-                        st.push(pNode);
-                        pNode = *pNode->setSubline.begin();
-                        continue;
-                    }
-                }
-                else
-                {
-                    pNode = st.top();
-                    st.pop();
-                }
-
-                // call walker
-                if (!walker(pNode))
-                {
-                    return false;
-                }
-
-                // root or the last child of parent. fetch from stack when next loop
-                if (pNode->pParent == nullptr || pNode == *pNode->pParent->setSubline.rbegin())
-                {
-                    pNode = nullptr;
-                }
-                else
-                {
-                    auto it = pNode->pParent->setSubline.find(pNode);
-                    if (it == pNode->pParent->setSubline.end())
-                    {
-                        xengine::StdError("CDeFiRelationGraph", "PostorderTraversal parent have not child, parent: %s, child: %s", CAddress(pNode->pParent->dest).ToString().c_str(), CAddress(pNode->dest).ToString().c_str());
-                        return false;
-                    }
-                    else
-                    {
-                        pNode = *++it;
-                    }
-                }
-            } while (!st.empty());
-        }
-        return true;
-    }
-
-protected:
-    bool UpdateAddress(const CDestination& dest, const CDestination& parent, const uint256& txid);
-    bool UpdateParent();
-
-public:
-    std::map<CDestination, CDeFiRelationNode*> mapDestNode;
-    std::set<CDestination> setRoot;
-};
+typedef xengine::CForest<CDestination, CDeFiRelationRewardNode> CDeFiRelationGraph;
 
 class CDeFiForkReward
 {

@@ -946,7 +946,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                     {
                         certTxDest.RemoveCertTx(tx.sendTo, txid);
                     }
-                    if(tx.IsDeFiRelation())
+                    if (tx.IsDeFiRelation())
                     {
                         txView.relation.RemoveRelation(tx.sendTo);
                     }
@@ -1208,30 +1208,38 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     }
 
     CDestination destIn = vPrevOutput[0].destTo;
+<<<<<<< HEAD
     if(txView.nForkType != FORK_TYPE_DEFI && tx.IsDeFiRelation())
     {
         return ERR_TRANSACTION_INVALID_RELATION_TX;
     }
 
     if(txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
+=======
+    if (txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
+>>>>>>> Update
     {
         CDestination root;
-        if(!txView.relation.CheckInsert(tx.sendTo, destIn, root))
+        if (!txView.relation.CheckInsert(tx.sendTo, destIn, root))
         {
             return ERR_TRANSACTION_INVALID_RELATION_TX;
         }
 
+<<<<<<< HEAD
         if(!pBlockChain->CheckAddDeFiRelation(hashFork, tx.sendTo, root))
+=======
+        if (!pBlockChain->CheckAddDeFiRelation(hashFork, tx.sendTo, destIn))
+>>>>>>> Update
         {
             return ERR_TRANSACTION_INVALID_RELATION_TX;
         }
-        
+
         if (!txView.relation.Insert(tx.sendTo, destIn, txid))
         {
             uint256 oldTxid;
             auto spTreeNode = txView.relation.GetRelation(tx.sendTo);
             CDestination destParent;
-            if(spTreeNode)
+            if (spTreeNode)
             {
                 destParent = spTreeNode->spParent->key;
                 oldTxid = spTreeNode->data;
@@ -1241,9 +1249,9 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
                     CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
         
             return ERR_TRANSACTION_INVALID_RELATION_TX;
-        }  
+        }
     }
-    
+
     map<uint256, CPooledTx>::iterator mi = mapTx.insert(make_pair(txid, CPooledTx(tx, -1, GetSequenceNumber(), destIn, nValueIn))).first;
     if (!txView.AddNew(txid, (*mi).second))
     {
