@@ -948,7 +948,22 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                     }
                     if (tx.IsDeFiRelation())
                     {
-                        txView.relation.RemoveRelation(tx.sendTo);
+                        auto spTreeNode = txView.relation.RemoveRelation(tx.sendTo);
+                        if(spTreeNode)
+                        {
+                            auto iter = mapTx.find(spTreeNode->data);
+                            if(iter != mapTx.end())
+                            {
+                                for (const CTxIn& txin : iter->second.vInput)
+                                {
+                                    txView.InvalidateSpent(txin.prevout, viewInvolvedTx);
+                                }
+                            }
+                            else
+                            {
+                                Error("SynchronizeBlockChain BlockAndNew find relation tx failed: %s", spTreeNode->data.ToString().c_str());
+                            }
+                        }
                     }
                     mapTx.erase(txid);
                     change.mapTxUpdate.insert(make_pair(txid, nBlockHeight));
@@ -1208,16 +1223,12 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     }
 
     CDestination destIn = vPrevOutput[0].destTo;
-<<<<<<< HEAD
     if(txView.nForkType != FORK_TYPE_DEFI && tx.IsDeFiRelation())
     {
         return ERR_TRANSACTION_INVALID_RELATION_TX;
     }
 
     if(txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
-=======
-    if (txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
->>>>>>> Update
     {
         CDestination root;
         if (!txView.relation.CheckInsert(tx.sendTo, destIn, root))
@@ -1225,11 +1236,7 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
             return ERR_TRANSACTION_INVALID_RELATION_TX;
         }
 
-<<<<<<< HEAD
         if(!pBlockChain->CheckAddDeFiRelation(hashFork, tx.sendTo, root))
-=======
-        if (!pBlockChain->CheckAddDeFiRelation(hashFork, tx.sendTo, destIn))
->>>>>>> Update
         {
             return ERR_TRANSACTION_INVALID_RELATION_TX;
         }
