@@ -1741,9 +1741,10 @@ void CNetChannel::AddNewTx(const uint256& hashFork, const uint256& txid, CSchedu
             }
             else if (err == ERR_MISSING_PREV
                      || err == ERR_TRANSACTION_CONFLICTING_INPUT
-                     || err == ERR_ALREADY_HAVE)
+                     || err == ERR_ALREADY_HAVE
+                     || err == ERR_TRANSACTION_INVALID_RELATION_TX)
             {
-                if (err == ERR_TRANSACTION_CONFLICTING_INPUT || err == ERR_ALREADY_HAVE)
+                if (err == ERR_TRANSACTION_CONFLICTING_INPUT || err == ERR_ALREADY_HAVE || err == ERR_TRANSACTION_INVALID_RELATION_TX)
                 {
                     StdDebug("NetChannel", "NetChannel AddNewTx fail, remove inv, peer: %s, txid: %s, err: [%d] %s",
                              GetPeerAddressInfo(nNonceSender).c_str(), hashTx.GetHex().c_str(), err, ErrorString(err));
