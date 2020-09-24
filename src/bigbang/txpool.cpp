@@ -1221,7 +1221,7 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
             return ERR_TRANSACTION_INVALID_RELATION_TX;
         }
 
-        if(!pBlockChain->CheckAddDeFiRelation(hashFork, tx.sendTo, destIn))
+        if(!pBlockChain->CheckAddDeFiRelation(hashFork, tx.sendTo, root))
         {
             return ERR_TRANSACTION_INVALID_RELATION_TX;
         }
