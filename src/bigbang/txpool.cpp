@@ -1208,6 +1208,11 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     }
 
     CDestination destIn = vPrevOutput[0].destTo;
+    if(txView.nForkType != FORK_TYPE_DEFI && tx.IsDeFiRelation())
+    {
+        return ERR_TRANSACTION_INVALID_RELATION_TX;
+    }
+
     if(txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
     {
         CDestination root;
@@ -1228,19 +1233,13 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
             CDestination destParent;
             if(spTreeNode)
             {
-                destParent = spTreeNode->key;
+                destParent = spTreeNode->spParent->key;
                 oldTxid = spTreeNode->data;
             }
-            if (destParent.IsNull())
-            {
-                Log("AddNew invalid relation tx, already have parent, txid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
+            
+            Error("AddNew relation tx failedtxid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
                     CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
-            }
-            else
-            {
-                Log("AddNew invalid relation tx, cyclic relation, txid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
-                    CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
-            }
+        
             return ERR_TRANSACTION_INVALID_RELATION_TX;
         }  
     }
