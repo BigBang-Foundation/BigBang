@@ -1213,6 +1213,8 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
                 
                 
             // }
+
+            
         }
     }
 
@@ -1233,12 +1235,19 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     }
 
     CDestination destIn = vPrevOutput[0].destTo;
-    if (tx.nType == CTransaction::TX_DEFI_RELATION)
+    if (tx.IsDeFiRelation())
     {
-        if (!txView.relation.InsertRelation(tx.sendTo, destIn, txid))
+        
+        if (!txView.relation.Insert(tx.sendTo, destIn, txid))
         {
             uint256 oldTxid;
-            CDestination destParent = txView.relation.GetRelation(tx.sendTo, oldTxid);
+            auto spTreeNode = txView.relation.GetRelation(tx.sendTo);
+            CDestination destParent;
+            if(spTreeNode)
+            {
+                destParent = spTreeNode->key;
+                oldTxid = spTreeNode->data;
+            }
             if (destParent.IsNull())
             {
                 Log("AddNew invalid relation tx, already have parent, txid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
