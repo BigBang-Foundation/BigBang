@@ -506,6 +506,7 @@ CDeFiRewardSet CDeFiForkReward::ComputeStakeReward(const int64 nMin, const int64
         reward.nAmount = p.first;
         reward.nRank = p.second.second;
         reward.nStakeReward = fUnitReward * p.second.second;
+        reward.nReward = reward.nStakeReward;
         rewardSet.insert(std::move(reward));
     }
 
@@ -599,6 +600,7 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
             reward.nAmount = p.second.second;
             reward.nPower = p.first;
             reward.nPromotionReward = fUnitReward * p.first;
+            reward.nReward = reward.nPromotionReward;
             rewardSet.insert(std::move(reward));
         }
     }
