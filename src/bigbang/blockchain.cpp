@@ -612,22 +612,6 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
         view.AddTx(txid, tx, txContxt.destIn, txContxt.GetValueIn());
 
         StdTrace("BlockChain", "AddNewBlock: verify tx success, new tx: %s, new block: %s", txid.GetHex().c_str(), hash.GetHex().c_str());
-        // TODO: Remove the test log
-        if (tx.nType == CTransaction::TX_DEFI_REWARD)
-        {
-            char* p = (char*)&tx.vchData[0];
-            int64 nAmount = *(int64*)p;
-            p += 8;
-            uint64 nRank = *(uint64*)p;
-            p += 8;
-            int64 nStakeReward = *(int64*)p;
-            p += 8;
-            uint64 nPower = *(uint64*)p;
-            p += 8;
-            int64 nPromotionReward = *(int64*)p;
-            Debug("SHT Add reward, height: %d, dest: %s, reward: %ld, amount: %ld, rank: %lu, stake: %ld, power: %lu, promotion: %ld",
-                  block.GetBlockHeight(), CAddress(tx.sendTo).ToString().c_str(), tx.nTxFee + tx.nAmount, nAmount, nRank, nStakeReward, nPower, nPromotionReward);
-        }
 
         nTotalFee += tx.nTxFee;
     }
