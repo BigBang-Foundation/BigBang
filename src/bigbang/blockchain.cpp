@@ -621,7 +621,11 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
         }
 
         vTxContxt.push_back(txContxt);
-        view.AddTx(txid, tx, txContxt.destIn, txContxt.GetValueIn());
+        if (!view.AddTx(txid, tx, txContxt.destIn, txContxt.GetValueIn()))
+        {
+            Log("AddNewBlock Add block view tx error, txid: %s", txid.ToString().c_str());
+            return ERR_BLOCK_TRANSACTIONS_INVALID;
+        }
 
         StdTrace("BlockChain", "AddNewBlock: verify tx success, new tx: %s, new block: %s", txid.GetHex().c_str(), hash.GetHex().c_str());
 
@@ -1228,7 +1232,11 @@ Errno CBlockChain::VerifyPowBlock(const CBlock& block, bool& fLongChain)
         }
 
         vTxContxt.push_back(txContxt);
-        view.AddTx(txid, tx, txContxt.destIn, txContxt.GetValueIn());
+        if (!view.AddTx(txid, tx, txContxt.destIn, txContxt.GetValueIn()))
+        {
+            Log("VerifyPowBlock Add block view tx error, txid: %s", txid.ToString().c_str());
+            return ERR_BLOCK_TRANSACTIONS_INVALID;
+        }
 
         StdTrace("BlockChain", "VerifyPowBlock: verify tx success, new tx: %s, new block: %s", txid.GetHex().c_str(), hash.GetHex().c_str());
 
@@ -2280,6 +2288,11 @@ bool CBlockChain::ListDeFiRelation(const uint256& hashFork, std::map<CDestinatio
 bool CBlockChain::InitDeFiRelation(const uint256& hashFork)
 {
     return cntrBlock.InitDeFiRelation(hashFork);
+}
+
+bool CBlockChain::CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent)
+{
+    return cntrBlock.CheckAddDeFiRelation(hashFork, dest, parent);
 }
 
 } // namespace bigbang

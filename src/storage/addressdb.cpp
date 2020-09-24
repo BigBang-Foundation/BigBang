@@ -50,7 +50,7 @@ bool CForkAddressDB::RemoveAll()
     return true;
 }
 
-bool CForkAddressDB::UpdateAddress(const vector<pair<CDestination, CAddrInfo>>& vAddNew, const vector<pair<CDestination, CAddrInfo>>& vRemove)
+bool CForkAddressDB::UpdateAddress(const vector<pair<CDestination, CAddrInfo>>& vAddNew, const vector<CDestination>& vRemove)
 {
     xengine::CWriteLock wlock(rwUpper);
 
@@ -58,11 +58,7 @@ bool CForkAddressDB::UpdateAddress(const vector<pair<CDestination, CAddrInfo>>& 
 
     for (const auto& addr : vRemove)
     {
-        CAddrInfo addrInfo;
-        if (GetAddress(addr.first, addrInfo) && addrInfo.txid == addr.second.txid)
-        {
-            mapUpper[addr.first].SetNull();
-        }
+        mapUpper[addr].SetNull();
     }
 
     for (const auto& vd : vAddNew)
@@ -550,7 +546,7 @@ void CAddressDB::Clear()
 }
 
 bool CAddressDB::Update(const uint256& hashFork,
-                        const vector<pair<CDestination, CAddrInfo>>& vAddNew, const vector<pair<CDestination, CAddrInfo>>& vRemove)
+                        const vector<pair<CDestination, CAddrInfo>>& vAddNew, const vector<CDestination>& vRemove)
 {
     CReadLock rlock(rwAccess);
 
