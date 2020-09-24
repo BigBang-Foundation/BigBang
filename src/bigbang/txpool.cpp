@@ -1182,7 +1182,7 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
         nValueIn += vPrevOutput[i].nAmount;
     }
 
-    // init fork type and DeFi relation
+    //init fork type and DeFi relation
     if (txView.nForkType < 0)
     {
         CProfile profile;
@@ -1235,32 +1235,58 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     }
 
     CDestination destIn = vPrevOutput[0].destTo;
-    if (tx.IsDeFiRelation())
+    
+    if(txView.nForkType < 0)
     {
-        
-        if (!txView.relation.Insert(tx.sendTo, destIn, txid))
+        CProfile profile;
+        if (!pBlockChain->GetForkProfile(hashFork, profile))
         {
-            uint256 oldTxid;
-            auto spTreeNode = txView.relation.GetRelation(tx.sendTo);
-            CDestination destParent;
-            if(spTreeNode)
+            Error("AddNew Get fork profile error, fork: %s", hashFork.ToString().c_str());
+            return ERR_SYS_STORAGE_ERROR;
+        }
+        
+        txView.nForkType = profile.nForkType;
+        
+        if(txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
+        {
+            CDestination root;
+            if(!txView.relation.CheckInsert(tx.sendTo, destIn, root))
             {
-                destParent = spTreeNode->key;
-                oldTxid = spTreeNode->data;
+                return ERR_TRANSACTION_INVALID_RELATION_TX;
             }
-            if (destParent.IsNull())
+
+            if(!pBlockChain->CheckAddDeFiRelation(hashFork, tx.sendTo, destIn))
             {
-                Log("AddNew invalid relation tx, already have parent, txid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
-                    CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
+                return ERR_TRANSACTION_INVALID_RELATION_TX;
             }
-            else
+            
+            if (!txView.relation.Insert(tx.sendTo, destIn, txid))
             {
-                Log("AddNew invalid relation tx, cyclic relation, txid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
-                    CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
+                uint256 oldTxid;
+                auto spTreeNode = txView.relation.GetRelation(tx.sendTo);
+                CDestination destParent;
+                if(spTreeNode)
+                {
+                    destParent = spTreeNode->key;
+                    oldTxid = spTreeNode->data;
+                }
+                if (destParent.IsNull())
+                {
+                    Log("AddNew invalid relation tx, already have parent, txid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
+                        CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
+                }
+                else
+                {
+                    Log("AddNew invalid relation tx, cyclic relation, txid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
+                        CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
+                }
+                return ERR_TRANSACTION_INVALID_RELATION_TX;
             }
-            return ERR_TRANSACTION_INVALID_RELATION_TX;
+            
+            
         }
     }
+    
 
     map<uint256, CPooledTx>::iterator mi = mapTx.insert(make_pair(txid, CPooledTx(tx, -1, GetSequenceNumber(), destIn, nValueIn))).first;
     if (!txView.AddNew(txid, (*mi).second))
