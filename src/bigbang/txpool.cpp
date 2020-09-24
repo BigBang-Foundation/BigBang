@@ -929,7 +929,6 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
         {
             const CTransaction& tx = block.vtx[i];
             const CTxContxt& txContxt = block.vTxContxt[i];
-
             // defi
             if (tx.nType == CTransaction::TX_DEFI_REWARD)
             {
@@ -947,6 +946,10 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                     {
                         certTxDest.RemoveCertTx(tx.sendTo, txid);
                     }
+                    if(tx.IsDeFiRelation())
+                    {
+                        txView.relation.RemoveRelation(tx.sendTo);
+                    }
                     mapTx.erase(txid);
                     change.mapTxUpdate.insert(make_pair(txid, nBlockHeight));
                 }
@@ -958,12 +961,6 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                     }
                     change.vTxAddNew.push_back(CAssembledTx(tx, nBlockHeight, txContxt.destIn, txContxt.GetValueIn()));
                 }
-
-                // TODO: invalid conflict relation tx
-                // if (tx.nType == CTransaction::TX_DEFI_RELATION)
-                // {
-                //     txView.relation.GetRelation(tx.)
-                // }
             }
             else
             {
