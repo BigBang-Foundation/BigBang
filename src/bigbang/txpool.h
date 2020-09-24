@@ -292,7 +292,8 @@ public:
     uint256 hashLastBlock;
     int64 nLastBlockTime;
     int nForkType;
-    CDeFiRelationGraph relation;
+    xengine::CForest<CDestination, uint256> relation;
+
 };
 
 class CTxCache

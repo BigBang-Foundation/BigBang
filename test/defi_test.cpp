@@ -521,5 +521,4 @@ BOOST_AUTO_TEST_CASE(reward)
 
     // boost::filesystem::remove_all(logPath);
 }
-
 BOOST_AUTO_TEST_SUITE_END()

@@ -929,7 +929,6 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
         {
             const CTransaction& tx = block.vtx[i];
             const CTxContxt& txContxt = block.vTxContxt[i];
-
             // defi
             if (tx.nType == CTransaction::TX_DEFI_REWARD)
             {
@@ -947,6 +946,10 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                     {
                         certTxDest.RemoveCertTx(tx.sendTo, txid);
                     }
+                    if(tx.IsDeFiRelation())
+                    {
+                        txView.relation.RemoveRelation(tx.sendTo);
+                    }
                     mapTx.erase(txid);
                     change.mapTxUpdate.insert(make_pair(txid, nBlockHeight));
                 }
@@ -958,12 +961,6 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                     }
                     change.vTxAddNew.push_back(CAssembledTx(tx, nBlockHeight, txContxt.destIn, txContxt.GetValueIn()));
                 }
-
-                // TODO: invalid conflict relation tx
-                // if (tx.nType == CTransaction::TX_DEFI_RELATION)
-                // {
-                //     txView.relation.GetRelation(tx.)
-                // }
             }
             else
             {
@@ -1182,7 +1179,7 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
         nValueIn += vPrevOutput[i].nAmount;
     }
 
-    // init fork type and DeFi relation
+    //init fork type and DeFi relation
     if (txView.nForkType < 0)
     {
         CProfile profile;
@@ -1192,22 +1189,6 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
             return ERR_SYS_STORAGE_ERROR;
         }
         txView.nForkType = profile.nForkType;
-
-        if (txView.nForkType == FORK_TYPE_DEFI)
-        {
-            map<CDestination, storage::CAddrInfo> mapAddress;
-            if (!pBlockChain->ListDeFiRelation(hashFork, mapAddress))
-            {
-                Error("AddNew ListDeFiRelation error, fork: %s", hashFork.ToString().c_str());
-                return ERR_SYS_STORAGE_ERROR;
-            }
-
-            if (!txView.relation.ConstructRelationGraph(mapAddress))
-            {
-                Error("AddNew ConstructRelationGraph error, fork: %s", hashFork.ToString().c_str());
-                return ERR_SYS_STORAGE_ERROR;
-            }
-        }
     }
 
     Errno err = pCoreProtocol->VerifyTransaction(tx, vPrevOutput, nForkHeight, hashFork, txView.nForkType);
@@ -1227,12 +1208,29 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     }
 
     CDestination destIn = vPrevOutput[0].destTo;
-    if (tx.nType == CTransaction::TX_DEFI_RELATION)
+    if(txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
     {
-        if (!txView.relation.InsertRelation(tx.sendTo, destIn, txid))
+        CDestination root;
+        if(!txView.relation.CheckInsert(tx.sendTo, destIn, root))
+        {
+            return ERR_TRANSACTION_INVALID_RELATION_TX;
+        }
+
+        if(!pBlockChain->CheckAddDeFiRelation(hashFork, tx.sendTo, destIn))
+        {
+            return ERR_TRANSACTION_INVALID_RELATION_TX;
+        }
+        
+        if (!txView.relation.Insert(tx.sendTo, destIn, txid))
         {
             uint256 oldTxid;
-            CDestination destParent = txView.relation.GetRelation(tx.sendTo, oldTxid);
+            auto spTreeNode = txView.relation.GetRelation(tx.sendTo);
+            CDestination destParent;
+            if(spTreeNode)
+            {
+                destParent = spTreeNode->key;
+                oldTxid = spTreeNode->data;
+            }
             if (destParent.IsNull())
             {
                 Log("AddNew invalid relation tx, already have parent, txid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
@@ -1244,9 +1242,9 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
                     CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
             }
             return ERR_TRANSACTION_INVALID_RELATION_TX;
-        }
+        }  
     }
-
+    
     map<uint256, CPooledTx>::iterator mi = mapTx.insert(make_pair(txid, CPooledTx(tx, -1, GetSequenceNumber(), destIn, nValueIn))).first;
     if (!txView.AddNew(txid, (*mi).second))
     {
