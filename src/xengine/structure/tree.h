@@ -43,7 +43,7 @@ class CMultiwayTree
 {
 public:
     typedef std::shared_ptr<CMultiwayTree> TreePtr;
-    typedef CTreeNode<K, D>::NodePtr NodePtr;
+    typedef typename CTreeNode<K, D>::NodePtr NodePtr;
     NodePtr pRoot;
 
     // postorder traversal
@@ -54,7 +54,7 @@ public:
         NodePtr pNode = pRoot;
 
         // postorder traversal
-        std::stack<CDeFiRelationNode*> st;
+        std::stack<NodePtr> st;
         do
         {
             // if pNode != nullptr push and down, or pop and up.
@@ -106,8 +106,8 @@ template <typename K, typename D>
 class CForest
 {
 public:
-    typedef std::shared_ptr<CTreeNode<K, D>>::NodePtr NodePtr;
-    typedef std::shared_ptr<CMultiwayTree<K, D>>::TreePtr TreePtr;
+    typedef typename CTreeNode<K, D>::NodePtr NodePtr;
+    typedef typename CMultiwayTree<K, D>::TreePtr TreePtr;
 
     std::map<K, NodePtr> mapNode;
     std::map<K, TreePtr> mapRoot;
@@ -174,15 +174,16 @@ public:
         auto it = mapNode.find(key);
         if (it == mapNode.end())
         {
-            it = mapNode.insert(make_pair(dest, NodePtr(new CTreeNode<K, D>(key, data)))).first;
+            it = mapNode.insert(make_pair(key, NodePtr(new CTreeNode<K, D>(key, data)))).first;
         }
         else
         {
             mapRoot.erase(key);
         }
-        pNode->pParent = im->second;
 
+        it->second->pParent = im->second;
         im->second->setSubline.insert(it->second);
+
         return true;
     }
 
@@ -218,7 +219,7 @@ public:
         }
     }
 
-    std::shared_ptr<CTreeNode> GetRelation(const K& key)
+    NodePtr GetRelation(const K& key)
     {
         auto it = mapNode.find(key);
         return (it == mapNode.end()) ? nullptr : it->second;

@@ -119,6 +119,7 @@ protected:
     CProfile forkProfile;
     CBlockIndex* pIndexLast;
     CBlockIndex* pIndexOrigin;
+    xengine::CForest<CDestination, CAddrInfo> relation;
 };
 
 class CBlockView
