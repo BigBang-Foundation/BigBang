@@ -114,12 +114,22 @@ public:
         }
     }
 
+    xengine::CForest<CDestination, CDestination>& GetRelation()
+    {
+        return relation;
+    }
+
+    const xengine::CForest<CDestination, CDestination>& GetRelation() const
+    {
+        return relation;
+    }
+
 protected:
     mutable xengine::CRWAccess rwAccess;
     CProfile forkProfile;
     CBlockIndex* pIndexLast;
     CBlockIndex* pIndexOrigin;
-    xengine::CForest<CDestination, CAddrInfo> relation;
+    xengine::CForest<CDestination, CDestination> relation;
 };
 
 class CBlockView
@@ -284,6 +294,7 @@ public:
     bool AddDeFiRelation(const uint256& hashFork, CBlockView& view);
     bool ListDeFiRelation(const uint256& hashFork, const CBlockView& view, std::map<CDestination, CAddrInfo>& mapAddress);
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CAddrInfo& addrInfo);
+    bool InitDeFiRelation(const uint256& hashFork);
     bool GetVotes(const uint256& hashGenesis, const CDestination& destDelegate, int64& nVotes);
     bool GetDelegateList(const uint256& hashGenesis, uint32 nCount, std::multimap<int64, CDestination>& mapVotes);
     bool GetDelegatePaymentList(const uint256& block_hash, std::multimap<int64, CDestination>& mapVotes);

@@ -136,6 +136,7 @@ bool CDispatcher::HandleInvoke()
     for (const uint256& hashFork : vActive)
     {
         ActivateFork(hashFork, 0);
+        pBlockChain->InitDeFiRelation(hashFork);
     }
 
     CDelegateRoutine routine;

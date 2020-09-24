@@ -1998,6 +1998,42 @@ bool CBlockBase::GetDeFiRelation(const uint256& hashFork, const CDestination& de
     return dbBlock.GetAddressInfo(hashFork, destIn, addrInfo);
 }
 
+bool CBlockBase::InitDeFiRelation(const uint256& hashFork)
+{
+    boost::shared_ptr<CBlockFork> spFork;
+    {
+        CReadLock rlock(rwAccess);
+
+        spFork = GetFork(hashFork);
+        if (!spFork)
+        {
+            return false;
+        }
+    }
+
+    if (spFork->GetProfile().nForkType != FORK_TYPE_DEFI)
+    {
+        return true;
+    }
+
+    spFork->WriteLock();
+
+    map<CDestination, CAddrInfo> mapAddress;
+    ListDeFiRelation(hashFork, CBlockView(), mapAddress);
+    auto& relation = spFork->GetRelation();
+    for (auto& r : mapAddress)
+    {
+        if (!relation.Insert(r.first, r.second.destParent, r.second.destParent))
+        {
+            return false;
+        }
+    }
+
+    spFork->WriteUnlock();
+
+    return true;
+}
+
 bool CBlockBase::GetVotes(const uint256& hashGenesis, const CDestination& destDelegate, int64& nVotes)
 {
     CBlockIndex* pForkLastIndex = nullptr;

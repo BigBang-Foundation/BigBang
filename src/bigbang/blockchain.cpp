@@ -2277,4 +2277,9 @@ bool CBlockChain::ListDeFiRelation(const uint256& hashFork, std::map<CDestinatio
     return cntrBlock.ListDeFiRelation(hashFork, storage::CBlockView(), mapAddress);
 }
 
+bool CBlockChain::InitDeFiRelation(const uint256& hashFork)
+{
+    return cntrBlock.InitDeFiRelation(hashFork);
+}
+
 } // namespace bigbang

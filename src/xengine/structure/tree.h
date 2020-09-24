@@ -20,7 +20,7 @@ public:
 
     K key;
     D data;
-    NodePtr pParent;
+    NodePtr spParent;
     std::set<NodePtr> setChildren;
 
     CTreeNode()
@@ -44,56 +44,62 @@ class CMultiwayTree
 public:
     typedef std::shared_ptr<CMultiwayTree> TreePtr;
     typedef typename CTreeNode<K, D>::NodePtr NodePtr;
-    NodePtr pRoot;
+
+    NodePtr spRoot;
+
+    CMultiwayTree(NodePtr spRootIn = nullptr)
+      : spRoot(spRootIn)
+    {
+    }
 
     // postorder traversal
-    // walker: bool (*function)(std::weak_ptr<CTreeNode<D>>)
+    // walker: bool (*function)(std::weak_ptr<CTreeNode<K, D>>)
     template <typename NodeWalker>
     bool PostorderTraversal(NodeWalker walker)
     {
-        NodePtr pNode = pRoot;
+        NodePtr spNode = spRoot;
 
         // postorder traversal
         std::stack<NodePtr> st;
         do
         {
-            // if pNode != nullptr push and down, or pop and up.
-            if (pNode != nullptr)
+            // if spNode != nullptr push and down, or pop and up.
+            if (spNode != nullptr)
             {
-                if (!pNode->setSubline.empty())
+                if (!spNode->setSubline.empty())
                 {
-                    st.push(pNode);
-                    pNode = *pNode->setSubline.begin();
+                    st.push(spNode);
+                    spNode = *spNode->setSubline.begin();
                     continue;
                 }
             }
             else
             {
-                pNode = st.top();
+                spNode = st.top();
                 st.pop();
             }
 
             // call walker
-            if (!walker(pNode))
+            if (!walker(spNode))
             {
                 return false;
             }
 
             // root or the last child of parent. fetch from stack when next loop
-            if (pNode->pParent == nullptr || pNode == *pNode->pParent->setSubline.rbegin())
+            if (!spNode->spParent || spNode == *spNode->spParent->setSubline.rbegin())
             {
-                pNode = nullptr;
+                spNode = nullptr;
             }
             else
             {
-                auto it = pNode->pParent->setSubline.find(pNode);
-                if (it == pNode->pParent->setSubline.end())
+                auto it = spNode->spParent->setSubline.find(spNode);
+                if (it == spNode->spParent->setSubline.end())
                 {
                     return false;
                 }
                 else
                 {
-                    pNode = *++it;
+                    spNode = *++it;
                 }
             }
         } while (!st.empty());
@@ -106,11 +112,13 @@ template <typename K, typename D>
 class CForest
 {
 public:
-    typedef typename CTreeNode<K, D>::NodePtr NodePtr;
-    typedef typename CMultiwayTree<K, D>::TreePtr TreePtr;
+    typedef CTreeNode<K, D> Node;
+    typedef typename Node::NodePtr NodePtr;
+    typedef CMultiwayTree<K, D> Tree;
+    typedef typename Tree::TreePtr TreePtr;
 
-    std::map<K, NodePtr> mapNode;
-    std::map<K, TreePtr> mapRoot;
+    std::map<K, NodePtr> maspNode;
+    std::map<K, TreePtr> maspRoot;
 
     CForest() {}
     ~CForest() {}
@@ -120,7 +128,7 @@ public:
     template <typename NodeWalker>
     bool PostorderTraversal(NodeWalker walker)
     {
-        for (auto& r : mapRoot)
+        for (auto& r : maspRoot)
         {
             if (!r.second->PostorderTraversal(walker))
             {
@@ -130,23 +138,46 @@ public:
         return true;
     }
 
-    bool Check(const K& key, const K& parent, const D& data)
+    bool CheckInsert(const K& key, const K& parent, K& root, const std::set<K>& setInvalid = std::set<K>())
     {
-        NodePtr pNode = GetRelation(key);
-        if (pNode)
+        if (key == parent)
+        {
+            return false;
+        }
+
+        NodePtr spNode = GetRelation(key);
+        if (spNode)
         {
             // already have parent
-            if (pNode->pParent)
+            if (spNode->spParent)
             {
                 return false;
             }
 
             // cyclic graph
-            for (NodePtr p = GetRelation(parent); p; p = p->pParent)
+            for (NodePtr sp = GetRelation(parent); sp; sp = sp->spParent)
             {
-                if (p->data == data)
+                if (sp->key == key)
                 {
                     return false;
+                }
+
+                if (!sp->spParent || (!setInvalid.empty() && (setInvalid.find(sp->key) != setInvalid.end())))
+                {
+                    root = sp->key;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            // get parent root
+            for (NodePtr sp = GetRelation(parent); sp; sp = sp->spParent)
+            {
+                if (!sp->spParent || (!setInvalid.empty() && (setInvalid.find(sp->key) != setInvalid.end())))
+                {
+                    root = sp->key;
+                    break;
                 }
             }
         }
@@ -154,75 +185,111 @@ public:
         return true;
     }
 
-    bool
-    Insert(const K& key, const K& parent, const D& data)
+    bool Insert(const K& key, const K& parent, const D& data)
     {
-        if (!Check(key, parent, data))
+        K root;
+        if (!CheckInsert(key, parent, root))
         {
             return false;
         }
 
         // parent
-        auto im = mapNode.find(parent);
-        if (im == mapNode.end())
+        auto im = maspNode.find(parent);
+        if (im == maspNode.end())
         {
-            im = mapNode.insert(make_pair(parent, NodePtr(new CTreeNode<K, D>(parent)))).first;
-            mapRoot.insert(make_pair(parent, im->second));
+            im = maspNode.insert(make_pair(parent, NodePtr(new CTreeNode<K, D>(parent)))).first;
+            maspRoot.insert(make_pair(parent, TreePtr(new Tree(im->second))));
         }
 
         // self
-        auto it = mapNode.find(key);
-        if (it == mapNode.end())
+        auto it = maspNode.find(key);
+        if (it == maspNode.end())
         {
-            it = mapNode.insert(make_pair(key, NodePtr(new CTreeNode<K, D>(key, data)))).first;
+            it = maspNode.insert(make_pair(key, NodePtr(new CTreeNode<K, D>(key, data)))).first;
         }
         else
         {
-            mapRoot.erase(key);
+            maspRoot.erase(key);
         }
 
-        it->second->pParent = im->second;
-        im->second->setSubline.insert(it->second);
+        it->second->spParent = im->second;
+        im->second->setChildren.insert(it->second);
 
         return true;
     }
 
     void RemoveRelation(const K& key)
     {
-        auto it = mapNode.find(key);
-        if (it == mapNode.end())
+        auto it = maspNode.find(key);
+        if (it == maspNode.end())
         {
             return;
         }
 
-        NodePtr pNode = it->second;
-        NodePtr pParent = pNode->pParent;
-        if (pParent)
+        NodePtr spNode = it->second;
+        NodePtr spParent = spNode->spParent;
+        if (spParent)
         {
-            pParent->setSubline.erase(pNode);
+            spParent->setSubline.erase(spNode);
             // parent is root and no subline
-            if (pParent->setSubline.empty() && !pParent->pParent)
+            if (spParent->setSubline.empty() && !spParent->spParent)
             {
-                mapRoot.erase(pParent->key);
-                mapNode.erase(pParent->key);
+                maspRoot.erase(spParent->key);
+                maspNode.erase(spParent->key);
             }
 
-            pNode->pParent = nullptr;
-            if (!pNode->setSubline.empty())
+            spNode->spParent = nullptr;
+            if (!spNode->setSubline.empty())
             {
-                mapRoot.insert(make_pair(key, pNode));
+                maspRoot.insert(make_pair(key, TreePtr(new Tree(spNode))));
             }
             else
             {
-                mapNode.erase(pParent->key);
+                maspNode.erase(spParent->key);
             }
         }
     }
 
     NodePtr GetRelation(const K& key)
     {
-        auto it = mapNode.find(key);
-        return (it == mapNode.end()) ? nullptr : it->second;
+        auto it = maspNode.find(key);
+        return (it == maspNode.end()) ? nullptr : it->second;
+    }
+
+    template <typename F>
+    CForest<K, F> Copy()
+    {
+        typedef typename CTreeNode<K, F>::NodePtr NewNodePtr;
+        typedef typename CMultiwayTree<K, F>::TreePtr NewTreePtr;
+
+        CForest<K, F> f;
+        PostorderTraversal([&](NodePtr spNode) {
+            NewNodePtr spNewNode = NewNodePtr(new CTreeNode<K, F>());
+            spNewNode->data = spNode->data;
+            spNewNode->key = spNode->key;
+            f.maspNode.insert(std::make_pair(spNewNode->key, spNewNode));
+
+            // root
+            if (!spNode->spParent)
+            {
+                NewTreePtr spTreePtr = NewTreePtr(new CMultiwayTree<K, F>(spNewNode));
+                f.maspRoot.insert(make_pair(spNewNode->key, spTreePtr));
+            }
+
+            // children
+            for (auto spChild : spNode->setChildren)
+            {
+                auto it = f.maspNode.find(spChild->key);
+                if (it == f.maspNode.end())
+                {
+                    return false;
+                }
+                spNewNode->subsetChildren.insert(it->second);
+                it->second->spParent = spNewNode;
+            }
+            return true;
+        });
+        return f;
     }
 
 }; // namespace xengine

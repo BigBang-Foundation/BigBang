@@ -73,6 +73,7 @@ public:
     bool IsVacantBlockBeforeCreatedForkHeight(const uint256& hashFork, const CBlock& block) override;
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) override;
     bool ListDeFiRelation(const uint256& hashFork, std::map<CDestination, storage::CAddrInfo>& mapAddress) override;
+    bool InitDeFiRelation(const uint256& hashFork) override;
 
     /////////////    CheckPoints    /////////////////////
     typedef std::map<int, CCheckPoint> MapCheckPointsType;

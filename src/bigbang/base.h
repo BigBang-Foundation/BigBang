@@ -139,6 +139,7 @@ public:
     virtual bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent) = 0;
     virtual bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) = 0;
     virtual bool ListDeFiRelation(const uint256& hashFork, std::map<CDestination, storage::CAddrInfo>& mapAddress) = 0;
+    virtual bool InitDeFiRelation(const uint256& hashFork) = 0;
 
     /////////////    CheckPoints    /////////////////////
     virtual bool HasCheckPoints(const uint256& hashFork) const = 0;
