@@ -1195,18 +1195,24 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
 
         if (txView.nForkType == FORK_TYPE_DEFI)
         {
-            map<CDestination, storage::CAddrInfo> mapAddress;
-            if (!pBlockChain->ListDeFiRelation(hashFork, mapAddress))
-            {
-                Error("AddNew ListDeFiRelation error, fork: %s", hashFork.ToString().c_str());
-                return ERR_SYS_STORAGE_ERROR;
-            }
+            // map<CDestination, storage::CAddrInfo> mapAddress;
+            // if (!pBlockChain->ListDeFiRelation(hashFork, mapAddress))
+            // {
+            //     Error("AddNew ListDeFiRelation error, fork: %s", hashFork.ToString().c_str());
+            //     return ERR_SYS_STORAGE_ERROR;
+            // }
 
-            if (!txView.relation.ConstructRelationGraph(mapAddress))
-            {
-                Error("AddNew ConstructRelationGraph error, fork: %s", hashFork.ToString().c_str());
-                return ERR_SYS_STORAGE_ERROR;
-            }
+            // if (!txView.relation.ConstructRelationGraph(mapAddress))
+            // {
+            //     Error("AddNew ConstructRelationGraph error, fork: %s", hashFork.ToString().c_str());
+            //     return ERR_SYS_STORAGE_ERROR;
+            // }
+
+            // if(tx.nType == CTransaction::TX_DEFI_RELATION)
+            // {
+                
+                
+            // }
         }
     }
 
