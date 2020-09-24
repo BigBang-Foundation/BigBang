@@ -140,6 +140,7 @@ public:
     virtual bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) = 0;
     virtual bool ListDeFiRelation(const uint256& hashFork, std::map<CDestination, storage::CAddrInfo>& mapAddress) = 0;
     virtual bool InitDeFiRelation(const uint256& hashFork) = 0;
+    virtual bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent) = 0;
 
     /////////////    CheckPoints    /////////////////////
     virtual bool HasCheckPoints(const uint256& hashFork) const = 0;

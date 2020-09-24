@@ -74,6 +74,7 @@ public:
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) override;
     bool ListDeFiRelation(const uint256& hashFork, std::map<CDestination, storage::CAddrInfo>& mapAddress) override;
     bool InitDeFiRelation(const uint256& hashFork) override;
+    bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent) override;
 
     /////////////    CheckPoints    /////////////////////
     typedef std::map<int, CCheckPoint> MapCheckPointsType;

@@ -122,7 +122,7 @@ public:
     CForkAddressDB(const boost::filesystem::path& pathDB);
     ~CForkAddressDB();
     bool RemoveAll();
-    bool UpdateAddress(const std::vector<std::pair<CDestination, CAddrInfo>>& vAddNew, const std::vector<std::pair<CDestination, CAddrInfo>>& vRemove);
+    bool UpdateAddress(const std::vector<std::pair<CDestination, CAddrInfo>>& vAddNew, const std::vector<CDestination>& vRemove);
     bool RepairAddress(const std::vector<std::pair<CDestination, CAddrInfo>>& vAddUpdate, const std::vector<CDestination>& vRemove);
     bool WriteAddress(const CDestination& dest, const CAddrInfo& addrInfo);
     bool ReadAddress(const CDestination& dest, CAddrInfo& addrInfo);
@@ -161,7 +161,7 @@ public:
     bool RemoveFork(const uint256& hashFork);
     void Clear();
     bool Update(const uint256& hashFork,
-                const std::vector<std::pair<CDestination, CAddrInfo>>& vAddNew, const std::vector<std::pair<CDestination, CAddrInfo>>& vRemove);
+                const std::vector<std::pair<CDestination, CAddrInfo>>& vAddNew, const std::vector<CDestination>& vRemove);
     bool RepairAddress(const uint256& hashFork, const std::vector<std::pair<CDestination, CAddrInfo>>& vAddUpdate, const std::vector<CDestination>& vRemove);
     bool Retrieve(const uint256& hashFork, const CDestination& dest, CAddrInfo& addrInfo);
     bool Copy(const uint256& srcFork, const uint256& destFork);

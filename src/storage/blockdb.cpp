@@ -202,7 +202,7 @@ bool CBlockDB::UpdateDelegateContext(const uint256& hash, const CDelegateContext
 }
 
 bool CBlockDB::UpdateAddressInfo(const uint256& hashFork, const vector<pair<CDestination, CAddrInfo>>& vNewAddress,
-                                 const vector<pair<CDestination, CAddrInfo>>& vRemoveAddress)
+                                 const vector<CDestination>& vRemoveAddress)
 {
     return dbAddress.Update(hashFork, vNewAddress, vRemoveAddress);
 }
