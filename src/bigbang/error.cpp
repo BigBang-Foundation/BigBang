@@ -79,6 +79,8 @@ static const char* _ErrorString[] = {
     "transaction inputs are conflicting",
     //ERR_TRANSACTION_TOO_MANY_CERTTX,
     "transaction too many cert",
+    //ERR_TRANSACTION_INVALID_RELATION_TX,
+    "transaction invalid relation tx",
     /* wallet */
     //ERR_WALLET_INVALID_AMOUNT,
     "wallet amount is invalid",

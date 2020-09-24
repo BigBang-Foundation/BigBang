@@ -18,6 +18,11 @@ namespace bigbang
 
 CDeFiRelationGraph::~CDeFiRelationGraph()
 {
+    Clear();
+}
+
+void CDeFiRelationGraph::Clear()
+{
     for (auto it = mapDestNode.begin(); it != mapDestNode.end(); ++it)
     {
         if (it->second)
@@ -26,6 +31,9 @@ CDeFiRelationGraph::~CDeFiRelationGraph()
             it->second = nullptr;
         }
     }
+
+    mapDestNode.clear();
+    setRoot.clear();
 }
 
 bool CDeFiRelationGraph::ConstructRelationGraph(const std::map<CDestination, CAddrInfo>& mapAddress)
@@ -46,6 +54,97 @@ bool CDeFiRelationGraph::ConstructRelationGraph(const std::map<CDestination, CAd
     }
 
     return true;
+}
+
+bool CDeFiRelationGraph::InsertRelation(const CDestination& dest, const CDestination& destParent, const uint256& txid)
+{
+    auto it = mapDestNode.find(dest);
+    auto im = mapDestNode.find(destParent);
+
+    CDeFiRelationNode* pNode = nullptr;
+    if (it != mapDestNode.end())
+    {
+        pNode = it->second;
+
+        // already have parent
+        if (pNode->pParent)
+        {
+            return false;
+        }
+
+        // cyclic graph
+        if (im != mapDestNode.end())
+        {
+            for (CDeFiRelationNode* p = im->second; p; p = p->pParent)
+            {
+                if (p->dest == dest)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    // insert
+    if (im == mapDestNode.end())
+    {
+        im = mapDestNode.insert(make_pair(destParent, new CDeFiRelationNode(destParent, CDestination(), uint256()))).first;
+        setRoot.insert(destParent);
+    }
+
+    if (it == mapDestNode.end())
+    {
+        pNode = new CDeFiRelationNode(dest, destParent, txid);
+        it = mapDestNode.insert(make_pair(dest, pNode)).first;
+        pNode->pParent = im->second;
+    }
+    else
+    {
+        pNode->parent = destParent;
+        pNode->pParent = im->second;
+    }
+
+    im->second->setSubline.insert(pNode);
+    return true;
+}
+
+void CDeFiRelationGraph::RemoveRelation(const CDestination& dest)
+{
+    auto it = mapDestNode.find(dest);
+    if (it != mapDestNode.end())
+    {
+        CDeFiRelationNode* pNode = it->second;
+        CDeFiRelationNode* pParentNode = pNode->pParent;
+        if (pParentNode)
+        {
+            pNode->pParent = nullptr;
+            pNode->parent.SetNull();
+            setRoot.insert(dest);
+
+            pParentNode->setSubline.erase(pNode);
+            // parent is root and no subline
+            if (pParentNode->setSubline.empty() && !pParentNode->pParent)
+            {
+                setRoot.erase(pParentNode->dest);
+                mapDestNode.erase(pParentNode->dest);
+                delete pParentNode;
+            }
+        }
+    }
+}
+
+CDestination CDeFiRelationGraph::GetRelation(const CDestination& dest, uint256& txid)
+{
+    auto it = mapDestNode.find(dest);
+    if (it != mapDestNode.end())
+    {
+        txid = it->second->txid;
+        return it->second->parent;
+    }
+    else
+    {
+        return CDestination();
+    }
 }
 
 bool CDeFiRelationGraph::UpdateAddress(const CDestination& dest, const CDestination& parent, const uint256& txid)

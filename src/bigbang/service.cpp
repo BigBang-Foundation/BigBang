@@ -117,7 +117,7 @@ void CService::NotifyBlockChainUpdate(const CBlockChainUpdate& update)
         map<uint256, CForkStatus>::iterator it = mapForkStatus.find(update.hashFork);
         if (it == mapForkStatus.end())
         {
-            it = mapForkStatus.insert(make_pair(update.hashFork, CForkStatus(update.hashFork, update.hashParent, update.nOriginHeight))).first;
+            it = mapForkStatus.insert(make_pair(update.hashFork, CForkStatus(update.hashFork, update.hashParent, update.nOriginHeight, update.nForkType))).first;
             if (update.hashParent != 0)
             {
                 mapForkStatus[update.hashParent].mapSubline.insert(make_pair(update.nOriginHeight, update.hashFork));
@@ -214,6 +214,18 @@ int CService::GetForkHeight(const uint256& hashFork)
         return ((*it).second.nLastBlockHeight);
     }
     return 0;
+}
+
+int CService::GetForkType(const uint256& hashFork)
+{
+    boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
+
+    map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
+    if (it != mapForkStatus.end())
+    {
+        return ((*it).second.nForkType);
+    }
+    return FORK_TYPE_COMMON;
 }
 
 void CService::ListFork(std::vector<std::pair<uint256, CProfile>>& vFork, bool fAll)
@@ -563,9 +575,10 @@ bool CService::SignTransaction(CTransaction& tx, const vector<uint8>& vchSendToD
         return false;
     }
 
+    int32 nForkType = GetForkType(hashFork);
     if (!fCompleted
         || (pCoreProtocol->ValidateTransaction(tx, nForkHeight) == OK
-            && pCoreProtocol->VerifyTransaction(tx, vUnspent, nForkHeight, hashFork) == OK))
+            && pCoreProtocol->VerifyTransaction(tx, vUnspent, nForkHeight, hashFork, nForkType) == OK))
     {
         return true;
     }
@@ -707,7 +720,8 @@ Errno CService::SendOfflineSignedTransaction(CTransaction& tx)
 
     int32 nForkHeight = GetForkHeight(hashFork);
     const CDestination& destIn = vUnspent[0].destTo;
-    if (OK != pCoreProtocol->VerifyTransaction(tx, vUnspent, nForkHeight, hashFork))
+    int nForkType = GetForkType(hashFork);
+    if (OK != pCoreProtocol->VerifyTransaction(tx, vUnspent, nForkHeight, hashFork, nForkType))
     {
         StdError("CService", "SendOfflineSignedTransaction: ValidateTransaction fail,"
                              " txid: %s, destIn: %s",

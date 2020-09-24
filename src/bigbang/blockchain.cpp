@@ -158,7 +158,10 @@ void CBlockChain::GetForkStatus(map<uint256, CForkStatus>& mapForkStatus)
             mapForkStatus[hashParent].mapSubline.insert(make_pair(nForkHeight, hashFork));
         }
 
-        map<uint256, CForkStatus>::iterator mi = mapForkStatus.insert(make_pair(hashFork, CForkStatus(hashFork, hashParent, nForkHeight))).first;
+        CProfile profile;
+        GetForkProfile(hashFork, profile);
+
+        map<uint256, CForkStatus>::iterator mi = mapForkStatus.insert(make_pair(hashFork, CForkStatus(hashFork, hashParent, nForkHeight, profile.nForkType))).first;
         CForkStatus& status = (*mi).second;
         status.hashLastBlock = pIndex->GetBlockHash();
         status.nLastBlockTime = pIndex->GetBlockTime();
@@ -557,6 +560,15 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
     }
     list<CDeFiReward>::const_iterator itListDeFi = listDeFiReward.begin();
 
+    // get fork context
+    CProfile profile;
+    if (!GetForkProfile(forkid, profile))
+    {
+        Error("AddNewBlock get fork profile error, block: %s, fork: %s", hash.ToString().c_str(), forkid.ToString().c_str());
+        return ERR_BLOCK_INVALID_FORK;
+    }
+
+    // verify tx
     for (const CTransaction& tx : block.vtx)
     {
         uint256 txid = tx.GetHash();
@@ -594,7 +606,7 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
 
         if ((tx.nType != CTransaction::TX_DEFI_REWARD) && !pTxPool->Exists(txid))
         {
-            err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, nForkHeight, forkid);
+            err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, nForkHeight, forkid, profile.nForkType);
             if (err != OK)
             {
                 Log("AddNewBlock Verify BlockTx Error(%s) : %s ", ErrorString(err), txid.ToString().c_str());
@@ -681,7 +693,7 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
         return ERR_SYS_STORAGE_ERROR;
     }
 
-    update = CBlockChainUpdate(pIndexNew);
+    update = CBlockChainUpdate(pIndexNew, profile.nForkType);
     view.GetTxUpdated(update.setTxUpdate);
     view.GetBlockChanges(update.vBlockAddNew, update.vBlockRemove);
 
@@ -842,7 +854,7 @@ Errno CBlockChain::AddNewOrigin(const CBlock& block, CBlockChainUpdate& update)
         return ERR_SYS_STORAGE_ERROR;
     }
 
-    update = CBlockChainUpdate(pIndexNew);
+    update = CBlockChainUpdate(pIndexNew, profile.nForkType);
     view.GetTxUpdated(update.setTxUpdate);
     update.vBlockAddNew.push_back(blockex);
 
@@ -1223,7 +1235,7 @@ Errno CBlockChain::VerifyPowBlock(const CBlock& block, bool& fLongChain)
         }
         if (!pTxPool->Exists(txid))
         {
-            err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, nForkHeight, pIndexPrev->GetOriginHash());
+            err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, nForkHeight, pIndexPrev->GetOriginHash(), FORK_TYPE_COMMON);
             if (err != OK)
             {
                 Log("VerifyPowBlock Verify BlockTx Error(%s) : %s ", ErrorString(err), txid.ToString().c_str());
@@ -1296,7 +1308,14 @@ bool CBlockChain::CheckForkValidLast(const uint256& hashFork, CBlockChainUpdate&
     StdLog("BlockChain", "CheckForkValidLast: Repair fork last success, last block: %s, fork: %s",
            pValidLastIndex->GetBlockHash().ToString().c_str(), hashFork.GetHex().c_str());
 
-    update = CBlockChainUpdate(pValidLastIndex);
+    CProfile profile;
+    if (!GetForkProfile(hashFork, profile))
+    {
+        Error("CheckForkValidLast: get fork profile error, last block: %s, fork: %s",
+              pValidLastIndex->GetBlockHash().ToString().c_str(), hashFork.GetHex().c_str());
+        return false;
+    }
+    update = CBlockChainUpdate(pValidLastIndex, profile.nForkType);
     view.GetTxUpdated(update.setTxUpdate);
     view.GetBlockChanges(update.vBlockAddNew, update.vBlockRemove);
 
@@ -2267,6 +2286,11 @@ bool CBlockChain::GetDeFiRelation(const uint256& hashFork, const CDestination& d
     }
 
     return false;
+}
+
+bool CBlockChain::ListDeFiRelation(const uint256& hashFork, std::map<CDestination, storage::CAddrInfo>& mapAddress)
+{
+    return cntrBlock.ListDeFiRelation(hashFork, storage::CBlockView(), mapAddress);
 }
 
 } // namespace bigbang

@@ -1940,7 +1940,7 @@ bool CBlockBase::AddDeFiRelation(const uint256& hashFork, CBlockView& view)
     return dbBlock.UpdateAddressInfo(hashFork, vNewAddress, vRemoveAddress);
 }
 
-bool CBlockBase::ListDeFiRelation(const uint256& hashFork, CBlockView& view, map<CDestination, CAddrInfo>& mapAddress)
+bool CBlockBase::ListDeFiRelation(const uint256& hashFork, const CBlockView& view, map<CDestination, CAddrInfo>& mapAddress)
 {
     CListAddressWalker walker;
     if (!dbBlock.WalkThroughAddress(hashFork, walker))

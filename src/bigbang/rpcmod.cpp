@@ -44,7 +44,7 @@ static int64 AmountFromValue(const double dAmount, const bool fZero = false)
         return -1;
     }
 
-    if (dAmount <= 0.0 || dAmount > MAX_MONEY)
+    if (dAmount < 0.0 || dAmount > MAX_MONEY)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid amount");
     }

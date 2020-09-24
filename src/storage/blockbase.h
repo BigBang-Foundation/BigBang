@@ -281,7 +281,7 @@ public:
     bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent);
     bool ListForkAllAddressAmount(const uint256& hashFork, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount);
     bool AddDeFiRelation(const uint256& hashFork, CBlockView& view);
-    bool ListDeFiRelation(const uint256& hashFork, CBlockView& view, std::map<CDestination, CAddrInfo>& mapAddress);
+    bool ListDeFiRelation(const uint256& hashFork, const CBlockView& view, std::map<CDestination, CAddrInfo>& mapAddress);
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CAddrInfo& addrInfo);
     bool GetVotes(const uint256& hashGenesis, const CDestination& destDelegate, int64& nVotes);
     bool GetDelegateList(const uint256& hashGenesis, uint32 nCount, std::multimap<int64, CDestination>& mapVotes);

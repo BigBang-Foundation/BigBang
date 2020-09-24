@@ -43,7 +43,11 @@ public:
     CDeFiRelationGraph() {}
     ~CDeFiRelationGraph();
 
+    void Clear();
     bool ConstructRelationGraph(const std::map<CDestination, storage::CAddrInfo>& mapAddress);
+    bool InsertRelation(const CDestination& dest, const CDestination& destParent, const uint256& txid);
+    void RemoveRelation(const CDestination& dest);
+    CDestination GetRelation(const CDestination& dest, uint256& txid);
 
     // postorder traversal
     // walker: bool (*function)(CDeFiRelationNode*)

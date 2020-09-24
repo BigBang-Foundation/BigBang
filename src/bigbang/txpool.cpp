@@ -958,6 +958,12 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                     }
                     change.vTxAddNew.push_back(CAssembledTx(tx, nBlockHeight, txContxt.destIn, txContxt.GetValueIn()));
                 }
+
+                // TODO: invalid conflict relation tx
+                // if (tx.nType == CTransaction::TX_DEFI_RELATION)
+                // {
+                //     txView.relation.GetRelation(tx.)
+                // }
             }
             else
             {
@@ -1176,7 +1182,35 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
         nValueIn += vPrevOutput[i].nAmount;
     }
 
-    Errno err = pCoreProtocol->VerifyTransaction(tx, vPrevOutput, nForkHeight, hashFork);
+    // init fork type and DeFi relation
+    if (txView.nForkType < 0)
+    {
+        CProfile profile;
+        if (!pBlockChain->GetForkProfile(hashFork, profile))
+        {
+            Error("AddNew Get fork profile error, fork: %s", hashFork.ToString().c_str());
+            return ERR_SYS_STORAGE_ERROR;
+        }
+        txView.nForkType = profile.nForkType;
+
+        if (txView.nForkType == FORK_TYPE_DEFI)
+        {
+            map<CDestination, storage::CAddrInfo> mapAddress;
+            if (!pBlockChain->ListDeFiRelation(hashFork, mapAddress))
+            {
+                Error("AddNew ListDeFiRelation error, fork: %s", hashFork.ToString().c_str());
+                return ERR_SYS_STORAGE_ERROR;
+            }
+
+            if (!txView.relation.ConstructRelationGraph(mapAddress))
+            {
+                Error("AddNew ConstructRelationGraph error, fork: %s", hashFork.ToString().c_str());
+                return ERR_SYS_STORAGE_ERROR;
+            }
+        }
+    }
+
+    Errno err = pCoreProtocol->VerifyTransaction(tx, vPrevOutput, nForkHeight, hashFork, txView.nForkType);
     if (err != OK)
     {
         StdTrace("CTxPool", "AddNew: VerifyTransaction fail, txid: %s", txid.GetHex().c_str());
@@ -1193,6 +1227,26 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     }
 
     CDestination destIn = vPrevOutput[0].destTo;
+    if (tx.nType == CTransaction::TX_DEFI_RELATION)
+    {
+        if (!txView.relation.InsertRelation(tx.sendTo, destIn, txid))
+        {
+            uint256 oldTxid;
+            CDestination destParent = txView.relation.GetRelation(tx.sendTo, oldTxid);
+            if (destParent.IsNull())
+            {
+                Log("AddNew invalid relation tx, already have parent, txid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
+                    CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
+            }
+            else
+            {
+                Log("AddNew invalid relation tx, cyclic relation, txid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
+                    CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
+            }
+            return ERR_TRANSACTION_INVALID_RELATION_TX;
+        }
+    }
+
     map<uint256, CPooledTx>::iterator mi = mapTx.insert(make_pair(txid, CPooledTx(tx, -1, GetSequenceNumber(), destIn, nValueIn))).first;
     if (!txView.AddNew(txid, (*mi).second))
     {

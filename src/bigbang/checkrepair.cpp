@@ -2099,8 +2099,7 @@ bool CCheckRepairData::CheckBlockAddress()
             {
                 auto nt = addrWalker.mapAddress.find(vd.first);
                 if (nt == addrWalker.mapAddress.end()
-                    || nt->second.destParent != vd.second.destParent
-                    || nt->second.txid != vd.second.txid)
+                    || nt->second.destParent != vd.second.destParent)
                 {
                     if (nt != addrWalker.mapAddress.end())
                     {
