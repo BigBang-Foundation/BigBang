@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <stack>
 
 namespace xengine
 {
