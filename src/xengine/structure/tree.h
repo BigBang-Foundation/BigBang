@@ -158,7 +158,7 @@ public:
         if (spNode)
         {
             // already have parent
-            if (spNode->spParent)
+            if (spNode->spParent && !setInvalid.count(key))
             {
                 return false;
             }
