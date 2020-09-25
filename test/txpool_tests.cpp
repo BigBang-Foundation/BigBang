@@ -215,6 +215,12 @@ BOOST_AUTO_TEST_CASE(txpoolview_test)
     BOOST_CHECK(!involvedTxPoolView.Exists(tx1.GetHash()));
     BOOST_CHECK(involvedTxPoolView.Exists(tx2.GetHash()));
     BOOST_CHECK(involvedTxPoolView.Exists(tx3.GetHash()));
+    BOOST_CHECK(!involvedTxPoolView.Exists(tx4.GetHash()));
+    BOOST_CHECK(!involvedTxPoolView.Exists(tx5.GetHash()));
+    BOOST_CHECK(!involvedTxPoolView.Exists(tx6.GetHash()));
+    BOOST_CHECK(!involvedTxPoolView.Exists(tx7.GetHash()));
+    BOOST_CHECK(!involvedTxPoolView.Exists(tx8.GetHash()));
+    BOOST_CHECK(!involvedTxPoolView.Exists(tx9.GetHash()));
     BOOST_CHECK(involvedTxPoolView.Exists(tx10.GetHash()));
     
     BOOST_CHECK(involvedTxPoolView.IsSpent(CTxOutPoint(tx2.GetHash(), 0)));
