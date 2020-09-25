@@ -251,7 +251,6 @@ public:
                 mapNode.erase(spParent->key);
             }
 
-            spNode->data = D();
             spNode->spParent = nullptr;
             if (!spNode->setChildren.empty())
             {
