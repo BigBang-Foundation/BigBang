@@ -293,7 +293,6 @@ public:
     int64 nLastBlockTime;
     int nForkType;
     xengine::CForest<CDestination, uint256> relation;
-
 };
 
 class CTxCache

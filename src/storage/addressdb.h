@@ -25,24 +25,22 @@ class CAddrInfo
 public:
     CDestination destRoot;
     CDestination destParent;
-    uint256 txid;
 
 public:
     CAddrInfo()
     {
         SetNull();
     }
-    CAddrInfo(const CDestination& destRootIn, const CDestination& destParentIn, const uint256& txidIn)
-      : destRoot(destRootIn), destParent(destParentIn), txid(txidIn) {}
+    CAddrInfo(const CDestination& destRootIn, const CDestination& destParentIn)
+      : destRoot(destRootIn), destParent(destParentIn) {}
     void SetNull()
     {
         destRoot.SetNull();
         destParent.SetNull();
-        txid = 0;
     }
     bool IsNull() const
     {
-        return (destRoot.IsNull() || destParent.IsNull() || txid == 0);
+        return (destRoot.IsNull() || destParent.IsNull());
     }
 
 protected:
@@ -51,7 +49,6 @@ protected:
     {
         s.Serialize(destRoot, opt);
         s.Serialize(destParent, opt);
-        s.Serialize(txid, opt);
     }
 };
 

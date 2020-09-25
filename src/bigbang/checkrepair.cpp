@@ -896,7 +896,7 @@ bool CCheckBlockFork::AddBlockTx(const CTransaction& txIn, const CTxContxt& cont
     {
         if (mapBlockAddress.find(txIn.sendTo) == mapBlockAddress.end())
         {
-            mapBlockAddress.insert(make_pair(txIn.sendTo, CAddrInfo(CDestination(), contxtIn.destIn, txid)));
+            mapBlockAddress.insert(make_pair(txIn.sendTo, CAddrInfo(CDestination(), contxtIn.destIn)));
         }
     }
     return true;
@@ -2099,8 +2099,7 @@ bool CCheckRepairData::CheckBlockAddress()
             {
                 auto nt = addrWalker.mapAddress.find(vd.first);
                 if (nt == addrWalker.mapAddress.end()
-                    || nt->second.destParent != vd.second.destParent
-                    || nt->second.txid != vd.second.txid)
+                    || nt->second.destParent != vd.second.destParent)
                 {
                     if (nt != addrWalker.mapAddress.end())
                     {

@@ -191,11 +191,8 @@ BOOST_AUTO_TEST_CASE(defi_relation_graph)
         CAddress A("1w8ehkb2jc0qcn7wze3tv8enzzwmytn9b7n7gghwfa219rv1vhhd82n6h");
         CAddress A1("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm");
 
-        srand(time(0));
-        uint8_t md32[32];
-        RandGeneretor256(md32);
         std::map<CDestination, CAddrInfo> mapAddressTree{
-            { A1, CAddrInfo(CDestination(), A, uint256((uint64_t*)md32)) }
+            { A1, CAddrInfo(CDestination(), A) }
         };
 
         CDeFiRelationGraph defiGraph;
@@ -211,13 +208,10 @@ BOOST_AUTO_TEST_CASE(defi_relation_graph)
         CAddress A2("1q71vfagprv5hqwckzbvhep0d0ct72j5j2heak2sgp4vptrtc2btdje3q");
         CAddress A3("1gbma6s21t4bcwymqz6h1dn1t7qy45019b1t00ywfyqymbvp90mqc1wmq");
 
-        srand(time(0));
-        uint8_t md32[32];
-        RandGeneretor256(md32);
         std::map<CDestination, CAddrInfo> mapAddressTree;
-        mapAddressTree.insert(std::make_pair(A1, CAddrInfo(CDestination(), A, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(A2, CAddrInfo(CDestination(), A, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(A3, CAddrInfo(CDestination(), A, uint256((uint64_t*)md32))));
+        mapAddressTree.insert(std::make_pair(A1, CAddrInfo(CDestination(), A)));
+        mapAddressTree.insert(std::make_pair(A2, CAddrInfo(CDestination(), A)));
+        mapAddressTree.insert(std::make_pair(A3, CAddrInfo(CDestination(), A)));
 
         CDeFiRelationGraph defiGraph;
         for (auto& x : mapAddressTree)
@@ -239,19 +233,16 @@ BOOST_AUTO_TEST_CASE(defi_relation_graph)
         CAddress AAA221("1yy76yav5mnah0jzew049a6gp5bs2ns67xzfvcengjkpqyymfb4n6vrda");
         CAddress AAA222("1g03a0775sbarkrazjrs7qymdepbkn3brn7375p7ysf0tnrcx408pj03n");
 
-        srand(time(0));
-        uint8_t md32[32];
-        RandGeneretor256(md32);
         std::map<CDestination, CAddrInfo> mapAddressTree;
-        mapAddressTree.insert(std::make_pair(A1, CAddrInfo(CDestination(), A, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(A2, CAddrInfo(CDestination(), A, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(A3, CAddrInfo(CDestination(), A, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AA11, CAddrInfo(CDestination(), A1, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AAA111, CAddrInfo(CDestination(), AA11, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AA21, CAddrInfo(CDestination(), A2, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AA22, CAddrInfo(CDestination(), A2, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AAA221, CAddrInfo(CDestination(), AA22, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AAA222, CAddrInfo(CDestination(), AA22, uint256((uint64_t*)md32))));
+        mapAddressTree.insert(std::make_pair(A1, CAddrInfo(CDestination(), A)));
+        mapAddressTree.insert(std::make_pair(A2, CAddrInfo(CDestination(), A)));
+        mapAddressTree.insert(std::make_pair(A3, CAddrInfo(CDestination(), A)));
+        mapAddressTree.insert(std::make_pair(AA11, CAddrInfo(CDestination(), A1)));
+        mapAddressTree.insert(std::make_pair(AAA111, CAddrInfo(CDestination(), AA11)));
+        mapAddressTree.insert(std::make_pair(AA21, CAddrInfo(CDestination(), A2)));
+        mapAddressTree.insert(std::make_pair(AA22, CAddrInfo(CDestination(), A2)));
+        mapAddressTree.insert(std::make_pair(AAA221, CAddrInfo(CDestination(), AA22)));
+        mapAddressTree.insert(std::make_pair(AAA222, CAddrInfo(CDestination(), AA22)));
 
         CDeFiRelationGraph defiGraph;
         for (auto& x : mapAddressTree)
@@ -280,23 +271,20 @@ BOOST_AUTO_TEST_CASE(defi_relation_graph)
         CAddress B3("1q284qfnpasxmkytpv5snda5ptqbpjxa9ryp2re0j1527qncmg38z7ar1");
         CAddress B4("134btp09511w3bnr1qq4de6btdkxkbp2y5x3zmr09g0m9hfn9frsa1k2f");
 
-        srand(time(0));
-        uint8_t md32[32];
-        RandGeneretor256(md32);
         std::map<CDestination, CAddrInfo> mapAddressTree;
-        mapAddressTree.insert(std::make_pair(A1, CAddrInfo(CDestination(), A, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(A2, CAddrInfo(CDestination(), A, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(A3, CAddrInfo(CDestination(), A, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AA11, CAddrInfo(CDestination(), A1, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AAA111, CAddrInfo(CDestination(), AA11, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AA21, CAddrInfo(CDestination(), A2, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AA22, CAddrInfo(CDestination(), A2, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AAA221, CAddrInfo(CDestination(), AA22, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(AAA222, CAddrInfo(CDestination(), AA22, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(B1, CAddrInfo(CDestination(), B, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(B2, CAddrInfo(CDestination(), B, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(B3, CAddrInfo(CDestination(), B, uint256((uint64_t*)md32))));
-        mapAddressTree.insert(std::make_pair(B4, CAddrInfo(CDestination(), B, uint256((uint64_t*)md32))));
+        mapAddressTree.insert(std::make_pair(A1, CAddrInfo(CDestination(), A)));
+        mapAddressTree.insert(std::make_pair(A2, CAddrInfo(CDestination(), A)));
+        mapAddressTree.insert(std::make_pair(A3, CAddrInfo(CDestination(), A)));
+        mapAddressTree.insert(std::make_pair(AA11, CAddrInfo(CDestination(), A1)));
+        mapAddressTree.insert(std::make_pair(AAA111, CAddrInfo(CDestination(), AA11)));
+        mapAddressTree.insert(std::make_pair(AA21, CAddrInfo(CDestination(), A2)));
+        mapAddressTree.insert(std::make_pair(AA22, CAddrInfo(CDestination(), A2)));
+        mapAddressTree.insert(std::make_pair(AAA221, CAddrInfo(CDestination(), AA22)));
+        mapAddressTree.insert(std::make_pair(AAA222, CAddrInfo(CDestination(), AA22)));
+        mapAddressTree.insert(std::make_pair(B1, CAddrInfo(CDestination(), B)));
+        mapAddressTree.insert(std::make_pair(B2, CAddrInfo(CDestination(), B)));
+        mapAddressTree.insert(std::make_pair(B3, CAddrInfo(CDestination(), B)));
+        mapAddressTree.insert(std::make_pair(B4, CAddrInfo(CDestination(), B)));
 
         CDeFiRelationGraph defiGraph;
         for (auto& x : mapAddressTree)
@@ -484,19 +472,19 @@ BOOST_AUTO_TEST_CASE(reward)
 
     map<CDestination, CAddrInfo> mapAddress;
     mapAddress = map<CDestination, CAddrInfo>{
-        { a1, CAddrInfo(A, A, uint256(1)) },
-        { a11, CAddrInfo(A, a1, uint256(1)) },
-        { a111, CAddrInfo(A, a11, uint256(1)) },
-        { a2, CAddrInfo(A, A, uint256(1)) },
-        { a21, CAddrInfo(A, a2, uint256(1)) },
-        { a22, CAddrInfo(A, a2, uint256(1)) },
-        { a221, CAddrInfo(A, a22, uint256(1)) },
-        { a222, CAddrInfo(A, a22, uint256(1)) },
-        { a3, CAddrInfo(A, A, uint256(1)) },
-        { b1, CAddrInfo(B, B, uint256(1)) },
-        { b2, CAddrInfo(B, B, uint256(1)) },
-        { b3, CAddrInfo(B, B, uint256(1)) },
-        { b4, CAddrInfo(B, B, uint256(1)) },
+        { a1, CAddrInfo(A, A) },
+        { a11, CAddrInfo(A, a1) },
+        { a111, CAddrInfo(A, a11) },
+        { a2, CAddrInfo(A, A) },
+        { a21, CAddrInfo(A, a2) },
+        { a22, CAddrInfo(A, a2) },
+        { a221, CAddrInfo(A, a22) },
+        { a222, CAddrInfo(A, a22) },
+        { a3, CAddrInfo(A, A) },
+        { b1, CAddrInfo(B, B) },
+        { b2, CAddrInfo(B, B) },
+        { b3, CAddrInfo(B, B) },
+        { b4, CAddrInfo(B, B) },
     };
 
     CDeFiRelationGraph relation;
@@ -712,19 +700,19 @@ BOOST_AUTO_TEST_CASE(reward2)
 
     map<CDestination, CAddrInfo> mapAddress;
     mapAddress = map<CDestination, CAddrInfo>{
-        { a1, CAddrInfo(A, A, uint256(1)) },
-        { a11, CAddrInfo(A, a1, uint256(1)) },
-        { a111, CAddrInfo(A, a11, uint256(1)) },
-        { a2, CAddrInfo(A, A, uint256(1)) },
-        { a21, CAddrInfo(A, a2, uint256(1)) },
-        { a22, CAddrInfo(A, a2, uint256(1)) },
-        { a221, CAddrInfo(A, a22, uint256(1)) },
-        { a222, CAddrInfo(A, a22, uint256(1)) },
-        { a3, CAddrInfo(A, A, uint256(1)) },
-        { b1, CAddrInfo(B, B, uint256(1)) },
-        { b2, CAddrInfo(B, B, uint256(1)) },
-        { b3, CAddrInfo(B, B, uint256(1)) },
-        { b4, CAddrInfo(B, B, uint256(1)) },
+        { a1, CAddrInfo(A, A) },
+        { a11, CAddrInfo(A, a1) },
+        { a111, CAddrInfo(A, a11) },
+        { a2, CAddrInfo(A, A) },
+        { a21, CAddrInfo(A, a2) },
+        { a22, CAddrInfo(A, a2) },
+        { a221, CAddrInfo(A, a22) },
+        { a222, CAddrInfo(A, a22) },
+        { a3, CAddrInfo(A, A) },
+        { b1, CAddrInfo(B, B) },
+        { b2, CAddrInfo(B, B) },
+        { b3, CAddrInfo(B, B) },
+        { b4, CAddrInfo(B, B) },
     };
 
     CDeFiRelationGraph relation;

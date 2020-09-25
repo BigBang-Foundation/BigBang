@@ -1953,8 +1953,7 @@ bool CBlockBase::AddDeFiRelation(const uint256& hashFork, CBlockView& view, boos
             const CTxContxt& txContxt = block.vTxContxt[i];
             if (tx.IsDeFiRelation() && tx.sendTo != txContxt.destIn)
             {
-                uint256 txid = tx.GetHash();
-                vNewAddress.push_back(make_pair(tx.sendTo, CAddrInfo(CDestination(), txContxt.destIn, txid)));
+                vNewAddress.push_back(make_pair(tx.sendTo, CAddrInfo(CDestination(), txContxt.destIn)));
             }
         }
     }
