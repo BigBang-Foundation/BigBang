@@ -1968,6 +1968,7 @@ bool CBlockBase::AddDeFiRelation(const uint256& hashFork, CBlockView& view, boos
     for (auto& addr : vRemoveAddress)
     {
         relation.RemoveRelation(addr);
+        StdWarn("CBlockBase", "SHT Remove relation from memory, key: %s", addr.GetPubKey().ToString().c_str());
     }
 
     for (auto& addr : vNewAddress)
@@ -1978,6 +1979,7 @@ bool CBlockBase::AddDeFiRelation(const uint256& hashFork, CBlockView& view, boos
             StdError("CBlockBase", "AddDeFiRelation memory is not equal DB");
             InitDeFiRelation(spFork);
         }
+        StdWarn("CBlockBase", "SHT Add relation in memory, key: %s", addr.first.GetPubKey().ToString().c_str());
     }
 
     return true;

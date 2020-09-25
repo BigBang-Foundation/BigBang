@@ -59,6 +59,7 @@ bool CForkAddressDB::UpdateAddress(const vector<pair<CDestination, CAddrInfo>>& 
     for (const auto& addr : vRemove)
     {
         mapUpper[addr].SetNull();
+        StdWarn("addressdb", "SHT remove relation from db, key: %s", addr.GetPubKey().ToString().c_str());
     }
 
     for (const auto& vd : vAddNew)
@@ -91,6 +92,7 @@ bool CForkAddressDB::UpdateAddress(const vector<pair<CDestination, CAddrInfo>>& 
             if (!fLoop)
             {
                 auto& addr = mapUpper[vd.first];
+                StdWarn("addressdb", "SHT add relation to db, key: %s", vd.first.GetPubKey().ToString().c_str());
                 addr = vd.second;
                 if (!addrParentInfo.IsNull())
                 {
