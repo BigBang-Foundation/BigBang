@@ -73,34 +73,40 @@ static uint64 GetSequenceNumber()
     return ((++nLastSequenceNumber) << 24);
 }
 
-// BOOST_AUTO_TEST_CASE(seq_test)
-// {
-//     CTxPoolView view;
 
-//     CPooledTx tx1;
-//     tx1.nTimeStamp = 1;
+// tx1
+//  |         
+// tx2 
+//  |   
+// tx3   
+BOOST_AUTO_TEST_CASE(seq_test)
+{
+    CTxPoolView view;
 
-//     CPooledTx tx2;
-//     tx2.nTimeStamp = 2;
-//     tx2.vInput.push_back(CTxIn(CTxOutPoint(tx1.GetHash(), 0)));
+    CPooledTx tx1;
+    tx1.nTimeStamp = 1;
 
-//     CPooledTx tx3;
-//     tx3.nTimeStamp = 3;
-//     tx3.vInput.push_back(CTxIn(CTxOutPoint(tx2.GetHash(), 0)));
+    CPooledTx tx2;
+    tx2.nTimeStamp = 2;
+    tx2.vInput.push_back(CTxIn(CTxOutPoint(tx1.GetHash(), 0)));
 
-//     tx3.nSequenceNumber = GetSequenceNumber();
-//     tx1.nSequenceNumber = GetSequenceNumber();
-//     tx2.nSequenceNumber = GetSequenceNumber();
+    CPooledTx tx3;
+    tx3.nTimeStamp = 3;
+    tx3.vInput.push_back(CTxIn(CTxOutPoint(tx2.GetHash(), 0)));
 
-//     BOOST_CHECK(view.AddNew(tx3.GetHash(), tx3));
-//     BOOST_CHECK(view.AddNew(tx1.GetHash(), tx1));
-//     BOOST_CHECK(view.AddNew(tx2.GetHash(), tx2));
-// }
+    tx3.nSequenceNumber = GetSequenceNumber();
+    tx1.nSequenceNumber = GetSequenceNumber();
+    tx2.nSequenceNumber = GetSequenceNumber();
+
+    BOOST_CHECK(view.AddNew(tx3.GetHash(), tx3));
+    BOOST_CHECK(view.AddNew(tx1.GetHash(), tx1));
+    BOOST_CHECK(view.AddNew(tx2.GetHash(), tx2));
+}
 
 
-// tx1         tx6
+// tx1         tx4
 //  |           |
-// tx2    tx4  tx5   tx7
+// tx2    tx5  tx6   tx7
 //  |      |    |     |
 // tx3     --- tx8-----    tx9
 //  |           |          |
@@ -111,26 +117,75 @@ BOOST_AUTO_TEST_CASE(txpoolview_test)
 
     CPooledTx tx1;
     tx1.nTimeStamp = 1001;
+    tx1.nSequenceNumber = GetSequenceNumber();
 
     CPooledTx tx2;
     tx2.nTimeStamp = 1002;
+    tx2.nSequenceNumber = GetSequenceNumber();
     tx2.vInput.push_back(CTxIn(CTxOutPoint(tx1.GetHash(), 0)));
 
     CPooledTx tx3;
     tx3.nTimeStamp = 1003;
+    tx3.nSequenceNumber = GetSequenceNumber();
     tx3.vInput.push_back(CTxIn(CTxOutPoint(tx2.GetHash(), 0)));
 
-    tx1.nSequenceNumber = GetSequenceNumber();
-    tx2.nSequenceNumber = GetSequenceNumber();
-    tx3.nSequenceNumber = GetSequenceNumber();
+    CPooledTx tx4;
+    tx4.nTimeStamp = 1004;
+    tx4.nSequenceNumber = GetSequenceNumber();
+
+    CPooledTx tx5;
+    tx5.nTimeStamp = 1005;
+    tx5.nSequenceNumber = GetSequenceNumber();
+
+    CPooledTx tx6;
+    tx6.nTimeStamp = 1006;
+    tx6.nSequenceNumber = GetSequenceNumber();
+    tx6.vInput.push_back(CTxIn(CTxOutPoint(tx4.GetHash(), 0)));
+
+    CPooledTx tx7;
+    tx7.nTimeStamp = 1007;
+    tx7.nSequenceNumber = GetSequenceNumber();
+
+    
+    CPooledTx tx8;
+    tx8.nTimeStamp = 1008;
+    tx8.nSequenceNumber = GetSequenceNumber();
+    tx8.vInput.push_back(CTxIn(CTxOutPoint(tx5.GetHash(), 0)));
+    tx8.vInput.push_back(CTxIn(CTxOutPoint(tx6.GetHash(), 0)));
+    tx8.vInput.push_back(CTxIn(CTxOutPoint(tx7.GetHash(), 0)));
+
+    CPooledTx tx9;
+    tx9.nTimeStamp = 1009;
+    tx9.nSequenceNumber = GetSequenceNumber();
+    
+    CPooledTx tx10;
+    tx10.nTimeStamp = 1010;
+    tx10.nSequenceNumber = GetSequenceNumber();
+    tx10.vInput.push_back(CTxIn(CTxOutPoint(tx3.GetHash(), 0)));
+    tx10.vInput.push_back(CTxIn(CTxOutPoint(tx8.GetHash(), 0)));
+    tx10.vInput.push_back(CTxIn(CTxOutPoint(tx9.GetHash(), 0)));
 
     BOOST_CHECK(view.AddNew(tx1.GetHash(), tx1));
     BOOST_CHECK(view.AddNew(tx2.GetHash(), tx2));
     BOOST_CHECK(view.AddNew(tx3.GetHash(), tx3));
+    BOOST_CHECK(view.AddNew(tx4.GetHash(), tx4));
+    BOOST_CHECK(view.AddNew(tx5.GetHash(), tx5));
+    BOOST_CHECK(view.AddNew(tx6.GetHash(), tx6));
+    BOOST_CHECK(view.AddNew(tx7.GetHash(), tx7));
+    BOOST_CHECK(view.AddNew(tx8.GetHash(), tx8));
+    BOOST_CHECK(view.AddNew(tx9.GetHash(), tx9));
+    BOOST_CHECK(view.AddNew(tx10.GetHash(), tx10));
 
     BOOST_CHECK(view.IsSpent(CTxOutPoint(tx1.GetHash(), 0)));
     BOOST_CHECK(view.IsSpent(CTxOutPoint(tx2.GetHash(), 0)));
-    BOOST_CHECK(!view.IsSpent(CTxOutPoint(tx3.GetHash(), 0)));
+    BOOST_CHECK(view.IsSpent(CTxOutPoint(tx3.GetHash(), 0)));
+    BOOST_CHECK(view.IsSpent(CTxOutPoint(tx4.GetHash(), 0)));
+    BOOST_CHECK(view.IsSpent(CTxOutPoint(tx5.GetHash(), 0)));
+    BOOST_CHECK(view.IsSpent(CTxOutPoint(tx6.GetHash(), 0)));
+    BOOST_CHECK(view.IsSpent(CTxOutPoint(tx7.GetHash(), 0)));
+    BOOST_CHECK(view.IsSpent(CTxOutPoint(tx8.GetHash(), 0)));
+    BOOST_CHECK(view.IsSpent(CTxOutPoint(tx9.GetHash(), 0)));
+    BOOST_CHECK(!view.IsSpent(CTxOutPoint(tx10.GetHash(), 0)));
 
     CTxPoolView involvedTxPoolView;
     view.InvalidateSpent(CTxOutPoint(tx1.GetHash(), 0), involvedTxPoolView);
@@ -138,15 +193,32 @@ BOOST_AUTO_TEST_CASE(txpoolview_test)
     BOOST_CHECK(!view.IsSpent(CTxOutPoint(tx1.GetHash(), 0)));
     BOOST_CHECK(!view.IsSpent(CTxOutPoint(tx2.GetHash(), 0)));
     BOOST_CHECK(!view.IsSpent(CTxOutPoint(tx3.GetHash(), 0)));
+    BOOST_CHECK(view.IsSpent(CTxOutPoint(tx4.GetHash(), 0)));
+    BOOST_CHECK(view.IsSpent(CTxOutPoint(tx5.GetHash(), 0)));
+    BOOST_CHECK(view.IsSpent(CTxOutPoint(tx6.GetHash(), 0)));
+    BOOST_CHECK(view.IsSpent(CTxOutPoint(tx7.GetHash(), 0)));
+    BOOST_CHECK(!view.IsSpent(CTxOutPoint(tx8.GetHash(), 0)));
+    BOOST_CHECK(!view.IsSpent(CTxOutPoint(tx9.GetHash(), 0)));
+    BOOST_CHECK(!view.IsSpent(CTxOutPoint(tx10.GetHash(), 0)));
 
     BOOST_CHECK(view.Exists(tx1.GetHash()));
     BOOST_CHECK(!view.Exists(tx2.GetHash()));
     BOOST_CHECK(!view.Exists(tx3.GetHash()));
+    BOOST_CHECK(view.Exists(tx4.GetHash()));
+    BOOST_CHECK(view.Exists(tx5.GetHash()));
+    BOOST_CHECK(view.Exists(tx6.GetHash()));
+    BOOST_CHECK(view.Exists(tx7.GetHash()));
+    BOOST_CHECK(view.Exists(tx8.GetHash()));
+    BOOST_CHECK(view.Exists(tx9.GetHash()));
+    BOOST_CHECK(!view.Exists(tx10.GetHash()));
 
     BOOST_CHECK(!involvedTxPoolView.Exists(tx1.GetHash()));
     BOOST_CHECK(involvedTxPoolView.Exists(tx2.GetHash()));
     BOOST_CHECK(involvedTxPoolView.Exists(tx3.GetHash()));
+    BOOST_CHECK(involvedTxPoolView.Exists(tx10.GetHash()));
+    
     BOOST_CHECK(involvedTxPoolView.IsSpent(CTxOutPoint(tx2.GetHash(), 0)));
-    BOOST_CHECK(!involvedTxPoolView.IsSpent(CTxOutPoint(tx3.GetHash(), 0)));
+    BOOST_CHECK(involvedTxPoolView.IsSpent(CTxOutPoint(tx3.GetHash(), 0)));
+    BOOST_CHECK(!involvedTxPoolView.IsSpent(CTxOutPoint(tx10.GetHash(), 0)));
 }
 BOOST_AUTO_TEST_SUITE_END()
