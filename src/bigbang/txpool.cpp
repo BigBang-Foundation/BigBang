@@ -950,25 +950,24 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                     {
                         Warn("SHT::BlockAddNew trying Remove Relation Tx id %s", tx.GetHash().ToString().c_str());
                         auto spTreeNode = txView.relation.RemoveRelation(tx.sendTo);
-                        if(spTreeNode)
+                        if (spTreeNode)
                         {
                             auto iter = mapTx.find(spTreeNode->data);
-                            if(iter != mapTx.end())
+                            if (iter != mapTx.end())
                             {
                                 Warn("SHT::BlockAddNew Finded Remove Relation Tx id %s", spTreeNode->data.ToString().c_str());
-                                
+
                                 for (const CTxIn& txin : iter->second.vInput)
                                 {
                                     txView.InvalidateSpent(txin.prevout, viewInvolvedTx);
                                 }
-                                
+
                                 auto iterInvolvedTx = viewInvolvedTx.setTxLinkIndex.begin();
-                                while(iterInvolvedTx != viewInvolvedTx.setTxLinkIndex.end())
+                                while (iterInvolvedTx != viewInvolvedTx.setTxLinkIndex.end())
                                 {
                                     Warn("SHT::BlockAddNew Self and next Removed Relation Tx id %s", iterInvolvedTx->hashTX.ToString().c_str());
                                     iterInvolvedTx++;
                                 }
-                                
                             }
                             else
                             {
@@ -1095,6 +1094,8 @@ bool CTxPool::LoadData()
         return false;
     }
 
+    map<uint256, int> mapForkHeight;
+
     for (int i = 0; i < vTx.size(); i++)
     {
         const uint256& hashFork = vTx[i].first;
@@ -1102,7 +1103,29 @@ bool CTxPool::LoadData()
         const CAssembledTx& tx = vTx[i].second.second;
 
         map<uint256, CPooledTx>::iterator mi = mapTx.insert(make_pair(txid, CPooledTx(tx, GetSequenceNumber()))).first;
-        mapPoolView[hashFork].AddNew(txid, (*mi).second);
+
+        auto it = mapForkHeight.find(hashFork);
+        if (it == mapForkHeight.end())
+        {
+            uint256 hashLast;
+            int64 nTime;
+            uint16 nMintType;
+            int nHeight;
+            if (!pBlockChain->GetLastBlock(hashFork, hashLast, nHeight, nTime, nMintType))
+            {
+                Error("LoadData: GetLastBlock fail, txid: %s, hashFork: %s",
+                      txid.GetHex().c_str(), hashFork.GetHex().c_str());
+                continue;
+            }
+
+            it = mapForkHeight.insert(make_pair(hashFork, nHeight)).first;
+        }
+
+        if (AddNew(mapPoolView[hashFork], txid, mi->second, hashFork, it->second) != OK)
+        {
+            Error("LoadData error, txid: %s", txid.ToString().c_str());
+            continue;
+        }
 
         if (tx.nType == CTransaction::TX_CERT)
         {
@@ -1234,12 +1257,12 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     }
 
     CDestination destIn = vPrevOutput[0].destTo;
-    if(txView.nForkType != FORK_TYPE_DEFI && tx.IsDeFiRelation())
+    if (txView.nForkType != FORK_TYPE_DEFI && tx.IsDeFiRelation())
     {
         return ERR_TRANSACTION_INVALID_RELATION_TX;
     }
 
-    if(txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
+    if (txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
     {
         CDestination root;
         if (!txView.relation.CheckInsert(tx.sendTo, destIn, root))
@@ -1247,7 +1270,7 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
             return ERR_TRANSACTION_INVALID_RELATION_TX;
         }
 
-        if(!pBlockChain->CheckAddDeFiRelation(hashFork, tx.sendTo, root))
+        if (!pBlockChain->CheckAddDeFiRelation(hashFork, tx.sendTo, root))
         {
             return ERR_TRANSACTION_INVALID_RELATION_TX;
         }
@@ -1262,10 +1285,10 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
                 destParent = spTreeNode->spParent->key;
                 oldTxid = spTreeNode->data;
             }
-            
+
             Error("AddNew relation tx failedtxid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
-                    CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
-        
+                  CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
+
             return ERR_TRANSACTION_INVALID_RELATION_TX;
         }
     }
