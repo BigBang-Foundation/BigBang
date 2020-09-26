@@ -1,3 +1,11 @@
+# Version 2.0.6 (2020-09-26)
+
+### Fixs
+* Fix conversion error from COldForkContext to CForkContext
+
+### Features
+* Add DeFi Function
+
 # Version 2.0.5 (2020-08-04)
 
 ### Fixs
