@@ -1410,6 +1410,24 @@ bool CBlockBase::FilterTx(const uint256& hashFork, int nDepth, CTxFilter& filter
 
 bool CBlockBase::ListForkContext(std::vector<CForkContext>& vForkCtxt)
 {
+    if(!dbBlock.ListForkContext(vForkCtxt))
+    {
+        std::vector<COldForkContext> vOldForkCtxt;
+        if(!dbBlock.ListForkContext(vOldForkCtxt))
+        {
+            return false;
+        }
+
+        for(const auto& ctxt : vOldForkCtxt)
+        {
+            const uint256& hashFork = ctxt.hashFork;
+            if(!ConvertForkContext(hashFork))
+            {
+                return false;
+            }
+        }
+    }
+    
     return dbBlock.ListForkContext(vForkCtxt);
 }
 

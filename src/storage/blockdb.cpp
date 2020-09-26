@@ -98,6 +98,12 @@ bool CBlockDB::RetrieveForkContext(const uint256& hash, CForkContext& ctxt)
     return dbFork.RetrieveForkContext(hash, ctxt);
 }
 
+bool CBlockDB::ListForkContext(std::vector<COldForkContext>& vForkCtxt)
+{
+    vForkCtxt.clear();
+    return dbFork.ListForkContext(vForkCtxt);
+}
+
 bool CBlockDB::ListForkContext(vector<CForkContext>& vForkCtxt)
 {
     vForkCtxt.clear();

@@ -63,6 +63,24 @@ bool CForkDB::RetrieveForkContext(const uint256& hashFork, CForkContext& ctxt)
     return Read(make_pair(string("ctxt"), hashFork), ctxt);   
 }
 
+bool CForkDB::ListForkContext(std::vector<COldForkContext>& vForkCtxt)
+{
+    multimap<int, COldForkContext> mapCtxt;
+
+    if (!WalkThrough(boost::bind(&CForkDB::LoadCOldtxtWalker, this, _1, _2, boost::ref(mapCtxt))))
+    {
+        return false;
+    }
+
+    vForkCtxt.reserve(mapCtxt.size());
+    for (multimap<int, COldForkContext>::iterator it = mapCtxt.begin(); it != mapCtxt.end(); ++it)
+    {
+        vForkCtxt.push_back((*it).second);
+    }
+
+    return true;
+}
+
 bool CForkDB::ListForkContext(vector<CForkContext>& vForkCtxt)
 {
     multimap<int, CForkContext> mapCtxt;
@@ -121,6 +139,20 @@ bool CForkDB::ListFork(vector<pair<uint256, uint256>>& vFork)
 void CForkDB::Clear()
 {
     RemoveAll();
+}
+
+bool CForkDB::LoadCOldtxtWalker(CBufStream& ssKey, CBufStream& ssValue, multimap<int, COldForkContext>& mapCtxt)
+{
+    string strPrefix;
+    ssKey >> strPrefix;
+
+    if (strPrefix == "ctxt")
+    {
+        COldForkContext ctxt;
+        ssValue >> ctxt;
+        mapCtxt.insert(make_pair(ctxt.nJointHeight, ctxt));
+    }
+    return true;
 }
 
 bool CForkDB::LoadCtxtWalker(CBufStream& ssKey, CBufStream& ssValue, multimap<int, CForkContext>& mapCtxt)

@@ -32,6 +32,7 @@ public:
     bool RetrieveForkContext(const uint256& hash, COldForkContext& ctxt);
     bool RetrieveForkContext(const uint256& hash, CForkContext& ctxt);
     bool ListForkContext(std::vector<CForkContext>& vForkCtxt);
+    bool ListForkContext(std::vector<COldForkContext>& vForkCtxt);
     bool AddNewFork(const uint256& hash);
     bool RemoveFork(const uint256& hash);
     bool ListFork(std::vector<std::pair<uint256, uint256>>& vFork);
