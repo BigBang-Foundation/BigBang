@@ -53,24 +53,14 @@ bool CForkDB::RemoveForkContext(const uint256& hashFork)
     return Erase(make_pair(string("ctxt"), hashFork));
 }
 
+bool CForkDB::RetrieveForkContext(const uint256& hashFork, COldForkContext& ctxt)
+{
+    return Read(make_pair(string("ctxt"), hashFork), ctxt);
+}
+
 bool CForkDB::RetrieveForkContext(const uint256& hashFork, CForkContext& ctxt)
 {
-    if(!Read(make_pair(string("ctxt"), hashFork), ctxt))
-    {
-        COldForkContext oldCtxt;
-        if(!Read(make_pair(string("ctxt"), hashFork), oldCtxt))
-        {
-            return false;
-        }
-
-        CForkContext writeNewCtxt(oldCtxt.hashFork, oldCtxt.hashJoint, oldCtxt.txidEmbedded, oldCtxt.GetProfile());
-        if(!Write(make_pair(string("ctxt"), hashFork), writeNewCtxt))
-        {
-            return false;
-        }
-    }
-    
-    return true;
+    return Read(make_pair(string("ctxt"), hashFork), ctxt);   
 }
 
 bool CForkDB::ListForkContext(vector<CForkContext>& vForkCtxt)

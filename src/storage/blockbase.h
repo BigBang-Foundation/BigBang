@@ -386,6 +386,7 @@ protected:
     bool VerifyValidBlock(CBlockIndex* pIndexGenesisLast, const CBlockIndex* pIndex);
     CBlockIndex* GetLongChainLastBlock(const uint256& hashFork, int nStartHeight, CBlockIndex* pIndexGenesisLast, const std::set<uint256>& setInvalidHash);
     void ClearCache();
+    bool ConvertForkContext(const uint256& hash);
     bool LoadDB();
     bool InitDeFiRelation(boost::shared_ptr<CBlockFork> spFork);
     bool SetupLog(const boost::filesystem::path& pathDataLocation, bool fDebug);

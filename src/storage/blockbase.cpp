@@ -729,8 +729,59 @@ bool CBlockBase::RetrieveProfile(const uint256& hash, CProfile& profile)
     return true;
 }
 
+bool CBlockBase::ConvertForkContext(const uint256& hash)
+{
+    COldForkContext oldctxt;
+    if(!dbBlock.RetrieveForkContext(hash, oldctxt))
+    {
+        return false;
+    }
+
+    CTransaction tx;
+    if (!RetrieveTx(oldctxt.txidEmbedded, tx))
+    {
+        StdTrace("BlockBase", "ConvertForkContext::RetrieveTx %s tx failed", oldctxt.txidEmbedded.ToString().c_str());
+        return false;
+    }
+
+    CBlock block;
+    CProfile profile;
+    try
+    {
+        CBufStream ss;
+        ss.Write((const char*)&tx.vchData[0], tx.vchData.size());
+        ss >> block;
+
+        if (!block.IsOrigin() || block.IsPrimary())
+        {
+            throw std::runtime_error("invalid block");
+        }
+        if (!profile.Load(block.vchProof))
+        {
+            throw std::runtime_error("invalid profile");
+        }
+    }
+    catch (exception& e)
+    {
+        StdError(__PRETTY_FUNCTION__, e.what());
+        return false;
+    }
+
+    CForkContext newForkCtxt(oldctxt.hashFork, oldctxt.hashJoint, oldctxt.txidEmbedded, profile);
+    dbBlock.AddNewForkContext(newForkCtxt);
+    return true;
+}
+
 bool CBlockBase::RetrieveForkContext(const uint256& hash, CForkContext& ctxt)
 {
+    if(!dbBlock.RetrieveForkContext(hash, ctxt))
+    {
+        if(!ConvertForkContext(hash))
+        {
+            return false;
+        }
+    }
+    
     return dbBlock.RetrieveForkContext(hash, ctxt);
 }
 
@@ -739,8 +790,17 @@ bool CBlockBase::RetrieveAncestry(const uint256& hash, vector<pair<uint256, uint
     CForkContext ctxt;
     if (!dbBlock.RetrieveForkContext(hash, ctxt))
     {
-        StdTrace("BlockBase", "Ancestry Retrieve hashFork %s failed", hash.ToString().c_str());
-        return false;
+        if(!ConvertForkContext(hash))
+        {
+            return false;
+        }
+        
+        if(!dbBlock.RetrieveForkContext(hash, ctxt))
+        {
+            StdTrace("BlockBase", "Ancestry Retrieve hashFork %s failed", hash.ToString().c_str());
+            return false;
+        }
+        
     }
 
     while (ctxt.hashParent != 0)
@@ -748,6 +808,17 @@ bool CBlockBase::RetrieveAncestry(const uint256& hash, vector<pair<uint256, uint
         vAncestry.push_back(make_pair(ctxt.hashParent, ctxt.hashJoint));
         if (!dbBlock.RetrieveForkContext(ctxt.hashParent, ctxt))
         {
+            if(!ConvertForkContext(ctxt.hashParent))
+            {
+                return false;
+            }
+        
+            if(!dbBlock.RetrieveForkContext(ctxt.hashParent, ctxt))
+            {
+                StdTrace("BlockBase", "Ancestry Retrieve hashParent %s failed", ctxt.hashParent.ToString().c_str());
+                return false;
+            }
+            
             return false;
         }
     }
@@ -763,8 +834,16 @@ bool CBlockBase::RetrieveOrigin(const uint256& hash, CBlock& block)
     CForkContext ctxt;
     if (!dbBlock.RetrieveForkContext(hash, ctxt))
     {
-        StdTrace("BlockBase", "RetrieveOrigin::RetrieveForkContext %s block failed", hash.ToString().c_str());
-        return false;
+        if(!ConvertForkContext(hash))
+        {
+            return false;
+        }
+    
+        if(!dbBlock.RetrieveForkContext(hash, ctxt))
+        {
+            StdTrace("BlockBase", "RetrieveOrigin::RetrieveForkContext %s block failed", hash.ToString().c_str());
+            return false;
+        }
     }
 
     CTransaction tx;

@@ -129,6 +129,7 @@ bool CCheckForkManager::FetchForkStatus(const string& strDataPath)
         if (!dbFork.RetrieveForkContext(hashFork, status.ctxt))
         {
             StdError("check", "Fetch fork status: RetrieveForkContext fail");
+            
             dbFork.Deinitialize();
             return false;
         }

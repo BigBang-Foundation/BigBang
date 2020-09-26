@@ -86,6 +86,12 @@ bool CBlockDB::AddNewForkContext(const CForkContext& ctxt)
     return dbFork.AddNewForkContext(ctxt);
 }
 
+bool CBlockDB::RetrieveForkContext(const uint256& hash, COldForkContext& ctxt)
+{
+    ctxt.SetNull();
+    return dbFork.RetrieveForkContext(hash, ctxt);
+}
+
 bool CBlockDB::RetrieveForkContext(const uint256& hash, CForkContext& ctxt)
 {
     ctxt.SetNull();

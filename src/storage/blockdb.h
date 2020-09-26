@@ -29,6 +29,7 @@ public:
     void Deinitialize();
     bool RemoveAll();
     bool AddNewForkContext(const CForkContext& ctxt);
+    bool RetrieveForkContext(const uint256& hash, COldForkContext& ctxt);
     bool RetrieveForkContext(const uint256& hash, CForkContext& ctxt);
     bool ListForkContext(std::vector<CForkContext>& vForkCtxt);
     bool AddNewFork(const uint256& hash);
