@@ -37,7 +37,7 @@ public:
 protected:
     bool LoadCtxtWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue,
                         std::multimap<int, CForkContext>& mapCtxt);
-    bool LoadCOldtxtWalker(CBufStream& ssKey, CBufStream& ssValue, multimap<int, COldForkContext>& mapCtxt);
+    bool LoadCOldtxtWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::multimap<int, COldForkContext>& mapCtxt);
     bool LoadForkWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue,
                         std::multimap<int, uint256>& mapJoint, std::map<uint256, uint256>& mapFork);
 };
