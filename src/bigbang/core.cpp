@@ -209,12 +209,6 @@ void CCoreProtocol::GetGenesisBlock(CBlock& block)
 Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
 {
     // Basic checks that don't depend on any context
-    // Don't allow CTransaction::TX_CERT type in v1.0.0
-    /*if (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_GENESIS
-        && tx.nType != CTransaction::TX_STAKE && tx.nType != CTransaction::TX_WORK)
-    {
-        return DEBUG(ERR_TRANSACTION_INVALID, "tx type is invalid.\n");
-    }*/
     if (tx.nType == CTransaction::TX_TOKEN
         && (tx.sendTo.IsPubKey()
             || (tx.sendTo.IsTemplate()
@@ -243,15 +237,23 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
             }
         }
     }
-    if (tx.vInput.empty() && tx.nType != CTransaction::TX_GENESIS && tx.nType != CTransaction::TX_WORK && tx.nType != CTransaction::TX_STAKE)
+    if (tx.nType == CTransaction::TX_DEFI_REWARD && (tx.vchData.size() > 40))
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi reward tx data length is not 40\n");
+    }
+    if (!tx.vchData.empty() && (tx.nType == CTransaction::TX_WORK || tx.nType == CTransaction::TX_STAKE))
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "tx data is not empty, tx type: %s\n", tx.GetTypeString().c_str());
+    }
+    if (tx.vInput.empty() && tx.nType != CTransaction::TX_GENESIS && tx.nType != CTransaction::TX_WORK && tx.nType != CTransaction::TX_STAKE && tx.nType != CTransaction::TX_DEFI_REWARD)
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "tx vin is empty\n");
     }
-    if (!tx.vInput.empty() && (tx.nType == CTransaction::TX_GENESIS || tx.nType == CTransaction::TX_WORK || tx.nType == CTransaction::TX_STAKE))
+    if (!tx.vInput.empty() && (tx.nType == CTransaction::TX_GENESIS || tx.nType == CTransaction::TX_WORK || tx.nType == CTransaction::TX_STAKE || tx.nType == CTransaction::TX_DEFI_REWARD))
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "tx vin is not empty for genesis or work tx\n");
     }
-    if (!tx.vchSig.empty() && tx.IsMintTx())
+    if (!tx.vchSig.empty() && (tx.IsMintTx() || tx.nType == CTransaction::TX_DEFI_REWARD))
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "invalid signature\n");
     }
@@ -267,9 +269,9 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
     if (IsDposHeight(nHeight))
     {
         if (!MoneyRange(tx.nTxFee)
-            || (tx.nType != CTransaction::TX_TOKEN && tx.nTxFee != 0)
-            || (tx.nType == CTransaction::TX_TOKEN
-                && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), NEW_MIN_TX_FEE)))
+            || (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_DEFI_RELATION && tx.nTxFee != 0)
+            || ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), NEW_MIN_TX_FEE))
+            || (tx.nType == CTransaction::TX_DEFI_REWARD && tx.nTxFee != NEW_MIN_TX_FEE))
         {
             return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid %ld", tx.nTxFee);
         }
@@ -277,9 +279,9 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
     else
     {
         if (!MoneyRange(tx.nTxFee)
-            || (tx.nType != CTransaction::TX_TOKEN && tx.nTxFee != 0)
-            || (tx.nType == CTransaction::TX_TOKEN
-                && (tx.nTxFee < CalcMinTxFee(tx.vchData.size(), NEW_MIN_TX_FEE) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), OLD_MIN_TX_FEE))))
+            || (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_DEFI_RELATION && tx.nTxFee != 0)
+            || ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), OLD_MIN_TX_FEE))
+            || (tx.nType == CTransaction::TX_DEFI_REWARD && tx.nTxFee != NEW_MIN_TX_FEE))
         {
             return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid %ld", tx.nTxFee);
         }
@@ -428,6 +430,126 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
             return DEBUG(ERR_BLOCK_INVALID_FORK, "permission denied");
         }
     }
+    // check defi param
+    if (forkProfile.nForkType == FORK_TYPE_DEFI)
+    {
+        if (forkProfile.nMintReward != 0)
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi fork mint reward must be zero");
+        }
+        if (forkProfile.nHalveCycle != 0)
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi fork mint halvecycle must be zero");
+        }
+        if (forkProfile.hashParent != GetGenesisBlockHash())
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi fork must be the direct child fork of main fork");
+        }
+        if (!forkProfile.IsIsolated())
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi fork must be the isolated fork");
+        }
+
+        const CDeFiProfile& defi = forkProfile.defi;
+        if (defi.nMintHeight >= 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2)
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mintheight should be -1 or larger than fork genesis block height");
+        }
+        if (defi.nMaxSupply >= 0 && !MoneyRange(defi.nMaxSupply))
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nMaxSupply is out of range");
+        }
+        if (defi.nRewardCycle <= 0 || defi.nRewardCycle > 100 * YEAR_HEIGHT)
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nRewardCycle must be [1, %ld]", 100 * YEAR_HEIGHT);
+        }
+        if (defi.nSupplyCycle <= 0 || defi.nSupplyCycle > 100 * YEAR_HEIGHT)
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nSupplyCycle must be [1, %ld]", 100 * YEAR_HEIGHT);
+        }
+        if (defi.nCoinbaseType == FIXED_DEFI_COINBASE_TYPE)
+        {
+            if (defi.nInitCoinbasePercent == 0 || defi.nInitCoinbasePercent > 10000)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nInitCoinbasePercent must be [1, 10000]");
+            }
+            if (defi.nCoinbaseDecayPercent > 100)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nCoinbaseDecayPercent must be [0, 100]");
+            }
+            if (defi.nDecayCycle < 0 || defi.nDecayCycle > 100 * YEAR_HEIGHT)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nDecayCycle must be [0, %ld]", 100 * YEAR_HEIGHT);
+            }
+            if ((defi.nDecayCycle / defi.nSupplyCycle) * defi.nSupplyCycle != defi.nDecayCycle)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nDecayCycle must be divisible by nSupplyCycle");
+            }
+        }
+        else if (defi.nCoinbaseType == SPECIFIC_DEFI_COINBASE_TYPE)
+        {
+            if (defi.mapCoinbasePercent.size() == 0)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mapCoinbasePercent is empty");
+            }
+            for (auto it = defi.mapCoinbasePercent.begin(); it != defi.mapCoinbasePercent.end(); it++)
+            {
+                if (it->first <= 0)
+                {
+                    return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param key of mapCoinbasePercent must be larger than 0");
+                }
+                if ((it->first / defi.nSupplyCycle) * defi.nSupplyCycle != it->first)
+                {
+                    return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param key of mapCoinbasePercent must be divisible by nSupplyCycle");
+                }
+                if (it->second == 0)
+                {
+                    return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param value of mapCoinbasePercent must be larger than 0");
+                }
+            }
+        }
+        else
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nCoinbaseType is out of range");
+        }
+        if (defi.nStakeRewardPercent > 100)
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nStakeRewardPercent must be [0, 100]");
+        }
+        if (defi.nPromotionRewardPercent > 100)
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nPromotionRewardPercent must be [0, 100]");
+        }
+        if (defi.nStakeRewardPercent + defi.nPromotionRewardPercent > 100)
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param (nStakeRewardPercent + nPromotionRewardPercent) must be [0, 100]");
+        }
+        if (!MoneyRange(defi.nStakeMinToken))
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nStakeMinToken is out of range");
+        }
+        for (auto& times : defi.mapPromotionTokenTimes)
+        {
+            if (times.first <= 0 || times.first > (MAX_MONEY / COIN))
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param key of mapPromotionTokenTimes should be (0, %ld]", (MAX_MONEY / COIN));
+            }
+            if (times.second == 0)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param times of mappromotiontokentimes is equal 0");
+            }
+            // precision
+            int64 nMaxPower = defi.nMaxSupply / COIN * times.second;
+            if (nMaxPower < (defi.nMaxSupply / COIN))
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param times * maxsupply is overflow");
+            }
+            if (to_string(nMaxPower).size() > 14)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param times * maxsupply is more than 15 digits. It will lose precision");
+            }
+        }
+    }
     return OK;
 }
 
@@ -559,7 +681,8 @@ Errno CCoreProtocol::VerifyBlock(const CBlock& block, CBlockIndex* pIndexPrev)
     return OK;
 }
 
-Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev, int nForkHeight, const uint256& fork)
+Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev,
+                                   int nForkHeight, const uint256& fork, int nForkType)
 {
     const CDestination& destIn = txContxt.destIn;
     int64 nValueIn = 0;
@@ -583,6 +706,15 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     if (nValueIn < tx.nAmount + tx.nTxFee)
     {
         return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "valuein is not enough (%ld : %ld)\n", nValueIn, tx.nAmount + tx.nTxFee);
+    }
+
+    if ((tx.nType == CTransaction::TX_DEFI_REWARD || tx.nType == CTransaction::TX_DEFI_RELATION) && nForkType != FORK_TYPE_DEFI)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork\n");
+    }
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && destIn == tx.sendTo)
+    {
+        return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -684,7 +816,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
 }
 
 Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxOut>& vPrevOutput,
-                                       int nForkHeight, const uint256& fork)
+                                       int nForkHeight, const uint256& fork, int nForkType)
 {
     CDestination destIn = vPrevOutput[0].destTo;
     int64 nValueIn = 0;
@@ -711,6 +843,15 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     if (nValueIn < tx.nAmount + tx.nTxFee)
     {
         return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "valuein is not enough (%ld : %ld)\n", nValueIn, tx.nAmount + tx.nTxFee);
+    }
+
+    if ((tx.nType == CTransaction::TX_DEFI_REWARD || tx.nType == CTransaction::TX_DEFI_RELATION) && nForkType != FORK_TYPE_DEFI)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork\n");
+    }
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && destIn == tx.sendTo)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
     }
 
     if (tx.nType == CTransaction::TX_CERT)

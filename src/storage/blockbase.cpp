@@ -147,7 +147,7 @@ bool CBlockView::RetrieveUnspent(const CTxOutPoint& out, CTxOut& unspent)
     return true;
 }
 
-void CBlockView::AddTx(const uint256& txid, const CTransaction& tx, const CDestination& destIn, int64 nValueIn)
+bool CBlockView::AddTx(const uint256& txid, const CTransaction& tx, const CDestination& destIn, int64 nValueIn)
 {
     mapTx[txid] = tx;
     vTxAddNew.push_back(txid);
@@ -166,6 +166,25 @@ void CBlockView::AddTx(const uint256& txid, const CTransaction& tx, const CDesti
     {
         mapUnspent[CTxOutPoint(txid, 1)].Enable(output1);
     }
+
+    // relation
+    if (tx.IsDeFiRelation())
+    {
+        CDestination root;
+        if (!relationAddNew.CheckInsert(tx.sendTo, destIn, root))
+        {
+            return false;
+        }
+
+        if (!spFork->GetRelation().CheckInsert(tx.sendTo, root, root, relationRemove))
+        {
+            return false;
+        }
+
+        relationAddNew.Insert(tx.sendTo, destIn, destIn, false);
+    }
+
+    return true;
 }
 
 void CBlockView::RemoveTx(const uint256& txid, const CTransaction& tx, const CTxContxt& txContxt)
@@ -179,6 +198,12 @@ void CBlockView::RemoveTx(const uint256& txid, const CTransaction& tx, const CTx
     }
     mapUnspent[CTxOutPoint(txid, 0)].Disable();
     mapUnspent[CTxOutPoint(txid, 1)].Disable();
+
+    // relation
+    if (tx.IsDeFiRelation())
+    {
+        relationRemove.insert(tx.sendTo);
+    }
 }
 
 void CBlockView::AddBlock(const uint256& hash, const CBlockEx& block)
@@ -1128,6 +1153,12 @@ bool CBlockBase::CommitBlockView(CBlockView& view, CBlockIndex* pIndexNew)
     }
     spFork->UpdateLast(pIndexNew);
 
+    if (!AddDeFiRelation(hashFork, view, spFork))
+    {
+        StdTrace("BlockBase", "CommitBlockView: AddDeFiRelation fail, fork: %s", hashFork.ToString().c_str());
+        return false;
+    }
+
     Log("B", "Update fork %s, last block hash=%s", hashFork.ToString().c_str(),
         pIndexNew->GetBlockHash().ToString().c_str());
     return true;
@@ -1895,6 +1926,175 @@ bool CBlockBase::ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std:
     CListUnspentBatchWalker walker(hashFork, mapUnspent, nMax);
     dbBlock.WalkThroughUnspent(hashFork, walker);
     return true;
+}
+
+bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount)
+{
+    CListAddressUnspentWalker walker;
+    if (!dbBlock.WalkThroughUnspent(hashFork, walker))
+    {
+        return false;
+    }
+
+    std::vector<CTxUnspent> vAddNew;
+    std::vector<CTxOutPoint> vRemove;
+    view.GetUnspentChanges(vAddNew, vRemove);
+
+    for (const CTxUnspent& unspent : vAddNew)
+    {
+        walker.mapUnspent[static_cast<const CTxOutPoint&>(unspent)] = unspent.output;
+    }
+    for (const CTxOutPoint& txout : vRemove)
+    {
+        walker.mapUnspent[txout].SetNull();
+    }
+
+    for (auto it = walker.mapUnspent.begin(); it != walker.mapUnspent.end(); ++it)
+    {
+        if (!it->second.IsNull())
+        {
+            mapAddressAmount[it->second.destTo] += it->second.nAmount;
+        }
+    }
+    return true;
+}
+
+bool CBlockBase::AddDeFiRelation(const uint256& hashFork, CBlockView& view, boost::shared_ptr<CBlockFork> spFork)
+{
+    vector<pair<CDestination, CAddrInfo>> vNewAddress;
+    vector<CDestination> vRemoveAddress;
+
+    vector<CBlockEx> vAdd;
+    vector<CBlockEx> vRemove;
+    view.GetBlockChanges(vAdd, vRemove);
+
+    for (const CBlockEx& block : vRemove)
+    {
+        for (int i = block.vtx.size() - 1; i >= 0; --i)
+        {
+            const CTransaction& tx = block.vtx[i];
+            if (tx.IsDeFiRelation())
+            {
+                vRemoveAddress.push_back(tx.sendTo);
+            }
+        }
+    }
+
+    for (const CBlockEx& block : boost::adaptors::reverse(vAdd))
+    {
+        for (std::size_t i = 0; i < block.vtx.size(); i++)
+        {
+            const CTransaction& tx = block.vtx[i];
+            const CTxContxt& txContxt = block.vTxContxt[i];
+            if (tx.IsDeFiRelation() && tx.sendTo != txContxt.destIn)
+            {
+                vNewAddress.push_back(make_pair(tx.sendTo, CAddrInfo(CDestination(), txContxt.destIn)));
+            }
+        }
+    }
+
+    if (!dbBlock.UpdateAddressInfo(hashFork, vNewAddress, vRemoveAddress))
+    {
+        return false;
+    }
+
+    // update CBlockFork::relation
+    auto& relation = spFork->GetRelation();
+    for (auto& addr : vRemoveAddress)
+    {
+        relation.RemoveRelation(addr);
+        StdDebug("CBlockBase", "Remove relation from memory, key: %s", addr.GetPubKey().ToString().c_str());
+    }
+
+    for (auto& addr : vNewAddress)
+    {
+        if (!relation.Insert(addr.first, addr.second.destParent, addr.second.destParent))
+        {
+            // reconstruct memory
+            StdError("CBlockBase", "AddDeFiRelation memory is not equal DB");
+            InitDeFiRelation(spFork);
+            break;
+        }
+        StdDebug("CBlockBase", "Add relation in memory, key: %s", addr.first.GetPubKey().ToString().c_str());
+    }
+
+    return true;
+}
+
+bool CBlockBase::GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CAddrInfo& addrInfo)
+{
+    CAddrInfo addressInfo;
+    return dbBlock.GetAddressInfo(hashFork, destIn, addrInfo);
+}
+
+bool CBlockBase::InitDeFiRelation(const uint256& hashFork)
+{
+    boost::shared_ptr<CBlockFork> spFork;
+    {
+        CReadLock rlock(rwAccess);
+
+        spFork = GetFork(hashFork);
+        if (!spFork)
+        {
+            return false;
+        }
+    }
+
+    if (spFork->GetProfile().nForkType != FORK_TYPE_DEFI)
+    {
+        return true;
+    }
+
+    spFork->WriteLock();
+    bool ret = InitDeFiRelation(spFork);
+    spFork->WriteUnlock();
+
+    return ret;
+}
+
+bool CBlockBase::InitDeFiRelation(boost::shared_ptr<CBlockFork> spFork)
+{
+    auto& relation = spFork->GetRelation();
+    relation.Clear();
+
+    CListAddressWalker walker;
+    if (!dbBlock.WalkThroughAddress(spFork->GetOrigin()->GetBlockHash(), walker))
+    {
+        StdError("CBlockBase", "InitDeFiRelation: WalkThroughAddress fail, fork: %s", spFork->GetOrigin()->GetBlockHash().ToString().c_str());
+        return false;
+    }
+
+    for (auto& r : walker.mapAddress)
+    {
+        if (!relation.Insert(r.first, r.second.destParent, r.second.destParent))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool CBlockBase::CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent)
+{
+    boost::shared_ptr<CBlockFork> spFork;
+    {
+        CReadLock rlock(rwAccess);
+        spFork = GetFork(hashFork);
+        if (!spFork)
+        {
+            return false;
+        }
+    }
+
+    if (spFork->GetProfile().nForkType != FORK_TYPE_DEFI)
+    {
+        return false;
+    }
+
+    auto& relation = spFork->GetRelation();
+
+    CDestination root;
+    return relation.CheckInsert(dest, parent, root);
 }
 
 bool CBlockBase::GetVotes(const uint256& hashGenesis, const CDestination& destDelegate, int64& nVotes)
