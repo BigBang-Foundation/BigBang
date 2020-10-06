@@ -984,7 +984,7 @@ bool CNetChannel::HandleEvent(network::CEventPeerTx& eventTx)
         StdTrace("NetChannel", "CEventPeerTx: receive tx success, peer: %s, txid: %s",
                  GetPeerAddressInfo(nNonce).c_str(), txid.GetHex().c_str());
 
-        if (tx.IsMintTx())
+        if (tx.IsMintTx() || tx.nType == CTransaction::TX_DEFI_REWARD)
         {
             StdDebug("NetChannel", "CEventPeerTx: tx is mint, peer: %s, txid: %s",
                      GetPeerAddressInfo(nNonce).c_str(), txid.GetHex().c_str());
@@ -1741,9 +1741,10 @@ void CNetChannel::AddNewTx(const uint256& hashFork, const uint256& txid, CSchedu
             }
             else if (err == ERR_MISSING_PREV
                      || err == ERR_TRANSACTION_CONFLICTING_INPUT
-                     || err == ERR_ALREADY_HAVE)
+                     || err == ERR_ALREADY_HAVE
+                     || err == ERR_TRANSACTION_INVALID_RELATION_TX)
             {
-                if (err == ERR_TRANSACTION_CONFLICTING_INPUT || err == ERR_ALREADY_HAVE)
+                if (err == ERR_TRANSACTION_CONFLICTING_INPUT || err == ERR_ALREADY_HAVE || err == ERR_TRANSACTION_INVALID_RELATION_TX)
                 {
                     StdDebug("NetChannel", "NetChannel AddNewTx fail, remove inv, peer: %s, txid: %s, err: [%d] %s",
                              GetPeerAddressInfo(nNonceSender).c_str(), hashTx.GetHex().c_str(), err, ErrorString(err));

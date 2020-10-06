@@ -47,10 +47,11 @@ class CForkStatus
 {
 public:
     CForkStatus() {}
-    CForkStatus(const uint256& hashOriginIn, const uint256& hashParentIn, int nOriginHeightIn)
+    CForkStatus(const uint256& hashOriginIn, const uint256& hashParentIn, int nOriginHeightIn, int nForkTypeIn)
       : hashOrigin(hashOriginIn),
         hashParent(hashParentIn),
         nOriginHeight(nOriginHeightIn),
+        nForkType(nForkTypeIn),
         nLastBlockTime(0),
         nLastBlockHeight(-1),
         nMoneySupply(0),
@@ -67,6 +68,7 @@ public:
     uint256 hashOrigin;
     uint256 hashParent;
     int nOriginHeight;
+    int nForkType;
 
     uint256 hashLastBlock;
     int64 nLastBlockTime;
@@ -100,7 +102,7 @@ public:
     {
         SetNull();
     }
-    CBlockChainUpdate(CBlockIndex* pIndex)
+    CBlockChainUpdate(CBlockIndex* pIndex, int nForkTypeIn)
     {
         hashFork = pIndex->GetOriginHash();
         hashParent = pIndex->GetParentHash();
@@ -110,6 +112,7 @@ public:
         nLastBlockHeight = pIndex->GetBlockHeight();
         nLastMintType = pIndex->nMintType;
         nMoneySupply = pIndex->GetMoneySupply();
+        nForkType = nForkTypeIn;
     }
     void SetNull()
     {
@@ -117,6 +120,7 @@ public:
         nOriginHeight = -1;
         nLastBlockHeight = -1;
         nLastMintType = 0;
+        nForkType = -1;
     }
     bool IsNull() const
     {
@@ -127,6 +131,7 @@ public:
     uint256 hashFork;
     uint256 hashParent;
     int nOriginHeight;
+    int nForkType;
     uint256 hashLastBlock;
     int64 nLastBlockTime;
     int nLastBlockHeight;
@@ -350,6 +355,33 @@ public:
     uint64 nSynRecvTxTPS;
     uint64 nSynSendTxTPS;
 };
+
+struct CDeFiReward
+{
+    CDestination dest;
+    int64 nReward;
+    int64 nAmount;
+    uint64 nRank;
+    int64 nStakeReward;
+    uint64 nPower;
+    int64 nPromotionReward;
+    uint256 hashAnchor;
+
+    CDeFiReward()
+      : nReward(0), nAmount(0), nRank(0), nStakeReward(0), nPower(0), nPromotionReward(0)
+    {
+    }
+};
+
+typedef boost::multi_index_container<
+    CDeFiReward,
+    boost::multi_index::indexed_by<
+        boost::multi_index::ordered_unique<boost::multi_index::member<CDeFiReward, CDestination, &CDeFiReward::dest>>,
+        boost::multi_index::ordered_non_unique<boost::multi_index::member<CDeFiReward, int64, &CDeFiReward::nReward>, std::greater<int64>>>>
+    CDeFiRewardSet;
+
+typedef CDeFiRewardSet::nth_index<0>::type CDeFiRewardSetByDest;
+typedef CDeFiRewardSet::nth_index<1>::type CDeFiRewardSetByReward;
 
 } // namespace bigbang
 
