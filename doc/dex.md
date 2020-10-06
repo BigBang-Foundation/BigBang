@@ -80,7 +80,7 @@ c）转帐给跨链交易方地址的amount计算：撮合数量 - ((撮合数�
 ## 一、测试准备：
 ```
 1）下载代码（分支dex-master）：
-git clone https://github.com/bigbangcore/BigBang.git
+git clone https://github.com/BigBang-Foundation/BigBang.git
 git checkout dex-master
 
 2）编译代码（带testnet参数，编译为测试网程序）
