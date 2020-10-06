@@ -5,12 +5,15 @@
 #include "core.h"
 
 #include "../common/template/delegate.h"
+#include "../common/template/dexmatch.h"
+#include "../common/template/dexorder.h"
 #include "../common/template/exchange.h"
 #include "../common/template/fork.h"
 #include "../common/template/mint.h"
 #include "../common/template/payment.h"
 #include "../common/template/vote.h"
 #include "address.h"
+#include "crypto.h"
 #include "wallet.h"
 
 using namespace std;
@@ -593,39 +596,52 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         }
     }
 
-    if (destIn.GetTemplateId().GetType() == TEMPLATE_VOTE || tx.sendTo.GetTemplateId().GetType() == TEMPLATE_VOTE)
+    if (destIn.IsTemplate())
     {
-        if (VerifyVoteTx(tx, destIn, fork) != OK)
+        uint16 nDestInTemplateType = destIn.GetTemplateId().GetType();
+        if (nDestInTemplateType == TEMPLATE_VOTE || (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_VOTE))
         {
-            return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
+            if (VerifyVoteTx(tx, destIn, fork) != OK)
+            {
+                return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
+            }
+        }
+
+        switch (nDestInTemplateType)
+        {
+        case TEMPLATE_DEXORDER:
+        {
+            Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, pIndexPrev->GetBlockHeight() + 1);
+            if (err != OK)
+            {
+                return DEBUG(err, "invalid dex order tx");
+            }
+            break;
+        }
+        case TEMPLATE_DEXMATCH:
+        {
+            Errno err = VerifyDexMatchTx(tx, nValueIn, pIndexPrev->GetBlockHeight() + 1);
+            if (err != OK)
+            {
+                return DEBUG(err, "invalid dex match tx");
+            }
+            break;
+        }
         }
     }
-
-    // v1.0 function
-    /*if (!tx.vchData.empty())
-    {
-        return DEBUG(ERR_TRANSACTION_INVALID, "vchData not empty\n");
-    }*/
 
     vector<uint8> vchSig;
-    /*if (CTemplate::IsDestInRecorded(tx.sendTo))
+    if (!CTemplate::VerifyDestRecorded(tx, vchSig))
     {
-        CDestination recordedDestIn;
-        if (!CSendToRecordedTemplate::ParseDestIn(tx.vchSig, recordedDestIn, vchSig) || recordedDestIn != destIn)
-        {
-            return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid recoreded destination\n");
-        }
+        return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid recoreded destination");
     }
-    else
-    {
-        vchSig = tx.vchSig;
-    }*/
+
     if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_PAYMENT)
     {
-        auto templatePtr = CTemplate::CreateTemplatePtr(TEMPLATE_PAYMENT, tx.vchSig);
+        auto templatePtr = CTemplate::CreateTemplatePtr(TEMPLATE_PAYMENT, vchSig);
         if (templatePtr == nullptr)
         {
-            return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature vchSig err\n");
+            return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature vchSig err");
         }
         auto payment = boost::dynamic_pointer_cast<CTemplatePayment>(templatePtr);
         if (nForkHeight >= (payment->m_height_exec + payment->SafeHeight))
@@ -635,16 +651,16 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
             CProofOfSecretShare dpos;
             if (!pBlockChain->ListDelegatePayment(payment->m_height_exec, block, mapVotes) || !dpos.Load(block.vchProof))
             {
-                return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature vote err\n");
+                return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature vote err");
             }
             if (!payment->VerifyTransaction(tx, nForkHeight, mapVotes, dpos.nAgreement, nValueIn))
             {
-                return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature\n");
+                return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature");
             }
         }
         else
         {
-            return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature\n");
+            return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature");
         }
     }
 
@@ -652,7 +668,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     if (CTemplate::IsLockedCoin(destIn))
     {
         // TODO: No redemption temporarily
-        return DEBUG(ERR_TRANSACTION_INVALID, "invalid locked coin template destination\n");
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid locked coin template destination");
         // CTemplatePtr ptr = CTemplate::CreateTemplatePtr(destIn.GetTemplateId(), vchSig);
         // if (!ptr)
         // {
@@ -670,14 +686,9 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         throw DEBUG(ERR_TRANSACTION_INPUT_INVALID, "creating fork nAmount must be at least %ld", CTemplateFork::CreatedCoin());
     }
 
-    if (!VerifyDestRecorded(tx, vchSig))
-    {
-        return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid recoreded destination\n");
-    }
-
     if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vchSig, nForkHeight, fork))
     {
-        return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature\n");
+        return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature");
     }
 
     return OK;
@@ -721,37 +732,45 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         }
     }
 
-    if (destIn.GetTemplateId().GetType() == TEMPLATE_VOTE || tx.sendTo.GetTemplateId().GetType() == TEMPLATE_VOTE)
+    if (destIn.IsTemplate())
     {
-        if (VerifyVoteTx(tx, destIn, fork) != OK)
+        uint16 nDestInTemplateType = destIn.GetTemplateId().GetType();
+        if (nDestInTemplateType == TEMPLATE_VOTE || (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_VOTE))
         {
-            return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
+            if (VerifyVoteTx(tx, destIn, fork) != OK)
+            {
+                return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
+            }
+        }
+
+        switch (nDestInTemplateType)
+        {
+        case TEMPLATE_DEXORDER:
+        {
+            Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight + 1);
+            if (err != OK)
+            {
+                return DEBUG(err, "invalid dex order tx");
+            }
+            break;
+        }
+        case TEMPLATE_DEXMATCH:
+        {
+            Errno err = VerifyDexMatchTx(tx, nValueIn, nForkHeight + 1);
+            if (err != OK)
+            {
+                return DEBUG(err, "invalid dex match tx");
+            }
+            break;
+        }
         }
     }
-
-    // v1.0 function
-    /*if (!tx.vchData.empty())
-    {
-        return DEBUG(ERR_TRANSACTION_INVALID, "vchData not empty\n");
-    }*/
 
     // record destIn in vchSig
     vector<uint8> vchSig;
-    /*if (CTemplate::IsDestInRecorded(tx.sendTo))
+    if (!CTemplate::VerifyDestRecorded(tx, vchSig))
     {
-        CDestination recordedDestIn;
-        if (!CSendToRecordedTemplate::ParseDestIn(tx.vchSig, recordedDestIn, vchSig) || recordedDestIn != destIn)
-        {
-            return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid recoreded destination\n");
-        }
-    }
-    else
-    {
-        vchSig = tx.vchSig;
-    }*/
-    if (!VerifyDestRecorded(tx, vchSig))
-    {
-        return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid recoreded destination\n");
+        return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid recoreded destination");
     }
 
     if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vchSig, nForkHeight, fork))
@@ -761,7 +780,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
 
     if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_PAYMENT)
     {
-        auto templatePtr = CTemplate::CreateTemplatePtr(TEMPLATE_PAYMENT, tx.vchSig);
+        auto templatePtr = CTemplate::CreateTemplatePtr(TEMPLATE_PAYMENT, vchSig);
         if (templatePtr == nullptr)
         {
             return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature vchSig err\n");
@@ -1150,51 +1169,6 @@ Errno CCoreProtocol::ValidateVacantBlock(const CBlock& block)
     return OK;
 }
 
-bool CCoreProtocol::VerifyDestRecorded(const CTransaction& tx, vector<uint8>& vchSigOut)
-{
-    if (CTemplate::IsDestInRecorded(tx.sendTo))
-    {
-        CDestination sendToDelegateTemplate;
-        CDestination sendToOwner;
-        if (!CSendToRecordedTemplate::ParseDest(tx.vchSig, sendToDelegateTemplate, sendToOwner, vchSigOut))
-        {
-            StdError("Core", "Verify dest recorded: Parse dest fail, txid: %s", tx.GetHash().GetHex().c_str());
-            return false;
-        }
-        if (sendToDelegateTemplate.IsNull() || sendToOwner.IsNull())
-        {
-            StdError("Core", "Verify dest recorded: sendTo dest is null, txid: %s", tx.GetHash().GetHex().c_str());
-            return false;
-        }
-        CTemplateId tid;
-        if (!(tx.sendTo.GetTemplateId(tid) && tid.GetType() == TEMPLATE_VOTE))
-        {
-            StdError("Core", "Verify dest recorded: sendTo not is template, txid: %s, sendTo: %s", tx.GetHash().GetHex().c_str(), CAddress(tx.sendTo).ToString().c_str());
-            return false;
-        }
-        CTemplatePtr ptr = CTemplate::CreateTemplatePtr(new CTemplateVote(sendToDelegateTemplate, sendToOwner));
-        if (ptr == nullptr)
-        {
-            StdError("Core", "Verify dest recorded: sendTo CreateTemplatePtr fail, txid: %s, sendTo: %s, delegate dest: %s, owner dest: %s",
-                     tx.GetHash().GetHex().c_str(), CAddress(tx.sendTo).ToString().c_str(),
-                     CAddress(sendToDelegateTemplate).ToString().c_str(), CAddress(sendToOwner).ToString().c_str());
-            return false;
-        }
-        if (ptr->GetTemplateId() != tx.sendTo.GetTemplateId())
-        {
-            StdError("Core", "Verify dest recorded: sendTo error, txid: %s, sendTo: %s, delegate dest: %s, owner dest: %s",
-                     tx.GetHash().GetHex().c_str(), CAddress(tx.sendTo).ToString().c_str(),
-                     CAddress(sendToDelegateTemplate).ToString().c_str(), CAddress(sendToOwner).ToString().c_str());
-            return false;
-        }
-    }
-    else
-    {
-        vchSigOut = tx.vchSig;
-    }
-    return true;
-}
-
 Errno CCoreProtocol::VerifyCertTx(const CTransaction& tx, const CDestination& destIn, const uint256& fork)
 {
     // CERT transaction must be on the main chain
@@ -1229,6 +1203,225 @@ Errno CCoreProtocol::VerifyVoteTx(const CTransaction& tx, const CDestination& de
         return ERR_TRANSACTION_INVALID;
     }
 
+    return OK;
+}
+
+Errno CCoreProtocol::VerifyDexOrderTx(const CTransaction& tx, const CDestination& destIn, int64 nValueIn, int nHeight)
+{
+    uint16 nSendToTemplateType = 0;
+    if (tx.sendTo.IsTemplate())
+    {
+        nSendToTemplateType = tx.sendTo.GetTemplateId().GetType();
+    }
+
+    vector<uint8> vchSig;
+    if (!CTemplate::VerifyDestRecorded(tx, vchSig))
+    {
+        return ERR_TRANSACTION_SIGNATURE_INVALID;
+    }
+
+    auto ptrOrder = CTemplate::CreateTemplatePtr(TEMPLATE_DEXORDER, vchSig);
+    if (ptrOrder == nullptr)
+    {
+        Log("Verify dexorder tx: Create order template fail, tx: %s", tx.GetHash().GetHex().c_str());
+        return ERR_TRANSACTION_SIGNATURE_INVALID;
+    }
+    auto objOrder = boost::dynamic_pointer_cast<CTemplateDexOrder>(ptrOrder);
+    if (nHeight < objOrder->nValidHeight)
+    {
+        if (nSendToTemplateType != TEMPLATE_DEXMATCH)
+        {
+            Log("Verify dexorder tx: sendTo not is TEMPLATE_DEXMATCH, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+        CTemplatePtr ptrMatch = CTemplate::CreateTemplatePtr(nSendToTemplateType, tx.vchSig);
+        if (!ptrMatch)
+        {
+            Log("Verify dexorder tx: Create match template fail, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+        auto objMatch = boost::dynamic_pointer_cast<CTemplateDexMatch>(ptrMatch);
+
+        set<CDestination> setSubDest;
+        vector<uint8> vchSubSig;
+        if (!objOrder->GetSignDestination(tx, uint256(), nHeight, tx.vchSig, setSubDest, vchSubSig))
+        {
+            Log("Verify dexorder tx: GetSignDestination fail, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+        if (setSubDest.empty() || objMatch->destMatch != *setSubDest.begin())
+        {
+            Log("Verify dexorder tx: destMatch error, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+
+        if (objMatch->destSellerOrder != destIn)
+        {
+            Log("Verify dexorder tx: destSellerOrder error, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+        if (objMatch->destSeller != objOrder->destSeller)
+        {
+            Log("Verify dexorder tx: destSeller error, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+        if (objMatch->destSellerDeal != objOrder->destDeal)
+        {
+            Log("Verify dexorder tx: destSellerDeal error, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+        if (objMatch->nSellerValidHeight != objOrder->nValidHeight)
+        {
+            Log("Verify dexorder tx: nSellerValidHeight error, match nSellerValidHeight: %d, order nValidHeight: %d, tx: %s",
+                objMatch->nSellerValidHeight, objOrder->nValidHeight, tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+        if ((tx.nAmount != objMatch->nMatchAmount) || (tx.nAmount < (TNS_DEX_MIN_TX_FEE * 3 + TNS_DEX_MIN_MATCH_AMOUNT)))
+        {
+            Log("Verify dexorder tx: nAmount error, match nMatchAmount: %lu, tx amount: %lu, tx: %s",
+                objMatch->nMatchAmount, tx.nAmount, tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+        if (objMatch->nFee != objOrder->nFee)
+        {
+            Log("Verify dexorder tx: nFee error, match fee: %ld, order fee: %ld, tx: %s",
+                objMatch->nFee, objMatch->nFee, tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+    }
+    else
+    {
+        if (nSendToTemplateType == TEMPLATE_DEXMATCH)
+        {
+            Log("Verify dexorder tx: Out of valid height, sendto error, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+    }
+    return OK;
+}
+
+Errno CCoreProtocol::VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, int nHeight)
+{
+    vector<uint8> vchSig;
+    if (!CTemplate::VerifyDestRecorded(tx, vchSig))
+    {
+        return ERR_TRANSACTION_SIGNATURE_INVALID;
+    }
+
+    auto ptrMatch = CTemplate::CreateTemplatePtr(TEMPLATE_DEXMATCH, vchSig);
+    if (ptrMatch == nullptr)
+    {
+        Log("Verify dex match tx: Create match template fail, tx: %s", tx.GetHash().GetHex().c_str());
+        return ERR_TRANSACTION_SIGNATURE_INVALID;
+    }
+    auto objMatch = boost::dynamic_pointer_cast<CTemplateDexMatch>(ptrMatch);
+    if (nHeight <= objMatch->nSellerValidHeight)
+    {
+        if (tx.sendTo == objMatch->destBuyer)
+        {
+            int64 nBuyerAmount = ((objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (DOUBLE_PRECISION - objMatch->nFee)) / DOUBLE_PRECISION;
+            if (nValueIn != objMatch->nMatchAmount)
+            {
+                Log("Verify dex match tx: Send buyer nValueIn error, nValueIn: %lu, nMatchAmount: %lu, tx: %s",
+                    nValueIn, objMatch->nMatchAmount, tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+            if (tx.nAmount != nBuyerAmount)
+            {
+                Log("Verify dex match tx: Send buyer tx nAmount error, nAmount: %lu, need amount: %lu, nMatchAmount: %lu, nFee: %ld, nTxFee: %lu, tx: %s",
+                    tx.nAmount, nBuyerAmount, objMatch->nMatchAmount, objMatch->nFee, tx.nTxFee, tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+            if (tx.nTxFee != TNS_DEX_MIN_TX_FEE)
+            {
+                Log("Verify dex match tx: Send buyer tx nTxFee error, nAmount: %lu, need amount: %lu, nMatchAmount: %lu, nFee: %ld, nTxFee: %lu, tx: %s",
+                    tx.nAmount, nBuyerAmount, objMatch->nMatchAmount, objMatch->nFee, tx.nTxFee, tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+        }
+        else if (tx.sendTo == objMatch->destMatch)
+        {
+            int64 nBuyerAmount = ((objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (DOUBLE_PRECISION - objMatch->nFee)) / DOUBLE_PRECISION;
+            int64 nRewardAmount = ((objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (objMatch->nFee / 2)) / DOUBLE_PRECISION;
+            if (nValueIn != (objMatch->nMatchAmount - nBuyerAmount - TNS_DEX_MIN_TX_FEE))
+            {
+                Log("Verify dex match tx: Send match nValueIn error, nValueIn: %lu, need amount: %lu, nMatchAmount: %lu, nFee: %ld, nTxFee: %lu, tx: %s",
+                    nValueIn, objMatch->nMatchAmount - nBuyerAmount, objMatch->nMatchAmount, objMatch->nFee, tx.nTxFee, tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+            if (tx.nAmount != nRewardAmount)
+            {
+                Log("Verify dex match tx: Send match tx nAmount error, nAmount: %lu, need amount: %lu, nMatchAmount: %lu, nRewardAmount: %lu, nFee: %ld, nTxFee: %lu, tx: %s",
+                    tx.nAmount, nRewardAmount, objMatch->nMatchAmount, nRewardAmount, objMatch->nFee, tx.nTxFee, tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+            if (tx.nTxFee != TNS_DEX_MIN_TX_FEE)
+            {
+                Log("Verify dex match tx: Send match tx nTxFee error, nAmount: %lu, need amount: %lu, nMatchAmount: %lu, nRewardAmount: %lu, nFee: %ld, nTxFee: %lu, tx: %s",
+                    tx.nAmount, nRewardAmount, objMatch->nMatchAmount, nRewardAmount, objMatch->nFee, tx.nTxFee, tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+        }
+        else
+        {
+            set<CDestination> setSubDest;
+            vector<uint8> vchSubSig;
+            if (!objMatch->GetSignDestination(tx, uint256(), nHeight, tx.vchSig, setSubDest, vchSubSig))
+            {
+                Log("Verify dex match tx: GetSignDestination fail, tx: %s", tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+            if (tx.sendTo == *setSubDest.begin())
+            {
+                int64 nBuyerAmount = ((objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (DOUBLE_PRECISION - objMatch->nFee)) / DOUBLE_PRECISION;
+                int64 nRewardAmount = ((objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (objMatch->nFee / 2)) / DOUBLE_PRECISION;
+                if (nValueIn != (objMatch->nMatchAmount - nBuyerAmount - nRewardAmount - TNS_DEX_MIN_TX_FEE * 2))
+                {
+                    Log("Verify dex match tx: Send deal nValueIn error, nValueIn: %lu, need amount: %lu, nMatchAmount: %lu, nRewardAmount: %lu, nFee: %ld, nTxFee: %lu, tx: %s",
+                        nValueIn, objMatch->nMatchAmount - nBuyerAmount - nRewardAmount, objMatch->nMatchAmount, nRewardAmount, objMatch->nFee, tx.nTxFee, tx.GetHash().GetHex().c_str());
+                    return ERR_TRANSACTION_SIGNATURE_INVALID;
+                }
+                if (tx.nAmount != (nValueIn - TNS_DEX_MIN_TX_FEE))
+                {
+                    Log("Verify dex match tx: Send deal tx nAmount error, nAmount: %lu, need amount: %lu, nMatchAmount: %lu, nRewardAmount: %lu, nFee: %ld, nTxFee: %lu, tx: %s",
+                        tx.nAmount, nValueIn - TNS_DEX_MIN_TX_FEE, objMatch->nMatchAmount, nRewardAmount, objMatch->nFee, tx.nTxFee, tx.GetHash().GetHex().c_str());
+                    return ERR_TRANSACTION_SIGNATURE_INVALID;
+                }
+                if (tx.nTxFee != TNS_DEX_MIN_TX_FEE)
+                {
+                    Log("Verify dex match tx: Send deal tx nTxFee error, nAmount: %lu, need amount: %lu, nMatchAmount: %lu, nRewardAmount: %lu, nFee: %ld, nTxFee: %lu, tx: %s",
+                        tx.nAmount, nValueIn - TNS_DEX_MIN_TX_FEE, objMatch->nMatchAmount, nRewardAmount, objMatch->nFee, tx.nTxFee, tx.GetHash().GetHex().c_str());
+                    return ERR_TRANSACTION_SIGNATURE_INVALID;
+                }
+            }
+            else
+            {
+                Log("Verify dex match tx: sendTo error, tx: %s", tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+        }
+
+        vector<uint8> vms;
+        vector<uint8> vss;
+        try
+        {
+            vector<uint8> head;
+            xengine::CIDataStream is(tx.vchData);
+            is >> head >> vms >> vss;
+        }
+        catch (std::exception& e)
+        {
+            Log("Verify dex match tx: get vms and vss fail, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+
+        if (crypto::CryptoSHA256(&(vss[0]), vss.size()) != objMatch->hashBuyerSecret)
+        {
+            Log("Verify dex match tx: hashBuyerSecret error, vss: %s, secret: %s, tx: %s",
+                ToHexString(vss).c_str(), objMatch->hashBuyerSecret.GetHex().c_str(), tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+    }
     return OK;
 }
 

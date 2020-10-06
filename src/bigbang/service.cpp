@@ -7,6 +7,7 @@
 #include "defs.h"
 #include "event.h"
 #include "template/delegate.h"
+#include "template/vote.h"
 
 using namespace std;
 using namespace xengine;
@@ -449,7 +450,7 @@ bool CService::GetVotes(const CDestination& destDelegate, int64& nVotes, string&
         }
         CDestination destDelegateTemplateOut;
         CDestination destOwnerOut;
-        boost::dynamic_pointer_cast<CSendToRecordedTemplate>(ptr)->GetDelegateOwnerDestination(destDelegateTemplateOut, destOwnerOut);
+        boost::dynamic_pointer_cast<CTemplateVote>(ptr)->GetDelegateOwnerDestination(destDelegateTemplateOut, destOwnerOut);
         if (destDelegateTemplateOut.IsNull())
         {
             strFailCause = "Vote template address not imported";
@@ -557,7 +558,7 @@ bool CService::SignTransaction(CTransaction& tx, const vector<uint8>& vchSendToD
 
     const CDestination& destIn = vUnspent[0].destTo;
     int32 nForkHeight = GetForkHeight(hashFork);
-    if (!pWallet->SignTransaction(destIn, tx, vchSendToData, nForkHeight, fCompleted))
+    if (!pWallet->SignTransaction(destIn, tx, vchSendToData, hashFork, nForkHeight, fCompleted))
     {
         StdError("CService", "SignTransaction: SignTransaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
         return false;
@@ -671,7 +672,7 @@ bool CService::SignOfflineTransaction(const CDestination& destIn, CTransaction& 
     }
 
     int32 nForkHeight = GetForkHeight(hashFork);
-    if (!pWallet->SignTransaction(destIn, tx, vector<uint8>(), nForkHeight, fCompleted))
+    if (!pWallet->SignTransaction(destIn, tx, vector<uint8>(), hashFork, nForkHeight, fCompleted))
     {
         StdError("CService", "SignOfflineTransaction: SignTransaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
         return false;
@@ -711,6 +712,16 @@ Errno CService::SendOfflineSignedTransaction(CTransaction& tx)
     }
 
     return pDispatcher->AddNewTx(tx, 0);
+}
+
+bool CService::AesEncrypt(const crypto::CPubKey& pubkeyLocal, const crypto::CPubKey& pubkeyRemote, const std::vector<uint8>& vMessage, std::vector<uint8>& vCiphertext)
+{
+    return pWallet->AesEncrypt(pubkeyLocal, pubkeyRemote, vMessage, vCiphertext);
+}
+
+bool CService::AesDecrypt(const crypto::CPubKey& pubkeyLocal, const crypto::CPubKey& pubkeyRemote, const std::vector<uint8>& vCiphertext, std::vector<uint8>& vMessage)
+{
+    return pWallet->AesDecrypt(pubkeyLocal, pubkeyRemote, vCiphertext, vMessage);
 }
 
 bool CService::GetWork(vector<unsigned char>& vchWorkData, int& nPrevBlockHeight,

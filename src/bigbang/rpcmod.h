@@ -129,6 +129,9 @@ private:
     rpc::CRPCResultPtr RPCMakeTemplate(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCDecodeTransaction(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetTxFee(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCMakeSha256(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCAesEncrypt(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCAesDecrypt(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListUnspent(rpc::CRPCParamPtr param);
     /* Mint */
     rpc::CRPCResultPtr RPCGetWork(rpc::CRPCParamPtr param);

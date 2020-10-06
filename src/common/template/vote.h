@@ -14,11 +14,14 @@ public:
     CTemplateVote(const CDestination& destDelegateIn = CDestination(),
                   const CDestination& destOwnerIn = CDestination());
     virtual CTemplateVote* clone() const;
-    virtual bool GetSignDestination(const CTransaction& tx, const std::vector<uint8>& vchSig,
+    virtual bool GetSignDestination(const CTransaction& tx, const uint256& hashFork, int nHeight, const std::vector<uint8>& vchSig,
                                     std::set<CDestination>& setSubDest, std::vector<uint8>& vchSubSig) const;
     virtual void GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CDestination&& destInstance) const;
 
-    virtual bool GetDelegateOwnerDestination(CDestination& destDelegateOut, CDestination& destOwnerOut) const;
+    bool GetDelegateOwnerDestination(CDestination& destDelegateOut, CDestination& destOwnerOut) const;
+
+    static bool ParseDelegateDest(const CDestination& destIn, const CDestination& sendTo, const std::vector<uint8>& vchSigIn,
+                                  CDestination& destInDelegateOut, CDestination& sendToDelegateOut);
 
 protected:
     virtual bool ValidateParam() const;

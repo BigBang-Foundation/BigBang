@@ -313,6 +313,22 @@ inline double ValueFromToken(uint64 amount)
     return ((double)amount / (double)1000000);
 }
 
+#define DOUBLE_PRECISION 10000
+
+inline int IntFromDouble(const double dAmount)
+{
+    if (IsDoubleEqual(dAmount, -1.0))
+    {
+        return -1;
+    }
+    return (int64)(dAmount * DOUBLE_PRECISION + 0.5);
+}
+
+inline double DoubleFromInt(int amount)
+{
+    return ((double)amount / (double)DOUBLE_PRECISION);
+}
+
 } // namespace xengine
 
 #endif //XENGINE_UTIL_H

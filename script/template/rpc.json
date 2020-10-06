@@ -210,6 +210,104 @@
                     }
                 }
             },
+            "dexorder": {
+                "type": "object",
+                "desc": "a dex order template",
+                "condition": "type=dexorder",
+                "content": {
+                    "seller_address": {
+                        "type": "string",
+                        "desc": "seller address"
+                    },
+                    "coinpair": {
+                        "type": "string",
+                        "desc": "coin pair"
+                    },
+                    "price": {
+                        "type": "double",
+                        "desc": "price"
+                    },
+                    "fee": {
+                        "type": "double",
+                        "desc": "fee"
+                    },
+                    "recv_address": {
+                        "type": "string",
+                        "desc": "receive address"
+                    },
+                    "valid_height": {
+                        "type": "int",
+                        "desc": "valid height"
+                    },
+                    "match_address": {
+                        "type": "string",
+                        "desc": "match address"
+                    },
+                    "deal_address": {
+                        "type": "string",
+                        "desc": "deal address"
+                    }
+                }
+            },
+            "dexmatch": {
+                "type": "object",
+                "desc": "a dex match template",
+                "condition": "type=dexmatch",
+                "content": {
+                    "match_address": {
+                        "type": "string",
+                        "desc": "match address"
+                    },
+                    "coinpair": {
+                        "type": "string",
+                        "desc": "coin pair"
+                    },
+                    "match_amount": {
+                        "type": "double",
+                        "desc": "match amount"
+                    },
+                    "fee": {
+                        "type": "double",
+                        "desc": "fee"
+                    },
+                    "secret_hash": {
+                        "type": "string",
+                        "desc": "sha256 hash"
+                    },
+                    "secret_enc": {
+                        "type": "string",
+                        "desc": "secret encryption"
+                    },
+                    "seller_order_address": {
+                        "type": "string",
+                        "desc": "seller order address"
+                    },
+                    "seller_address": {
+                        "type": "string",
+                        "desc": "seller address"
+                    },
+                    "seller_deal_address": {
+                        "type": "string",
+                        "desc": "seller deal address"
+                    },
+                    "seller_valid_height": {
+                        "type": "int",
+                        "desc": "seller valid height"
+                    },
+                    "buyer_address": {
+                        "type": "string",
+                        "desc": "buyer address"
+                    },
+                    "buyer_secret_hash": {
+                        "type": "string",
+                        "desc": "buyer secret hash"
+                    },
+                    "buyer_valid_height": {
+                        "type": "int",
+                        "desc": "buyer valid height"
+                    }
+                }
+            },
             "synctx": {
                 "type": "bool",
                 "desc": "sync tx or not",
@@ -369,6 +467,104 @@
                     "pledge": {
                         "type": "int",
                         "desc": "pledge"
+                    }
+                }
+            },
+            "dexorder": {
+                "type": "object",
+                "desc": "a dex order template",
+                "condition": "type=dexorder",
+                "content": {
+                    "seller_address": {
+                        "type": "string",
+                        "desc": "seller address"
+                    },
+                    "coinpair": {
+                        "type": "string",
+                        "desc": "coin pair"
+                    },
+                    "price": {
+                        "type": "double",
+                        "desc": "price"
+                    },
+                    "fee": {
+                        "type": "double",
+                        "desc": "fee"
+                    },
+                    "recv_address": {
+                        "type": "string",
+                        "desc": "receive address"
+                    },
+                    "valid_height": {
+                        "type": "int",
+                        "desc": "valid height"
+                    },
+                    "match_address": {
+                        "type": "string",
+                        "desc": "match address"
+                    },
+                    "deal_address": {
+                        "type": "string",
+                        "desc": "deal address"
+                    }
+                }
+            },
+            "dexmatch": {
+                "type": "object",
+                "desc": "a dex match template",
+                "condition": "type=dexmatch",
+                "content": {
+                    "match_address": {
+                        "type": "string",
+                        "desc": "match address"
+                    },
+                    "coinpair": {
+                        "type": "string",
+                        "desc": "coin pair"
+                    },
+                    "match_amount": {
+                        "type": "double",
+                        "desc": "match amount"
+                    },
+                    "fee": {
+                        "type": "double",
+                        "desc": "fee"
+                    },
+                    "secret_hash": {
+                        "type": "string",
+                        "desc": "sha256 hash"
+                    },
+                    "secret_enc": {
+                        "type": "string",
+                        "desc": "secret encryption"
+                    },
+                    "seller_order_address": {
+                        "type": "string",
+                        "desc": "seller order address"
+                    },
+                    "seller_address": {
+                        "type": "string",
+                        "desc": "seller address"
+                    },
+                    "seller_deal_address": {
+                        "type": "string",
+                        "desc": "seller deal address"
+                    },
+                    "seller_valid_height": {
+                        "type": "int",
+                        "desc": "seller valid height"
+                    },
+                    "buyer_address": {
+                        "type": "string",
+                        "desc": "buyer address"
+                    },
+                    "buyer_secret_hash": {
+                        "type": "string",
+                        "desc": "buyer secret hash"
+                    },
+                    "buyer_valid_height": {
+                        "type": "int",
+                        "desc": "buyer valid height"
                     }
                 }
             },
@@ -3082,8 +3278,133 @@
                 "response": "{\"id\":1,\"jsonrpc\":\"2.0\",\"result\":\"0.01\"}\n"
             }
         ],
+        "error": []
+    },
+    "makesha256": {
+        "type": "command",
+        "name": "MakeSha256",
+        "desc": "Make sha256",
+        "request": {
+            "type": "object",
+            "content": {
+                "hexdata": {
+                    "type": "string",
+                    "desc": "Hex encoded data",
+                    "required": false,
+                    "opt": "h"
+                }
+            }
+        },
+        "response": {
+            "type": "object",
+            "name": "result",
+            "content": {
+                "hexdata": {
+                    "type": "string",
+                    "desc": "Hex encoded data"
+                },
+                "sha256": {
+                    "type": "string",
+                    "desc": "Sha256 string"
+                }
+            }
+        },
+        "example": [
+            {
+                "request": "bigbang-cli makesha256",
+                "response": "{\"hexdata\" : \"381cdfe25a6fde17ee1b9fc905e30c832d5bb981405fdae15a3acb1c420b2f5e\", \"sha256\" : \"5e2ab85020823529d3ee2d8c4c41af4d10c205aa8cb45b139d0e7054e73c11d4\"}"
+            },
+            {
+                "request": "curl -d '{\"id\":1,\"method\":\"makesha256\",\"jsonrpc\":\"2.0\",\"params\":{\"hexdata\":\"54ec6b4a77eadc39207697e816e2d2cc6881263ecab078a4c770228e11cbff99\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":1,\"jsonrpc\":\"2.0\",\"result\":{\"hexdata\" : \"381cdfe25a6fde17ee1b9fc905e30c832d5bb981405fdae15a3acb1c420b2f5e\", \"sha256\" : \"5e2ab85020823529d3ee2d8c4c41af4d10c205aa8cb45b139d0e7054e73c11d4\"}}\n"
+            }
+        ],
+        "error": []
+    },
+    "aesencrypt": {
+        "type": "command",
+        "name": "AesEncrypt",
+        "desc": "aes encrypt",
+        "request": {
+            "type": "object",
+            "content": {
+                "localaddress": {
+                    "type": "string",
+                    "desc": "local address"
+                },
+                "remoteaddress": {
+                    "type": "string",
+                    "desc": "remote address"
+                },
+                "message": {
+                    "type": "string",
+                    "desc": "message"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "result",
+            "desc": "ciphertext"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli aesencrypt 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn 381cdfe25a6fde17ee1b9fc905e30c832d5bb981405fdae15a3acb1c420b2f5e",
+                "response": "06839cf364696762f980640a618d49981a8ab103306605336881eaa112e3693e99325fdd73b9052253de02107e4a373c"
+            },
+            {
+                "request": "curl -d '{\"id\":1,\"method\":\"aesencrypt\",\"jsonrpc\":\"2.0\",\"params\":{\"localaddress\":\"1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm\",\"remoteaddress\":\"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"message\":\"381cdfe25a6fde17ee1b9fc905e30c832d5bb981405fdae15a3acb1c420b2f5e\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":1,\"jsonrpc\":\"2.0\",\"result\":\"06839cf364696762f980640a618d49981a8ab103306605336881eaa112e3693e99325fdd73b9052253de02107e4a373c\"}\n"
+            }
+        ],
         "error": [
-            
+            "{\"code\":-6,\"message\":\"Invalid local address.\"}",
+            "{\"code\":-6,\"message\":\"Invalid remote address.\"}",
+            "{\"code\":-6,\"message\":\"Invalid message.\"}",
+            "{\"code\":-401,\"message\":\"Encrypt fail.\"}"
+        ]
+    },
+    "aesdecrypt": {
+        "type": "command",
+        "name": "AesDecrypt",
+        "desc": "aes decrypt",
+        "request": {
+            "type": "object",
+            "content": {
+                "localaddress": {
+                    "type": "string",
+                    "desc": "local address"
+                },
+                "remoteaddress": {
+                    "type": "string",
+                    "desc": "remote address"
+                },
+                "ciphertext": {
+                    "type": "string",
+                    "desc": "ciphertext"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "result",
+            "desc": "message"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli aesdecrypt 1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 06839cf364696762f980640a618d49981a8ab103306605336881eaa112e3693e99325fdd73b9052253de02107e4a373c",
+                "response": "381cdfe25a6fde17ee1b9fc905e30c832d5bb981405fdae15a3acb1c420b2f5e"
+            },
+            {
+                "request": "curl -d '{\"id\":1,\"method\":\"aesdecrypt\",\"jsonrpc\":\"2.0\",\"params\":{\"localaddress\":\"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"remoteaddress\":\"1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm\",\"ciphertext\":\"06839cf364696762f980640a618d49981a8ab103306605336881eaa112e3693e99325fdd73b9052253de02107e4a373c\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":1,\"jsonrpc\":\"2.0\",\"result\":\"381cdfe25a6fde17ee1b9fc905e30c832d5bb981405fdae15a3acb1c420b2f5e\"}\n"
+            }
+        ],
+        "error": [
+            "{\"code\":-6,\"message\":\"Invalid local address.\"}",
+            "{\"code\":-6,\"message\":\"Invalid remote address.\"}",
+            "{\"code\":-6,\"message\":\"Invalid ciphertext.\"}",
+            "{\"code\":-401,\"message\":\"Decrypt fail.\"}"
         ]
     },
     "listunspent": {
