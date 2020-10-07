@@ -39,8 +39,7 @@ inline bool IsDoubleEqual(double a, double b)
 
 inline bool IsNumber(const std::string& s)
 {
-    return !s.empty() && std::find_if(s.begin(), 
-        s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
+    return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }
 
 inline int64 GetLocalTimeSeconds()
@@ -321,7 +320,7 @@ inline double ValueFromToken(uint64 amount)
 
 #define DOUBLE_PRECISION 10000
 
-inline int IntFromDouble(const double dAmount)
+inline int64 Int64FromDouble(const double dAmount)
 {
     if (IsDoubleEqual(dAmount, -1.0))
     {
@@ -330,7 +329,7 @@ inline int IntFromDouble(const double dAmount)
     return (int64)(dAmount * DOUBLE_PRECISION + 0.5);
 }
 
-inline double DoubleFromInt(int amount)
+inline double DoubleFromInt64(int64 amount)
 {
     return ((double)amount / (double)DOUBLE_PRECISION);
 }

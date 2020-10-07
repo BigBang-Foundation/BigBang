@@ -74,7 +74,7 @@ void CTemplateDexMatch::GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CD
         obj.dexmatch.strCoinpair = strCoinPairTemp;
     }
     obj.dexmatch.dMatch_Amount = (double)nMatchAmount / COIN;
-    obj.dexmatch.dFee = DoubleFromInt(nFee);
+    obj.dexmatch.dFee = DoubleFromInt64(nFee);
 
     obj.dexmatch.strSecret_Hash = hashSecret.GetHex();
     obj.dexmatch.strSecret_Enc = ToHexString(encSecret);
@@ -182,7 +182,12 @@ bool CTemplateDexMatch::SetTemplateData(const bigbang::rpc::CTemplateRequest& ob
     vCoinPair.assign(obj.dexmatch.strCoinpair.c_str(), obj.dexmatch.strCoinpair.c_str() + obj.dexmatch.strCoinpair.size());
 
     nMatchAmount = (int64)(obj.dexmatch.dMatch_Amount * COIN + 0.5);
-    nFee = IntFromDouble(obj.dexmatch.dFee);
+    int64 nTempFee = Int64FromDouble(obj.dexmatch.dFee);
+    if (nTempFee <= 1 || nTempFee >= DOUBLE_PRECISION)
+    {
+        return false;
+    }
+    nFee = (int)nTempFee;
 
     if (hashSecret.SetHex(obj.dexmatch.strSecret_Hash) != obj.dexmatch.strSecret_Hash.size())
     {

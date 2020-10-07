@@ -13,12 +13,15 @@
 using namespace std;
 using namespace xengine;
 
+#define PRICE_PRECISION (10000000000L)
+#define MAX_STRING_ADDRESS_LEN 128
+
 //////////////////////////////
 // CTemplateDexOrder
 
 CTemplateDexOrder::CTemplateDexOrder(const CDestination& destSellerIn, const std::vector<char> vCoinPairIn,
-                                     int nPriceIn, int nFeeIn, const std::vector<char>& vRecvDestIn, int nValidHeightIn,
-                                     const CDestination& destMatchIn, const CDestination& destDealIn)
+                                     uint64 nPriceIn, int nFeeIn, const std::vector<char>& vRecvDestIn, int nValidHeightIn,
+                                     const CDestination& destMatchIn, const std::vector<char>& vDealDestIn)
   : CTemplate(TEMPLATE_DEXORDER),
     destSeller(destSellerIn),
     vCoinPair(vCoinPairIn),
@@ -27,7 +30,7 @@ CTemplateDexOrder::CTemplateDexOrder(const CDestination& destSellerIn, const std
     vRecvDest(vRecvDestIn),
     nValidHeight(nValidHeightIn),
     destMatch(destMatchIn),
-    destDeal(destDealIn)
+    vDealDest(vDealDestIn)
 {
 }
 
@@ -64,8 +67,8 @@ void CTemplateDexOrder::GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CD
         strCoinPairTemp.assign(&(vCoinPair[0]), vCoinPair.size());
         obj.dexorder.strCoinpair = strCoinPairTemp;
     }
-    obj.dexorder.dPrice = DoubleFromInt(nPrice);
-    obj.dexorder.dFee = DoubleFromInt(nFee);
+    obj.dexorder.dPrice = ((double)nPrice / (double)PRICE_PRECISION);
+    obj.dexorder.dFee = DoubleFromInt64(nFee);
 
     if (!vRecvDest.empty())
     {
@@ -76,7 +79,13 @@ void CTemplateDexOrder::GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CD
 
     obj.dexorder.nValid_Height = nValidHeight;
     obj.dexorder.strMatch_Address = (destInstance = destMatch).ToString();
-    obj.dexorder.strDeal_Address = (destInstance = destDeal).ToString();
+
+    if (!vDealDest.empty())
+    {
+        std::string strDestTemp;
+        strDestTemp.assign(&(vDealDest[0]), vDealDest.size());
+        obj.dexorder.strDeal_Address = strDestTemp;
+    }
 }
 
 bool CTemplateDexOrder::ValidateParam() const
@@ -89,7 +98,7 @@ bool CTemplateDexOrder::ValidateParam() const
     {
         return false;
     }
-    if (nPrice <= 0)
+    if (nPrice == 0)
     {
         return false;
     }
@@ -109,7 +118,7 @@ bool CTemplateDexOrder::ValidateParam() const
     {
         return false;
     }
-    if (!IsTxSpendable(destDeal))
+    if (vDealDest.empty())
     {
         return false;
     }
@@ -121,7 +130,7 @@ bool CTemplateDexOrder::SetTemplateData(const std::vector<uint8>& vchDataIn)
     CIDataStream is(vchDataIn);
     try
     {
-        is >> destSeller >> vCoinPair >> nPrice >> nFee >> vRecvDest >> nValidHeight >> destMatch >> destDeal;
+        is >> destSeller >> vCoinPair >> nPrice >> nFee >> vRecvDest >> nValidHeight >> destMatch >> vDealDest;
     }
     catch (exception& e)
     {
@@ -150,10 +159,20 @@ bool CTemplateDexOrder::SetTemplateData(const bigbang::rpc::CTemplateRequest& ob
     }
     vCoinPair.assign(obj.dexorder.strCoinpair.c_str(), obj.dexorder.strCoinpair.c_str() + obj.dexorder.strCoinpair.size());
 
-    nPrice = IntFromDouble(obj.dexorder.dPrice);
-    nFee = IntFromDouble(obj.dexorder.dFee);
+    if (IsDoubleEqual(obj.dexorder.dPrice, -1.0))
+    {
+        return false;
+    }
+    nPrice = (uint64)(obj.dexorder.dPrice * PRICE_PRECISION + 0.5);
 
-    if (obj.dexorder.strRecv_Address.empty())
+    int64 nTempFee = Int64FromDouble(obj.dexorder.dFee);
+    if (nTempFee <= 1 || nTempFee >= DOUBLE_PRECISION)
+    {
+        return false;
+    }
+    nFee = (int)nTempFee;
+
+    if (obj.dexorder.strRecv_Address.empty() || obj.dexorder.strRecv_Address.size() > MAX_STRING_ADDRESS_LEN)
     {
         return false;
     }
@@ -167,11 +186,11 @@ bool CTemplateDexOrder::SetTemplateData(const bigbang::rpc::CTemplateRequest& ob
     }
     destMatch = destInstance;
 
-    if (!destInstance.ParseString(obj.dexorder.strDeal_Address))
+    if (obj.dexorder.strDeal_Address.empty() || obj.dexorder.strDeal_Address.size() > MAX_STRING_ADDRESS_LEN)
     {
         return false;
     }
-    destDeal = destInstance;
+    vDealDest.assign(obj.dexorder.strDeal_Address.c_str(), obj.dexorder.strDeal_Address.c_str() + obj.dexorder.strDeal_Address.size());
     return true;
 }
 
@@ -179,7 +198,7 @@ void CTemplateDexOrder::BuildTemplateData()
 {
     vchData.clear();
     CODataStream os(vchData);
-    os << destSeller << vCoinPair << nPrice << nFee << vRecvDest << nValidHeight << destMatch << destDeal;
+    os << destSeller << vCoinPair << nPrice << nFee << vRecvDest << nValidHeight << destMatch << vDealDest;
 }
 
 bool CTemplateDexOrder::VerifyTxSignature(const uint256& hash, const uint16 nType, const uint256& hashAnchor, const CDestination& destTo,

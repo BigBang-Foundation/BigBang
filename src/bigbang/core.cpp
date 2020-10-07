@@ -1406,11 +1406,6 @@ Errno CCoreProtocol::VerifyDexOrderTx(const CTransaction& tx, const CDestination
             Log("Verify dexorder tx: destSeller error, tx: %s", tx.GetHash().GetHex().c_str());
             return ERR_TRANSACTION_SIGNATURE_INVALID;
         }
-        if (objMatch->destSellerDeal != objOrder->destDeal)
-        {
-            Log("Verify dexorder tx: destSellerDeal error, tx: %s", tx.GetHash().GetHex().c_str());
-            return ERR_TRANSACTION_SIGNATURE_INVALID;
-        }
         if (objMatch->nSellerValidHeight != objOrder->nValidHeight)
         {
             Log("Verify dexorder tx: nSellerValidHeight error, match nSellerValidHeight: %d, order nValidHeight: %d, tx: %s",
