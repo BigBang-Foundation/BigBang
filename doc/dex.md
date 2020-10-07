@@ -26,18 +26,19 @@
 9）卖方的有效高度：同卖方的挂单模板地址中的有效高度一至；
 10）买方挂单者地址：买方的挂单模板地址中的挂单者地址；
 11）买方跨链交易者地址：买方挂单者指定的跨链交易者的地址，即为买方（对端）链的挂单模板地址中的跨链交易者地址，该地址为卖方（本链）的地址格式，跨链交易由该地址的私钥签名；
-12）买方的秘密hash：买方的挂单模板地址中的秘密hash；
+12）买方的秘密的hash值：买方的挂单模板地址中的秘密的hash值；
 ```
 
 ## 三、BBC/MKF秘密的生成和较验：
 ```
 1）秘密：撮合者随机生成32字节的数据；
-2）秘密的HASH值：秘密经过sha256计算而得；
-3）秘密的加密值：秘密经过加密后得到的值；
-4）秘密的加密值的加密方法：撮合者地址的私钥+跨链交易者地址的公钥，经过ed25519+aes加密，得到秘密的加密值；
-5）撮合者将秘密的HASH值和秘密的加密值放在撮合模板地址参数中，用于后面的较验；
-6）跨链交易者使用自已的私钥和撮合者的公钥解密得到秘密；
-7）秘密较验：将秘密经过sha256计算得到秘密的HASH值，和模板中的秘密的HASH值比对来完成较验；
+2）秘密的HASH值：秘密经过sha256计算得到的值；
+3）秘密的加密值：秘密经过ed25519+aes加密后得到的值；
+4）秘密的加密方法：撮合者地址的私钥+跨链交易者地址的公钥，经过ed25519+aes加密，得到秘密的加密值；
+5）秘密的解密方法：跨链交易者地址的私钥+撮合者地址的公钥，经过ed25519+aes解密，得到秘密；
+6）撮合者将秘密的HASH值和秘密的加密值放在撮合模板地址参数中，用于后面的较验；
+7）跨链交易者使用自已的私钥和撮合者的公钥，解密秘密的加密值，得到秘密；
+8）秘密较验：将秘密经过sha256计算得到秘密的HASH值，与模板中的秘密的HASH值比对来完成较验；
 ```
 
 ## 四、撮合逻辑：
@@ -49,9 +50,9 @@
 
 ## 五、跨链交易逻辑：
 ```
-1）锁定高度高的一方（假设为跨链交易方A），较验对端链的撮合交易中的撮合模板参数，是否与本端链的挂单模板参数一至（如秘密hash是否一至，TOKEN是否一至等），如果一至，则通过自已的私钥解密挂单模板中的原HASH加密数据，得到原HASH，然后将原HASH传给对端；可以采用多种途径传递给对端，如果跨链交易方A和跨链交易方B无法建立线下通讯，则可以产生一条交易（该交易的from和to都为撮合模板地址），将原HASH放在vchData中，该交易在跨链交易方A的链上（即A链）；
-2）锁定高度低的一方（假设为跨链交易方B），在A链上监听到原HASH的交易，获得A链的原HASH（或者通过其它途径获得原HASH），跨链交易方B即可以将撮合模板地址B中的TOKEN转到相应的地址（包括转到挂单A的地址），该交易中需要包含原HASH A和原HASH B（原HASH B是跨链交易方B解密得到）；
-3）跨链交易方A在B链上监听到上面的转帐交易，即可获得原HASH B，然后跨链交易方A就可以将撮合模板地址A中的TOKEN转到相应的地址（包括转到挂单B的地址），同样该交易中包含原HASH A和原HASH B，该步完成了跨链交易；
+1）锁定高度高的一方（假设为跨链交易方A），较验对端链的撮合交易中的撮合模板参数，是否与本端链的挂单模板参数一至（如秘密的hash值是否一至，TOKEN是否一至等），如果一至，则通过自已的私钥和跨链交易者的公钥，解密秘密的HASH值，得到秘密，然后将秘密传给对端；可以采用多种途径传递给对端，如果跨链交易方A和跨链交易方B无法建立线下通讯，则可以产生一条交易（该交易的from和to都为撮合模板地址），将秘密放在vchData中，该交易在跨链交易方A的链上（即A链）；
+2）锁定高度低的一方（假设为跨链交易方B），在A链上监听到秘密的交易，获得A链的秘密（或者通过其它途径获得秘密），跨链交易方B即可以将撮合模板地址B中的TOKEN转到相应的地址（包括转到挂单A的地址），该交易中需要包含秘密A和秘密B（秘密B是跨链交易方B解密得到）；
+3）跨链交易方A在B链上监听到上面的转帐交易，即可获得秘密B，然后跨链交易方A就可以将撮合模板地址A中的TOKEN转到相应的地址（包括转到挂单B的地址），同样该交易中包含秘密A和秘密B，该步完成了跨链交易；
 ```
 
 ## 六、撮合模板地址需要转出的三条交易：
@@ -135,22 +136,22 @@ importprivkey 47a090d85d8ff12f327e8fa6d238be0fd7de05a7b92083831e50593cec9c2eae 1
 importprivkey 43ff83b7063a3a3ff6b8c5a2d43ce14fdcfeec7b754ee83345ae7280e1a8c85d 123
 ```
 
-## 四、生成秘密：
+## 四、生成秘密的HASH值：
 ```
-1）生成卖方秘密HASH：
-原数据：b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef
-秘密HASH：41f73534701f620ee8f48ecd61bb422fa9243ccc6ddda5e806f5858121c47268
+1）生成卖方秘密的HASH值：
+秘密：b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef
+秘密的HASH值：41f73534701f620ee8f48ecd61bb422fa9243ccc6ddda5e806f5858121c47268
 
-注：使用makesha256 命令可以生成秘密HASH，生成的结果信息：
-hexdata：为原数据
-sha256：为hexdata数据经过sha256计算后的数据，该数据为挂单模板中的秘密HASH；
+注：使用makesha256 命令可以生成秘密的HASH值，生成的结果信息：
+hexdata：秘密
+sha256：为hexdata数据经过sha256计算后的数据，该数据为挂单模板中的秘密的HASH值；
 
-2）生成买方秘密HASH：
-原数据：6836ba9b8f40f968888a7376f657f97c53cfa8db02872e0f1daf8376cb80b1e7
-秘密HASH：dfa313257be0216a498d2eb6e5a1939eb6168d4a9e3356cc20fb957d030b1ac5
+2）生成买方秘密的HASH值：
+秘密：6836ba9b8f40f968888a7376f657f97c53cfa8db02872e0f1daf8376cb80b1e7
+秘密的HASH值：dfa313257be0216a498d2eb6e5a1939eb6168d4a9e3356cc20fb957d030b1ac5
 
-3）生成原HASH加密数据：
-将hexdata数据，经过aes加密，加密需要使用挂单地址和买方（对端）的挂单地址，本端挂单地址需要导入；
+3）生成秘密的加密数据：
+将秘密（hexdata数据），经过ed25519+aes加密，得到秘密的加密数据，加密需要使用本端撮合者地址和买方（对端）的跨链交易者地址，本端撮合者地址需要导入并解锁；
 
 解锁地址：
 unlockkey 1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn 123
@@ -159,6 +160,17 @@ unlockkey 1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn 123
 aesencrypt 1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn 1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef
 
 加密数据：42f30c39231e1a518e437df6a71e26535ef65f852fb879157bf9903b7d8065edc66eacec81eaef841c1052978b01340e
+
+4）解密秘密：
+秘密的加密数据，经过ed25519+aes解密，得到秘密数据，解密时需要交换地址，并且本地地址需要导入并解锁；
+
+解锁地址：
+unlockkey 1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb 123
+
+解密数据：
+aesdecrypt 1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb 1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn 42f30c39231e1a518e437df6a71e26535ef65f852fb879157bf9903b7d8065edc66eacec81eaef841c1052978b01340e
+
+秘密数据：b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef
 ```
 
 ## 五、生成模板地址：
@@ -228,6 +240,9 @@ sendfrom 2180cxxm5dhmfqkrd7f01863ger1pp1qf7v5n59qtb0apdavqwd8krm66 1njqk8wmenyvq
 sendfrom 2180cxxm5dhmfqkrd7f01863ger1pp1qf7v5n59qtb0apdavqwd8krm66 15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd 0.01491 0.03 -sm=b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef -ss=6836ba9b8f40f968888a7376f657f97c53cfa8db02872e0f1daf8376cb80b1e7
 转帐给跨链交易方地址：
 sendfrom 2180cxxm5dhmfqkrd7f01863ger1pp1qf7v5n59qtb0apdavqwd8krm66 1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb 0.01491 0.03 -sm=b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef -ss=6836ba9b8f40f968888a7376f657f97c53cfa8db02872e0f1daf8376cb80b1e7
+
+-sm：为卖方的秘密；
+-ss：为买方的秘密；
 
 转帐数量计算：
 a）转帐给买方地址的amount计算：(撮合数量-0.03*3)*(1-费率)
