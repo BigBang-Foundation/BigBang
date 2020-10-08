@@ -172,20 +172,20 @@ bool CTemplateExchange::VerifyTxSignature(const uint256& hash, const uint16 nTyp
 bool CTemplateExchange::GetSignDestination(const CTransaction& tx, const uint256& hashFork, int nHeight, const std::vector<uint8>& vchSig,
                                            std::set<CDestination>& setSubDest, std::vector<uint8>& vchSubSig) const
 {
-    /*vector<unsigned char> vsm;
+    vector<unsigned char> vsm;
     vector<unsigned char> vss;
-    uint256 hashForkLocal;
+    uint256 forkid;
     int height;
     xengine::CIDataStream ds(tx.vchSig);
     try
     {
-        ds >> vsm >> vss >> hashForkLocal >> height;
+        ds >> vsm >> vss >> forkid >> height;
     }
     catch (const std::exception& e)
     {
         StdError(__PRETTY_FUNCTION__, e.what());
         return false;
-    }*/
+    }
 
     setSubDest.clear();
     if (!destSpend_m.IsPubKey() || !destSpend_s.IsPubKey())
@@ -193,9 +193,9 @@ bool CTemplateExchange::GetSignDestination(const CTransaction& tx, const uint256
         return false;
     }
 
-    if (hashFork == fork_m)
+    if (forkid == fork_m)
     {
-        if (nHeight > height_m)
+        if (height > height_m)
         {
             setSubDest.insert(destSpend_m);
         }
@@ -204,9 +204,10 @@ bool CTemplateExchange::GetSignDestination(const CTransaction& tx, const uint256
             setSubDest.insert(destSpend_s);
         }
     }
-    else if (hashFork == fork_s)
+
+    if (forkid == fork_s)
     {
-        if (nHeight > height_s)
+        if (height > height_s)
         {
             setSubDest.insert(destSpend_s);
         }
@@ -214,10 +215,6 @@ bool CTemplateExchange::GetSignDestination(const CTransaction& tx, const uint256
         {
             setSubDest.insert(destSpend_m);
         }
-    }
-    else
-    {
-        return false;
     }
     return true;
 }
