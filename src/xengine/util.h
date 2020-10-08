@@ -37,6 +37,11 @@ inline bool IsDoubleEqual(double a, double b)
     return std::abs(a - b) < std::abs(std::min(a, b)) * std::numeric_limits<double>::epsilon();
 }
 
+inline bool IsDoubleNonPositiveNumber(double a)
+{
+    return (a < std::numeric_limits<double>::epsilon());
+}
+
 inline bool IsNumber(const std::string& s)
 {
     return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
@@ -316,22 +321,6 @@ inline uint64 BSwap64(uint64 n)
 inline double ValueFromToken(uint64 amount)
 {
     return ((double)amount / (double)1000000);
-}
-
-#define DOUBLE_PRECISION 10000
-
-inline int64 Int64FromDouble(const double dAmount)
-{
-    if (IsDoubleEqual(dAmount, -1.0))
-    {
-        return -1;
-    }
-    return (int64)(dAmount * DOUBLE_PRECISION + 0.5);
-}
-
-inline double DoubleFromInt64(int64 amount)
-{
-    return ((double)amount / (double)DOUBLE_PRECISION);
 }
 
 } // namespace xengine

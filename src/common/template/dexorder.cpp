@@ -47,7 +47,7 @@ bool CTemplateDexOrder::GetSignDestination(const CTransaction& tx, const uint256
         return false;
     }
     setSubDest.clear();
-    if (nHeight < nValidHeight)
+    if (nHeight <= nValidHeight)
     {
         setSubDest.insert(destMatch);
     }
@@ -68,7 +68,7 @@ void CTemplateDexOrder::GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CD
         obj.dexorder.strCoinpair = strCoinPairTemp;
     }
     obj.dexorder.dPrice = ((double)nPrice / (double)PRICE_PRECISION);
-    obj.dexorder.dFee = DoubleFromInt64(nFee);
+    obj.dexorder.dFee = FeeDoubleFromInt64(nFee);
 
     if (!vRecvDest.empty())
     {
@@ -102,7 +102,7 @@ bool CTemplateDexOrder::ValidateParam() const
     {
         return false;
     }
-    if (nFee <= 1 || nFee >= DOUBLE_PRECISION)
+    if (nFee <= 1 || nFee >= FEE_PRECISION)
     {
         return false;
     }
@@ -159,14 +159,14 @@ bool CTemplateDexOrder::SetTemplateData(const bigbang::rpc::CTemplateRequest& ob
     }
     vCoinPair.assign(obj.dexorder.strCoinpair.c_str(), obj.dexorder.strCoinpair.c_str() + obj.dexorder.strCoinpair.size());
 
-    if (IsDoubleEqual(obj.dexorder.dPrice, -1.0))
+    if (IsDoubleNonPositiveNumber(obj.dexorder.dPrice))
     {
         return false;
     }
     nPrice = (uint64)(obj.dexorder.dPrice * PRICE_PRECISION + 0.5);
 
-    int64 nTempFee = Int64FromDouble(obj.dexorder.dFee);
-    if (nTempFee <= 1 || nTempFee >= DOUBLE_PRECISION)
+    int64 nTempFee = FeeInt64FromDouble(obj.dexorder.dFee);
+    if (nTempFee <= 1 || nTempFee >= FEE_PRECISION)
     {
         return false;
     }
@@ -204,7 +204,7 @@ void CTemplateDexOrder::BuildTemplateData()
 bool CTemplateDexOrder::VerifyTxSignature(const uint256& hash, const uint16 nType, const uint256& hashAnchor, const CDestination& destTo,
                                           const vector<uint8>& vchSig, const int32 nForkHeight, bool& fCompleted) const
 {
-    if (nForkHeight < nValidHeight)
+    if (nForkHeight <= nValidHeight)
     {
         return destMatch.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSig, nForkHeight, fCompleted);
     }

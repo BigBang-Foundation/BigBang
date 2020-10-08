@@ -53,7 +53,7 @@ bool CTemplateDexMatch::GetSignDestination(const CTransaction& tx, const uint256
         return false;
     }
     setSubDest.clear();
-    if (nHeight < nSellerValidHeight)
+    if (nHeight <= nSellerValidHeight)
     {
         setSubDest.insert(destSellerDeal);
     }
@@ -74,7 +74,7 @@ void CTemplateDexMatch::GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CD
         obj.dexmatch.strCoinpair = strCoinPairTemp;
     }
     obj.dexmatch.dMatch_Amount = (double)nMatchAmount / COIN;
-    obj.dexmatch.dFee = DoubleFromInt64(nFee);
+    obj.dexmatch.dFee = FeeDoubleFromInt64(nFee);
 
     obj.dexmatch.strSecret_Hash = hashSecret.GetHex();
     obj.dexmatch.strSecret_Enc = ToHexString(encSecret);
@@ -100,11 +100,11 @@ bool CTemplateDexMatch::ValidateParam() const
     {
         return false;
     }
-    if (nMatchAmount <= 0)
+    if (nMatchAmount <= 0 || nMatchAmount > TNS_DEX_MAX_MATCH_TOKEN * COIN)
     {
         return false;
     }
-    if (nFee <= 1 || nFee >= DOUBLE_PRECISION)
+    if (nFee <= 1 || nFee >= FEE_PRECISION)
     {
         return false;
     }
@@ -181,9 +181,18 @@ bool CTemplateDexMatch::SetTemplateData(const bigbang::rpc::CTemplateRequest& ob
     }
     vCoinPair.assign(obj.dexmatch.strCoinpair.c_str(), obj.dexmatch.strCoinpair.c_str() + obj.dexmatch.strCoinpair.size());
 
+    if (IsDoubleNonPositiveNumber(obj.dexmatch.dMatch_Amount))
+    {
+        return false;
+    }
+    if (obj.dexmatch.dMatch_Amount > TNS_DEX_MAX_MATCH_TOKEN)
+    {
+        return false;
+    }
     nMatchAmount = (int64)(obj.dexmatch.dMatch_Amount * COIN + 0.5);
-    int64 nTempFee = Int64FromDouble(obj.dexmatch.dFee);
-    if (nTempFee <= 1 || nTempFee >= DOUBLE_PRECISION)
+
+    int64 nTempFee = FeeInt64FromDouble(obj.dexmatch.dFee);
+    if (nTempFee <= 1 || nTempFee >= FEE_PRECISION)
     {
         return false;
     }
@@ -240,7 +249,7 @@ void CTemplateDexMatch::BuildTemplateData()
 bool CTemplateDexMatch::VerifyTxSignature(const uint256& hash, const uint16 nType, const uint256& hashAnchor, const CDestination& destTo,
                                           const vector<uint8>& vchSig, const int32 nForkHeight, bool& fCompleted) const
 {
-    if (nForkHeight < nSellerValidHeight)
+    if (nForkHeight <= nSellerValidHeight)
     {
         return destSellerDeal.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSig, nForkHeight, fCompleted);
     }

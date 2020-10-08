@@ -34,7 +34,8 @@ public:
 enum TNS_PARAM
 {
     TNS_DEX_MIN_TX_FEE = 30000,
-    TNS_DEX_MIN_MATCH_AMOUNT = 10000
+    TNS_DEX_MIN_MATCH_AMOUNT = 10000,
+    TNS_DEX_MAX_MATCH_TOKEN = 1844674407
 };
 
 enum TemplateType
@@ -52,6 +53,22 @@ enum TemplateType
     TEMPLATE_DEXMATCH = 10,
     TEMPLATE_MAX
 };
+
+#define FEE_PRECISION 10000
+
+inline int64 FeeInt64FromDouble(const double dAmount)
+{
+    if (xengine::IsDoubleNonPositiveNumber(dAmount))
+    {
+        return -1;
+    }
+    return (int64)(dAmount * FEE_PRECISION + 0.5);
+}
+
+inline double FeeDoubleFromInt64(int64 amount)
+{
+    return ((double)amount / (double)FEE_PRECISION);
+}
 
 class CTemplate;
 typedef boost::shared_ptr<CTemplate> CTemplatePtr;

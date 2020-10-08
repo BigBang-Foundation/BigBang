@@ -1368,7 +1368,7 @@ Errno CCoreProtocol::VerifyDexOrderTx(const CTransaction& tx, const CDestination
         return ERR_TRANSACTION_SIGNATURE_INVALID;
     }
     auto objOrder = boost::dynamic_pointer_cast<CTemplateDexOrder>(ptrOrder);
-    if (nHeight < objOrder->nValidHeight)
+    if (nHeight <= objOrder->nValidHeight)
     {
         if (nSendToTemplateType != TEMPLATE_DEXMATCH)
         {
@@ -1455,7 +1455,7 @@ Errno CCoreProtocol::VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, in
     {
         if (tx.sendTo == objMatch->destBuyer)
         {
-            int64 nBuyerAmount = ((objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (DOUBLE_PRECISION - objMatch->nFee)) / DOUBLE_PRECISION;
+            int64 nBuyerAmount = ((uint64)(objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (FEE_PRECISION - objMatch->nFee)) / FEE_PRECISION;
             if (nValueIn != objMatch->nMatchAmount)
             {
                 Log("Verify dex match tx: Send buyer nValueIn error, nValueIn: %lu, nMatchAmount: %lu, tx: %s",
@@ -1477,8 +1477,8 @@ Errno CCoreProtocol::VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, in
         }
         else if (tx.sendTo == objMatch->destMatch)
         {
-            int64 nBuyerAmount = ((objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (DOUBLE_PRECISION - objMatch->nFee)) / DOUBLE_PRECISION;
-            int64 nRewardAmount = ((objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (objMatch->nFee / 2)) / DOUBLE_PRECISION;
+            int64 nBuyerAmount = ((uint64)(objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (FEE_PRECISION - objMatch->nFee)) / FEE_PRECISION;
+            int64 nRewardAmount = ((uint64)(objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (objMatch->nFee / 2)) / FEE_PRECISION;
             if (nValueIn != (objMatch->nMatchAmount - nBuyerAmount - TNS_DEX_MIN_TX_FEE))
             {
                 Log("Verify dex match tx: Send match nValueIn error, nValueIn: %lu, need amount: %lu, nMatchAmount: %lu, nFee: %ld, nTxFee: %lu, tx: %s",
@@ -1509,8 +1509,8 @@ Errno CCoreProtocol::VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, in
             }
             if (tx.sendTo == *setSubDest.begin())
             {
-                int64 nBuyerAmount = ((objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (DOUBLE_PRECISION - objMatch->nFee)) / DOUBLE_PRECISION;
-                int64 nRewardAmount = ((objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (objMatch->nFee / 2)) / DOUBLE_PRECISION;
+                int64 nBuyerAmount = ((uint64)(objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (FEE_PRECISION - objMatch->nFee)) / FEE_PRECISION;
+                int64 nRewardAmount = ((uint64)(objMatch->nMatchAmount - TNS_DEX_MIN_TX_FEE * 3) * (objMatch->nFee / 2)) / FEE_PRECISION;
                 if (nValueIn != (objMatch->nMatchAmount - nBuyerAmount - nRewardAmount - TNS_DEX_MIN_TX_FEE * 2))
                 {
                     Log("Verify dex match tx: Send deal nValueIn error, nValueIn: %lu, need amount: %lu, nMatchAmount: %lu, nRewardAmount: %lu, nFee: %ld, nTxFee: %lu, tx: %s",
