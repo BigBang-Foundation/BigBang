@@ -603,6 +603,15 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
             }
             ++itListDeFi;
         }
+        else
+        {
+            if (tx.nType == CTransaction::TX_DEFI_REWARD)
+            {
+                Log("AddNewBlock reward tx is redundant, txid: %s, block: %s", txid.ToString().c_str(), hash.ToString().c_str());
+                return ERR_TRANSACTION_INVALID;
+            }
+        }
+        
 
         if ((tx.nType != CTransaction::TX_DEFI_REWARD) && !pTxPool->Exists(txid))
         {
