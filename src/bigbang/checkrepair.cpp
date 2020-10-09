@@ -110,9 +110,10 @@ bool CCheckForkManager::FetchForkStatus(const string& strDataPath)
         return false;
     }
 
+    // TODO: Fix Fork Contxt
     vector<pair<uint256, uint256>> vFork;
     if (!dbFork.ListFork(vFork))
-    {
+    {   
         StdError("check", "Fetch fork status: ListFork fail");
         dbFork.Deinitialize();
         return false;
