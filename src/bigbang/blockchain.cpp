@@ -611,7 +611,6 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
                 return ERR_TRANSACTION_INVALID;
             }
         }
-        
 
         if ((tx.nType != CTransaction::TX_DEFI_REWARD) && !pTxPool->Exists(txid))
         {
@@ -682,7 +681,7 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
         if (!cntrBlock.RecordRemove(blockex))
         {
             Error("Record removed block failed, removed %s", blockex.GetHash().ToString().c_str());
-        } 
+        }
         Log("AddNew Block : Short chain, new block height: %d, block type: %s, block: %s, fork chain trust: %s, fork last block: %s, fork: %s",
             pIndexNew->GetBlockHeight(), GetBlockTypeStr(block.nType, block.txMint.nType).c_str(), hash.GetHex().c_str(),
             pIndexFork->nChainTrust.GetHex().c_str(), pIndexFork->GetBlockHash().GetHex().c_str(), pIndexFork->GetOriginHash().GetHex().c_str());
