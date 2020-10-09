@@ -751,4 +751,38 @@ BOOST_AUTO_TEST_CASE(reward2)
     }
 }
 
+// test second defi reward supply. because reward1, reward2 just change param of fork and test first defi reward
+BOOST_AUTO_TEST_CASE(reward3)
+{
+    CDeFiForkReward r;
+    uint256 forkid;
+    RandGeneretor256(forkid.begin());
+
+    // test ExistFork and AddFork
+    BOOST_CHECK(!r.ExistFork(forkid));
+
+    CProfile profile;
+    profile.strName = "BBC Test3";
+    profile.strSymbol = "BBCC";
+    profile.nVersion = 1;
+    profile.nMinTxFee = NEW_MIN_TX_FEE;
+    profile.nMintReward = 0;
+    profile.nAmount = 10000000 * COIN; // 首期发行一千万母币
+    profile.nJointHeight = 15;
+    profile.nForkType = FORK_TYPE_DEFI;
+    profile.defi.nMintHeight = 20;
+    profile.defi.nMaxSupply = 1000000000 * COIN; // BTCA 总共发行十亿枚
+    profile.defi.nCoinbaseType = SPECIFIC_DEFI_COINBASE_TYPE;
+    profile.defi.mapCoinbasePercent = { { 259200, 10 }, { 777600, 8 }, { 1814400, 5 }, { 3369600, 3 }, { 5184000, 2 } }; // 发行阶段，半年，1年（用高度表示），参考BTCA白皮书，月增长原有基数的10%，8%
+    profile.defi.nRewardCycle = 5;                                                                                       // 60 * 24  per day once reward
+    profile.defi.nSupplyCycle = 150;                                                                                     // 60 * 24 * 30  per month once supply
+    profile.defi.nStakeMinToken = 100 * COIN;                                                                            // min token required, >= 100, can be required to join this defi game
+    profile.defi.nStakeRewardPercent = 50;                                                                               // 50% of supply amount per day
+    profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));                                               // 用于推广收益，小于等于10000的部分，要放大10倍
+    r.AddFork(forkid, profile);
+
+    BOOST_CHECK(r.ExistFork(forkid));
+    BOOST_CHECK(r.GetForkProfile(forkid).strSymbol == "BBCC");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
