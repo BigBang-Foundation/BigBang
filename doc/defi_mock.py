@@ -61,8 +61,8 @@ def Compute(addrset, total_level, input, output, count):
         prev = -1
         total = 0
         for _, info in stake_addrset.items():
-            if info.stake > prev:
-                prev = info.stake
+            if info['stake'] > prev:
+                prev = info['stake']
                 rank = rank + 1
 
             info['rank'] = rank
