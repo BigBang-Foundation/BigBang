@@ -92,7 +92,7 @@ def Compute(addrset, total_level, input, output, count):
                         continue
 
                     max_sub_stake = max(sub_stake_list)
-                    sub_stake_list.remove(sub_stake_list.index(max_sub_stake))
+                    sub_stake_list.remove(max_sub_stake)
                     info['power'] += round(max_sub_stake ** (1.0 / 3))
                     for sub_stake in sub_stake_list:
                         prev_token = 0
