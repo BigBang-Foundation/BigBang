@@ -22,7 +22,7 @@ def Compute(addrset, total_level, input, output, count):
     decaycycle = defi['decaycycle']
     coinbasedecaypercent = float(defi['coinbasedecaypercent']) / 100
     initcoinbasepercent = float(defi['initcoinbasepercent']) / 100
-    mapcoinbasepercent = float(defi['mapcoinbasepercent']) / 100
+    #mapcoinbasepercent = float(defi['mapcoinbasepercent']) / 100
     stakerewardpercent = float(defi['stakerewardpercent']) / 100
     promotionrewardpercent = float(defi['promotionrewardpercent']) / 100
     stakemintoken = defi['stakemintoken'] * COIN
