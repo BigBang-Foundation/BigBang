@@ -51,11 +51,12 @@ def Compute(addrset, total_level, input, output, count):
 
         # compute stake reward
         stake_reward = int(total_reward / reward_count * stakerewardpercent)
+
         sorted_addrset = dict(
-            sorted(addrset.items(), key=lambda item: item[1].stake))
+            sorted(addrset.items(), key=lambda item : item[1]['stake']))
 
         stake_addrset = {
-            k: v for k, v in sorted_addrset.items() if v[1].stake >= stakemintoken}
+            k: v for k, v in sorted_addrset.items() if v[1]['stake'] >= stakemintoken}
 
         rank = 0
         prev = -1
