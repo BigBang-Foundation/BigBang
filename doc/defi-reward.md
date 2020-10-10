@@ -1,6 +1,46 @@
 # 手工验证计算DeFi奖励算法
 该示例对应于defi.json，计算第一次发放奖励时每个地址的收益
 
+## 正式网BTCA分支的详细信息
+
+```json
+ {
+        "fork" : "0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805",
+        "name" : "BTC-Ally",
+        "symbol" : "BTCA",
+        "amount" : 20000000.000000,
+        "reward" : 0.000000,
+        "halvecycle" : 0,
+        "isolated" : true,
+        "private" : false,
+        "enclosed" : false,
+        "owner" : "1x48dme66vgb2t02rgs3r4hbznm611fk8t2yty6j00yh7bwz5ab26apj7",
+        "forktype" : "defi",
+        "defi" : {
+            "mintheight" : 497000,
+            "maxsupply" : 1000000000.000000,
+            "coinbasetype" : 0,
+            "decaycycle" : 1036800,
+            "mapcoinbasepercent" : [
+            ],
+            "coinbasedecaypercent" : 50,
+            "initcoinbasepercent" : 10,
+            "rewardcycle" : 1440,
+            "supplycycle" : 43200,
+            "stakerewardpercent" : 50,
+            "promotionrewardpercent" : 50,
+            "stakemintoken" : 100.000000,
+            "mappromotiontokentimes" : [
+                {
+                    "token" : 10000,
+                    "times" : 10
+                }
+            ]
+        }
+  }
+  
+```
+
 ## 生成地址及持币量
 
 ```cpp
