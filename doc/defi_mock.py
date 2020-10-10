@@ -27,8 +27,9 @@ def Compute(addrset, total_level, input, output, count):
     promotionrewardpercent = float(defi['promotionrewardpercent']) / 100
     stakemintoken = defi['stakemintoken'] * COIN
     mappromotiontokentimes = defi['mappromotiontokentimes']
-    for i in mappromotiontokentimes:
-        mappromotiontokentimes[i]['token'] *= COIN
+    for tokentimes in mappromotiontokentimes:
+        #print 'awdwa' + str(i['token'])
+        tokentimes['token'] *= COIN
 
     reward_count = supplycycle / rewardcycle
     supply = amount
