@@ -173,6 +173,7 @@ if __name__ == "__main__":
             while upper:
                 level += 1
                 addrset[upper]['level'] = level
+                upper = addrset[upper]['upper']
 
             if total_level < level:
                 total_level = level
