@@ -56,7 +56,7 @@ def Compute(addrset, total_level, input, output, count):
             sorted(addrset.items(), key=lambda item : item[1]['stake']))
 
         stake_addrset = {
-            k: v for k, v in sorted_addrset.items() if v[1]['stake'] >= stakemintoken}
+            k: v for k, v in sorted_addrset.items() if v['stake'] >= stakemintoken}
 
         rank = 0
         prev = -1
