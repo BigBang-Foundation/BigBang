@@ -78,15 +78,24 @@ def Compute(addrset, total_level, input, output, count):
             total_reward / reward_count * promotionrewardpercent)
 
         total_power = 0
+
+        print "kk"
+
+        print (addrset.items())
+
         for j in range(0, total_level + 1):
             for addr, info in addrset.items():
                 if info['level'] == j:
-                    info['power'] = 0
-                    info['sub_stake'] = info['stake']
+                    # 这里修改的是拷贝，不是原数据
+                    #info['power'] = 0
+                    addrset[addr]['power'] = 0
+                    #info['sub_stake'] = info['stake']
+                    addrset[addr]['sub_stake'] = info['stake']
                     sub_stake_list = []
                     for sub_addr in info['lower']:
                         sub_stake_list.append(addrset[sub_addr]['sub_stake'])
-                        info['sub_stake'] += addrset[sub_addr]['sub_stake']
+                        #info['sub_stake'] += addrset[sub_addr]['sub_stake']
+                        addrset[addr]['sub_stake'] += addrset[sub_addr]['sub_stake']
 
                     if len(sub_stake_list) == 0:
                         continue
