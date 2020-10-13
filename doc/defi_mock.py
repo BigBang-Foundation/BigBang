@@ -156,6 +156,8 @@ if __name__ == "__main__":
             'lower': []
         }
 
+    print ("addrset0", addrset)
+
     for lower_addr, upper_addr in input['relation'].items():
         if lower_addr not in addrset:
             addrset[lower_addr] = {
@@ -174,24 +176,29 @@ if __name__ == "__main__":
         addrset[lower_addr]['upper'] = upper_addr
         addrset[upper_addr]['lower'].append(lower_addr)
 
+    print ("addrset1", addrset)
+
     # level
     total_level = 0
     for addr, info in addrset.items():
         if len(info['lower']) == 0:
-            info['level'] = 0
-            upper = info['upper']
+            addrset[addr]['level'] = 0
+            upper = addrset[addr]['upper']
             level = 0
             while upper:
                 level += 1
-                addrset[upper]['level'] = level
+                if addrset[upper].has_key('level'):
+                    if addrset[upper]['level'] >= 1:
+                        addrset[addr]['level'] = addrset[upper]['level'] - 1
+                else:
+                    addrset[upper]['level'] = level
                 upper = addrset[upper]['upper']
 
             if total_level < level:
                 total_level = level
 
     # compute reward
-    print "all addrset"
-    print (addrset)
+    print ("addrset2",addrset)
     Compute(addrset, total_level, input, output, count)
 
     # output
