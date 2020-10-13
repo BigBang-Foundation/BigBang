@@ -187,11 +187,7 @@ if __name__ == "__main__":
             level = 0
             while upper:
                 level += 1
-                if addrset[upper].has_key('level'):
-                    if addrset[upper]['level'] >= 1:
-                        addrset[addr]['level'] = addrset[upper]['level'] - 1
-                else:
-                    addrset[upper]['level'] = level
+                addrset[upper]['level'] = level
                 upper = addrset[upper]['upper']
 
             if total_level < level:
