@@ -79,22 +79,23 @@ def Compute(addrset, total_level, input, output, count):
 
         total_power = 0
 
-        print "kk"
-
-        print (addrset.items())
-
         for j in range(0, total_level + 1):
             for addr, info in addrset.items():
+                print ("current level", j)
+                print ("info level", addr, info['level'])
+
                 if info['level'] == j:
-                    # 这里修改的是拷贝，不是原数据
-                    #info['power'] = 0
                     addrset[addr]['power'] = 0
-                    #info['sub_stake'] = info['stake']
                     addrset[addr]['sub_stake'] = info['stake']
                     sub_stake_list = []
-                    for sub_addr in info['lower']:
+                    print "addse addr"
+                    print (addr, addrset[addr])
+                    for sub_addr in addrset[addr]['lower']:
+                        print "sub addr"
+                        #print (addrset[sub_addr])
+                        print (sub_addr)
+                        #addrset[sub_addr].has_key()
                         sub_stake_list.append(addrset[sub_addr]['sub_stake'])
-                        #info['sub_stake'] += addrset[sub_addr]['sub_stake']
                         addrset[addr]['sub_stake'] += addrset[sub_addr]['sub_stake']
 
                     if len(sub_stake_list) == 0:
@@ -102,24 +103,24 @@ def Compute(addrset, total_level, input, output, count):
 
                     max_sub_stake = max(sub_stake_list)
                     sub_stake_list.remove(max_sub_stake)
-                    info['power'] += round(max_sub_stake ** (1.0 / 3))
+                    addrset[addr]['power'] += round(max_sub_stake ** (1.0 / 3))
                     for sub_stake in sub_stake_list:
                         prev_token = 0
                         for times in mappromotiontokentimes:
                             if sub_stake <= times['token']:
-                                info['power'] += (sub_stake -
+                                addrset[addr]['power'] += (sub_stake -
                                                   prev_token) * times['times']
                                 prev_token = times['token']
                                 break
                             else:
-                                info['power'] += (times['token'] -
+                                addrset[addr]['power'] += (times['token'] -
                                                   prev_token) * times['times']
                                 prev_token = times['token']
 
                         if sub_stake > prev_token:
-                            info['power'] += sub_stake['token'] - prev_token
+                            addrset[addr]['power'] += sub_stake['token'] - prev_token
 
-                        total_power += info['power']
+                        total_power += addrset[addr]['power']
 
         promotion_unit_reward = float(promotion_reward) / total_power
         for addr, info in addrset.items():
@@ -189,6 +190,8 @@ if __name__ == "__main__":
                 total_level = level
 
     # compute reward
+    print "all addrset"
+    print (addrset)
     Compute(addrset, total_level, input, output, count)
 
     # output
