@@ -156,8 +156,6 @@ if __name__ == "__main__":
             'lower': []
         }
 
-    print ("addrset0", addrset)
-
     for lower_addr, upper_addr in input['relation'].items():
         if lower_addr not in addrset:
             addrset[lower_addr] = {
@@ -190,7 +188,7 @@ if __name__ == "__main__":
                 level += 1
                 upper = addrset[upper]['upper']
             
-            root_addr_level[addr] = level
+            root_addr_level[upper] = level
 
     print ("root level:", root_addr_level)
     
