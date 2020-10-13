@@ -180,28 +180,43 @@ if __name__ == "__main__":
 
     # level
     total_level = 0
+    root_addr_level = {}
+    # calc root level of every tree
     for addr, info in addrset.items():
         if len(info['lower']) == 0:
-            addrset[addr]['level'] = 0
-            upper = addrset[addr]['upper']
             level = 0
+            upper = addrset[addr]['upper']
             while upper:
                 level += 1
-                addrset[upper]['level'] = level
                 upper = addrset[upper]['upper']
+            
+            root_addr_level[addr] = level
 
-            if total_level < level:
-                total_level = level
+    print ("root level:", root_addr_level)
+    
+    # calc every level of every tree
+    # for addr, info in addrset.items():
+    #     if len(info['lower']) == 0:
+    #         addrset[addr]['level'] = 0
+    #         upper = addrset[addr]['upper']
+    #         level = 0
+    #         while upper:
+    #             level += 1
+    #             addrset[upper]['level'] = level
+    #             upper = addrset[upper]['upper']
 
-    # compute reward
-    print ("addrset2",addrset)
-    Compute(addrset, total_level, input, output, count)
+    #         if total_level < level:
+    #             total_level = level
 
-    # output
-    result = {
-        'input': input,
-        'output': output
-    }
+    # # compute reward
+    # print ("addrset2",addrset)
+    # Compute(addrset, total_level, input, output, count)
 
-    with open(output_path, 'w') as w:
-        json.dumps(result)
+    # # output
+    # result = {
+    #     'input': input,
+    #     'output': output
+    # }
+
+    # with open(output_path, 'w') as w:
+    #     json.dumps(result)
