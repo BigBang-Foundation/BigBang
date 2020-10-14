@@ -1403,12 +1403,12 @@ Errno CCoreProtocol::VerifyDexOrderTx(const CTransaction& tx, const CDestination
                 Log("Verify dexorder tx: destSeller error, tx: %s", tx.GetHash().GetHex().c_str());
                 return ERR_TRANSACTION_SIGNATURE_INVALID;
             }
-            if (objMatch->nSellerValidHeight != objOrder->nValidHeight)
+            /*if (objMatch->nSellerValidHeight != objOrder->nValidHeight)
             {
                 Log("Verify dexorder tx: nSellerValidHeight error, match nSellerValidHeight: %d, order nValidHeight: %d, tx: %s",
                     objMatch->nSellerValidHeight, objOrder->nValidHeight, tx.GetHash().GetHex().c_str());
                 return ERR_TRANSACTION_SIGNATURE_INVALID;
-            }
+            }*/
             if ((tx.nAmount != objMatch->nMatchAmount) || (tx.nAmount < (TNS_DEX_MIN_TX_FEE * 3 + TNS_DEX_MIN_MATCH_AMOUNT)))
             {
                 Log("Verify dexorder tx: nAmount error, match nMatchAmount: %lu, tx amount: %lu, tx: %s",
