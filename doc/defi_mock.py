@@ -213,4 +213,4 @@ if __name__ == "__main__":
     }
 
     with open(output_path, 'w') as w:
-        json.dumps(result)
+        w.write(json.dumps(result))
