@@ -208,18 +208,17 @@ if __name__ == "__main__":
         if root_level > total_level:
             total_level = root_level
 
-    print ("root level:", total_level)
-    print ("addrset:", addrset)
+    #print ("root level:", total_level)
+    #print ("addrset:", addrset)
 
-    # # compute reward
-    # print ("addrset2",addrset)
-    # Compute(addrset, total_level, input, output, count)
+    # compute reward
+    Compute(addrset, total_level, input, output, count)
 
-    # # output
-    # result = {
-    #     'input': input,
-    #     'output': output
-    # }
+    # output
+    result = {
+        'input': input,
+        'output': output
+    }
 
-    # with open(output_path, 'w') as w:
-    #     json.dumps(result)
+    with open(output_path, 'w') as w:
+        json.dumps(result)
