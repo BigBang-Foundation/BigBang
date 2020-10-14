@@ -12,6 +12,8 @@ from pprint import pprint
 COIN = 1000000
 
 # Mark tree node level recursively
+
+
 def MarkTreeLevel(root_addr, root_level, addrset):
     addrset[root_addr]['level'] = root_level
     # get childs
@@ -20,6 +22,8 @@ def MarkTreeLevel(root_addr, root_level, addrset):
         MarkTreeLevel(child, root_level - 1, addrset)
 
 # Compute DeFi rewards
+
+
 def Compute(addrset, total_level, input, output, count):
     makeorigin = input['makeorigin']
     amount = makeorigin['amount'] * COIN
@@ -37,13 +41,12 @@ def Compute(addrset, total_level, input, output, count):
     promotionrewardpercent = float(defi['promotionrewardpercent']) / 100
     stakemintoken = defi['stakemintoken'] * COIN
     mappromotiontokentimes = defi['mappromotiontokentimes']
-    for tokentimes in mappromotiontokentimes:
-        tokentimes['token'] *= COIN
 
     reward_count = supplycycle / rewardcycle
     supply = amount
     reward_percent = initcoinbasepercent
     total_reward = int(supply * reward_percent)
+    print("total_reward:", total_reward)
 
     for i in range(0, count):
         height = mintheight + (i + 1) * rewardcycle
@@ -60,32 +63,48 @@ def Compute(addrset, total_level, input, output, count):
 
         # compute stake reward
         stake_reward = int(total_reward / reward_count * stakerewardpercent)
+        print("stake_reward:", stake_reward)
 
-        sorted_addrset = dict(
-            sorted(addrset.items(), key=lambda item : item[1]['stake']))
+        stake_addrset = [
+            {'addr': k, 'info': v} for k, v in addrset.items() if v['stake'] >= stakemintoken]
 
-        stake_addrset = {
-            k: v for k, v in sorted_addrset.items() if v['stake'] >= stakemintoken}
+        def cmp_stake(l, r):
+            if l['info']['stake'] < r['info']['stake']:
+                return -1
+            elif l['info']['stake'] > r['info']['stake']:
+                return 1
+            else:
+                return 0
+        stake_addrset.sort(key=cmp_to_key(cmp_stake))
 
+        real_rank = 0
         rank = 0
         prev = -1
         total = 0
-        for _, info in stake_addrset.items():
+        for v in stake_addrset:
+            real_rank = real_rank + 1
+
+            addr = v['addr']
+            info = v['info']
             if info['stake'] > prev:
                 prev = info['stake']
-                rank = rank + 1
+                rank = real_rank
 
             info['rank'] = rank
+            print("addr:", addr, "rank:", rank, "stake:", info['stake'])
             total += rank
 
         stake_unit_reward = float(stake_reward) / total
-        for addr, info in stake_addrset.items():
+        for v in stake_addrset:
+            addr = v['addr']
+            info = v['info']
             result[addr] += int(info['rank'] * stake_unit_reward)
             print('stake reward, addr: ', addr, ', reward: ', result[addr])
 
         # compute promotion reward
         promotion_reward = int(
             total_reward / reward_count * promotionrewardpercent)
+        print("promotion_reward:", promotion_reward)
 
         total_power = 0
 
@@ -93,7 +112,7 @@ def Compute(addrset, total_level, input, output, count):
             for addr, info in addrset.items():
                 if info['level'] == j:
                     addrset[addr]['power'] = 0
-                    addrset[addr]['sub_stake'] = info['stake']
+                    addrset[addr]['sub_stake'] = info['stake'] / COIN
                     sub_stake_list = []
                     for sub_addr in addrset[addr]['lower']:
                         sub_stake_list.append(addrset[sub_addr]['sub_stake'])
@@ -104,35 +123,34 @@ def Compute(addrset, total_level, input, output, count):
 
                     max_sub_stake = max(sub_stake_list)
                     sub_stake_list.remove(max_sub_stake)
+
                     addrset[addr]['power'] += round(max_sub_stake ** (1.0 / 3))
                     for sub_stake in sub_stake_list:
                         prev_token = 0
                         for times in mappromotiontokentimes:
                             if sub_stake <= times['token']:
                                 addrset[addr]['power'] += (sub_stake -
-                                                  prev_token) * times['times']
+                                                           prev_token) * times['times']
                                 prev_token = times['token']
                                 break
                             else:
                                 addrset[addr]['power'] += (times['token'] -
-                                                  prev_token) * times['times']
+                                                           prev_token) * times['times']
                                 prev_token = times['token']
 
                         if sub_stake > prev_token:
                             addrset[addr]['power'] += sub_stake - prev_token
 
-                        total_power += addrset[addr]['power']
+                    total_power += addrset[addr]['power']
 
         promotion_unit_reward = float(promotion_reward) / total_power
         for addr, info in addrset.items():
             result[addr] += int(info['power'] * promotion_unit_reward)
-            print('promotion reward, addr: ', addr, ', reward: ', result[addr])
-        
+
         for addr, reward in result.items():
             addrset[addr]['stake'] += reward
 
-        output.append({'height':height, 'reward':result})
-    
+        output.append({'height': height, 'reward': result})
 
 
 if __name__ == "__main__":
@@ -184,6 +202,7 @@ if __name__ == "__main__":
     root_addr_level = {}
     # calc root level of every tree
     for addr, info in addrset.items():
+        print("init addr:", addr, "stake:", info['stake'])
         if len(info['lower']) == 0:
             level = 0
             upper = addrset[addr]['upper']
@@ -192,14 +211,14 @@ if __name__ == "__main__":
                 level += 1
                 root_addr = upper
                 upper = addrset[upper]['upper']
-            
+
             if not root_addr_level.has_key(root_addr):
                 root_addr_level[root_addr] = level
             else:
                 if level > root_addr_level[root_addr]:
                     root_addr_level[root_addr] = level
-    
-    # calc non-root level of every tree 
+
+    # calc non-root level of every tree
     for root_addr, root_level in root_addr_level.items():
         MarkTreeLevel(root_addr, root_level, addrset)
         if root_level > total_level:
