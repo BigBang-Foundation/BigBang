@@ -9,6 +9,14 @@ from functools import cmp_to_key
 
 COIN = 1000000
 
+def MarkTreeLevel(root_addr, root_level, addrset):
+    addrset[root_addr]['level'] = root_level
+    # get childs
+    childs = addrset[root_addr]['lower']
+    for child in childs:
+        MarkTreeLevel(child, root_level - 1, addrset)
+
+
 
 def Compute(addrset, total_level, input, output, count):
     makeorigin = input['makeorigin']
@@ -188,27 +196,20 @@ if __name__ == "__main__":
                 root_addr = upper
                 upper = addrset[upper]['upper']
             
-            if root_addr_level.has_key(root_addr) and level > root_addr_level[root_addr]:
-                root_addr_level[root_addr] = level
-            
             if not root_addr_level.has_key(root_addr):
                 root_addr_level[root_addr] = level
-
-    print ("root level:", root_addr_level)
+            else:
+                if level > root_addr_level[root_addr]:
+                    root_addr_level[root_addr] = level
     
-    # calc every level of every tree
-    # for addr, info in addrset.items():
-    #     if len(info['lower']) == 0:
-    #         addrset[addr]['level'] = 0
-    #         upper = addrset[addr]['upper']
-    #         level = 0
-    #         while upper:
-    #             level += 1
-    #             addrset[upper]['level'] = level
-    #             upper = addrset[upper]['upper']
+    # calc non-root level of every tree 
+    for root_addr, root_level in root_addr_level.items():
+        MarkTreeLevel(root_addr, root_level, addrset)
+        if root_level > total_level:
+            total_level = root_level
 
-    #         if total_level < level:
-    #             total_level = level
+    print ("root level:", total_level)
+    print ("addrset:", addrset)
 
     # # compute reward
     # print ("addrset2",addrset)
