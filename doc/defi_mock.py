@@ -89,20 +89,11 @@ def Compute(addrset, total_level, input, output, count):
 
         for j in range(0, total_level + 1):
             for addr, info in addrset.items():
-                print ("current level", j)
-                print ("info level", addr, info['level'])
-
                 if info['level'] == j:
                     addrset[addr]['power'] = 0
                     addrset[addr]['sub_stake'] = info['stake']
                     sub_stake_list = []
-                    print "addse addr"
-                    print (addr, addrset[addr])
                     for sub_addr in addrset[addr]['lower']:
-                        print "sub addr"
-                        #print (addrset[sub_addr])
-                        print (sub_addr)
-                        #addrset[sub_addr].has_key()
                         sub_stake_list.append(addrset[sub_addr]['sub_stake'])
                         addrset[addr]['sub_stake'] += addrset[sub_addr]['sub_stake']
 
@@ -126,7 +117,7 @@ def Compute(addrset, total_level, input, output, count):
                                 prev_token = times['token']
 
                         if sub_stake > prev_token:
-                            addrset[addr]['power'] += sub_stake['token'] - prev_token
+                            addrset[addr]['power'] += sub_stake - prev_token
 
                         total_power += addrset[addr]['power']
 
