@@ -262,6 +262,10 @@
                         "type": "string",
                         "desc": "coin pair"
                     },
+                    "final_price": {
+                        "type": "double",
+                        "desc": "final price"
+                    },
                     "match_amount": {
                         "type": "double",
                         "desc": "match amount"
@@ -297,6 +301,10 @@
                     "buyer_address": {
                         "type": "string",
                         "desc": "buyer address"
+                    },
+                    "buyer_amount": {
+                        "type": "string",
+                        "desc": "buyer match amount"
                     },
                     "buyer_secret_hash": {
                         "type": "string",
@@ -522,6 +530,10 @@
                         "type": "string",
                         "desc": "coin pair"
                     },
+                    "final_price": {
+                        "type": "double",
+                        "desc": "final price"
+                    },
                     "match_amount": {
                         "type": "double",
                         "desc": "match amount"
@@ -557,6 +569,10 @@
                     "buyer_address": {
                         "type": "string",
                         "desc": "buyer address"
+                    },
+                    "buyer_amount": {
+                        "type": "string",
+                        "desc": "buyer match amount"
                     },
                     "buyer_secret_hash": {
                         "type": "string",

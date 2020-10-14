@@ -10,11 +10,11 @@
 class CTemplateDexMatch : virtual public CTemplate, virtual public CSendToRecordedTemplate
 {
 public:
-    CTemplateDexMatch(const CDestination& destMatchIn = CDestination(), const std::vector<char>& vCoinPairIn = std::vector<char>(), int64 nMatchAmountIn = 0, int nFeeIn = 0,
+    CTemplateDexMatch(const CDestination& destMatchIn = CDestination(), const std::vector<char>& vCoinPairIn = std::vector<char>(), uint64 nFinalPriceIn = 0, int64 nMatchAmountIn = 0, int nFeeIn = 0,
                       const uint256& hashSecretIn = uint256(), const std::vector<uint8>& encSecretIn = std::vector<uint8>(),
                       const CDestination& destSellerOrderIn = CDestination(), const CDestination& destSellerIn = CDestination(),
                       const CDestination& destSellerDealIn = CDestination(), int nSellerValidHeightIn = 0,
-                      const CDestination& destBuyerIn = CDestination(), const uint256& hashBuyerSecretIn = uint256(), int nBuyerValidHeightIn = 0);
+                      const CDestination& destBuyerIn = CDestination(), const std::vector<char>& vBuyerAmountIn = std::vector<char>(), const uint256& hashBuyerSecretIn = uint256(), int nBuyerValidHeightIn = 0);
     virtual CTemplateDexMatch* clone() const;
     virtual bool GetSignDestination(const CTransaction& tx, const uint256& hashFork, int nHeight, const std::vector<uint8>& vchSig,
                                     std::set<CDestination>& setSubDest, std::vector<uint8>& vchSubSig) const;
@@ -31,6 +31,7 @@ protected:
 public:
     CDestination destMatch;
     std::vector<char> vCoinPair;
+    uint64 nFinalPrice;
     int64 nMatchAmount;
     int nFee;
 
@@ -43,6 +44,7 @@ public:
     int nSellerValidHeight;
 
     CDestination destBuyer;
+    std::vector<char> vBuyerAmount;
     uint256 hashBuyerSecret;
     int nBuyerValidHeight;
 };

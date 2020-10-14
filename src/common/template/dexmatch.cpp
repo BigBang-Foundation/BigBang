@@ -18,13 +18,14 @@ static const int64 COIN = 1000000;
 //////////////////////////////
 // CTemplateDexMatch
 
-CTemplateDexMatch::CTemplateDexMatch(const CDestination& destMatchIn, const std::vector<char>& vCoinPairIn, int64 nMatchAmountIn, int nFeeIn,
-                                     const uint256& hashSecretIn, const std::vector<uint8>& encSecretIn,
+CTemplateDexMatch::CTemplateDexMatch(const CDestination& destMatchIn, const vector<char>& vCoinPairIn, uint64 nFinalPriceIn, int64 nMatchAmountIn, int nFeeIn,
+                                     const uint256& hashSecretIn, const vector<uint8>& encSecretIn,
                                      const CDestination& destSellerOrderIn, const CDestination& destSellerIn,
                                      const CDestination& destSellerDealIn, int nSellerValidHeightIn,
-                                     const CDestination& destBuyerIn, const uint256& hashBuyerSecretIn, int nBuyerValidHeightIn)
+                                     const CDestination& destBuyerIn, const vector<char>& vBuyerAmountIn, const uint256& hashBuyerSecretIn, int nBuyerValidHeightIn)
   : CTemplate(TEMPLATE_DEXMATCH),
     destMatch(destMatchIn),
+    nFinalPrice(nFinalPriceIn),
     vCoinPair(vCoinPairIn),
     nMatchAmount(nMatchAmountIn),
     nFee(nFeeIn),
@@ -35,6 +36,7 @@ CTemplateDexMatch::CTemplateDexMatch(const CDestination& destMatchIn, const std:
     destSellerDeal(destSellerDealIn),
     nSellerValidHeight(nSellerValidHeightIn),
     destBuyer(destBuyerIn),
+    vBuyerAmount(vBuyerAmountIn),
     hashBuyerSecret(hashBuyerSecretIn),
     nBuyerValidHeight(nBuyerValidHeightIn)
 {
@@ -73,6 +75,7 @@ void CTemplateDexMatch::GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CD
         strCoinPairTemp.assign(&(vCoinPair[0]), vCoinPair.size());
         obj.dexmatch.strCoinpair = strCoinPairTemp;
     }
+    obj.dexmatch.dFinal_Price = ((double)nFinalPrice / (double)PRICE_PRECISION);
     obj.dexmatch.dMatch_Amount = (double)nMatchAmount / COIN;
     obj.dexmatch.dFee = FeeDoubleFromInt64(nFee);
 
@@ -86,6 +89,14 @@ void CTemplateDexMatch::GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CD
     obj.dexmatch.nSeller_Valid_Height = nSellerValidHeight;
 
     obj.dexmatch.strBuyer_Address = (destInstance = destBuyer).ToString();
+
+    if (!vBuyerAmount.empty())
+    {
+        std::string strTemp;
+        strTemp.assign(&(vBuyerAmount[0]), vBuyerAmount.size());
+        obj.dexmatch.strBuyer_Amount = strTemp;
+    }
+
     obj.dexmatch.strBuyer_Secret_Hash = hashBuyerSecret.GetHex();
     obj.dexmatch.nBuyer_Valid_Height = nBuyerValidHeight;
 }
@@ -97,6 +108,10 @@ bool CTemplateDexMatch::ValidateParam() const
         return false;
     }
     if (vCoinPair.empty())
+    {
+        return false;
+    }
+    if (nFinalPrice == 0)
     {
         return false;
     }
@@ -136,6 +151,10 @@ bool CTemplateDexMatch::ValidateParam() const
     {
         return false;
     }
+    if (vBuyerAmount.empty() || vBuyerAmount.size() > MAX_STRING_AMOUNT_LEN)
+    {
+        return false;
+    }
     if (hashBuyerSecret == 0)
     {
         return false;
@@ -152,7 +171,7 @@ bool CTemplateDexMatch::SetTemplateData(const vector<uint8>& vchDataIn)
     CIDataStream is(vchDataIn);
     try
     {
-        is >> destMatch >> vCoinPair >> nMatchAmount >> nFee >> hashSecret >> encSecret >> destSellerOrder >> destSeller >> destSellerDeal >> nSellerValidHeight >> destBuyer >> hashBuyerSecret >> nBuyerValidHeight;
+        is >> destMatch >> vCoinPair >> nFinalPrice >> nMatchAmount >> nFee >> hashSecret >> encSecret >> destSellerOrder >> destSeller >> destSellerDeal >> nSellerValidHeight >> destBuyer >> vBuyerAmount >> hashBuyerSecret >> nBuyerValidHeight;
     }
     catch (exception& e)
     {
@@ -180,6 +199,12 @@ bool CTemplateDexMatch::SetTemplateData(const bigbang::rpc::CTemplateRequest& ob
         return false;
     }
     vCoinPair.assign(obj.dexmatch.strCoinpair.c_str(), obj.dexmatch.strCoinpair.c_str() + obj.dexmatch.strCoinpair.size());
+
+    if (IsDoubleNonPositiveNumber(obj.dexmatch.dFinal_Price))
+    {
+        return false;
+    }
+    nFinalPrice = (uint64)(obj.dexmatch.dFinal_Price * PRICE_PRECISION + 0.5);
 
     if (IsDoubleNonPositiveNumber(obj.dexmatch.dMatch_Amount))
     {
@@ -231,6 +256,12 @@ bool CTemplateDexMatch::SetTemplateData(const bigbang::rpc::CTemplateRequest& ob
     }
     destBuyer = destInstance;
 
+    if (obj.dexmatch.strBuyer_Amount.empty() || obj.dexmatch.strBuyer_Amount.size() > MAX_STRING_AMOUNT_LEN)
+    {
+        return false;
+    }
+    vBuyerAmount.assign(obj.dexmatch.strBuyer_Amount.c_str(), obj.dexmatch.strBuyer_Amount.c_str() + obj.dexmatch.strBuyer_Amount.size());
+
     if (hashBuyerSecret.SetHex(obj.dexmatch.strBuyer_Secret_Hash) != obj.dexmatch.strBuyer_Secret_Hash.size())
     {
         return false;
@@ -243,7 +274,7 @@ void CTemplateDexMatch::BuildTemplateData()
 {
     vchData.clear();
     CODataStream os(vchData);
-    os << destMatch << vCoinPair << nMatchAmount << nFee << hashSecret << encSecret << destSellerOrder << destSeller << destSellerDeal << nSellerValidHeight << destBuyer << hashBuyerSecret << nBuyerValidHeight;
+    os << destMatch << vCoinPair << nFinalPrice << nMatchAmount << nFee << hashSecret << encSecret << destSellerOrder << destSeller << destSellerDeal << nSellerValidHeight << destBuyer << vBuyerAmount << hashBuyerSecret << nBuyerValidHeight;
 }
 
 bool CTemplateDexMatch::VerifyTxSignature(const uint256& hash, const uint16 nType, const uint256& hashAnchor, const CDestination& destTo,
