@@ -188,7 +188,11 @@ if __name__ == "__main__":
                 root_addr = upper
                 upper = addrset[upper]['upper']
             
-            root_addr_level[root_addr] = level
+            if root_addr_level.has_key(root_addr) and level > root_addr_level[root_addr]:
+                root_addr_level[root_addr] = level
+            
+            if not root_addr_level.has_key(root_addr):
+                root_addr_level[root_addr] = level
 
     print ("root level:", root_addr_level)
     
