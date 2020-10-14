@@ -141,6 +141,7 @@ public:
     virtual bool ListDeFiRelation(const uint256& hashFork, xengine::CForest<CDestination, CDestination>& relation) = 0;
     virtual bool InitDeFiRelation(const uint256& hashFork) = 0;
     virtual bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent) = 0;
+    virtual bool GetAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent) = 0;
 
     /////////////    CheckPoints    /////////////////////
     virtual bool HasCheckPoints(const uint256& hashFork) const = 0;
@@ -205,6 +206,7 @@ public:
     virtual bool FetchInputs(const uint256& hashFork, const CTransaction& tx, std::vector<CTxOut>& vUnspent) = 0;
     virtual bool SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChange& change) = 0;
     virtual void AddDestDelegate(const CDestination& destDeleage) = 0;
+    virtual bool FetchAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent) = 0;
     const CStorageConfig* StorageConfig()
     {
         return dynamic_cast<const CStorageConfig*>(xengine::IBase::Config());
@@ -289,7 +291,7 @@ public:
     virtual std::size_t GetTxCount() = 0;
     virtual bool ListTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) = 0;
     virtual bool GetBalance(const CDestination& dest, const uint256& hashFork, int nForkHeight, CWalletBalance& balance) = 0;
-    virtual bool SignTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchSendToData, const uint256& hashFork, const int32 nForkHeight, bool& fCompleted) = 0;
+    virtual bool SignTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const uint256& hashFork, const int32 nForkHeight, bool& fCompleted) = 0;
     virtual bool ArrangeInputs(const CDestination& destIn, const uint256& hashFork, int nForkHeight, CTransaction& tx) = 0;
     virtual bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent) = 0;
     /* Update */
@@ -365,6 +367,7 @@ public:
     virtual bool RemovePendingTx(const uint256& txid) = 0;
     virtual bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent) = 0;
     virtual bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent) = 0;
+    virtual Errno ListForkAddressUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, int64 nAmount, std::vector<CTxUnspent>& vUnspent) = 0;
     virtual bool GetVotes(const CDestination& destDelegate, int64& nVotes, string& strFailCause) = 0;
     virtual bool ListDelegate(uint32 nCount, std::multimap<int64, CDestination>& mapVotes) = 0;
 
@@ -382,17 +385,22 @@ public:
     virtual bool Lock(const crypto::CPubKey& pubkey) = 0;
     virtual bool Unlock(const crypto::CPubKey& pubkey, const crypto::CCryptoString& strPassphrase, int64 nTimeout) = 0;
     virtual bool SignSignature(const crypto::CPubKey& pubkey, const uint256& hash, std::vector<unsigned char>& vchSig) = 0;
-    virtual bool SignTransaction(CTransaction& tx, const vector<uint8>& vchSendToData, bool& fCompleted) = 0;
+    virtual bool SignTransaction(CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, bool& fCompleted) = 0;
     virtual bool HaveTemplate(const CTemplateId& tid) = 0;
     virtual void GetTemplateIds(std::set<CTemplateId>& setTid) = 0;
     virtual bool AddTemplate(CTemplatePtr& ptr) = 0;
     virtual CTemplatePtr GetTemplate(const CTemplateId& tid) = 0;
     virtual bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) = 0;
     virtual bool GetBalance(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) = 0;
+    virtual bool GetBalanceEx(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) = 0;
     virtual bool ListWalletTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) = 0;
     virtual boost::optional<std::string> CreateTransaction(const uint256& hashFork, const CDestination& destFrom,
                                                            const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
                                                            const std::vector<unsigned char>& vchData, CTransaction& txNew)
+        = 0;
+    virtual boost::optional<std::string> CreateTransactionEx(const uint256& hashFork, const CDestination& destFrom,
+                                                             const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
+                                                             const std::vector<unsigned char>& vchData, CTransaction& txNew)
         = 0;
     virtual bool SynchronizeWalletTx(const CDestination& destNew) = 0;
     virtual bool ResynchronizeWalletTx() = 0;

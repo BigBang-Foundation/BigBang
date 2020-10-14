@@ -41,7 +41,7 @@ public:
     {
         return (hash == 0 && n == decltype(n)(-1));
     }
-    friend bool operator<(const CTxOutPoint& a, const CTxOutPoint& b)
+    /*friend bool operator<(const CTxOutPoint& a, const CTxOutPoint& b)
     {
         return (a.hash < b.hash || (a.hash == b.hash && a.n < b.n));
     }
@@ -54,16 +54,41 @@ public:
     friend bool operator!=(const CTxOutPoint& a, const CTxOutPoint& b)
     {
         return !(a == b);
-    }
+    }*/
 
 protected:
-    template <typename O>
+    /*template <typename O>
     void Serialize(xengine::CStream& s, O& opt)
+    {
+        s.Serialize(hash, opt);
+        s.Serialize(n, opt);
+    }*/
+    void Serialize(xengine::CStream& s, xengine::LoadType& opt)
+    {
+        s.Serialize(hash, opt);
+        s.Serialize(n, opt);
+    }
+    template <typename O>
+    void Serialize(xengine::CStream& s, O& opt) const
     {
         s.Serialize(hash, opt);
         s.Serialize(n, opt);
     }
 };
+
+inline bool operator==(const CTxOutPoint& a, const CTxOutPoint& b)
+{
+    return (a.hash == b.hash && a.n == b.n);
+}
+
+inline bool operator!=(const CTxOutPoint& a, const CTxOutPoint& b)
+{
+    return !(a == b);
+}
+inline bool operator<(const CTxOutPoint& a, const CTxOutPoint& b)
+{
+    return (a.hash < b.hash || (a.hash == b.hash && a.n < b.n));
+}
 
 class CTxIn
 {
@@ -298,23 +323,89 @@ protected:
     }
 };
 
+class CUnspentOut
+{
+    friend class xengine::CStream;
+
+public:
+    int64 nAmount;
+    int nTxType;
+    uint32 nTxTime;
+    uint32 nLockUntil;
+    int nHeight;
+
+public:
+    CUnspentOut()
+    {
+        SetNull();
+    }
+    CUnspentOut(int64 nAmountIn, int nTxTypeIn, uint32 nTxTimeIn, uint32 nLockUntilIn, int nHeightIn)
+      : nAmount(nAmountIn), nTxType(nTxTypeIn), nTxTime(nTxTimeIn), nLockUntil(nLockUntilIn), nHeight(nHeightIn) {}
+    CUnspentOut(const CTxOut& out, int nTxTypeIn, int nHeightIn)
+      : nAmount(out.nAmount), nTxType(nTxTypeIn), nTxTime(out.nTxTime), nLockUntil(out.nLockUntil), nHeight(nHeightIn) {}
+
+    void SetNull()
+    {
+        nAmount = 0;
+        nTxType = -1;
+        nTxTime = 0;
+        nLockUntil = 0;
+        nHeight = -1;
+    }
+    bool IsNull() const
+    {
+        return (nAmount <= 0);
+    }
+    bool IsLocked(int nBlockHeight) const
+    {
+        return (nBlockHeight < (nLockUntil & 0x7FFFFFFF));
+    }
+    int64 GetTxTime() const
+    {
+        return nTxTime;
+    }
+    friend bool operator==(const CUnspentOut& a, const CUnspentOut& b)
+    {
+        return (a.nAmount == b.nAmount && a.nTxType == b.nTxType && a.nTxTime == b.nTxTime && a.nLockUntil == b.nLockUntil && a.nHeight == b.nHeight);
+    }
+    friend bool operator!=(const CUnspentOut& a, const CUnspentOut& b)
+    {
+        return !(a == b);
+    }
+
+protected:
+    template <typename O>
+    void Serialize(xengine::CStream& s, O& opt)
+    {
+        s.Serialize(nAmount, opt);
+        s.Serialize(nTxType, opt);
+        s.Serialize(nTxTime, opt);
+        s.Serialize(nLockUntil, opt);
+        s.Serialize(nHeight, opt);
+    }
+};
+
 class CTxUnspent : public CTxOutPoint
 {
 public:
     CTxOut output;
+    int nTxType;
+    int nHeight;
 
 public:
     CTxUnspent()
     {
         SetNull();
     }
-    CTxUnspent(const CTxOutPoint& out, const CTxOut& outputIn)
-      : CTxOutPoint(out), output(outputIn) {}
+    CTxUnspent(const CTxOutPoint& out, const CTxOut& outputIn, int nTxTypeIn = -1, int nHeightIn = -1)
+      : CTxOutPoint(out), output(outputIn), nTxType(nTxTypeIn), nHeight(nHeightIn) {}
     virtual ~CTxUnspent() = default;
     void SetNull() override
     {
         CTxOutPoint::SetNull();
         output.SetNull();
+        nTxType = -1;
+        nHeight = -1;
     }
     bool IsNull() const override
     {

@@ -110,8 +110,10 @@ private:
     rpc::CRPCResultPtr RPCValidateAddress(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCResyncWallet(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetBalance(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCGetBalanceEx(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListTransaction(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSendFrom(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCSendFromEx(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCCreateTransaction(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSignTransaction(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSignMessage(rpc::CRPCParamPtr param);
@@ -133,6 +135,7 @@ private:
     rpc::CRPCResultPtr RPCAesEncrypt(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCAesDecrypt(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListUnspent(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCListUnspentEx(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetDeFiRelation(rpc::CRPCParamPtr param);
     /* Mint */
     rpc::CRPCResultPtr RPCGetWork(rpc::CRPCParamPtr param);
