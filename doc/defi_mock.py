@@ -43,10 +43,10 @@ def Compute(addrset, total_level, input, output, count):
     reward_count = supplycycle / rewardcycle
     supply = amount
     reward_percent = initcoinbasepercent
-    total_reward = 0
+    total_reward = int(supply * reward_percent)
 
     for i in range(0, count):
-        height = mintheight + i * rewardcycle
+        height = mintheight + (i + 1) * rewardcycle
         result = {}
         for addr in addrset:
             result[addr] = 0
@@ -127,8 +127,12 @@ def Compute(addrset, total_level, input, output, count):
         for addr, info in addrset.items():
             result[addr] += int(info['power'] * promotion_unit_reward)
             print('promotion reward, addr: ', addr, ', reward: ', result[addr])
+        
+        for addr, reward in result.items():
+            addrset[addr]['stake'] += reward
 
-        output.append(result)
+        output.append({'height':height, 'reward':result})
+    
 
 
 if __name__ == "__main__":
