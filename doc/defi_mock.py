@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# encoding: utf-8
 
 import time
 import json
@@ -9,6 +10,7 @@ from functools import cmp_to_key
 
 COIN = 1000000
 
+# Mark tree node level recursively
 def MarkTreeLevel(root_addr, root_level, addrset):
     addrset[root_addr]['level'] = root_level
     # get childs
@@ -16,8 +18,7 @@ def MarkTreeLevel(root_addr, root_level, addrset):
     for child in childs:
         MarkTreeLevel(child, root_level - 1, addrset)
 
-
-
+# Compute DeFi rewards
 def Compute(addrset, total_level, input, output, count):
     makeorigin = input['makeorigin']
     amount = makeorigin['amount'] * COIN
