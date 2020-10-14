@@ -79,12 +79,12 @@ public:
                                           const std::map<CDestination, int64>& mapAddressAmount,
                                           const std::map<int64, uint32>& mapPromotionTokenTimes,
                                           CDeFiRelationGraph& relation);
-
-protected:
     // for fixed decay coinbase, return the reward of between [nBeginHeight, nEndHeight)
     int64 GetFixedDecayReward(const CProfile& profile, const int32 nBeginHeight, const int32 nEndHeight);
     // for specific decay coinbase, return the reward of between [nBeginHeight, nEndHeight)
     int64 GetSpecificDecayReward(const CProfile& profile, const int32 nBeginHeight, const int32 nEndHeight);
+
+protected:
     // return the max reward height with profile
     int32 GetMaxRewardHeight(const CProfile& profile);
 

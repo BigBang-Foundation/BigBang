@@ -318,7 +318,7 @@ int64 CDeFiForkReward::GetFixedDecayReward(const CProfile& profile, const int32 
         return -1;
     }
 
-    int64 nMaxSupply = (profile.defi.nMaxSupply < 0) ? INT64_MAX : profile.defi.nMaxSupply;
+    int64 nMaxSupply = (profile.defi.nMaxSupply < 0) ? MAX_MONEY : profile.defi.nMaxSupply;
     int32 nDecayCycle = profile.defi.nDecayCycle;
     int32 nSupplyCycle = profile.defi.nSupplyCycle;
     uint8 nCoinbaseDecayPercent = profile.defi.nCoinbaseDecayPercent;
@@ -358,6 +358,7 @@ int64 CDeFiForkReward::GetFixedDecayReward(const CProfile& profile, const int32 
 
     int64 nReward = 0;
     int32 nHeight = nBeginHeight;
+    // loop per supply cycle
     while (nHeight < nEndHeight)
     {
         if (nSupply >= nMaxSupply)
@@ -372,16 +373,27 @@ int64 CDeFiForkReward::GetFixedDecayReward(const CProfile& profile, const int32 
         }
 
         double fCoinbase = (double)(nNextSupply - nSupply) / nSupplyCycle;
-        int32 nNextHeight = nDecayHeight + (nCurSupplyCount + 1) * nSupplyCycle;
-        nNextHeight = min(nEndHeight, nNextHeight);
+        int32 nNextSupplyHeight = nDecayHeight + (nCurSupplyCount + 1) * nSupplyCycle;
+        int32 nNextHeight = min(nEndHeight, nNextSupplyHeight);
 
-        nReward += min(nMaxSupply - nSupply, (int64)(fCoinbase * (nNextHeight - nHeight)));
+        int64 nNextReward = (int64)llround(fCoinbase * (nNextHeight - nHeight));
+        if (nMaxSupply >= nNextSupply)
+        {
+            nReward += nNextReward;
+        }
+        else
+        {
+            int64 nLastReward = (int64)llround(fCoinbase * (nHeight - (nNextSupplyHeight - nSupplyCycle)));
+            int64 nMaxReward = max((int64)0, nMaxSupply - nSupply - nLastReward);
+            nReward += min(nMaxReward, nNextReward);
+        }
 
         nHeight = nNextHeight;
         nSupply = nNextSupply;
         ++nCurSupplyCount;
         if ((nSupplyCount > 0) && (nCurSupplyCount % nSupplyCount == 0))
         {
+            nDecayHeight = nNextHeight;
             nCurSupplyCount = 0;
             fCoinbaseIncreasing = fCoinbaseIncreasing * nCoinbaseDecayPercent / 100;
         }
@@ -398,7 +410,7 @@ int64 CDeFiForkReward::GetSpecificDecayReward(const CProfile& profile, const int
         return -1;
     }
 
-    int64 nMaxSupply = (profile.defi.nMaxSupply < 0) ? INT64_MAX : profile.defi.nMaxSupply;
+    int64 nMaxSupply = (profile.defi.nMaxSupply < 0) ? MAX_MONEY : profile.defi.nMaxSupply;
     int32 nSupplyCycle = profile.defi.nSupplyCycle;
     const map<int32, uint32>& mapCoinbasePercent = profile.defi.mapCoinbasePercent;
 
@@ -440,6 +452,7 @@ int64 CDeFiForkReward::GetSpecificDecayReward(const CProfile& profile, const int
             }
 
             int32 nSupplyCount = (it->first - nLastDecayHeight) / nSupplyCycle;
+            // loop per supply cycle
             while (nHeight < nEndHeight && nCurSupplyCount < nSupplyCount)
             {
                 if (nSupply >= nMaxSupply)
@@ -454,10 +467,20 @@ int64 CDeFiForkReward::GetSpecificDecayReward(const CProfile& profile, const int
                 }
 
                 double fCoinbase = (double)(nNextSupply - nSupply) / nSupplyCycle;
-                int32 nNextHeight = nMintHeight + nLastDecayHeight + (nCurSupplyCount + 1) * nSupplyCycle;
-                nNextHeight = min(nEndHeight, nNextHeight);
+                int32 nNextSupplyHeight = nMintHeight + nLastDecayHeight + (nCurSupplyCount + 1) * nSupplyCycle;
+                int32 nNextHeight = min(nEndHeight, nNextSupplyHeight);
 
-                nReward += min(nMaxSupply - nSupply, (int64)(fCoinbase * (nNextHeight - nHeight)));
+                int64 nNextReward = (int64)llround(fCoinbase * (nNextHeight - nHeight));
+                if (nMaxSupply >= nNextSupply)
+                {
+                    nReward += nNextReward;
+                }
+                else
+                {
+                    int64 nLastReward = (int64)llround(fCoinbase * (nHeight - (nNextSupplyHeight - nSupplyCycle)));
+                    int64 nMaxReward = max((int64)0, nMaxSupply - nSupply - nLastReward);
+                    nReward += min(nMaxReward, nNextReward);
+                }
 
                 nHeight = nNextHeight;
                 nSupply = nNextSupply;
@@ -473,12 +496,7 @@ int64 CDeFiForkReward::GetSpecificDecayReward(const CProfile& profile, const int
 
 int32 CDeFiForkReward::GetMaxRewardHeight(const CProfile& profile)
 {
-    int64 nMaxSupply = profile.defi.nMaxSupply;
-    if (nMaxSupply < 0)
-    {
-        return INT32_MAX;
-    }
-
+    int64 nMaxSupply = (profile.defi.nMaxSupply < 0) ? MAX_MONEY : profile.defi.nMaxSupply;
     int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
     int32 nSupplyCycle = profile.defi.nSupplyCycle;
     if (profile.defi.nCoinbaseType == FIXED_DEFI_COINBASE_TYPE)
@@ -502,7 +520,7 @@ int32 CDeFiForkReward::GetMaxRewardHeight(const CProfile& profile)
             if (nNextSupply >= nMaxSupply)
             {
                 double fCoinbase = nSupply * fCoinbaseIncreasing / nSupplyCycle;
-                return nMintHeight + count * nSupplyCycle + (nMaxSupply - nSupply) / fCoinbase - 1;
+                return nMintHeight + count * nSupplyCycle + ceil((nMaxSupply - nSupply) / fCoinbase) - 1;
             }
 
             nSupply = nNextSupply;
@@ -539,7 +557,7 @@ int32 CDeFiForkReward::GetMaxRewardHeight(const CProfile& profile)
                 if (nNextSupply >= nMaxSupply)
                 {
                     double fCoinbase = nSupply * fCoinbaseIncreasing / nSupplyCycle;
-                    return nMintHeight + count * nSupplyCycle + (nMaxSupply - nSupply) / fCoinbase - 1;
+                    return nMintHeight + count * nSupplyCycle + ceil((nMaxSupply - nSupply) / fCoinbase) - 1;
                 }
 
                 nSupply = nNextSupply;

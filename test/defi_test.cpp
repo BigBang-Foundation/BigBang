@@ -373,8 +373,8 @@ BOOST_AUTO_TEST_CASE(reward)
     // for (i = 0; i < 20; i++ ) supply *= 1.0015625
     // supply = 2099250670895780, height = 164 * 43200 = 7084800
     // coinbase = 2099250670895780 * 1.0015625 / 43200 = 75927758.64061704
-    // supply = max = 2100000000000000, height = 7084800 + (max - supply) / coinbase + 151(mint_height - 1) = 7094819
-    BOOST_CHECK(r.GetForkMaxRewardHeight(forkid1) == 7094819);
+    // supply = max = 2100000000000000, height = 7084800 + ceil((max - supply) / coinbase) + 151(mint_height - 1) = 7094820
+    BOOST_CHECK(r.GetForkMaxRewardHeight(forkid1) == 7094820);
     // supply = 10000000000000
     // for (i = 0; i < (259200 / 43200); i++ ) supply *= 1.1
     // for (i = 0; i < ((777600 - 259200) / 43200); i++ ) supply *= 1.08
@@ -383,6 +383,21 @@ BOOST_AUTO_TEST_CASE(reward)
     // for (i = 0; i < ((5184000 - 3369600) / 43200); i++ ) supply *= 1.02
     // max = 1000000000000000, supply = 957925331297192, supply < max, height = 518400 + 1499(mint_height - 1) = 5185499
     BOOST_CHECK(r.GetForkMaxRewardHeight(forkid2) == 5185499);
+
+    // test common reward
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 152, 1592) == 70000000000);
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 152, 1036952) == 185844386191952);
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 1036952, 1036953) == 239403225);
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 152, 1036953) == 185844625595177);
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 7094819, 7094820) == 75927759);
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 7094820, 7094821) == 73981955);
+
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 2940) == 33333333333);
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 260700) == 7715610000000);
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 260700, 260701) == 32806685);
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 260701) == 7715642806685);
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 5185500) == 947925331297192);
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 5185500, 5185501) == 0);
 
     // test PrevRewardHeight
     BOOST_CHECK(r.PrevRewardHeight(forkid1, -10) == -1);
@@ -403,7 +418,7 @@ BOOST_AUTO_TEST_CASE(reward)
     BOOST_CHECK(r.GetSectionReward(forkid1, uint256(43352, uint224(0))) == 53472222);
     BOOST_CHECK(r.GetSectionReward(forkid1, uint256(100000, uint224(0))) == 28762708333);
     BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7086391, uint224(0))) == 109335972442);
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7095031, uint224(0))) == 93239287610);
+    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7095031, uint224(0))) == 93313269565);
     BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7095032, uint224(0))) == 0);
     BOOST_CHECK(r.GetSectionReward(forkid1, uint256(10000000, uint224(0))) == 0);
     int64 nReward = r.GetSectionReward(forkid1, uint256(100000, uint224(0)));
@@ -413,13 +428,11 @@ BOOST_AUTO_TEST_CASE(reward)
     BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1499, uint224(0))) == 0);
     BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1500, uint224(0))) == 23148148);
     BOOST_CHECK(r.GetSectionReward(forkid2, uint256(2939, uint224(0))) == 33333333333);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(44700, uint224(0))) == 25462962);
+    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(44700, uint224(0))) == 25462963);
     BOOST_CHECK(r.GetSectionReward(forkid2, uint256(260700, uint224(0))) == 32806685);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1001348, uint224(0))) == 32224247817);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(2001348, uint224(0))) == 126959353755);
-    // supply = 550207933.870525 = 10000000*(1.1^6)*(1.08^12)*(1.05^24)*(1.03^36)*(1.02^14)
-    // reward = 550207933.870525 * 0.02/43200 * ((4001348 - (1500 - 1) - (6+12+24+36+14) * 43200) % 1440)
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(4001348, uint224(0))) == 246829392555);
+    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1001348, uint224(0))) == 32224247818);
+    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(2001348, uint224(0))) == 126959353756);
+    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(4001348, uint224(0))) == 246829392556);
     BOOST_CHECK(r.GetSectionReward(forkid2, uint256(10001348, uint224(0))) == 0);
 
     CAddress A("1632srrskscs1d809y3x5ttf50f0gabf86xjz2s6aetc9h9ewwhm58dj3");
