@@ -26,6 +26,7 @@ void CDeFiForkReward::AddFork(const uint256& forkid, const CProfile& profile)
 {
     CForkReward fr;
     fr.profile = profile;
+    fr.nMaxRewardHeight = GetMaxRewardHeight(profile);
     forkReward.insert(std::make_pair(forkid, fr));
 }
 
@@ -33,6 +34,12 @@ CProfile CDeFiForkReward::GetForkProfile(const uint256& forkid)
 {
     auto it = forkReward.find(forkid);
     return (it == forkReward.end()) ? CProfile() : it->second.profile;
+}
+
+int32 CDeFiForkReward::GetForkMaxRewardHeight(const uint256& forkid)
+{
+    auto it = forkReward.find(forkid);
+    return (it == forkReward.end()) ? -1 : it->second.nMaxRewardHeight;
 }
 
 int32 CDeFiForkReward::PrevRewardHeight(const uint256& forkid, const int32 nHeight)
@@ -56,56 +63,52 @@ int32 CDeFiForkReward::PrevRewardHeight(const uint256& forkid, const int32 nHeig
 
 int64 CDeFiForkReward::GetSectionReward(const uint256& forkid, const uint256& hash)
 {
-    double fReward = 0;
     CProfile profile = GetForkProfile(forkid);
     if (profile.IsNull())
     {
         return -1;
     }
 
-    int32 nEndHeight = CBlock::GetBlockHeightByHash(hash) + 1;
-    int32 nBeginHeight = PrevRewardHeight(forkid, CBlock::GetBlockHeightByHash(hash)) + 1;
+    int32 nMaxRewardHeight = GetForkMaxRewardHeight(forkid);
+    if (nMaxRewardHeight < 0)
+    {
+        return -1;
+    }
 
     int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
+
+    // begin height
+    int32 nBeginHeight = PrevRewardHeight(forkid, CBlock::GetBlockHeightByHash(hash)) + 1;
     if (nBeginHeight < nMintHeight)
     {
         nBeginHeight = nMintHeight;
     }
-
-    double fCoinbase = 0;
-    int32 nNextHeight = 0;
-    while (nBeginHeight < nEndHeight)
+    // to the max reward height
+    if (nBeginHeight > nMaxRewardHeight)
     {
-        if (profile.defi.nCoinbaseType == FIXED_DEFI_COINBASE_TYPE)
-        {
-            if (!GetFixedDecayCoinbase(profile, nBeginHeight, fCoinbase, nNextHeight))
-            {
-                StdError("CDeFiForkReward", "GetSectionReward GetFixedDecayCoinbase fail");
-                return -1;
-            }
-        }
-        else if (profile.defi.nCoinbaseType == SPECIFIC_DEFI_COINBASE_TYPE)
-        {
-            if (!GetSpecificDecayCoinbase(profile, nBeginHeight, fCoinbase, nNextHeight))
-            {
-                StdError("CDeFiForkReward", "GetSectionReward GetSpecificDecayCoinbase fail");
-                return -1;
-            }
-        }
-
-        if (nNextHeight > 0)
-        {
-            uint32 nHeight = min(nEndHeight, nNextHeight) - nBeginHeight;
-            fReward += fCoinbase * nHeight;
-            nBeginHeight += nHeight;
-        }
-        else
-        {
-            break;
-        }
+        return 0;
     }
 
-    return (int64)fReward;
+    // end height
+    int32 nEndHeight = CBlock::GetBlockHeightByHash(hash) + 1;
+    // to the max reward height
+    if (nEndHeight > nMaxRewardHeight + 1)
+    {
+        nEndHeight = nMaxRewardHeight + 1;
+    }
+
+    if (profile.defi.nCoinbaseType == FIXED_DEFI_COINBASE_TYPE)
+    {
+        return GetFixedDecayReward(profile, nBeginHeight, nEndHeight);
+    }
+    else if (profile.defi.nCoinbaseType == SPECIFIC_DEFI_COINBASE_TYPE)
+    {
+        return GetSpecificDecayReward(profile, nBeginHeight, nEndHeight);
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 bool CDeFiForkReward::ExistForkSection(const uint256& forkid, const uint256& section)
@@ -150,110 +153,6 @@ void CDeFiForkReward::AddForkSection(const uint256& forkid, const uint256& hash,
             break;
         }
     }
-}
-
-bool CDeFiForkReward::GetFixedDecayCoinbase(const CProfile& profile, const int32 nHeight, double& fCoinbase, int32& nNextHeight)
-{
-    int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
-    if (nHeight < nMintHeight)
-    {
-        return false;
-    }
-
-    int32 nDecayCycle = profile.defi.nDecayCycle;
-    int32 nSupplyCycle = profile.defi.nSupplyCycle;
-    uint8 nCoinbaseDecayPercent = profile.defi.nCoinbaseDecayPercent;
-    uint32 nInitCoinbasePercent = profile.defi.nInitCoinbasePercent;
-    int32 nSupplyCount = (nDecayCycle <= 0) ? 0 : (nDecayCycle / nSupplyCycle);
-
-    // for example:
-    // [2] nJoint height
-    // [3] origin height
-    // [4, 5, 6] the first supply cycle of the first decay cycle
-    // [7, 8, 9] the second sypply cycle of the first decay cycle
-    // [10, 11, 12] the first supply cycle of the second decay cycle
-    // [13, 14, 15] the second supply cycle of the second decay cycle
-    int32 nDecayCount = (nDecayCycle <= 0) ? 0 : ((nHeight - nMintHeight) / nDecayCycle);
-    int32 nDecayHeight = nDecayCount * nDecayCycle + nMintHeight;
-    int32 nCurSupplyCount = (nHeight - nDecayHeight) / nSupplyCycle;
-
-    // supply = init * (1 + nInitCoinbasePercent) ^ nSupplyCount * (1 + nInitCoinbasePercent * nCoinbaseDecayPercent) ^ nCurSupplyCount
-    int64 nSupply = profile.nAmount;
-    double fCoinbaseIncreasing = (double)nInitCoinbasePercent / 100;
-    for (int i = 0; i <= nDecayCount; i++)
-    {
-        if (i < nDecayCount)
-        {
-            nSupply *= pow(1 + fCoinbaseIncreasing, nSupplyCount);
-            fCoinbaseIncreasing = fCoinbaseIncreasing * nCoinbaseDecayPercent / 100;
-        }
-        else
-        {
-            nSupply *= pow(1 + fCoinbaseIncreasing, nCurSupplyCount);
-        }
-    }
-
-    fCoinbase = nSupply * fCoinbaseIncreasing / nSupplyCycle;
-    nNextHeight = (nCurSupplyCount + 1) * nSupplyCycle + nDecayHeight;
-    return true;
-}
-
-bool CDeFiForkReward::GetSpecificDecayCoinbase(const CProfile& profile, const int32 nHeight, double& fCoinbase, int32& nNextHeight)
-{
-    int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
-    if (nHeight < nMintHeight)
-    {
-        return false;
-    }
-
-    int32 nSupplyCycle = profile.defi.nSupplyCycle;
-    const map<int32, uint32>& mapCoinbasePercent = profile.defi.mapCoinbasePercent;
-
-    // for example:
-    // [2] nJoint height
-    // [3] origin height
-    // [4, 5] the first supply cycle of the first decay cycle
-    // [6, 7] the second sypply cycle of the first decay cycle
-    // [8, 9] the third sypply cycle of the first decay cycle
-    // [10, 11] the first supply cycle of the second decay cycle
-    // [12, 13] the second supply cycle of the second decay cycle
-    // [14, 15] the first supply cycle of the third decay cycle
-    int32 nRelativeHeight = (nHeight - nMintHeight + 1);
-    // supply = init * (1 + nCoinbasePercent1) ^ nSupplyCount1 * (1 + nCoinbasePercent2) ^ nSupplyCount2 * ... * (1 + nCoinbasePercentN) ^ nCurSupplyCount
-    int64 nSupply = profile.nAmount;
-    uint32 nCurCoinbaseIncreasing = 0;
-    int32 nCurSupplyCount = 0;
-    int32 nLastDecayHeight = 0;
-    for (auto it = mapCoinbasePercent.begin(); it != mapCoinbasePercent.end(); it++)
-    {
-        double fCoinbaseIncreasing = (double)it->second / 100;
-        if (nRelativeHeight > it->first)
-        {
-            int32 nSupplyCount = (it->first - nLastDecayHeight) / nSupplyCycle;
-            nSupply *= pow(1 + fCoinbaseIncreasing, nSupplyCount);
-            nLastDecayHeight = it->first;
-        }
-        else
-        {
-            nCurSupplyCount = (nRelativeHeight - nLastDecayHeight) / nSupplyCycle;
-            nSupply *= pow(1 + fCoinbaseIncreasing, nCurSupplyCount);
-            nCurCoinbaseIncreasing = it->second;
-            break;
-        }
-    }
-
-    if (nCurCoinbaseIncreasing == 0)
-    {
-        fCoinbase = 0;
-        nNextHeight = -1;
-    }
-    else
-    {
-        double fCoinbaseIncreasing = (double)nCurCoinbaseIncreasing / 100;
-        fCoinbase = nSupply * fCoinbaseIncreasing / nSupplyCycle;
-        nNextHeight = (nCurSupplyCount + 1) * nSupplyCycle + nLastDecayHeight + nMintHeight - 1;
-    }
-    return true;
 }
 
 CDeFiRewardSet CDeFiForkReward::ComputeStakeReward(const int64 nMin, const int64 nReward,
@@ -409,6 +308,252 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
     }
 
     return rewardSet;
+}
+
+int64 CDeFiForkReward::GetFixedDecayReward(const CProfile& profile, const int32 nBeginHeight, const int32 nEndHeight)
+{
+    int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
+    if (nBeginHeight < nMintHeight)
+    {
+        return -1;
+    }
+
+    int64 nMaxSupply = (profile.defi.nMaxSupply < 0) ? INT64_MAX : profile.defi.nMaxSupply;
+    int32 nDecayCycle = profile.defi.nDecayCycle;
+    int32 nSupplyCycle = profile.defi.nSupplyCycle;
+    uint8 nCoinbaseDecayPercent = profile.defi.nCoinbaseDecayPercent;
+    uint32 nInitCoinbasePercent = profile.defi.nInitCoinbasePercent;
+    int32 nSupplyCount = (nDecayCycle <= 0) ? 0 : (nDecayCycle / nSupplyCycle);
+
+    // for example:
+    // [2] nJoint height
+    // [3] origin height
+    // [4, 5, 6] the first supply cycle of the first decay cycle
+    // [7, 8, 9] the second sypply cycle of the first decay cycle
+    // [10, 11, 12] the first supply cycle of the second decay cycle
+    // [13, 14, 15] the second supply cycle of the second decay cycle
+    int32 nDecayCount = (nDecayCycle <= 0) ? 0 : ((nBeginHeight - nMintHeight) / nDecayCycle);
+    int32 nDecayHeight = nDecayCount * nDecayCycle + nMintHeight;
+    int32 nCurSupplyCount = (nBeginHeight - nDecayHeight) / nSupplyCycle;
+    int64 nSupply = profile.nAmount;
+    double fCoinbaseIncreasing = (double)nInitCoinbasePercent / 100;
+    for (int i = 0; i <= nDecayCount; i++)
+    {
+        if (i < nDecayCount)
+        {
+            for (int j = 0; j < nSupplyCount; j++)
+            {
+                nSupply *= 1 + fCoinbaseIncreasing;
+            }
+            fCoinbaseIncreasing = fCoinbaseIncreasing * nCoinbaseDecayPercent / 100;
+        }
+        else
+        {
+            for (int i = 0; i < nCurSupplyCount; i++)
+            {
+                nSupply *= 1 + fCoinbaseIncreasing;
+            }
+        }
+    }
+
+    int64 nReward = 0;
+    int32 nHeight = nBeginHeight;
+    while (nHeight < nEndHeight)
+    {
+        if (nSupply >= nMaxSupply)
+        {
+            return nReward;
+        }
+
+        int64 nNextSupply = nSupply * (1 + fCoinbaseIncreasing);
+        if (nNextSupply < nSupply + COIN)
+        {
+            return nReward;
+        }
+
+        double fCoinbase = (double)(nNextSupply - nSupply) / nSupplyCycle;
+        int32 nNextHeight = nDecayHeight + (nCurSupplyCount + 1) * nSupplyCycle;
+        nNextHeight = min(nEndHeight, nNextHeight);
+
+        nReward += min(nMaxSupply - nSupply, (int64)(fCoinbase * (nNextHeight - nHeight)));
+
+        nHeight = nNextHeight;
+        nSupply = nNextSupply;
+        ++nCurSupplyCount;
+        if ((nSupplyCount > 0) && (nCurSupplyCount % nSupplyCount == 0))
+        {
+            nCurSupplyCount = 0;
+            fCoinbaseIncreasing = fCoinbaseIncreasing * nCoinbaseDecayPercent / 100;
+        }
+    }
+
+    return nReward;
+}
+
+int64 CDeFiForkReward::GetSpecificDecayReward(const CProfile& profile, const int32 nBeginHeight, const int32 nEndHeight)
+{
+    int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
+    if (nBeginHeight < nMintHeight)
+    {
+        return -1;
+    }
+
+    int64 nMaxSupply = (profile.defi.nMaxSupply < 0) ? INT64_MAX : profile.defi.nMaxSupply;
+    int32 nSupplyCycle = profile.defi.nSupplyCycle;
+    const map<int32, uint32>& mapCoinbasePercent = profile.defi.mapCoinbasePercent;
+
+    // for example:
+    // [2] nJoint height
+    // [3] origin height
+    // [4, 5] the first supply cycle of the first decay cycle
+    // [6, 7] the second sypply cycle of the first decay cycle
+    // [8, 9] the third sypply cycle of the first decay cycle
+    // [10, 11] the first supply cycle of the second decay cycle
+    // [12, 13] the second supply cycle of the second decay cycle
+    // [14, 15] the first supply cycle of the third decay cycle
+    int32 nHeight = nBeginHeight;
+    int64 nSupply = profile.nAmount;
+    int32 nLastDecayHeight = 0;
+    int64 nReward = 0;
+    for (auto it = mapCoinbasePercent.begin(); it != mapCoinbasePercent.end(); it++)
+    {
+        if (nHeight >= nEndHeight)
+        {
+            break;
+        }
+
+        double fCoinbaseIncreasing = (double)it->second / 100;
+        if (nHeight - nMintHeight + 1 > it->first)
+        {
+            int32 nSupplyCount = (it->first - nLastDecayHeight) / nSupplyCycle;
+            for (int j = 0; j < nSupplyCount; j++)
+            {
+                nSupply *= 1 + fCoinbaseIncreasing;
+            }
+        }
+        else
+        {
+            int32 nCurSupplyCount = (nHeight - nLastDecayHeight - 1) / nSupplyCycle;
+            for (int j = 0; j < nCurSupplyCount; j++)
+            {
+                nSupply *= 1 + fCoinbaseIncreasing;
+            }
+
+            int32 nSupplyCount = (it->first - nLastDecayHeight) / nSupplyCycle;
+            while (nHeight < nEndHeight && nCurSupplyCount < nSupplyCount)
+            {
+                if (nSupply >= nMaxSupply)
+                {
+                    return nReward;
+                }
+
+                int64 nNextSupply = nSupply * (1 + fCoinbaseIncreasing);
+                if (nNextSupply < nSupply + COIN)
+                {
+                    return nReward;
+                }
+
+                double fCoinbase = (double)(nNextSupply - nSupply) / nSupplyCycle;
+                int32 nNextHeight = nMintHeight + nLastDecayHeight + (nCurSupplyCount + 1) * nSupplyCycle;
+                nNextHeight = min(nEndHeight, nNextHeight);
+
+                nReward += min(nMaxSupply - nSupply, (int64)(fCoinbase * (nNextHeight - nHeight)));
+
+                nHeight = nNextHeight;
+                nSupply = nNextSupply;
+                ++nCurSupplyCount;
+            }
+        }
+
+        nLastDecayHeight = it->first;
+    }
+
+    return nReward;
+}
+
+int32 CDeFiForkReward::GetMaxRewardHeight(const CProfile& profile)
+{
+    int64 nMaxSupply = profile.defi.nMaxSupply;
+    if (nMaxSupply < 0)
+    {
+        return INT32_MAX;
+    }
+
+    int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
+    int32 nSupplyCycle = profile.defi.nSupplyCycle;
+    if (profile.defi.nCoinbaseType == FIXED_DEFI_COINBASE_TYPE)
+    {
+        int32 nDecayCycle = profile.defi.nDecayCycle;
+        uint8 nCoinbaseDecayPercent = profile.defi.nCoinbaseDecayPercent;
+        uint32 nInitCoinbasePercent = profile.defi.nInitCoinbasePercent;
+        int32 nSupplyCount = (nDecayCycle <= 0) ? 0 : (nDecayCycle / nSupplyCycle);
+
+        int64 nSupply = profile.nAmount;
+        int64 nNextSupply = 0;
+        double fCoinbaseIncreasing = (double)nInitCoinbasePercent / 100;
+        int32 count = 0;
+        while (true)
+        {
+            nNextSupply = nSupply * (1 + fCoinbaseIncreasing);
+            if (nNextSupply < nSupply + COIN)
+            {
+                return nMintHeight + count * nSupplyCycle - 1;
+            }
+            if (nNextSupply >= nMaxSupply)
+            {
+                double fCoinbase = nSupply * fCoinbaseIncreasing / nSupplyCycle;
+                return nMintHeight + count * nSupplyCycle + (nMaxSupply - nSupply) / fCoinbase - 1;
+            }
+
+            nSupply = nNextSupply;
+            ++count;
+            if (nSupplyCount > 0 && (count % nSupplyCount == 0))
+            {
+                fCoinbaseIncreasing = fCoinbaseIncreasing * nCoinbaseDecayPercent / 100;
+            }
+        }
+
+        return count * nSupplyCycle + nMintHeight - 1;
+    }
+    else if (profile.defi.nCoinbaseType == SPECIFIC_DEFI_COINBASE_TYPE)
+    {
+        int32 nSupplyCycle = profile.defi.nSupplyCycle;
+        const map<int32, uint32>& mapCoinbasePercent = profile.defi.mapCoinbasePercent;
+
+        int64 nSupply = profile.nAmount;
+        int64 nNextSupply = 0;
+        double fCoinbaseIncreasing = 0;
+        int32 nLastDecayHeight = 0;
+        int32 count = 0;
+        for (auto it = mapCoinbasePercent.begin(); it != mapCoinbasePercent.end(); it++)
+        {
+            fCoinbaseIncreasing = (double)it->second / 100;
+            int32 nSupplyCount = (it->first - nLastDecayHeight) / nSupplyCycle;
+            while (nSupplyCount > 0)
+            {
+                nNextSupply = nSupply * (1 + fCoinbaseIncreasing);
+                if (nNextSupply < nSupply + COIN)
+                {
+                    return nMintHeight + count * nSupplyCycle - 1;
+                }
+                if (nNextSupply >= nMaxSupply)
+                {
+                    double fCoinbase = nSupply * fCoinbaseIncreasing / nSupplyCycle;
+                    return nMintHeight + count * nSupplyCycle + (nMaxSupply - nSupply) / fCoinbase - 1;
+                }
+
+                nSupply = nNextSupply;
+                ++count;
+                --nSupplyCount;
+            }
+            nLastDecayHeight = it->first;
+        }
+        return nMintHeight + count * nSupplyCycle - 1;
+    }
+    else
+    {
+        return INT32_MAX;
+    }
 }
 
 } // namespace bigbang
