@@ -174,8 +174,6 @@ if __name__ == "__main__":
         addrset[lower_addr]['upper'] = upper_addr
         addrset[upper_addr]['lower'].append(lower_addr)
 
-    print ("addrset1", addrset)
-
     # level
     total_level = 0
     root_addr_level = {}
@@ -184,11 +182,13 @@ if __name__ == "__main__":
         if len(info['lower']) == 0:
             level = 0
             upper = addrset[addr]['upper']
+            root_addr = addr
             while upper:
                 level += 1
+                root_addr = upper
                 upper = addrset[upper]['upper']
             
-            root_addr_level[upper] = level
+            root_addr_level[root_addr] = level
 
     print ("root level:", root_addr_level)
     
