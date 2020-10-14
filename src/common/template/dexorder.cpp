@@ -13,15 +13,12 @@
 using namespace std;
 using namespace xengine;
 
-#define PRICE_PRECISION (10000000000L)
-#define MAX_STRING_ADDRESS_LEN 128
-
 //////////////////////////////
 // CTemplateDexOrder
 
-CTemplateDexOrder::CTemplateDexOrder(const CDestination& destSellerIn, const std::vector<char> vCoinPairIn,
-                                     uint64 nPriceIn, int nFeeIn, const std::vector<char>& vRecvDestIn, int nValidHeightIn,
-                                     const CDestination& destMatchIn, const std::vector<char>& vDealDestIn)
+CTemplateDexOrder::CTemplateDexOrder(const CDestination& destSellerIn, const vector<char> vCoinPairIn,
+                                     uint64 nPriceIn, int nFeeIn, const vector<char>& vRecvDestIn, int nValidHeightIn,
+                                     const CDestination& destMatchIn, const vector<char>& vDealDestIn)
   : CTemplate(TEMPLATE_DEXORDER),
     destSeller(destSellerIn),
     vCoinPair(vCoinPairIn),
@@ -47,7 +44,7 @@ bool CTemplateDexOrder::GetSignDestination(const CTransaction& tx, const uint256
         return false;
     }
     setSubDest.clear();
-    if (nHeight <= nValidHeight)
+    if (nHeight <= nValidHeight && tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_DEXMATCH)
     {
         setSubDest.insert(destMatch);
     }
@@ -106,7 +103,7 @@ bool CTemplateDexOrder::ValidateParam() const
     {
         return false;
     }
-    if (vRecvDest.empty())
+    if (vRecvDest.empty() || vRecvDest.size() > MAX_STRING_ADDRESS_LEN)
     {
         return false;
     }
@@ -118,7 +115,7 @@ bool CTemplateDexOrder::ValidateParam() const
     {
         return false;
     }
-    if (vDealDest.empty())
+    if (vDealDest.empty() || vDealDest.size() > MAX_STRING_ADDRESS_LEN)
     {
         return false;
     }
@@ -204,7 +201,7 @@ void CTemplateDexOrder::BuildTemplateData()
 bool CTemplateDexOrder::VerifyTxSignature(const uint256& hash, const uint16 nType, const uint256& hashAnchor, const CDestination& destTo,
                                           const vector<uint8>& vchSig, const int32 nForkHeight, bool& fCompleted) const
 {
-    if (nForkHeight <= nValidHeight)
+    if (nForkHeight <= nValidHeight && destTo.IsTemplate() && destTo.GetTemplateId().GetType() == TEMPLATE_DEXMATCH)
     {
         return destMatch.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSig, nForkHeight, fCompleted);
     }

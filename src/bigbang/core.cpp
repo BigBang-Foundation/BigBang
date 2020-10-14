@@ -1370,59 +1370,57 @@ Errno CCoreProtocol::VerifyDexOrderTx(const CTransaction& tx, const CDestination
     auto objOrder = boost::dynamic_pointer_cast<CTemplateDexOrder>(ptrOrder);
     if (nHeight <= objOrder->nValidHeight)
     {
-        if (nSendToTemplateType != TEMPLATE_DEXMATCH)
+        if (nSendToTemplateType == TEMPLATE_DEXMATCH)
         {
-            Log("Verify dexorder tx: sendTo not is TEMPLATE_DEXMATCH, tx: %s", tx.GetHash().GetHex().c_str());
-            return ERR_TRANSACTION_SIGNATURE_INVALID;
-        }
-        CTemplatePtr ptrMatch = CTemplate::CreateTemplatePtr(nSendToTemplateType, tx.vchSig);
-        if (!ptrMatch)
-        {
-            Log("Verify dexorder tx: Create match template fail, tx: %s", tx.GetHash().GetHex().c_str());
-            return ERR_TRANSACTION_SIGNATURE_INVALID;
-        }
-        auto objMatch = boost::dynamic_pointer_cast<CTemplateDexMatch>(ptrMatch);
+            CTemplatePtr ptrMatch = CTemplate::CreateTemplatePtr(nSendToTemplateType, tx.vchSig);
+            if (!ptrMatch)
+            {
+                Log("Verify dexorder tx: Create match template fail, tx: %s", tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+            auto objMatch = boost::dynamic_pointer_cast<CTemplateDexMatch>(ptrMatch);
 
-        set<CDestination> setSubDest;
-        vector<uint8> vchSubSig;
-        if (!objOrder->GetSignDestination(tx, uint256(), nHeight, tx.vchSig, setSubDest, vchSubSig))
-        {
-            Log("Verify dexorder tx: GetSignDestination fail, tx: %s", tx.GetHash().GetHex().c_str());
-            return ERR_TRANSACTION_SIGNATURE_INVALID;
-        }
-        if (setSubDest.empty() || objMatch->destMatch != *setSubDest.begin())
-        {
-            Log("Verify dexorder tx: destMatch error, tx: %s", tx.GetHash().GetHex().c_str());
-            return ERR_TRANSACTION_SIGNATURE_INVALID;
-        }
+            set<CDestination> setSubDest;
+            vector<uint8> vchSubSig;
+            if (!objOrder->GetSignDestination(tx, uint256(), nHeight, tx.vchSig, setSubDest, vchSubSig))
+            {
+                Log("Verify dexorder tx: GetSignDestination fail, tx: %s", tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+            if (setSubDest.empty() || objMatch->destMatch != *setSubDest.begin())
+            {
+                Log("Verify dexorder tx: destMatch error, tx: %s", tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
 
-        if (objMatch->destSellerOrder != destIn)
-        {
-            Log("Verify dexorder tx: destSellerOrder error, tx: %s", tx.GetHash().GetHex().c_str());
-            return ERR_TRANSACTION_SIGNATURE_INVALID;
-        }
-        if (objMatch->destSeller != objOrder->destSeller)
-        {
-            Log("Verify dexorder tx: destSeller error, tx: %s", tx.GetHash().GetHex().c_str());
-            return ERR_TRANSACTION_SIGNATURE_INVALID;
-        }
-        if (objMatch->nSellerValidHeight != objOrder->nValidHeight)
-        {
-            Log("Verify dexorder tx: nSellerValidHeight error, match nSellerValidHeight: %d, order nValidHeight: %d, tx: %s",
-                objMatch->nSellerValidHeight, objOrder->nValidHeight, tx.GetHash().GetHex().c_str());
-            return ERR_TRANSACTION_SIGNATURE_INVALID;
-        }
-        if ((tx.nAmount != objMatch->nMatchAmount) || (tx.nAmount < (TNS_DEX_MIN_TX_FEE * 3 + TNS_DEX_MIN_MATCH_AMOUNT)))
-        {
-            Log("Verify dexorder tx: nAmount error, match nMatchAmount: %lu, tx amount: %lu, tx: %s",
-                objMatch->nMatchAmount, tx.nAmount, tx.GetHash().GetHex().c_str());
-            return ERR_TRANSACTION_SIGNATURE_INVALID;
-        }
-        if (objMatch->nFee != objOrder->nFee)
-        {
-            Log("Verify dexorder tx: nFee error, match fee: %ld, order fee: %ld, tx: %s",
-                objMatch->nFee, objMatch->nFee, tx.GetHash().GetHex().c_str());
-            return ERR_TRANSACTION_SIGNATURE_INVALID;
+            if (objMatch->destSellerOrder != destIn)
+            {
+                Log("Verify dexorder tx: destSellerOrder error, tx: %s", tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+            if (objMatch->destSeller != objOrder->destSeller)
+            {
+                Log("Verify dexorder tx: destSeller error, tx: %s", tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+            /*if (objMatch->nSellerValidHeight != objOrder->nValidHeight)
+            {
+                Log("Verify dexorder tx: nSellerValidHeight error, match nSellerValidHeight: %d, order nValidHeight: %d, tx: %s",
+                    objMatch->nSellerValidHeight, objOrder->nValidHeight, tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }*/
+            if ((tx.nAmount != objMatch->nMatchAmount) || (tx.nAmount < (TNS_DEX_MIN_TX_FEE * 3 + TNS_DEX_MIN_MATCH_AMOUNT)))
+            {
+                Log("Verify dexorder tx: nAmount error, match nMatchAmount: %lu, tx amount: %lu, tx: %s",
+                    objMatch->nMatchAmount, tx.nAmount, tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+            if (objMatch->nFee != objOrder->nFee)
+            {
+                Log("Verify dexorder tx: nFee error, match fee: %ld, order fee: %ld, tx: %s",
+                    objMatch->nFee, objMatch->nFee, tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
         }
     }
     else

@@ -17,6 +17,10 @@
 #include "util.h"
 #include "xengine.h"
 
+#define PRICE_PRECISION (10000000000L)
+#define MAX_STRING_ADDRESS_LEN 128
+#define MAX_STRING_AMOUNT_LEN 64
+
 class CSpendableTemplate
 {
 };
