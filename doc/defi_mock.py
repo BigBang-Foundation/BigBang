@@ -7,6 +7,7 @@ from collections import OrderedDict
 import os
 import sys
 from functools import cmp_to_key
+from pprint import pprint
 
 COIN = 1000000
 
@@ -212,5 +213,6 @@ if __name__ == "__main__":
         'output': output
     }
 
-    with open(output_path, 'w') as w:
-        w.write(json.dumps(result))
+    pprint(result, indent=2)
+    # with open(output_path, 'w') as w:
+    #     w.write(json.dumps(result))
