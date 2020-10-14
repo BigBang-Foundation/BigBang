@@ -202,7 +202,6 @@ if __name__ == "__main__":
     root_addr_level = {}
     # calc root level of every tree
     for addr, info in addrset.items():
-        print("init addr:", addr, "stake:", info['stake'])
         if len(info['lower']) == 0:
             level = 0
             upper = addrset[addr]['upper']
@@ -237,5 +236,5 @@ if __name__ == "__main__":
     }
 
     pprint(result, indent=2)
-    # with open(output_path, 'w') as w:
-    #     w.write(json.dumps(result))
+    with open(output_path, 'w') as w:
+        w.write(json.dumps(result))
