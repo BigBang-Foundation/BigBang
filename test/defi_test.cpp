@@ -363,6 +363,42 @@ BOOST_AUTO_TEST_CASE(reward)
     BOOST_CHECK(r.ExistFork(forkid1));
     BOOST_CHECK(r.GetForkProfile(forkid1).strSymbol == "BBCA");
 
+    // supply = 21000000000000
+    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.1
+    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.05
+    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.025
+    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.0125
+    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.00625
+    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.003125
+    // for (i = 0; i < 20; i++ ) supply *= 1.0015625
+    // supply = 2099250670895780, height = 164 * 43200 = 7084800
+    // coinbase = 2099250670895780 * 1.0015625 / 43200 = 75927758.64061704
+    // supply = max = 2100000000000000, height = 7084800 + ceil((max - supply) / coinbase) + 151(mint_height - 1) = 7094820
+    BOOST_CHECK(r.GetForkMaxRewardHeight(forkid1) == 7094820);
+    // supply = 10000000000000
+    // for (i = 0; i < (259200 / 43200); i++ ) supply *= 1.1
+    // for (i = 0; i < ((777600 - 259200) / 43200); i++ ) supply *= 1.08
+    // for (i = 0; i < ((1814400 - 777600) / 43200); i++ ) supply *= 1.05
+    // for (i = 0; i < ((3369600 - 3369600) / 43200); i++ ) supply *= 1.03
+    // for (i = 0; i < ((5184000 - 3369600) / 43200); i++ ) supply *= 1.02
+    // max = 1000000000000000, supply = 957925331297192, supply < max, height = 518400 + 1499(mint_height - 1) = 5185499
+    BOOST_CHECK(r.GetForkMaxRewardHeight(forkid2) == 5185499);
+
+    // test common reward
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 152, 1592) == 70000000000);
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 152, 1036952) == 185844386191952);
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 1036952, 1036953) == 239403225);
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 152, 1036953) == 185844625595177);
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 7094819, 7094820) == 75927759);
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 7094820, 7094821) == 73981955);
+
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 2940) == 33333333333);
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 260700) == 7715610000000);
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 260700, 260701) == 32806685);
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 260701) == 7715642806685);
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 5185500) == 947925331297192);
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 5185500, 5185501) == 0);
+
     // test PrevRewardHeight
     BOOST_CHECK(r.PrevRewardHeight(forkid1, -10) == -1);
     BOOST_CHECK(r.PrevRewardHeight(forkid1, 0) == -1);
@@ -381,23 +417,22 @@ BOOST_AUTO_TEST_CASE(reward)
     BOOST_CHECK(r.GetSectionReward(forkid1, uint256(1591, uint224(0))) == 70000000000);
     BOOST_CHECK(r.GetSectionReward(forkid1, uint256(43352, uint224(0))) == 53472222);
     BOOST_CHECK(r.GetSectionReward(forkid1, uint256(100000, uint224(0))) == 28762708333);
-    // supply = 2179010403.498881 = 21000000*(1.1^24)*(1.05^24)*(1.025^24)*(1.0125^24)*(1.00625^24)*(1.003125^24)*(1.0015625^24)*(1.00078125^24)*(1.000390625^24)*(1.0001953125^15)
-    // reward = 2179010403.498881 * 0.0001953125/43200 * (10000000 - 151 - 9 * 1036800 - 15 * 43200 - 14 * 1440)
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(10000000, uint224(0))) == 4817419376);
-    int64 nReward = r.GetSectionReward(forkid1, uint256(10000000, uint224(0)));
+    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7086391, uint224(0))) == 109335972442);
+    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7095031, uint224(0))) == 93313269565);
+    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7095032, uint224(0))) == 0);
+    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(10000000, uint224(0))) == 0);
+    int64 nReward = r.GetSectionReward(forkid1, uint256(100000, uint224(0)));
 
     // specific coinbase
     BOOST_CHECK(r.GetSectionReward(forkid2, uint256(0, uint224(0))) == 0);
     BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1499, uint224(0))) == 0);
     BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1500, uint224(0))) == 23148148);
     BOOST_CHECK(r.GetSectionReward(forkid2, uint256(2939, uint224(0))) == 33333333333);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(44700, uint224(0))) == 25462962);
+    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(44700, uint224(0))) == 25462963);
     BOOST_CHECK(r.GetSectionReward(forkid2, uint256(260700, uint224(0))) == 32806685);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1001348, uint224(0))) == 32224247817);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(2001348, uint224(0))) == 126959353755);
-    // supply = 550207933.870525 = 10000000*(1.1^6)*(1.08^12)*(1.05^24)*(1.03^36)*(1.02^14)
-    // reward = 550207933.870525 * 0.02/43200 * ((4001348 - (1500 - 1) - (6+12+24+36+14) * 43200) % 1440)
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(4001348, uint224(0))) == 246829392555);
+    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1001348, uint224(0))) == 32224247818);
+    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(2001348, uint224(0))) == 126959353756);
+    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(4001348, uint224(0))) == 246829392556);
     BOOST_CHECK(r.GetSectionReward(forkid2, uint256(10001348, uint224(0))) == 0);
 
     CAddress A("1632srrskscs1d809y3x5ttf50f0gabf86xjz2s6aetc9h9ewwhm58dj3");
@@ -443,11 +478,11 @@ BOOST_AUTO_TEST_CASE(reward)
         BOOST_CHECK(reward.size() == 3);
         auto& destIdx = reward.get<0>();
         auto it = destIdx.find(a1);
-        BOOST_CHECK(it != destIdx.end() && it->nReward == 963483875);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 5752541666);
         it = destIdx.find(a11);
-        BOOST_CHECK(it != destIdx.end() && it->nReward == 2890451625);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 17257624999);
         it = destIdx.find(a111);
-        BOOST_CHECK(it != destIdx.end() && it->nReward == 963483875);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 5752541666);
     }
 
     // test promotion reward
@@ -498,17 +533,17 @@ BOOST_AUTO_TEST_CASE(reward)
 
         auto& destIdx = reward.get<0>();
         auto it = destIdx.find(A);
-        BOOST_CHECK(it != destIdx.end() && it->nReward == 3039845494);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 18149590582);
         it = destIdx.find(a1);
-        BOOST_CHECK(it != destIdx.end() && it->nReward == 342283);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 2043626);
         it = destIdx.find(a11);
-        BOOST_CHECK(it != destIdx.end() && it->nReward == 271466);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 1620807);
         it = destIdx.find(a2);
-        BOOST_CHECK(it != destIdx.end() && it->nReward == 253762);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 1515102);
         it = destIdx.find(a22);
-        BOOST_CHECK(it != destIdx.end() && it->nReward == 295225626);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 1762663353);
         it = destIdx.find(B);
-        BOOST_CHECK(it != destIdx.end() && it->nReward == 1481480742);
+        BOOST_CHECK(it != destIdx.end() && it->nReward == 8845274860);
     }
 
     // boost::filesystem::remove_all(logPath);
