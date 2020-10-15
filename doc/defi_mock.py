@@ -44,11 +44,15 @@ def Compute(addrset, total_level, input, output, count):
 
     reward_count = supplycycle / rewardcycle
     supply = amount
+    next_supply = amount
     reward_percent = initcoinbasepercent
-    total_reward = int(supply * reward_percent)
-    print("total_reward:", total_reward)
+    coinbase = 0
 
     for i in range(0, count):
+        # to upper limit
+        if supply >= maxsupply:
+            break
+
         height = mintheight + (i + 1) * rewardcycle
         result = {}
         for addr in addrset:
@@ -57,12 +61,29 @@ def Compute(addrset, total_level, input, output, count):
         if (height - mintheight) % decaycycle == 0:
             reward_percent *= coinbasedecaypercent
 
-        if (height - mintheight) % supplycycle == 0:
-            total_reward = int(supply * reward_percent)
-            supply += total_reward
+        if i == 0 or (height - mintheight) % supplycycle == 0:
+            supply = next_supply
+            next_supply = int(supply * (1 + reward_percent))
+            coinbase = float(next_supply - supply) / supplycycle
+            # too lower reward
+            if next_supply - supply < COIN:
+                break
+
+        total_reward = int(round(coinbase * rewardcycle))
+        # to upper limit
+        if next_supply > maxsupply:
+            last_reward = 0 if i == 0 else int(
+                round(coinbase * (i % reward_count) * rewardcycle))
+            max_reward = max(0, maxsupply - supply - last_reward)
+            total_reward = min(total_reward, max_reward)
+
+        # to upper limit
+        if total_reward <= 0:
+            break
+        print("height:", height, "total_reward: ", total_reward)
 
         # compute stake reward
-        stake_reward = int(total_reward / reward_count * stakerewardpercent)
+        stake_reward = int(total_reward * stakerewardpercent)
         print("stake_reward:", stake_reward)
 
         stake_addrset = [
@@ -103,7 +124,7 @@ def Compute(addrset, total_level, input, output, count):
 
         # compute promotion reward
         promotion_reward = int(
-            total_reward / reward_count * promotionrewardpercent)
+            total_reward * promotionrewardpercent)
         print("promotion_reward:", promotion_reward)
 
         total_power = 0
