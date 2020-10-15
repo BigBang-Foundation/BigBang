@@ -291,5 +291,5 @@ if __name__ == "__main__":
     }
 
     # pprint(result, indent=2)
-    # with open(output_path, 'w') as w:
-    #     w.write(json.dumps(result))
+    with open(output_path, 'w') as w:
+        w.write(json.dumps(result))
