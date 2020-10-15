@@ -116,6 +116,7 @@ def Compute(addrset, total_level, input, output, count):
             total += rank
 
         stake_unit_reward = float(stake_reward) / total
+        stake_addrset.sort()
         for v in stake_addrset:
             addr = v['addr']
             info = v['info']
@@ -167,6 +168,12 @@ def Compute(addrset, total_level, input, output, count):
         promotion_unit_reward = float(promotion_reward) / total_power
         for addr, info in addrset.items():
             result[addr] += int(info['power'] * promotion_unit_reward)
+        
+        promo_addrlist =  [
+            {'addr': k, 'info': v} for k, v in addrset.items()]
+        promo_addrlist.sort()
+        for v in promo_addrlist:
+            print ("promotion reward address:", v['addr'], 'reward:', int(v['info']['power'] * promotion_unit_reward))
 
         for addr, reward in result.items():
             addrset[addr]['stake'] += reward
