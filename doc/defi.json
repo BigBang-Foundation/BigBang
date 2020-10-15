@@ -9,7 +9,7 @@
                 "rewardcycle": 5,
                 "supplycycle": 150,
                 "mintheight": 10,
-                "maxsupply": 2100000000,
+                "maxsupply": 1000000000,
                 "coinbasetype": 1,
                 "decaycycle": 3600,
                 "coinbasedecaypercent": 50,

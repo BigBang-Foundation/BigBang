@@ -808,9 +808,9 @@ BOOST_AUTO_TEST_CASE(reward3)
     profile.defi.nMintHeight = 10;
     profile.defi.nMaxSupply = 1000000000 * COIN; // BTCA 总共发行十亿枚
     profile.defi.nCoinbaseType = FIXED_DEFI_COINBASE_TYPE;
-    profile.defi.nRewardCycle = 1440;  // 1440 = 60 * 24  every N height once reward
-    profile.defi.nSupplyCycle = 43200; // 43200 = 60 * 24 * 30 every N height once supply
-    profile.defi.nDecayCycle = 1036800;
+    profile.defi.nRewardCycle = 5;   // 1440 = 60 * 24  every N height once reward
+    profile.defi.nSupplyCycle = 150; // 43200 = 60 * 24 * 30 every N height once supply
+    profile.defi.nDecayCycle = 3600;
     profile.defi.nCoinbaseDecayPercent = 50;
     profile.defi.nInitCoinbasePercent = 10;
     profile.defi.nStakeMinToken = 100 * COIN;                              // min token required, >= 100, can be required to join this defi game
@@ -902,7 +902,7 @@ BOOST_AUTO_TEST_CASE(reward3)
 
     cout << r.GetForkMaxRewardHeight(forkid) << endl;
 
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 1992; i++)
     {
         // for (auto& x : mapReward)
         // {
@@ -911,7 +911,7 @@ BOOST_AUTO_TEST_CASE(reward3)
 
         int32 nHeight = profile.defi.nMintHeight + (i + 1) * profile.defi.nRewardCycle - 1;
         int64 nReward = r.GetSectionReward(forkid, uint256(nHeight, uint224(0)));
-        // cout << "height: " << nHeight << ", reward: " << nReward << endl;
+        cout << "height: " << nHeight << ", reward: " << nReward << endl;
         int64 nStakeReward = nReward * profile.defi.nStakeRewardPercent / 100;
         CDeFiRewardSet stakeReward = r.ComputeStakeReward(profile.defi.nStakeMinToken, nStakeReward, balance);
         // cout << "stake reward: " << nStakeReward << ", size: " << stakeReward.size() << endl;
