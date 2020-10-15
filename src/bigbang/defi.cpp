@@ -515,11 +515,13 @@ int32 CDeFiForkReward::GetMaxRewardHeight(const CProfile& profile)
             nNextSupply = nSupply * (1 + fCoinbaseIncreasing);
             if (nNextSupply < nSupply + COIN)
             {
+                printf("nNextSupply < nSupply + COIN, count: %d, next: %ld, supply: %ld\n", count, nNextSupply, nSupply);
                 return nMintHeight + count * nSupplyCycle - 1;
             }
             if (nNextSupply >= nMaxSupply)
             {
                 double fCoinbase = nSupply * fCoinbaseIncreasing / nSupplyCycle;
+                printf("nNextSupply >= nMaxSupply, count: %d, next: %ld, supply: %ld\n", count, nNextSupply, nSupply);
                 return nMintHeight + count * nSupplyCycle + ceil((nMaxSupply - nSupply) / fCoinbase) - 1;
             }
 

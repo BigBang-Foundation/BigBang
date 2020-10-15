@@ -802,14 +802,14 @@ BOOST_AUTO_TEST_CASE(reward3)
     profile.nVersion = 1;
     profile.nMinTxFee = NEW_MIN_TX_FEE;
     profile.nMintReward = 0;
-    profile.nAmount = 10000000 * COIN; // 首期发行二千万母币
+    profile.nAmount = 20000000 * COIN; // 首期发行二千万母币
     profile.nJointHeight = 0;
     profile.nForkType = FORK_TYPE_DEFI;
     profile.defi.nMintHeight = 10;
-    profile.defi.nMaxSupply = 2100000000 * COIN; // BTCA 总共发行十亿枚
+    profile.defi.nMaxSupply = 1000000000 * COIN; // BTCA 总共发行十亿枚
     profile.defi.nCoinbaseType = FIXED_DEFI_COINBASE_TYPE;
-    profile.defi.nRewardCycle = 5;   // 1440 = 60 * 24  every N height once reward
-    profile.defi.nSupplyCycle = 150; // 43200 = 60 * 24 * 30 every N height once supply
+    profile.defi.nRewardCycle = 1440;  // 1440 = 60 * 24  every N height once reward
+    profile.defi.nSupplyCycle = 43200; // 43200 = 60 * 24 * 30 every N height once supply
     profile.defi.nDecayCycle = 1036800;
     profile.defi.nCoinbaseDecayPercent = 50;
     profile.defi.nInitCoinbasePercent = 10;
@@ -900,17 +900,41 @@ BOOST_AUTO_TEST_CASE(reward3)
         BOOST_CHECK(relation.Insert(x.first, x.second.destParent, x.second.destParent));
     }
 
-    for (int i = 0; i < 5; i++)
+    cout << r.GetForkMaxRewardHeight(forkid) << endl;
+
+    for (int i = 0; i < 1000; i++)
     {
+        // for (auto& x : mapReward)
+        // {
+        // cout << "begin addr: " << x.first << ", stake: " << balance[CAddress(x.first)] << endl;
+        // }
+
         int32 nHeight = profile.defi.nMintHeight + (i + 1) * profile.defi.nRewardCycle - 1;
         int64 nReward = r.GetSectionReward(forkid, uint256(nHeight, uint224(0)));
+        // cout << "height: " << nHeight << ", reward: " << nReward << endl;
         int64 nStakeReward = nReward * profile.defi.nStakeRewardPercent / 100;
         CDeFiRewardSet stakeReward = r.ComputeStakeReward(profile.defi.nStakeMinToken, nStakeReward, balance);
-        // cout << "stake reward:" << nStakeReward << ", size: " << stakeReward.size() << endl;
+        // cout << "stake reward: " << nStakeReward << ", size: " << stakeReward.size() << endl;
+        for (auto& x : mapReward)
+        {
+            auto it = stakeReward.find(CAddress(x.first));
+            if (it != stakeReward.end())
+            {
+                // cout << "stake reward addr: " << x.first << ", reward: " << it->nStakeReward << endl;
+            }
+        }
 
         int64 nPromotionReward = nReward * profile.defi.nPromotionRewardPercent / 100;
         CDeFiRewardSet promotionReward = r.ComputePromotionReward(nPromotionReward, balance, profile.defi.mapPromotionTokenTimes, relation);
-        // cout << "promotion reward:" << nPromotionReward << ", size: " << promotionReward.size() << endl;
+        // cout << "promotion reward: " << nPromotionReward << ", size: " << promotionReward.size() << endl;
+        for (auto& x : mapReward)
+        {
+            auto it = promotionReward.find(CAddress(x.first));
+            if (it != promotionReward.end())
+            {
+                // cout << "promotion reward addr: " << x.first << ", reward: " << it->nPromotionReward << endl;
+            }
+        }
 
         CDeFiRewardSet s;
         CDeFiRewardSetByDest& destIdx = promotionReward.get<0>();
@@ -943,7 +967,7 @@ BOOST_AUTO_TEST_CASE(reward3)
             }
         }
 
-        cout << "height: " << (nHeight + 1) << endl;
+        // cout << "height: " << (nHeight + 1) << endl;
         for (auto& x : mapReward)
         {
             auto it = s.find(CAddress(x.first));
@@ -955,11 +979,25 @@ BOOST_AUTO_TEST_CASE(reward3)
             {
                 x.second = 0;
             }
-            cout << "addr: " << x.first << ", reward: " << x.second << endl;
 
-            balance[it->dest] += it->nReward;
+            balance[CAddress(x.first)] += x.second;
+            // cout << "addr: " << x.first << ", reward: " << x.second << endl;
+        }
+
+        if (s.size() == 0)
+        {
+            cout << "reward is 0, height: " << nHeight << endl;
+            break;
         }
     }
+
+    int64 total = 0;
+    for (auto& x : mapReward)
+    {
+        cout << "addr: " << x.first << ", reward: " << balance[CAddress(x.first)] << endl;
+        total += balance[CAddress(x.first)];
+    }
+    cout << "total: " << total << endl;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

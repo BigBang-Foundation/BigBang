@@ -61,7 +61,7 @@ def Compute(addrset, total_level, input, output, count):
         if (height - mintheight) % decaycycle == 0:
             reward_percent *= coinbasedecaypercent
 
-        if i == 0 or (height - mintheight) % supplycycle == 0:
+        if (height - mintheight - rewardcycle) % supplycycle == 0:
             supply = next_supply
             next_supply = int(supply * (1 + reward_percent))
             coinbase = float(next_supply - supply) / supplycycle
@@ -80,11 +80,17 @@ def Compute(addrset, total_level, input, output, count):
         # to upper limit
         if total_reward <= 0:
             break
-        print("height:", height, "total_reward: ", total_reward)
+        # print("height:", height, "total_reward: ", total_reward)
+
+        addrset_addrlist = [
+            {'addr': k, 'info': v} for k, v in addrset.items()]
+        addrset_addrlist.sort()
+        # for v in addrset_addrlist:
+        #     print("begin addr: %s, stake: %d" %
+        #           (v['addr'], v['info']['stake']))
 
         # compute stake reward
         stake_reward = int(total_reward * stakerewardpercent)
-        print("stake_reward:", stake_reward)
 
         stake_addrset = [
             {'addr': k, 'info': v} for k, v in addrset.items() if v['stake'] >= stakemintoken]
@@ -97,6 +103,8 @@ def Compute(addrset, total_level, input, output, count):
             else:
                 return 0
         stake_addrset.sort(key=cmp_to_key(cmp_stake))
+        # print("stake reward: %d, size: %d" %
+        #       (stake_reward, len(stake_addrset)))
 
         real_rank = 0
         rank = 0
@@ -112,7 +120,7 @@ def Compute(addrset, total_level, input, output, count):
                 rank = real_rank
 
             info['rank'] = rank
-            print("addr:", addr, "rank:", rank, "stake:", info['stake'])
+            # print("addr:", addr, "rank:", rank, "stake:", info['stake'])
             total += rank
 
         stake_unit_reward = float(stake_reward) / total
@@ -121,12 +129,11 @@ def Compute(addrset, total_level, input, output, count):
             addr = v['addr']
             info = v['info']
             result[addr] += int(info['rank'] * stake_unit_reward)
-            print('stake reward, addr: ', addr, ', reward: ', result[addr])
+            # print('stake reward addr: %s, reward: %d' % (addr, result[addr]))
 
         # compute promotion reward
         promotion_reward = int(
             total_reward * promotionrewardpercent)
-        print("promotion_reward:", promotion_reward)
 
         total_power = 0
 
@@ -166,19 +173,39 @@ def Compute(addrset, total_level, input, output, count):
                     total_power += addrset[addr]['power']
 
         promotion_unit_reward = float(promotion_reward) / total_power
+        promo_count = 0
+        promo_addrlist = []
         for addr, info in addrset.items():
             result[addr] += int(info['power'] * promotion_unit_reward)
-        
-        promo_addrlist =  [
-            {'addr': k, 'info': v} for k, v in addrset.items()]
+            if info['power'] > 0:
+                promo_count += 1
+                promo_addrlist.append({'addr': addr, 'info': int(
+                    info['power'] * promotion_unit_reward)})
+
+        # print("promotion reward: %d, size: %d" %
+        #       (promotion_reward, promo_count))
         promo_addrlist.sort()
-        for v in promo_addrlist:
-            print ("promotion reward address:", v['addr'], 'reward:', int(v['info']['power'] * promotion_unit_reward))
+        # for v in promo_addrlist:
+        #     print('promotion reward addr: %s, reward: %d' %
+        #           (v['addr'], v['info']))
+
+        result_addrlist = [
+            {'addr': k, 'info': v} for k, v in result.items()]
+        result_addrlist.sort()
+        # print("height: %d" % height)
+        # for v in result_addrlist:
+        #     print("addr: %s, reward: %d" % (v['addr'], v['info']))
 
         for addr, reward in result.items():
             addrset[addr]['stake'] += reward
 
         output.append({'height': height, 'reward': result})
+
+    addrlist = [
+        {'addr': k, 'info': v['stake']} for k, v in addrset.items()]
+    addrlist.sort()
+    for v in addrlist:
+        print("addr: %s, reward: %d" % (v['addr'], v['info']))
 
 
 if __name__ == "__main__":
@@ -263,6 +290,6 @@ if __name__ == "__main__":
         'output': output
     }
 
-    pprint(result, indent=2)
-    with open(output_path, 'w') as w:
-        w.write(json.dumps(result))
+    # pprint(result, indent=2)
+    # with open(output_path, 'w') as w:
+    #     w.write(json.dumps(result))
