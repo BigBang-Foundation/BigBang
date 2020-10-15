@@ -6,24 +6,15 @@
             "name": "defi-test",
             "symbol": "BTCA",
             "defi": {
-                "rewardcycle": 1440,
-                "supplycycle": 43200,
-                "mintheight": 497000,
-                "maxsupply": 1000000000,
-                "coinbasetype": 0,
-                "decaycycle": 1036800,
+                "rewardcycle": 5,
+                "supplycycle": 150,
+                "mintheight": 10,
+                "maxsupply": 2100000000,
+                "coinbasetype": 1,
+                "decaycycle": 3600,
                 "coinbasedecaypercent": 50,
                 "initcoinbasepercent": 10,
-                "mapcoinbasepercent": [
-                    {
-                        "height": 259200,
-                        "percent": 10
-                    },
-                    {
-                        "height": 777600,
-                        "percent": 8
-                    }
-                ],
+                "mapcoinbasepercent": [],
                 "stakerewardpercent": 50,
                 "promotionrewardpercent": 50,
                 "stakemintoken": 100,

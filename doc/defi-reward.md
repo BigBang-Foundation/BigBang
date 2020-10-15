@@ -20,13 +20,13 @@
             "mintheight" : 497000,
             "maxsupply" : 1000000000.000000,
             "coinbasetype" : 0,
-            "decaycycle" : 1036800,
+            "decaycycle" : 1036800, // 3600  等比例减小
             "mapcoinbasepercent" : [
             ],
             "coinbasedecaypercent" : 50,
             "initcoinbasepercent" : 10,
-            "rewardcycle" : 1440,
-            "supplycycle" : 43200,
+            "rewardcycle" : 1440, // 5
+            "supplycycle" : 43200, // 150
             "stakerewardpercent" : 50,
             "promotionrewardpercent" : 50,
             "stakemintoken" : 100.000000,
