@@ -44,7 +44,7 @@ bool CTemplateDexOrder::GetSignDestination(const CTransaction& tx, const uint256
         return false;
     }
     setSubDest.clear();
-    if (nHeight <= nValidHeight && tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_DEXMATCH)
+    if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_DEXMATCH)
     {
         setSubDest.insert(destMatch);
     }
@@ -201,7 +201,7 @@ void CTemplateDexOrder::BuildTemplateData()
 bool CTemplateDexOrder::VerifyTxSignature(const uint256& hash, const uint16 nType, const uint256& hashAnchor, const CDestination& destTo,
                                           const vector<uint8>& vchSig, const int32 nForkHeight, bool& fCompleted) const
 {
-    if (nForkHeight <= nValidHeight && destTo.IsTemplate() && destTo.GetTemplateId().GetType() == TEMPLATE_DEXMATCH)
+    if (destTo.IsTemplate() && destTo.GetTemplateId().GetType() == TEMPLATE_DEXMATCH)
     {
         return destMatch.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSig, nForkHeight, fCompleted);
     }
