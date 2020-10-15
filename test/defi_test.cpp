@@ -802,24 +802,164 @@ BOOST_AUTO_TEST_CASE(reward3)
     profile.nVersion = 1;
     profile.nMinTxFee = NEW_MIN_TX_FEE;
     profile.nMintReward = 0;
-    profile.nAmount = 20000000 * COIN; // 首期发行二千万母币
-    profile.nJointHeight = 15;
+    profile.nAmount = 10000000 * COIN; // 首期发行二千万母币
+    profile.nJointHeight = 0;
     profile.nForkType = FORK_TYPE_DEFI;
-    profile.defi.nMintHeight = 20;
-    profile.defi.nMaxSupply = 1000000000 * COIN; // BTCA 总共发行十亿枚
+    profile.defi.nMintHeight = 10;
+    profile.defi.nMaxSupply = 2100000000 * COIN; // BTCA 总共发行十亿枚
     profile.defi.nCoinbaseType = FIXED_DEFI_COINBASE_TYPE;
-    profile.defi.nRewardCycle = 5;        // 1440 = 60 * 24  every N height once reward
-    profile.defi.nSupplyCycle = 150;      // 43200 = 60 * 24 * 30 every N height once supply
-    profile.defi.nStakeMinToken = 100 * COIN;                                                                            // min token required, >= 100, can be required to join this defi game
-    profile.defi.nStakeRewardPercent = 50;                                                                               // 50% of supply amount per day
-    profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));                                               // 用于推广收益，小于等于10000的部分，要放大10倍
+    profile.defi.nRewardCycle = 5;   // 1440 = 60 * 24  every N height once reward
+    profile.defi.nSupplyCycle = 150; // 43200 = 60 * 24 * 30 every N height once supply
+    profile.defi.nDecayCycle = 1036800;
+    profile.defi.nCoinbaseDecayPercent = 50;
+    profile.defi.nInitCoinbasePercent = 10;
+    profile.defi.nStakeMinToken = 100 * COIN;                              // min token required, >= 100, can be required to join this defi game
+    profile.defi.nStakeRewardPercent = 50;                                 // 50% of supply amount per day
+    profile.defi.nPromotionRewardPercent = 50;                             // 50% of supply amount per day
+    profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10)); // 用于推广收益，小于等于10000的部分，要放大10倍
     r.AddFork(forkid, profile);
 
     BOOST_CHECK(r.ExistFork(forkid));
     BOOST_CHECK(r.GetForkProfile(forkid).strSymbol == "BBCC");
 
+    CAddress A("1ykdy1dtjw810t8g4ymjqfkkr8yj7m5mr6g20595yhssvr2gva56n2rdn");
+    CAddress a1("1xnassszea7qevgn44hhg5fqswe78jn95gjd1mx184zr753yt0myfmfxf");
+    CAddress a11("1nkz90d8jxzcw2rs21tmfxcvpewx7vrz2s0fr033wjm77fchsbzqy7ygb");
+    CAddress a111("1g9pgwqpcbz3x9czsvtjhc3ed0b24vmyrj5k6zfbh1g82ma67qax55dqy");
+    CAddress a2("1cem1035c3f7x58808yqge07z8fb72m3czfmzj23hmaxs477tt2ph9yrp");
+    CAddress a21("16br4z57ys0dbgxzesvfhtxrpaq3w3j3bsqgdmkrvye06exg9e74ertx8");
+    CAddress a22("123zbs56t8q5qn6sjchtvhcxc1ngq5v7jvst6hd2nq7hdtfmr691rd6mb");
+    CAddress a221("1pqmm5nj6qpy436qcytshjra24bhvsysjv6k2xswfzma6w1scwyye25r9");
+    CAddress a222("12z4t8dzgzmnh3zg1m0b4s2yean8w74cyv0fgrdm7dpq6hbnrq2w0gdwk");
+    CAddress a3("1h1tn0dcf7cz44cfypmwqjkm7jvxznrdab2ycn0wcyc9q8983fq3akt40");
+    CAddress B("1xftkpw9afcgrfac4v3xa9bgb1zsh03bd59npwtyjrqjbtqepr6anrany");
+    CAddress b1("1thcbm7h2bnyb247wknsvnfsxxd7gw12m2bg5d5gdrmzqmxz93s7k6pvy");
+    CAddress b2("15n2eszyzk3qm7y04es5fr5fxa3hpbdqqnp1470rmnbmkhpp66mq55qeb");
+    CAddress b3("1espce7qwvy94qcanecfr7c65fgsjbr1g407ab00p44a65de0mm1mtrqn");
+    CAddress b4("1mbv5et5sx6x1jejgfh214ze1vryg60n8j6tz30czgzmm3rr461jn0nwm");
+    CAddress C("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm");
 
+    map<string, int64> mapReward = map<string, int64>{
+        { A.ToString(), 0 },
+        { a1.ToString(), 0 },
+        { a11.ToString(), 0 },
+        { a111.ToString(), 0 },
+        { a2.ToString(), 0 },
+        { a21.ToString(), 0 },
+        { a22.ToString(), 0 },
+        { a221.ToString(), 0 },
+        { a222.ToString(), 0 },
+        { a3.ToString(), 0 },
+        { B.ToString(), 0 },
+        { b1.ToString(), 0 },
+        { b2.ToString(), 0 },
+        { b3.ToString(), 0 },
+        { b4.ToString(), 0 },
+        { C.ToString(), 0 },
+    };
 
+    map<CDestination, int64> balance = map<CDestination, int64>{
+        { A, 10000 * COIN },
+        { a1, 100000 * COIN },
+        { a11, 100000 * COIN },
+        { a111, 100000 * COIN },
+        { a2, 1 * COIN },
+        { a21, 1 * COIN },
+        { a22, 12000 * COIN },
+        { a221, 18000 * COIN },
+        { a222, 5000 * COIN },
+        { a3, 1000000 * COIN },
+        { B, 10000 * COIN },
+        { b1, 10000 * COIN },
+        { b2, 11000 * COIN },
+        { b3, 5000 * COIN },
+        { b4, 50000 * COIN },
+        { C, 8568998 * COIN },
+    };
+
+    map<CDestination, CAddrInfo> mapAddress;
+    mapAddress = map<CDestination, CAddrInfo>{
+        { a1, CAddrInfo(A, A) },
+        { a11, CAddrInfo(A, a1) },
+        { a111, CAddrInfo(A, a11) },
+        { a2, CAddrInfo(A, A) },
+        { a21, CAddrInfo(A, a2) },
+        { a22, CAddrInfo(A, a2) },
+        { a221, CAddrInfo(A, a22) },
+        { a222, CAddrInfo(A, a22) },
+        { a3, CAddrInfo(A, A) },
+        { b1, CAddrInfo(B, B) },
+        { b2, CAddrInfo(B, B) },
+        { b3, CAddrInfo(B, B) },
+        { b4, CAddrInfo(B, B) },
+    };
+
+    CDeFiRelationGraph relation;
+    for (auto& x : mapAddress)
+    {
+        BOOST_CHECK(relation.Insert(x.first, x.second.destParent, x.second.destParent));
+    }
+
+    for (int i = 0; i < 5; i++)
+    {
+        int32 nHeight = profile.defi.nMintHeight + (i + 1) * profile.defi.nRewardCycle - 1;
+        int64 nReward = r.GetSectionReward(forkid, uint256(nHeight, uint224(0)));
+        int64 nStakeReward = nReward * profile.defi.nStakeRewardPercent / 100;
+        CDeFiRewardSet stakeReward = r.ComputeStakeReward(profile.defi.nStakeMinToken, nStakeReward, balance);
+        // cout << "stake reward:" << nStakeReward << ", size: " << stakeReward.size() << endl;
+
+        int64 nPromotionReward = nReward * profile.defi.nPromotionRewardPercent / 100;
+        CDeFiRewardSet promotionReward = r.ComputePromotionReward(nPromotionReward, balance, profile.defi.mapPromotionTokenTimes, relation);
+        // cout << "promotion reward:" << nPromotionReward << ", size: " << promotionReward.size() << endl;
+
+        CDeFiRewardSet s;
+        CDeFiRewardSetByDest& destIdx = promotionReward.get<0>();
+        for (auto& stake : stakeReward)
+        {
+            CDeFiReward reward = stake;
+            auto it = destIdx.find(stake.dest);
+            if (it != destIdx.end())
+            {
+                reward.nPower = it->nPower;
+                reward.nPromotionReward = it->nPromotionReward;
+                reward.nReward += it->nPromotionReward;
+                destIdx.erase(it);
+            }
+
+            // check reward > txfee
+            // if (reward.nReward > NEW_MIN_TX_FEE)
+            {
+                s.insert(move(reward));
+            }
+        }
+
+        for (auto& promotion : promotionReward)
+        {
+            // check reward > txfee
+            // if (promotion.nReward > NEW_MIN_TX_FEE)
+            {
+                CDeFiReward reward = promotion;
+                s.insert(move(reward));
+            }
+        }
+
+        cout << "height: " << (nHeight + 1) << endl;
+        for (auto& x : mapReward)
+        {
+            auto it = s.find(CAddress(x.first));
+            if (it != s.end())
+            {
+                x.second = it->nReward;
+            }
+            else
+            {
+                x.second = 0;
+            }
+            cout << "addr: " << x.first << ", reward: " << x.second << endl;
+
+            balance[it->dest] += it->nReward;
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
