@@ -390,7 +390,7 @@ bool CTxPoolView::AddAddressUnspent(const uint256& txid, const CPooledTx& tx)
 
     for (std::size_t i = 0; i < tx.vInput.size(); i++)
     {
-        addrDestIn.SetTxSpent(tx.vInput[i].prevout, txid);
+        addrDestIn.SetTxSpent(tx.vInput[i].prevout);
     }
     addrDestIn.nSpentValue += tx.nValueIn;
     addrDestIn.nUnspentValue -= tx.nValueIn;
@@ -399,13 +399,13 @@ bool CTxPoolView::AddAddressUnspent(const uint256& txid, const CPooledTx& tx)
     output = tx.GetOutput(0);
     if (!output.IsNull())
     {
-        addrSendTo.AddTxUnspent(CTxOutPoint(txid, 0), CUnspentOut(output, tx.nType, -1));
+        addrSendTo.SetTxUnspent(CTxOutPoint(txid, 0), CUnspentOut(output, tx.nType, -1));
     }
 
     output = tx.GetOutput(1);
     if (!output.IsNull())
     {
-        addrDestIn.AddTxUnspent(CTxOutPoint(txid, 1), CUnspentOut(output, tx.nType, -1));
+        addrDestIn.SetTxUnspent(CTxOutPoint(txid, 1), CUnspentOut(output, tx.nType, -1));
     }
     return true;
 }
@@ -469,13 +469,13 @@ bool CTxPoolView::GetAddressUnspent(const CDestination& dest, std::map<CTxOutPoi
     {
         for (const auto& vd : it->second.mapTxUnspent)
         {
-            if (vd.second.IsSpent())
+            if (vd.second.IsNull())
             {
                 mapUnspent.erase(vd.first);
             }
             else
             {
-                mapUnspent.insert(make_pair(vd.first, static_cast<const CUnspentOut&>(vd.second)));
+                mapUnspent.insert(vd);
             }
         }
     }
@@ -1066,6 +1066,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
         for (int i = 0; i < block.vtx.size(); ++i)
         {
             const CTransaction& tx = block.vtx[i];
+            const CTxContxt& txContxt = block.vTxContxt[i];
             uint256 txid = tx.GetHash();
 
             // defi
@@ -1085,9 +1086,9 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                 if (AddNew(txView, txid, tx, update.hashFork, update.nLastBlockHeight) == OK)
                 {
                     if (spent0 != 0)
-                        txView.SetSpent(CTxOutPoint(txid, 0), spent0);
+                        txView.SetSpent(CTxOutPoint(txid, 0), txContxt.destIn, spent0);
                     if (spent1 != 0)
-                        txView.SetSpent(CTxOutPoint(txid, 1), spent1);
+                        txView.SetSpent(CTxOutPoint(txid, 1), txContxt.destIn, spent1);
 
                     change.mapTxUpdate.insert(make_pair(txid, -1));
                 }

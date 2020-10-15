@@ -150,38 +150,10 @@ public:
         uint256 txidNextTx;
     };
 
-    class CSpentEx : public CUnspentOut
-    {
-    public:
-        CSpentEx()
-          : txidNextTx(uint64(0)) {}
-        CSpentEx(const CTxOut& output, int nTxType, int nHeightIn)
-          : CUnspentOut(output, nTxType, nHeightIn), txidNextTx(uint64(0)) {}
-        CSpentEx(const CUnspentOut& output)
-          : CUnspentOut(output), txidNextTx(uint64(0)) {}
-        CSpentEx(const uint256& txidNextTxIn)
-          : txidNextTx(txidNextTxIn) {}
-        void SetSpent(const uint256& txidNextTxIn)
-        {
-            *this = CSpentEx(txidNextTxIn);
-        }
-        void SetUnspent(const CUnspentOut& output)
-        {
-            *this = CSpentEx(output);
-        }
-        bool IsSpent() const
-        {
-            return (txidNextTx != 0);
-        };
-
-    public:
-        uint256 txidNextTx;
-    };
-
     class CAddrUnspent
     {
     public:
-        std::map<CTxOutPoint, CSpentEx> mapTxUnspent;
+        std::map<CTxOutPoint, CUnspentOut> mapTxUnspent;
         int64 nUnspentValue;
         int64 nSpentValue;
 
@@ -191,19 +163,19 @@ public:
             nUnspentValue = 0;
             nSpentValue = 0;
         }
-        bool AddTxUnspent(const CTxOutPoint& out, const CUnspentOut& unspent)
+        bool SetTxUnspent(const CTxOutPoint& out, const CUnspentOut& unspent)
         {
             if (mapTxUnspent.find(out) == mapTxUnspent.end())
             {
-                mapTxUnspent[out].SetUnspent(unspent);
+                mapTxUnspent[out] = unspent;
                 nUnspentValue += unspent.nAmount;
                 return true;
             }
             return false;
         }
-        void SetTxSpent(const CTxOutPoint& out, const uint256& txidNext)
+        void SetTxSpent(const CTxOutPoint& out)
         {
-            mapTxUnspent[out].SetSpent(txidNext);
+            mapTxUnspent[out].SetNull();
         }
         void RemoveTxUnspent(const CTxOutPoint& out)
         {
@@ -287,7 +259,7 @@ public:
             mapSpent[out].SetUnspent(unspent);
             if (!unspent.destTo.IsNull())
             {
-                mapAddressUnspent[unspent.destTo].AddTxUnspent(out, CUnspentOut(unspent, pTx->nType, -1));
+                mapAddressUnspent[unspent.destTo].SetTxUnspent(out, CUnspentOut(unspent, pTx->nType, -1));
             }
         }
         else
@@ -295,14 +267,13 @@ public:
             RemoveSpent(out);
         }
     }
-    void SetSpent(const CTxOutPoint& out, const uint256& txidNextTxIn)
+    void SetSpent(const CTxOutPoint& out, const CDestination& destIn, const uint256& txidNextTxIn)
     {
-        auto it = mapSpent.find(out);
-        if (it != mapSpent.end() && !it->second.destTo.IsNull())
-        {
-            mapAddressUnspent[it->second.destTo].SetTxSpent(out, txidNextTxIn);
-        }
         mapSpent[out].SetSpent(txidNextTxIn);
+        if (!destIn.IsNull())
+        {
+            mapAddressUnspent[destIn].SetTxSpent(out);
+        }
     }
     void RemoveSpent(const CTxOutPoint& out);
     bool AddTxIndex(const uint256& txid, CPooledTx& tx);

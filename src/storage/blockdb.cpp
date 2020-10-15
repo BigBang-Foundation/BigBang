@@ -181,6 +181,10 @@ bool CBlockDB::UpdateFork(const uint256& hash, const uint256& hashRefBlock, cons
         {
             return false;
         }
+        if (!dbAddressIndex.Copy(hashForkBased, hash))
+        {
+            return false;
+        }
         fIgnoreTxDel = true;
     }
 
