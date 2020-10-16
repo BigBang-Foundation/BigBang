@@ -902,16 +902,16 @@ BOOST_AUTO_TEST_CASE(reward3)
 
     cout << r.GetForkMaxRewardHeight(forkid) << endl;
 
-    for (int i = 0; i < 1992; i++)
+    for (int i = 0; i < 2000; i++)
     {
         // for (auto& x : mapReward)
         // {
-        // cout << "begin addr: " << x.first << ", stake: " << balance[CAddress(x.first)] << endl;
+        //     cout << "begin addr: " << x.first << ", stake: " << balance[CAddress(x.first)] << endl;
         // }
 
         int32 nHeight = profile.defi.nMintHeight + (i + 1) * profile.defi.nRewardCycle - 1;
         int64 nReward = r.GetSectionReward(forkid, uint256(nHeight, uint224(0)));
-        cout << "height: " << nHeight << ", reward: " << nReward << endl;
+        // cout << "height: " << nHeight << ", reward: " << nReward << endl;
         int64 nStakeReward = nReward * profile.defi.nStakeRewardPercent / 100;
         CDeFiRewardSet stakeReward = r.ComputeStakeReward(profile.defi.nStakeMinToken, nStakeReward, balance);
         // cout << "stake reward: " << nStakeReward << ", size: " << stakeReward.size() << endl;
@@ -950,21 +950,13 @@ BOOST_AUTO_TEST_CASE(reward3)
                 destIdx.erase(it);
             }
 
-            // check reward > txfee
-            // if (reward.nReward > NEW_MIN_TX_FEE)
-            {
-                s.insert(move(reward));
-            }
+            s.insert(move(reward));
         }
 
         for (auto& promotion : promotionReward)
         {
-            // check reward > txfee
-            // if (promotion.nReward > NEW_MIN_TX_FEE)
-            {
-                CDeFiReward reward = promotion;
-                s.insert(move(reward));
-            }
+            CDeFiReward reward = promotion;
+            s.insert(move(reward));
         }
 
         // cout << "height: " << (nHeight + 1) << endl;
@@ -980,8 +972,11 @@ BOOST_AUTO_TEST_CASE(reward3)
                 x.second = 0;
             }
 
-            balance[CAddress(x.first)] += x.second;
-            // cout << "addr: " << x.first << ", reward: " << x.second << endl;
+            if (x.second > NEW_MIN_TX_FEE)
+            {
+                balance[CAddress(x.first)] += x.second - NEW_MIN_TX_FEE;
+                // cout << "addr: " << x.first << ", reward: " << x.second << endl;
+            }
         }
 
         if (s.size() == 0)

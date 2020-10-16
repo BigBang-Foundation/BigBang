@@ -1,7 +1,7 @@
 {
     "input": {
         "makeorigin": {
-            "forkid": "abc",
+            "forkid": "00000001afc48d2a4a26c00c4b13ea39c0d189c71605ca19a63e127105037efe",
             "amount": 20000000,
             "name": "defi-test",
             "symbol": "BTCA",
@@ -10,7 +10,7 @@
                 "supplycycle": 150,
                 "mintheight": 10,
                 "maxsupply": 1000000000,
-                "coinbasetype": 1,
+                "coinbasetype": 0,
                 "decaycycle": 3600,
                 "coinbasedecaypercent": 50,
                 "initcoinbasepercent": 10,

@@ -10,6 +10,7 @@ from functools import cmp_to_key
 from pprint import pprint
 
 COIN = 1000000
+TX_FEE = 10000
 
 # Mark tree node level recursively
 
@@ -84,7 +85,7 @@ def Compute(addrset, total_level, input, output, count):
 
         addrset_addrlist = [
             {'addr': k, 'info': v} for k, v in addrset.items()]
-        addrset_addrlist.sort()
+        addrset_addrlist = sorted(addrset_addrlist, key=lambda x: x['addr'])
         # for v in addrset_addrlist:
         #     print("begin addr: %s, stake: %d" %
         #           (v['addr'], v['info']['stake']))
@@ -124,7 +125,7 @@ def Compute(addrset, total_level, input, output, count):
             total += rank
 
         stake_unit_reward = float(stake_reward) / total
-        stake_addrset.sort()
+        stake_addrset = sorted(stake_addrset, key=lambda x: x['addr'])
         for v in stake_addrset:
             addr = v['addr']
             info = v['info']
@@ -141,7 +142,7 @@ def Compute(addrset, total_level, input, output, count):
             for addr, info in addrset.items():
                 if info['level'] == j:
                     addrset[addr]['power'] = 0
-                    addrset[addr]['sub_stake'] = info['stake'] / COIN
+                    addrset[addr]['sub_stake'] = int(info['stake'] / COIN)
                     sub_stake_list = []
                     for sub_addr in addrset[addr]['lower']:
                         sub_stake_list.append(addrset[sub_addr]['sub_stake'])
@@ -184,26 +185,30 @@ def Compute(addrset, total_level, input, output, count):
 
         # print("promotion reward: %d, size: %d" %
         #       (promotion_reward, promo_count))
-        promo_addrlist.sort()
+        promo_addrlist = sorted(promo_addrlist, key=lambda x: x['addr'])
         # for v in promo_addrlist:
         #     print('promotion reward addr: %s, reward: %d' %
         #           (v['addr'], v['info']))
 
         result_addrlist = [
             {'addr': k, 'info': v} for k, v in result.items()]
-        result_addrlist.sort()
+        result_addrlist = sorted(result_addrlist, key=lambda x: x['addr'])
         # print("height: %d" % height)
         # for v in result_addrlist:
         #     print("addr: %s, reward: %d" % (v['addr'], v['info']))
 
+        # delete the reward less than TX_FEE
+        for addr in list(result.keys()):
+            if result[addr] <= TX_FEE:
+                del(result[addr])
         for addr, reward in result.items():
-            addrset[addr]['stake'] += reward
+            addrset[addr]['stake'] += reward - TX_FEE
 
         output.append({'height': height, 'reward': result})
 
     addrlist = [
         {'addr': k, 'info': v['stake']} for k, v in addrset.items()]
-    addrlist.sort()
+    addrlist = sorted(addrlist, key=lambda x: x['addr'])
     for v in addrlist:
         print("addr: %s, reward: %d" % (v['addr'], v['info']))
 
@@ -266,7 +271,7 @@ if __name__ == "__main__":
                 root_addr = upper
                 upper = addrset[upper]['upper']
 
-            if not root_addr_level.has_key(root_addr):
+            if root_addr not in root_addr_level:
                 root_addr_level[root_addr] = level
             else:
                 if level > root_addr_level[root_addr]:

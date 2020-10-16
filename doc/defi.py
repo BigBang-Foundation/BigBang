@@ -20,8 +20,8 @@ password = '123'
 def call(body):
     req = requests.post(rpcurl, json=body)
 
-    print('DEBUG: request: {}'.format(body))
-    print('DEBUG: response: {}'.format(req.content))
+    # print('DEBUG: request: {}'.format(body))
+    # print('DEBUG: response: {}'.format(req.content))
 
     resp = json.loads(req.content.decode('utf-8'))
     return resp.get('result'), resp.get('error')
@@ -371,6 +371,7 @@ if __name__ == "__main__":
         raise Exception('No json file')
 
     path = os.path.join(os.getcwd(), sys.argv[1])
+    only_check = True if len(sys.argv) >= 3 and sys.argv[2] == '-check' else False
 
     input = {}
     output = []
@@ -380,6 +381,8 @@ if __name__ == "__main__":
         input = content["input"]
         output = content["output"]
 
+    fork = input['makeorigin']
+    forkid = fork['forkid']
     # compute balance by stake and relation
     addrset = {}
     for addr, stake in input['stake'].items():
@@ -412,55 +415,55 @@ if __name__ == "__main__":
             (0.01 if obj['upper'] else 0) + 0.02 * len(obj['lower'])
 
     # import priv key
-    pubkey_addrset = {}
-    for privkey in input['privkey']:
-        if privkey == genesis_privkey:
-            pubkey_addrset[genesis_addr] = True
-        else:
-            pubkey = importprivkey(privkey)
-            pubkey_addr = getpubkeyaddress(pubkey)
-            pubkey_addrset[pubkey_addr] = True
+    if not only_check:
+        pubkey_addrset = {}
+        for privkey in input['privkey']:
+            if privkey == genesis_privkey:
+                pubkey_addrset[genesis_addr] = True
+            else:
+                pubkey = importprivkey(privkey)
+                pubkey_addr = getpubkeyaddress(pubkey)
+                pubkey_addrset[pubkey_addr] = True
 
-    # check address in 'stake', 'relation' of input and output
-    for addr in addrset:
-        if (addr != genesis_addr) and (addr not in pubkey_addrset):
-            raise Exception(
-                'no privkey of address in "stake" or "relation". address:', addr)
-
-    for result in output:
-        for r in result['reward']:
-            if (r != genesis_addr) and (r not in pubkey_addrset):
+        # check address in 'stake', 'relation' of input and output
+        for addr in addrset:
+            if (addr != genesis_addr) and (addr not in pubkey_addrset):
                 raise Exception(
-                    'no privkey of address in "reward". address:', r)
+                    'no privkey of address in "stake" or "relation". address:', addr)
 
-    # delegate dpos
-    dpos()
+        for result in output:
+            for r in result['reward']:
+                if (r != genesis_addr) and (r not in pubkey_addrset):
+                    raise Exception(
+                        'no privkey of address in "reward". address:', r)
 
-    # create fork
-    if 'makeorigin' not in input:
-        raise Exception('Can not create fork, no "makeorigin" in input')
+        # delegate dpos
+        dpos()
 
-    fork = input['makeorigin']
-    forkid = create_fork(getblockhash(0), fork['amount'],
-                         fork['name'], fork['symbol'], fork['defi'])
+        # create fork
+        if 'makeorigin' not in input:
+            raise Exception('Can not create fork, no "makeorigin" in input')
 
-    # wait fork
-    while True:
-        print("Waitting fork...")
-        if getgenealogy(forkid):
-            break
+        forkid = create_fork(getblockhash(0), fork['amount'],
+                            fork['name'], fork['symbol'], fork['defi'])
+
+        # wait fork
+        while True:
+            print("Waitting fork...")
+            if getgenealogy(forkid):
+                break
+            time.sleep(10)
+
         time.sleep(10)
+        # send token to addrset
+        for addr, obj in addrset.items():
+            if addr != genesis_addr:
+                sendfrom(genesis_addr, addr, obj['stake'], forkid)
 
-    time.sleep(10)
-    # send token to addrset
-    for addr, obj in addrset.items():
-        if addr != genesis_addr:
-            sendfrom(genesis_addr, addr, obj['stake'], forkid)
-
-    # send relation tx
-    for addr, obj in addrset.items():
-        for lower_addr in obj['lower']:
-            sendfrom(addr, lower_addr, 0.01, forkid, 2)
+        # send relation tx
+        for addr, obj in addrset.items():
+            for lower_addr in obj['lower']:
+                sendfrom(addr, lower_addr, 0.01, forkid, 2)
 
     # mint height & reward cycle
     mint_height = 2 if ('mintheight' not in fork['defi']) or (
@@ -472,7 +475,7 @@ if __name__ == "__main__":
         height = result['height']
         reward = result['reward']
         # remove 0 reward
-        for addr in reward.keys():
+        for addr in list(reward.keys()):
             if reward[addr] == 0:
                 del(reward[addr])
 
@@ -538,10 +541,10 @@ if __name__ == "__main__":
                     # check the reward of address correct or not
                     if tx['sendto'] in reward:
                         should_reward = reward[tx['sendto']]
-                        actrual_reward = tx['amount'] + tx['txfee']
-                        if abs(should_reward - actrual_reward) >= 0.000001:
-                            print('ERROR: addr reward error in height, addr: {}, height: {} should be: {:.6f}, actrual: {:.6f}'.format(
-                                tx['sendto'], height, should_reward, actrual_reward))
+                        actrual_reward = int(round((tx['amount'] + tx['txfee']) * 1000000))
+                        if should_reward != actrual_reward:
+                            print('ERROR: addr reward error in height, addr: {}, height: {} should be: {}, actrual: {}, txid: {}'.format(
+                                tx['sendto'], height, should_reward, actrual_reward, tx['txid']))
                             error = True
                         del(reward[tx['sendto']])
 
