@@ -20,8 +20,8 @@ password = '123'
 def call(body):
     req = requests.post(rpcurl, json=body)
 
-    # print('DEBUG: request: {}'.format(body))
-    # print('DEBUG: response: {}'.format(req.content))
+    print('DEBUG: request: {}'.format(body))
+    print('DEBUG: response: {}'.format(req.content))
 
     resp = json.loads(req.content.decode('utf-8'))
     return resp.get('result'), resp.get('error')

@@ -37,7 +37,7 @@ def Compute(addrset, total_level, input, output, count):
     decaycycle = defi['decaycycle']
     coinbasedecaypercent = float(defi['coinbasedecaypercent']) / 100
     initcoinbasepercent = float(defi['initcoinbasepercent']) / 100
-    mapcoinbasepercent = defi['mapcoinbasepercent']
+    mapcoinbasepercent = [{'height': v['height'], 'percent': v['percent']} for v in defi['mapcoinbasepercent']]
     if coinbasetype == 1:
         mapcoinbasepercent = sorted(
             mapcoinbasepercent, key=lambda x: x['height'])
