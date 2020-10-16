@@ -311,6 +311,11 @@ void CNetChannel::BroadcastTxInv(const uint256& hashFork)
 
 void CNetChannel::SubscribeFork(const uint256& hashFork, const uint64& nNonce)
 {
+    if(hashFork == uint256("00000f83dacbb8b62fcc06758f8bfabb0e038474196affa0337d9a9b0c57da94"))
+    {
+        return;
+    }
+    
     {
         boost::recursive_mutex::scoped_lock scoped_lock(mtxSched);
         if (!mapSched.insert(make_pair(hashFork, CSchedule())).second)
