@@ -37,7 +37,12 @@ def Compute(addrset, total_level, input, output, count):
     decaycycle = defi['decaycycle']
     coinbasedecaypercent = float(defi['coinbasedecaypercent']) / 100
     initcoinbasepercent = float(defi['initcoinbasepercent']) / 100
-    #mapcoinbasepercent = float(defi['mapcoinbasepercent']) / 100
+    mapcoinbasepercent = defi['mapcoinbasepercent']
+    if coinbasetype == 1:
+        mapcoinbasepercent = sorted(
+            mapcoinbasepercent, key=lambda x: x['height'])
+        for v in mapcoinbasepercent:
+            v['percent'] = float(v['percent']) / 100
     stakerewardpercent = float(defi['stakerewardpercent']) / 100
     promotionrewardpercent = float(defi['promotionrewardpercent']) / 100
     stakemintoken = defi['stakemintoken'] * COIN
@@ -46,7 +51,8 @@ def Compute(addrset, total_level, input, output, count):
     reward_count = supplycycle / rewardcycle
     supply = amount
     next_supply = amount
-    reward_percent = initcoinbasepercent
+    reward_percent = initcoinbasepercent if coinbasetype == 0 else mapcoinbasepercent[0]['percent']
+    next_reward_percent_height = mintheight + decaycycle if coinbasetype == 0 else mintheight + mapcoinbasepercent[0]['height']
     coinbase = 0
 
     for i in range(0, count):
@@ -59,8 +65,21 @@ def Compute(addrset, total_level, input, output, count):
         for addr in addrset:
             result[addr] = 0
 
-        if (height - mintheight) % decaycycle == 0:
-            reward_percent *= coinbasedecaypercent
+        if height == next_reward_percent_height:
+            if coinbasetype == 0:
+                reward_percent *= coinbasedecaypercent
+                next_reward_percent_height = next_reward_percent_height + decaycycle
+            elif coinbasetype == 1:
+                for j in range(0, len(mapcoinbasepercent)):
+                    if next_reward_percent_height == mintheight + mapcoinbasepercent[j]['height']:
+                        if j < len(mapcoinbasepercent) - 1:
+                            next_reward_percent_height = mintheight + mapcoinbasepercent[j+1]['height']
+                            reward_percent = mapcoinbasepercent[j+1]['percent']
+                        else:
+                            next_reward_percent_height = -1
+                        break
+                if next_reward_percent_height < 0:
+                    break
 
         if (height - mintheight - rewardcycle) % supplycycle == 0:
             supply = next_supply
@@ -81,7 +100,7 @@ def Compute(addrset, total_level, input, output, count):
         # to upper limit
         if total_reward <= 0:
             break
-        # print("height:", height, "total_reward: ", total_reward)
+        # print("height: %d, reward: %d" % (height, total_reward))
 
         addrset_addrlist = [
             {'addr': k, 'info': v} for k, v in addrset.items()]
@@ -185,15 +204,14 @@ def Compute(addrset, total_level, input, output, count):
 
         # print("promotion reward: %d, size: %d" %
         #       (promotion_reward, promo_count))
-        promo_addrlist = sorted(promo_addrlist, key=lambda x: x['addr'])
+        # promo_addrlist = sorted(promo_addrlist, key=lambda x: x['addr'])
         # for v in promo_addrlist:
         #     print('promotion reward addr: %s, reward: %d' %
         #           (v['addr'], v['info']))
 
-        result_addrlist = [
-            {'addr': k, 'info': v} for k, v in result.items()]
-        result_addrlist = sorted(result_addrlist, key=lambda x: x['addr'])
-        # print("height: %d" % height)
+        # result_addrlist = [
+        #     {'addr': k, 'info': v} for k, v in result.items()]
+        # result_addrlist = sorted(result_addrlist, key=lambda x: x['addr'])
         # for v in result_addrlist:
         #     print("addr: %s, reward: %d" % (v['addr'], v['info']))
 

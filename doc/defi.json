@@ -10,11 +10,32 @@
                 "supplycycle": 150,
                 "mintheight": 10,
                 "maxsupply": 1000000000,
-                "coinbasetype": 0,
+                "coinbasetype": 1,
                 "decaycycle": 3600,
                 "coinbasedecaypercent": 50,
                 "initcoinbasepercent": 10,
-                "mapcoinbasepercent": [],
+                "mapcoinbasepercent": [
+                    {
+                        "height": 900,
+                        "percent": 10
+                    },
+                    {
+                        "height": 2700,
+                        "percent": 8
+                    },
+                    {
+                        "height": 6300,
+                        "percent": 5
+                    },
+                    {
+                        "height": 11700,
+                        "percent": 3
+                    },
+                    {
+                        "height": 18000,
+                        "percent": 2
+                    }
+                ],
                 "stakerewardpercent": 50,
                 "promotionrewardpercent": 50,
                 "stakemintoken": 100,
