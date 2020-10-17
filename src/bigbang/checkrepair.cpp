@@ -936,11 +936,7 @@ bool CCheckBlockFork::AddBlockUnspent(const CTxOutPoint& txPoint, const CTxOut& 
             StdLog("check", "Add Block Unspent: Add block unspent fail, utxo: [%d] %s.", txPoint.n, txPoint.hash.GetHex().c_str());
             return false;
         }
-        if (!mapBlockAddressIndex[txOut.destTo].AddUnspent(txPoint, CUnspentOut(txOut, nTxType, nHeight)))
-        {
-            StdLog("check", "Add Block Unspent: Add address unspent fail, utxo: [%d] %s.", txPoint.n, txPoint.hash.GetHex().c_str());
-            return false;
-        }
+        mapBlockAddressIndex[txOut.destTo].AddUnspent(txPoint, CUnspentOut(txOut, nTxType, nHeight));
     }
     return true;
 }
@@ -959,6 +955,8 @@ bool CCheckBlockFork::CheckTxExist(const uint256& txid, int& nHeight)
 
 void CCheckBlockFork::ClearNullAddressIndex()
 {
+    int64 nAddressIndexUnspentCount = 0;
+    map<CDestination, int64> mapTempAddressAmount;
     auto it = mapBlockAddressIndex.begin();
     while (it != mapBlockAddressIndex.end())
     {
@@ -969,7 +967,65 @@ void CCheckBlockFork::ClearNullAddressIndex()
         }
         else
         {
+            int64& nAmount = mapTempAddressAmount[it->first];
+            for (const auto& vd : it->second.mapUnspent)
+            {
+                if (!vd.second.IsNull())
+                {
+                    nAddressIndexUnspentCount++;
+                    nAmount += vd.second.nAmount;
+                }
+            }
             ++it;
+        }
+    }
+
+    {
+        int64 nBlockUnspentCount = 0;
+        map<CDestination, pair<int64, int64>> mapTempStatAddrUnspent;
+        for (auto& vd : mapBlockUnspent)
+        {
+            if (!vd.second.IsSpent() && vd.second.nAmount > 0)
+            {
+                mapTempStatAddrUnspent[vd.second.destTo].first++;
+                mapTempStatAddrUnspent[vd.second.destTo].second += vd.second.nAmount;
+                nBlockUnspentCount++;
+            }
+        }
+
+        if (mapTempStatAddrUnspent.size() != mapBlockAddressIndex.size())
+        {
+            StdLog("check", "Unspent address: address count error, block count: %lu, addressindex count: %lu",
+                   mapTempStatAddrUnspent.size(), mapBlockAddressIndex.size());
+        }
+        if (nBlockUnspentCount != nAddressIndexUnspentCount)
+        {
+            StdLog("check", "Unspent address: unspent count error, block count: %lu, addressindex count: %lu",
+                   nBlockUnspentCount, nAddressIndexUnspentCount);
+        }
+        StdLog("check", "Unspent address: address count: %lu, unspent count: %lu",
+               mapTempStatAddrUnspent.size(), nBlockUnspentCount);
+
+        for (const auto& vd : mapTempStatAddrUnspent)
+        {
+            auto it = mapBlockAddressIndex.find(vd.first);
+            if (it == mapBlockAddressIndex.end())
+            {
+                StdLog("check", "Unspent address: %s, find addressindex fail", CAddress(vd.first).ToString().c_str());
+            }
+            else if (mapTempAddressAmount[vd.first] != vd.second.second)
+            {
+                StdLog("check", "Unspent address: %s, amount error, block amount: %lu, addressindex amount: %lu",
+                       CAddress(vd.first).ToString().c_str(), vd.second.second, mapTempAddressAmount[vd.first]);
+            }
+        }
+        for (const auto& vd : mapBlockAddressIndex)
+        {
+            auto it = mapTempStatAddrUnspent.find(vd.first);
+            if (it == mapTempStatAddrUnspent.end())
+            {
+                StdLog("check", "Unspent address: %s, find block address fail", CAddress(vd.first).ToString().c_str());
+            }
         }
     }
 }
@@ -2234,6 +2290,8 @@ bool CCheckRepairData::CheckBlockAddressIndex()
                 auto nt = mt->second.mapBlockAddressIndex.find(it->first);
                 if (nt == mt->second.mapBlockAddressIndex.end())
                 {
+                    StdLog("check", "CheckBlockAddressIndex: db address index error, find block address index fail, address: %s, fork: %s",
+                           CAddress(it->first).ToString().c_str(), hashFork.GetHex().c_str());
                     vRemoveAddress.push_back(it->first);
                     addrWalker.mapAddressIndex.erase(it++);
                 }
@@ -2241,6 +2299,8 @@ bool CCheckRepairData::CheckBlockAddressIndex()
                 {
                     if (nt->second != it->second)
                     {
+                        StdLog("check", "CheckBlockAddressIndex: db address index data error, address: %s, fork: %s",
+                               CAddress(it->first).ToString().c_str(), hashFork.GetHex().c_str());
                         vUpdateAddress.push_back(*it);
                         it->second = nt->second;
                     }
@@ -2254,6 +2314,8 @@ bool CCheckRepairData::CheckBlockAddressIndex()
                 auto nt = addrWalker.mapAddressIndex.find(vd.first);
                 if (nt == addrWalker.mapAddressIndex.end())
                 {
+                    StdLog("check", "CheckBlockAddressIndex: db address index missing data, address: %s, fork: %s",
+                           CAddress(vd.first).ToString().c_str(), hashFork.GetHex().c_str());
                     vUpdateAddress.push_back(vd);
                     addrWalker.mapAddressIndex[vd.first] = vd.second;
                 }
@@ -2261,11 +2323,11 @@ bool CCheckRepairData::CheckBlockAddressIndex()
         }
         if (!vUpdateAddress.empty() || !vRemoveAddress.empty())
         {
+            StdLog("check", "CheckBlockAddressIndex: Check fail, update: %lu, remove: %lu, fork: %s",
+                   vUpdateAddress.size(), vRemoveAddress.size(), hashFork.GetHex().c_str());
             if (fOnlyCheck)
             {
                 fCheckResult = false;
-                StdLog("check", "CheckBlockAddressIndex: Check fail, update: %lu, remove: %lu, fork: %s",
-                       vUpdateAddress.size(), vRemoveAddress.size(), hashFork.GetHex().c_str());
             }
             else
             {
@@ -2282,6 +2344,7 @@ bool CCheckRepairData::CheckBlockAddressIndex()
                     dbAddressIndex.Deinitialize();
                     return false;
                 }
+                StdLog("check", "CheckBlockAddressIndex: Repair address index success, fork: %s", hashFork.GetHex().c_str());
             }
         }
     }

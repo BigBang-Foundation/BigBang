@@ -21,33 +21,14 @@ namespace storage
 //////////////////////////////
 // CAddrIndex
 
-bool CAddrIndex::AddUnspent(const CTxOutPoint& out, const CUnspentOut& unspent)
+void CAddrIndex::AddUnspent(const CTxOutPoint& out, const CUnspentOut& unspent)
 {
-    auto it = mapUnspent.find(out);
-    if (it != mapUnspent.end())
-    {
-        if (it->second.IsNull())
-        {
-            it->second = unspent;
-            nTotalValue += unspent.nAmount;
-        }
-    }
-    else
-    {
-        mapUnspent[out] = unspent;
-        nTotalValue += unspent.nAmount;
-    }
-    return true;
+    mapUnspent[out] = unspent;
 }
 
 void CAddrIndex::RemoveUnspent(const CTxOutPoint& out)
 {
-    auto it = mapUnspent.find(out);
-    if (it != mapUnspent.end() && !it->second.IsNull())
-    {
-        nTotalValue -= it->second.nAmount;
-        it->second.SetNull();
-    }
+    mapUnspent[out].SetNull();
 }
 
 void CAddrIndex::SetData(CAddrIndex& addrIndex)
@@ -64,21 +45,6 @@ void CAddrIndex::SetData(CAddrIndex& addrIndex)
         }
     }
     *this = addrIndex;
-}
-
-void CAddrIndex::AddData(const CAddrIndex& addrIndex)
-{
-    for (const auto& vd : addrIndex.mapUnspent)
-    {
-        if (vd.second.IsNull())
-        {
-            RemoveUnspent(vd.first);
-        }
-        else
-        {
-            AddUnspent(vd.first, vd.second);
-        }
-    }
 }
 
 void CAddrIndex::ClearNull()

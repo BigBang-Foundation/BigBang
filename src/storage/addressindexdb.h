@@ -23,7 +23,6 @@ class CAddrIndex
     friend class xengine::CStream;
 
 public:
-    int64 nTotalValue;
     std::map<CTxOutPoint, CUnspentOut> mapUnspent;
     bool fLoad;
 
@@ -34,7 +33,6 @@ public:
     }
     void SetNull()
     {
-        nTotalValue = 0;
         mapUnspent.clear();
         fLoad = false;
     }
@@ -42,10 +40,9 @@ public:
     {
         return mapUnspent.empty();
     }
-    bool AddUnspent(const CTxOutPoint& out, const CUnspentOut& unspent);
+    void AddUnspent(const CTxOutPoint& out, const CUnspentOut& unspent);
     void RemoveUnspent(const CTxOutPoint& out);
     void SetData(CAddrIndex& addrIndex);
-    void AddData(const CAddrIndex& addrIndex);
     void ClearNull();
     friend bool operator==(const CAddrIndex& a, const CAddrIndex& b)
     {
@@ -76,7 +73,6 @@ protected:
     template <typename O>
     void Serialize(xengine::CStream& s, O& opt)
     {
-        s.Serialize(nTotalValue, opt);
         s.Serialize(mapUnspent, opt);
     }
 };
@@ -99,7 +95,7 @@ public:
     CListAddressIndexWalker() {}
     bool Walk(const CDestination& dest, const CAddrIndex& addrIndex) override
     {
-        mapAddressIndex[dest].AddData(addrIndex);
+        mapAddressIndex[dest] = addrIndex;
         return true;
     }
 

@@ -154,24 +154,14 @@ public:
     {
     public:
         std::map<CTxOutPoint, CUnspentOut> mapTxUnspent;
-        int64 nUnspentValue;
-        int64 nSpentValue;
 
     public:
         CAddrUnspent()
         {
-            nUnspentValue = 0;
-            nSpentValue = 0;
         }
-        bool SetTxUnspent(const CTxOutPoint& out, const CUnspentOut& unspent)
+        void SetTxUnspent(const CTxOutPoint& out, const CUnspentOut& unspent)
         {
-            if (mapTxUnspent.find(out) == mapTxUnspent.end())
-            {
-                mapTxUnspent[out] = unspent;
-                nUnspentValue += unspent.nAmount;
-                return true;
-            }
-            return false;
+            mapTxUnspent[out] = unspent;
         }
         void SetTxSpent(const CTxOutPoint& out)
         {
@@ -182,7 +172,6 @@ public:
             auto it = mapTxUnspent.find(out);
             if (it != mapTxUnspent.end())
             {
-                nUnspentValue -= it->second.nAmount;
                 mapTxUnspent.erase(it);
             }
         }

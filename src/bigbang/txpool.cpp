@@ -392,8 +392,6 @@ bool CTxPoolView::AddAddressUnspent(const uint256& txid, const CPooledTx& tx)
     {
         addrDestIn.SetTxSpent(tx.vInput[i].prevout);
     }
-    addrDestIn.nSpentValue += tx.nValueIn;
-    addrDestIn.nUnspentValue -= tx.nValueIn;
 
     CTxOut output;
     output = tx.GetOutput(0);
