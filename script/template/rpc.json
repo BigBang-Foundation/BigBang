@@ -246,6 +246,10 @@
                     "deal_address": {
                         "type": "string",
                         "desc": "deal address"
+                    },
+                    "timestamp": {
+                        "type": "uint",
+                        "desc": "timestamp"
                     }
                 }
             },
@@ -514,6 +518,10 @@
                     "deal_address": {
                         "type": "string",
                         "desc": "deal address"
+                    },
+                    "timestamp": {
+                        "type": "uint",
+                        "desc": "timestamp"
                     }
                 }
             },
