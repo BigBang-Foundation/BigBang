@@ -71,15 +71,15 @@ public:
     bool AddTemplate(CTemplatePtr& ptr) override;
     CTemplatePtr GetTemplate(const CTemplateId& tid) override;
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) override;
-    bool GetBalance(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) override;
-    bool GetBalanceEx(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) override;
+    bool GetBalanceByWallet(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) override;
+    bool GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) override;
     bool ListWalletTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) override;
-    boost::optional<std::string> CreateTransaction(const uint256& hashFork, const CDestination& destFrom,
-                                                   const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
-                                                   const std::vector<unsigned char>& vchData, CTransaction& txNew) override;
-    boost::optional<std::string> CreateTransactionEx(const uint256& hashFork, const CDestination& destFrom,
-                                                     const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
-                                                     const std::vector<unsigned char>& vchData, CTransaction& txNew) override;
+    boost::optional<std::string> CreateTransactionByWallet(const uint256& hashFork, const CDestination& destFrom,
+                                                           const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
+                                                           const std::vector<unsigned char>& vchData, CTransaction& txNew) override;
+    boost::optional<std::string> CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
+                                                            const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
+                                                            const std::vector<unsigned char>& vchData, CTransaction& txNew) override;
     bool SynchronizeWalletTx(const CDestination& destNew) override;
     bool ResynchronizeWalletTx() override;
     bool SignOfflineTransaction(const CDestination& destIn, CTransaction& tx, bool& fCompleted) override;
@@ -99,11 +99,11 @@ protected:
     bool HandleInvoke() override;
     void HandleHalt() override;
 
-    bool ArrangeInputsEx(const CDestination& destIn, const uint256& hashFork, int nForkHeight, CTransaction& tx);
-    int64 SelectCoinsEx(const CDestination& dest, const uint256& hashFork, int nForkHeight,
-                        int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxOutPoint>& vCoins);
-    Errno SelectCoinsToUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight,
-                               int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxUnspent>& vCoins);
+    bool ArrangeInputsByUnspent(const CDestination& destIn, const uint256& hashFork, int nForkHeight, CTransaction& tx);
+    int64 SelectCoinsToTransaction(const CDestination& dest, const uint256& hashFork, int nForkHeight,
+                                   int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxOutPoint>& vCoins);
+    Errno SelectCoinsToListUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight,
+                                   int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxUnspent>& vCoins);
 
 protected:
     ICoreProtocol* pCoreProtocol;

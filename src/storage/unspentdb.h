@@ -136,7 +136,7 @@ public:
 };
 
 //////////////////////////////
-// CGetAddressUnspentWalker
+// CListAddressUnspentWalker
 
 class CListAddressUnspentWalker : public CForkUnspentDBWalker
 {

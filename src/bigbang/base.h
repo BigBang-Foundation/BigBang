@@ -391,16 +391,16 @@ public:
     virtual bool AddTemplate(CTemplatePtr& ptr) = 0;
     virtual CTemplatePtr GetTemplate(const CTemplateId& tid) = 0;
     virtual bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) = 0;
-    virtual bool GetBalance(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) = 0;
-    virtual bool GetBalanceEx(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) = 0;
+    virtual bool GetBalanceByWallet(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) = 0;
+    virtual bool GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) = 0;
     virtual bool ListWalletTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) = 0;
-    virtual boost::optional<std::string> CreateTransaction(const uint256& hashFork, const CDestination& destFrom,
-                                                           const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
-                                                           const std::vector<unsigned char>& vchData, CTransaction& txNew)
+    virtual boost::optional<std::string> CreateTransactionByWallet(const uint256& hashFork, const CDestination& destFrom,
+                                                                   const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
+                                                                   const std::vector<unsigned char>& vchData, CTransaction& txNew)
         = 0;
-    virtual boost::optional<std::string> CreateTransactionEx(const uint256& hashFork, const CDestination& destFrom,
-                                                             const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
-                                                             const std::vector<unsigned char>& vchData, CTransaction& txNew)
+    virtual boost::optional<std::string> CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
+                                                                    const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
+                                                                    const std::vector<unsigned char>& vchData, CTransaction& txNew)
         = 0;
     virtual bool SynchronizeWalletTx(const CDestination& destNew) = 0;
     virtual bool ResynchronizeWalletTx() = 0;

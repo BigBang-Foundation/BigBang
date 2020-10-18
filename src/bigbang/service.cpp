@@ -483,7 +483,7 @@ Errno CService::ListForkAddressUnspent(const uint256& hashFork, const CDestinati
         nMaxTxCount = nMax;
     }
 
-    return SelectCoinsToUnspent(dest, hashFork, nForkHeight, nTxTime, nTargetValue, nMaxTxCount, vUnspent);
+    return SelectCoinsToListUnspent(dest, hashFork, nForkHeight, nTxTime, nTargetValue, nMaxTxCount, vUnspent);
 }
 
 bool CService::GetVotes(const CDestination& destDelegate, int64& nVotes, string& strFailCause)
@@ -663,7 +663,7 @@ bool CService::GetDeFiRelation(const uint256& hashFork, const CDestination& dest
     return pBlockChain->GetDeFiRelation(hashFork, destIn, parent);
 }
 
-bool CService::GetBalance(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
+bool CService::GetBalanceByWallet(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
 {
     int nForkHeight = 0;
     {
@@ -671,7 +671,7 @@ bool CService::GetBalance(const CDestination& dest, const uint256& hashFork, CWa
         map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
         if (it == mapForkStatus.end())
         {
-            StdError("CService", "GetBalance: Find fork fail, fork: %s", hashFork.GetHex().c_str());
+            StdError("CService", "GetBalanceByWallet: Find fork fail, fork: %s", hashFork.GetHex().c_str());
             return false;
         }
         nForkHeight = it->second.nLastBlockHeight;
@@ -679,7 +679,7 @@ bool CService::GetBalance(const CDestination& dest, const uint256& hashFork, CWa
     return pWallet->GetBalance(dest, hashFork, nForkHeight, balance);
 }
 
-bool CService::GetBalanceEx(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
+bool CService::GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
 {
     int nForkHeight = 0;
     {
@@ -687,7 +687,7 @@ bool CService::GetBalanceEx(const CDestination& dest, const uint256& hashFork, C
         map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
         if (it == mapForkStatus.end())
         {
-            StdError("CService", "GetBalanceEx: Find fork fail, fork: %s", hashFork.GetHex().c_str());
+            StdError("CService", "GetBalanceByUnspent: Find fork fail, fork: %s", hashFork.GetHex().c_str());
             return false;
         }
         nForkHeight = it->second.nLastBlockHeight;
@@ -696,7 +696,7 @@ bool CService::GetBalanceEx(const CDestination& dest, const uint256& hashFork, C
     map<CTxOutPoint, CUnspentOut> mapUnspent;
     if (!pTxPool->FetchAddressUnspent(hashFork, dest, mapUnspent))
     {
-        StdError("CService", "GetBalanceEx: Fetch address unspent fail, fork: %s", hashFork.GetHex().c_str());
+        StdError("CService", "GetBalanceByUnspent: Fetch address unspent fail, fork: %s", hashFork.GetHex().c_str());
         return false;
     }
 
@@ -731,9 +731,9 @@ bool CService::ListWalletTx(const uint256& hashFork, const CDestination& dest, i
     return pWallet->ListTx(hashFork, dest, nOffset, nCount, vWalletTx);
 }
 
-boost::optional<std::string> CService::CreateTransaction(const uint256& hashFork, const CDestination& destFrom,
-                                                         const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
-                                                         const vector<unsigned char>& vchData, CTransaction& txNew)
+boost::optional<std::string> CService::CreateTransactionByWallet(const uint256& hashFork, const CDestination& destFrom,
+                                                                 const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
+                                                                 const vector<unsigned char>& vchData, CTransaction& txNew)
 {
     int nForkHeight = 0;
     txNew.SetNull();
@@ -742,7 +742,7 @@ boost::optional<std::string> CService::CreateTransaction(const uint256& hashFork
         map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
         if (it == mapForkStatus.end())
         {
-            StdError("CService", "CreateTransaction: find fork fail, fork: %s", hashFork.GetHex().c_str());
+            StdError("CService", "CreateTransactionByWallet: find fork fail, fork: %s", hashFork.GetHex().c_str());
             return std::string("find fork fail, fork: ") + hashFork.GetHex();
         }
         nForkHeight = it->second.nLastBlockHeight;
@@ -759,9 +759,9 @@ boost::optional<std::string> CService::CreateTransaction(const uint256& hashFork
     return pWallet->ArrangeInputs(destFrom, hashFork, nForkHeight, txNew) ? boost::optional<std::string>{} : std::string("CWallet::ArrangeInputs failed");
 }
 
-boost::optional<std::string> CService::CreateTransactionEx(const uint256& hashFork, const CDestination& destFrom,
-                                                           const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
-                                                           const vector<unsigned char>& vchData, CTransaction& txNew)
+boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
+                                                                  const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
+                                                                  const vector<unsigned char>& vchData, CTransaction& txNew)
 {
     int nForkHeight = 0;
     txNew.SetNull();
@@ -770,7 +770,7 @@ boost::optional<std::string> CService::CreateTransactionEx(const uint256& hashFo
         map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
         if (it == mapForkStatus.end())
         {
-            StdError("CService", "CreateTransactionEx: find fork fail, fork: %s", hashFork.GetHex().c_str());
+            StdError("CService", "CreateTransactionByUnspent: find fork fail, fork: %s", hashFork.GetHex().c_str());
             return std::string("find fork fail, fork: ") + hashFork.GetHex();
         }
         nForkHeight = it->second.nLastBlockHeight;
@@ -784,16 +784,16 @@ boost::optional<std::string> CService::CreateTransactionEx(const uint256& hashFo
     txNew.nTxFee = nTxFee;
     txNew.vchData = vchData;
 
-    if (!ArrangeInputsEx(destFrom, hashFork, nForkHeight, txNew))
+    if (!ArrangeInputsByUnspent(destFrom, hashFork, nForkHeight, txNew))
     {
-        StdError("CService", "CreateTransactionEx: SelectCoins fail, fork: %s", hashFork.GetHex().c_str());
+        StdError("CService", "CreateTransactionByUnspent: SelectCoins fail, fork: %s", hashFork.GetHex().c_str());
         return std::string("select coin fail, fork: ") + hashFork.GetHex();
     }
 
     return boost::optional<std::string>{};
 }
 
-bool CService::ArrangeInputsEx(const CDestination& destIn, const uint256& hashFork, int nForkHeight, CTransaction& tx)
+bool CService::ArrangeInputsByUnspent(const CDestination& destIn, const uint256& hashFork, int nForkHeight, CTransaction& tx)
 {
     tx.vInput.clear();
     int64 nTargetValue = tx.nAmount + tx.nTxFee;
@@ -805,10 +805,10 @@ bool CService::ArrangeInputsEx(const CDestination& destIn, const uint256& hashFo
     }
 
     vector<CTxOutPoint> vCoins;
-    int64 nValueIn = SelectCoinsEx(destIn, hashFork, nForkHeight, tx.GetTxTime(), nTargetValue, MAX_TX_INPUT_COUNT, vCoins);
+    int64 nValueIn = SelectCoinsToTransaction(destIn, hashFork, nForkHeight, tx.GetTxTime(), nTargetValue, MAX_TX_INPUT_COUNT, vCoins);
     if (nValueIn < nTargetValue)
     {
-        StdError("CService", "ArrangeInputsEx: Select coin not enough, destIn: %s, nValueIn: %ld < nTargeValue: %ld",
+        StdError("CService", "ArrangeInputsByUnspent: Select coin not enough, destIn: %s, nValueIn: %ld < nTargeValue: %ld",
                  CAddress(destIn).ToString().c_str(), nValueIn, nTargetValue);
         return false;
     }
@@ -821,13 +821,13 @@ bool CService::ArrangeInputsEx(const CDestination& destIn, const uint256& hashFo
     return true;
 }
 
-int64 CService::SelectCoinsEx(const CDestination& dest, const uint256& hashFork, int nForkHeight,
-                              int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxOutPoint>& vCoins)
+int64 CService::SelectCoinsToTransaction(const CDestination& dest, const uint256& hashFork, int nForkHeight,
+                                         int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxOutPoint>& vCoins)
 {
     map<CTxOutPoint, CUnspentOut> mapUnspent;
     if (!pTxPool->FetchAddressUnspent(hashFork, dest, mapUnspent))
     {
-        StdError("CService", "Select Coins Ex: Fetch address unspent fail, dest: %s", CAddress(dest).ToString().c_str());
+        StdError("CService", "Select coins to transaction: Fetch address unspent fail, dest: %s", CAddress(dest).ToString().c_str());
         return 0;
     }
 
@@ -907,13 +907,13 @@ int64 CService::SelectCoinsEx(const CDestination& dest, const uint256& hashFork,
     return nValueRet;
 }
 
-Errno CService::SelectCoinsToUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight,
-                                     int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxUnspent>& vCoins)
+Errno CService::SelectCoinsToListUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight,
+                                         int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxUnspent>& vCoins)
 {
     map<CTxOutPoint, CUnspentOut> mapUnspent;
     if (!pTxPool->FetchAddressUnspent(hashFork, dest, mapUnspent))
     {
-        StdError("CService", "SelectCoinsToUnspent: Fetch address unspent fail, dest: %s", CAddress(dest).ToString().c_str());
+        StdError("CService", "SelectCoinsToListUnspent: Fetch address unspent fail, dest: %s", CAddress(dest).ToString().c_str());
         return ERR_WALLET_NOT_FOUND;
     }
 
@@ -993,7 +993,7 @@ Errno CService::SelectCoinsToUnspent(const CDestination& dest, const uint256& ha
 
     if (nValueRet < nTargetValue)
     {
-        StdLog("CService", "SelectCoinsToUnspent: Not enough funds in wallet or account, balance: %lu, need: %lu, dest: %s",
+        StdLog("CService", "SelectCoinsToListUnspent: Not enough funds in wallet or account, balance: %lu, need: %lu, dest: %s",
                nValueRet, nTargetValue, CAddress(dest).ToString().c_str());
         return ERR_WALLET_INSUFFICIENT_FUNDS;
     }

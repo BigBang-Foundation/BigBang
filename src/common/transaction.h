@@ -41,7 +41,7 @@ public:
     {
         return (hash == 0 && n == decltype(n)(-1));
     }
-    /*friend bool operator<(const CTxOutPoint& a, const CTxOutPoint& b)
+    friend bool operator<(const CTxOutPoint& a, const CTxOutPoint& b)
     {
         return (a.hash < b.hash || (a.hash == b.hash && a.n < b.n));
     }
@@ -54,41 +54,16 @@ public:
     friend bool operator!=(const CTxOutPoint& a, const CTxOutPoint& b)
     {
         return !(a == b);
-    }*/
+    }
 
 protected:
-    /*template <typename O>
-    void Serialize(xengine::CStream& s, O& opt)
-    {
-        s.Serialize(hash, opt);
-        s.Serialize(n, opt);
-    }*/
-    void Serialize(xengine::CStream& s, xengine::LoadType& opt)
-    {
-        s.Serialize(hash, opt);
-        s.Serialize(n, opt);
-    }
     template <typename O>
-    void Serialize(xengine::CStream& s, O& opt) const
+    void Serialize(xengine::CStream& s, O& opt)
     {
         s.Serialize(hash, opt);
         s.Serialize(n, opt);
     }
 };
-
-inline bool operator==(const CTxOutPoint& a, const CTxOutPoint& b)
-{
-    return (a.hash == b.hash && a.n == b.n);
-}
-
-inline bool operator!=(const CTxOutPoint& a, const CTxOutPoint& b)
-{
-    return !(a == b);
-}
-inline bool operator<(const CTxOutPoint& a, const CTxOutPoint& b)
-{
-    return (a.hash < b.hash || (a.hash == b.hash && a.n < b.n));
-}
 
 class CTxIn
 {

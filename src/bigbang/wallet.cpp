@@ -1614,10 +1614,9 @@ bool CWallet::SignDestination(const CDestination& destIn, const CTransaction& tx
             ptr = CTemplate::Import(vchDestInData);
             if (!ptr)
             {
-                StdError("CWallet", "Sign destination: Import address fail, txid: %s, destIn: %s",
-                         tx.GetHash().GetHex().c_str(), CAddress(destIn).ToString().c_str());
-                string strData = ToHexString(&(vchDestInData[0]), vchDestInData.size());
-                StdError("CWallet", "Sign destination: vchDestInData: %s", strData.c_str());
+                StdError("CWallet", "Sign destination: Import address fail, txid: %s, destIn: %s, vchDestInData: %s",
+                         tx.GetHash().GetHex().c_str(), CAddress(destIn).ToString().c_str(),
+                         ToHexString(&(vchDestInData[0]), vchDestInData.size()).c_str());
             }
         }
         if (ptr == nullptr || ptr->GetTemplateId() != destIn.GetTemplateId())
@@ -1646,7 +1645,7 @@ bool CWallet::SignDestination(const CDestination& destIn, const CTransaction& tx
         else if (setSubDest.size() == 1)
         {
             vector<uint8> vchSubDestInData;
-            size_t nTemplateDataSize = ptr->GetTemplateData().size();
+            size_t nTemplateDataSize = ptr->GetTemplateData().size() + 2; //2 bytes is template type
             if (nTemplateDataSize < vchDestInData.size())
             {
                 vchSubDestInData.assign(vchDestInData.begin() + nTemplateDataSize, vchDestInData.end());

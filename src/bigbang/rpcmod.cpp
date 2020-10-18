@@ -249,13 +249,13 @@ CRPCMod::CRPCMod()
         //
         ("getbalance", &CRPCMod::RPCGetBalance)
         //
-        ("getbalanceex", &CRPCMod::RPCGetBalanceEx)
+        ("getbalancewallet", &CRPCMod::RPCGetBalanceWallet)
         //
         ("listtransaction", &CRPCMod::RPCListTransaction)
         //
         ("sendfrom", &CRPCMod::RPCSendFrom)
         //
-        ("sendfromex", &CRPCMod::RPCSendFromEx)
+        ("sendfromwallet", &CRPCMod::RPCSendFromWallet)
         //
         ("createtransaction", &CRPCMod::RPCCreateTransaction)
         //
@@ -297,7 +297,7 @@ CRPCMod::CRPCMod()
         //
         ("listunspent", &CRPCMod::RPCListUnspent)
         //
-        ("listunspentex", &CRPCMod::RPCListUnspentEx)
+        ("listunspentold", &CRPCMod::RPCListUnspentOld)
         //
         ("getdefirelation", &CRPCMod::RPCGetDeFiRelation)
         /* Mint */
@@ -1647,7 +1647,7 @@ CRPCResultPtr CRPCMod::RPCGetBalance(CRPCParamPtr param)
     for (const CDestination& dest : vDest)
     {
         CWalletBalance balance;
-        if (pService->GetBalanceEx(dest, hashFork, balance))
+        if (pService->GetBalanceByUnspent(dest, hashFork, balance))
         {
             CGetBalanceResult::CBalance b;
             b.strAddress = CAddress(dest).ToString();
@@ -1661,11 +1661,11 @@ CRPCResultPtr CRPCMod::RPCGetBalance(CRPCParamPtr param)
     return spResult;
 }
 
-CRPCResultPtr CRPCMod::RPCGetBalanceEx(CRPCParamPtr param)
+CRPCResultPtr CRPCMod::RPCGetBalanceWallet(CRPCParamPtr param)
 {
-    auto spParam = CastParamPtr<CGetBalanceExParam>(param);
+    auto spParam = CastParamPtr<CGetBalanceWalletParam>(param);
 
-    //getbalanceex (-f="fork") (-a="address")
+    //getbalancewallet (-f="fork") (-a="address")
     uint256 hashFork;
     if (!GetForkHashOfDef(spParam->strFork, hashFork))
     {
@@ -1692,13 +1692,13 @@ CRPCResultPtr CRPCMod::RPCGetBalanceEx(CRPCParamPtr param)
         ListDestination(vDest);
     }
 
-    auto spResult = MakeCGetBalanceExResultPtr();
+    auto spResult = MakeCGetBalanceWalletResultPtr();
     for (const CDestination& dest : vDest)
     {
         CWalletBalance balance;
-        if (pService->GetBalance(dest, hashFork, balance))
+        if (pService->GetBalanceByWallet(dest, hashFork, balance))
         {
-            CGetBalanceExResult::CBalance b;
+            CGetBalanceWalletResult::CBalance b;
             b.strAddress = CAddress(dest).ToString();
             b.dAvail = ValueFromAmount(balance.nAvailable);
             b.dLocked = ValueFromAmount(balance.nLocked);
@@ -1807,13 +1807,13 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         {
             nTxFee = nUserTxFee;
         }
-        StdTrace("[SendFromEx]", "txudatasize : %d ; mintxfee : %d", vchData.size(), nTxFee);
+        StdTrace("[SendFrom]", "txudatasize : %d ; mintxfee : %d", vchData.size(), nTxFee);
     }
 
     CWalletBalance balance;
-    if (!pService->GetBalanceEx(from, hashFork, balance))
+    if (!pService->GetBalanceByUnspent(from, hashFork, balance))
     {
-        throw CRPCException(RPC_WALLET_ERROR, "GetBalanceEx failed");
+        throw CRPCException(RPC_WALLET_ERROR, "GetBalanceByUnspent failed");
     }
     if (nAmount == -1)
     {
@@ -1832,11 +1832,11 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
     CTemplateId tid;
     if (to.GetTemplateId(tid) && tid.GetType() == TEMPLATE_FORK && nAmount < CTemplateFork::CreatedCoin())
     {
-        throw CRPCException(RPC_INVALID_PARAMETER, "sendfromex nAmount must be at least " + std::to_string(CTemplateFork::CreatedCoin() / COIN) + " for creating fork");
+        throw CRPCException(RPC_INVALID_PARAMETER, "SendFromWallet nAmount must be at least " + std::to_string(CTemplateFork::CreatedCoin() / COIN) + " for creating fork");
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransactionEx(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
@@ -1929,10 +1929,10 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
     return MakeCSendFromResultPtr(txNew.GetHash().GetHex());
 }
 
-CRPCResultPtr CRPCMod::RPCSendFromEx(CRPCParamPtr param)
+CRPCResultPtr CRPCMod::RPCSendFromWallet(CRPCParamPtr param)
 {
-    //sendfromex <"from"> <"to"> <$amount$> ($txfee$) (-f="fork") (-d="data")
-    auto spParam = CastParamPtr<CSendFromExParam>(param);
+    //sendfromwallet <"from"> <"to"> <$amount$> ($txfee$) (-f="fork") (-d="data")
+    auto spParam = CastParamPtr<CSendFromWalletParam>(param);
     CAddress from(spParam->strFrom);
     if (from.IsNull())
     {
@@ -1990,9 +1990,9 @@ CRPCResultPtr CRPCMod::RPCSendFromEx(CRPCParamPtr param)
     }
 
     CWalletBalance balance;
-    if (!pService->GetBalance(from, hashFork, balance))
+    if (!pService->GetBalanceByWallet(from, hashFork, balance))
     {
-        throw CRPCException(RPC_WALLET_ERROR, "GetBalance failed");
+        throw CRPCException(RPC_WALLET_ERROR, "GetBalanceByWallet failed");
     }
     if (nAmount == -1)
     {
@@ -2015,7 +2015,7 @@ CRPCResultPtr CRPCMod::RPCSendFromEx(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransaction(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByWallet(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
@@ -2098,8 +2098,8 @@ CRPCResultPtr CRPCMod::RPCSendFromEx(CRPCParamPtr param)
         ss << (int)obj.prevout.n << ":" << obj.prevout.hash.GetHex().c_str() << ";";
     }
 
-    StdDebug("[SendFromEx][DEBUG]", "txNew hash:%s; input:%s", txNew.GetHash().GetHex().c_str(), ss.str().c_str());
-    return MakeCSendFromExResultPtr(txNew.GetHash().GetHex());
+    StdDebug("[SendFromWallet][DEBUG]", "txNew hash:%s; input:%s", txNew.GetHash().GetHex().c_str(), ss.str().c_str());
+    return MakeCSendFromWalletResultPtr(txNew.GetHash().GetHex());
 }
 
 CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
@@ -2158,9 +2158,9 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     CWalletBalance balance;
-    if (!pService->GetBalance(from, hashFork, balance))
+    if (!pService->GetBalanceByWallet(from, hashFork, balance))
     {
-        throw CRPCException(RPC_WALLET_ERROR, "GetBalance failed");
+        throw CRPCException(RPC_WALLET_ERROR, "GetBalanceByWallet failed");
     }
     if (nAmount == -1)
     {
@@ -2178,7 +2178,7 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransaction(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByWallet(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
@@ -3282,7 +3282,7 @@ CRPCResultPtr CRPCMod::RPCListUnspent(CRPCParamPtr param)
     return spResult;
 }
 
-CRPCResultPtr CRPCMod::RPCListUnspentEx(CRPCParamPtr param)
+CRPCResultPtr CRPCMod::RPCListUnspentOld(CRPCParamPtr param)
 {
     auto lmdImport = [](const string& pathFile, vector<CAddress>& addresses) -> bool {
         ifstream inFile(pathFile);
@@ -3318,7 +3318,7 @@ CRPCResultPtr CRPCMod::RPCListUnspentEx(CRPCParamPtr param)
         return true;
     };
 
-    auto spParam = CastParamPtr<CListUnspentExParam>(param);
+    auto spParam = CastParamPtr<CListUnspentOldParam>(param);
 
     uint256 fork;
     if (!GetForkHashOfDef(spParam->strFork, fork))
@@ -3366,13 +3366,13 @@ CRPCResultPtr CRPCMod::RPCListUnspentEx(CRPCParamPtr param)
         }
     }
 
-    auto spResult = MakeCListUnspentExResultPtr();
+    auto spResult = MakeCListUnspentOldResultPtr();
     double dTotal = 0.0f;
     for (auto& iAddr : mapDest)
     {
         CAddress dest(iAddr.first);
 
-        typename CListUnspentExResult::CAddresses a;
+        typename CListUnspentOldResult::CAddresses a;
         a.strAddress = dest.ToString();
 
         double dSum = 0.0f;

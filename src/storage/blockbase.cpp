@@ -216,10 +216,10 @@ void CBlockView::RemoveBlock(const uint256& hash, const CBlockEx& block)
     InsertBlockList(hash, block, vBlockRemove);
 }
 
-void CBlockView::GetUnspentChanges(vector<CTxUnspent>& vAddNew, vector<CTxUnspent>& vRemove)
+void CBlockView::GetUnspentChanges(vector<CTxUnspent>& vAddNewUnspent, vector<CTxUnspent>& vRemoveUnspent)
 {
-    vAddNew.reserve(mapUnspent.size());
-    vRemove.reserve(mapUnspent.size());
+    vAddNewUnspent.reserve(mapUnspent.size());
+    vRemoveUnspent.reserve(mapUnspent.size());
 
     for (map<CTxOutPoint, CUnspent>::iterator it = mapUnspent.begin(); it != mapUnspent.end(); ++it)
     {
@@ -244,11 +244,11 @@ void CBlockView::GetUnspentChanges(vector<CTxUnspent>& vAddNew, vector<CTxUnspen
                         StdError("CBlockView", "Get Unspent Changes: RetrieveTx fail, tx: %s", out.hash.GetHex().c_str());
                     }
                 }
-                vAddNew.push_back(CTxUnspent(out, static_cast<const CTxOut&>(unspent), unspent.nTxType, unspent.nHeight));
+                vAddNewUnspent.push_back(CTxUnspent(out, static_cast<const CTxOut&>(unspent), unspent.nTxType, unspent.nHeight));
             }
             else
             {
-                vRemove.push_back(CTxUnspent(out, static_cast<const CTxOut&>(unspent), unspent.nTxType, unspent.nHeight));
+                vRemoveUnspent.push_back(CTxUnspent(out, static_cast<const CTxOut&>(unspent), unspent.nTxType, unspent.nHeight));
             }
         }
     }
@@ -476,7 +476,7 @@ bool CBlockBase::Initiate(const uint256& hashGenesis, const CBlock& blockGenesis
     vTxNew.push_back(make_pair(txidMintTx, CTxIndex(0, nFile, nTxOffset)));
 
     vector<CTxUnspent> vAddNew;
-    vAddNew.push_back(CTxUnspent(CTxOutPoint(txidMintTx, 0), CTxOut(blockGenesis.txMint)));
+    vAddNew.push_back(CTxUnspent(CTxOutPoint(txidMintTx, 0), CTxOut(blockGenesis.txMint), blockGenesis.txMint.nType, blockGenesis.GetBlockHeight()));
 
     {
         CWriteLock wlock(rwAccess);
@@ -1151,16 +1151,16 @@ bool CBlockBase::CommitBlockView(CBlockView& view, CBlockIndex* pIndexNew)
     vector<uint256> vTxDel;
     view.GetTxRemoved(vTxDel);
 
-    vector<CTxUnspent> vAddNew;
-    vector<CTxUnspent> vRemove;
-    view.GetUnspentChanges(vAddNew, vRemove);
+    vector<CTxUnspent> vAddNewUnspent;
+    vector<CTxUnspent> vRemoveUnspent;
+    view.GetUnspentChanges(vAddNewUnspent, vRemoveUnspent);
 
     if (hashFork == view.GetForkHash())
     {
         spFork->UpgradeToWrite();
     }
 
-    if (!dbBlock.UpdateFork(hashFork, pIndexNew->GetBlockHash(), view.GetForkHash(), vTxNew, vTxDel, vAddNew, vRemove))
+    if (!dbBlock.UpdateFork(hashFork, pIndexNew->GetBlockHash(), view.GetForkHash(), vTxNew, vTxDel, vAddNewUnspent, vRemoveUnspent))
     {
         StdTrace("BlockBase", "CommitBlockView::Update fork %s  failed", hashFork.ToString().c_str());
         return false;
