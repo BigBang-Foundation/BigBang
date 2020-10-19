@@ -615,11 +615,11 @@ def check(path):
 
                     # check the reward of address correct or not
                     if tx['sendto'] in reward:
-                        should_reward = reward[tx['sendto']]
-                        actrual_reward = int(
-                            (tx['amount'] + tx['txfee']) * COIN)
+                        should_reward = int(reward[tx['sendto']])
+                        actrual_reward = int(round(
+                            (tx['amount'] + tx['txfee']) * COIN))
                         if should_reward != actrual_reward:
-                            print('ERROR: addr reward error in height, addr: {}, height: {} should be: {:.6f}, actrual: {:.6f}'.format(
+                            print('ERROR: addr reward error in height, addr: {}, height: {} should be: {}, actrual: {}'.format(
                                 tx['sendto'], height, should_reward, actrual_reward))
                             error = True
                         del(reward[tx['sendto']])
