@@ -716,6 +716,10 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     {
         return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
     }
+    if(tx.nType == CTransaction::TX_DEFI_RELATION && (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
+    }
 
     if (tx.nType == CTransaction::TX_CERT)
     {
@@ -852,6 +856,10 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     if (tx.nType == CTransaction::TX_DEFI_RELATION && destIn == tx.sendTo)
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
+    }
+    if(tx.nType == CTransaction::TX_DEFI_RELATION && (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
     }
 
     if (tx.nType == CTransaction::TX_CERT)
