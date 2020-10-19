@@ -2071,13 +2071,19 @@ CRPCResultPtr CRPCMod::RPCSendFromWallet(CRPCParamPtr param)
         ds << pService->GetForkHeight(hashFork) << (txNew.nTxFee + txNew.nAmount);
     }
 
+    vector<uint8> vchFromData;
+    if (from.IsTemplate() && spParam->strFromdata.IsValid())
+    {
+        vchFromData = ParseHexString(spParam->strFromdata);
+    }
+
     vector<uint8> vchSendToData;
     if (to.IsTemplate() && spParam->strSendtodata.IsValid())
     {
         vchSendToData = ParseHexString(spParam->strSendtodata);
     }
 
-    if (!pService->SignTransaction(txNew, vector<uint8>(), vchSendToData, fCompleted))
+    if (!pService->SignTransaction(txNew, vchFromData, vchSendToData, fCompleted))
     {
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign transaction");
     }
@@ -2158,9 +2164,9 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     CWalletBalance balance;
-    if (!pService->GetBalanceByWallet(from, hashFork, balance))
+    if (!pService->GetBalanceByUnspent(from, hashFork, balance))
     {
-        throw CRPCException(RPC_WALLET_ERROR, "GetBalanceByWallet failed");
+        throw CRPCException(RPC_WALLET_ERROR, "GetBalanceByUnspent failed");
     }
     if (nAmount == -1)
     {
@@ -2178,7 +2184,7 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransactionByWallet(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
@@ -2209,6 +2215,12 @@ CRPCResultPtr CRPCMod::RPCSignTransaction(CRPCParamPtr param)
         throw CRPCException(RPC_DESERIALIZATION_ERROR, "TX decode failed");
     }
 
+    vector<uint8> vchFromData;
+    if (spParam->strFromdata.IsValid())
+    {
+        vchFromData = ParseHexString(spParam->strFromdata);
+    }
+
     vector<uint8> vchSendToData;
     if (rawTx.sendTo.IsTemplate() && spParam->strSendtodata.IsValid())
     {
@@ -2216,7 +2228,7 @@ CRPCResultPtr CRPCMod::RPCSignTransaction(CRPCParamPtr param)
     }
 
     bool fCompleted = false;
-    if (!pService->SignTransaction(rawTx, vector<uint8>(), vchSendToData, fCompleted))
+    if (!pService->SignTransaction(rawTx, vchFromData, vchSendToData, fCompleted))
     {
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign transaction");
     }

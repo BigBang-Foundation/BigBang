@@ -2926,6 +2926,12 @@
                     "required": false,
                     "opt": "ss"
                 },
+                "fromdata": {
+                    "type": "string",
+                    "desc": "If the 'from' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "fd"
+                },
                 "sendtodata": {
                     "type": "string",
                     "desc": "If the 'to' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
@@ -3086,6 +3092,12 @@
                 "txdata": {
                     "type": "string",
                     "desc": "transaction data(hex string)"
+                },
+                "fromdata": {
+                    "type": "string",
+                    "desc": "If the 'from' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "fd"
                 },
                 "sendtodata": {
                     "type": "string",
