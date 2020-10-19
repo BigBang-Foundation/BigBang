@@ -12,7 +12,7 @@ class CTemplateDexOrder : virtual public CTemplate, virtual public CSendToRecord
 public:
     CTemplateDexOrder(const CDestination& destSellerIn = CDestination(), const std::vector<char> vCoinPairIn = std::vector<char>(),
                       uint64 nPriceIn = 0, int nFeeIn = 0, const std::vector<char>& vRecvDestIn = std::vector<char>(), int nValidHeightIn = 0,
-                      const CDestination& destMatchIn = CDestination(), const std::vector<char>& vDealDestIn = std::vector<char>());
+                      const CDestination& destMatchIn = CDestination(), const std::vector<char>& vDealDestIn = std::vector<char>(), uint32 nTimeStampIn = 0);
     virtual CTemplateDexOrder* clone() const;
     virtual bool GetSignDestination(const CTransaction& tx, const uint256& hashFork, int nHeight, const std::vector<uint8>& vchSig,
                                     std::set<CDestination>& setSubDest, std::vector<uint8>& vchSubSig) const;
@@ -35,6 +35,7 @@ public:
     int nValidHeight;
     CDestination destMatch;
     std::vector<char> vDealDest;
+    uint32 nTimeStamp;
 };
 
 #endif // COMMON_TEMPLATE_DEXORDER_H

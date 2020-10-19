@@ -18,7 +18,7 @@ using namespace xengine;
 
 CTemplateDexOrder::CTemplateDexOrder(const CDestination& destSellerIn, const vector<char> vCoinPairIn,
                                      uint64 nPriceIn, int nFeeIn, const vector<char>& vRecvDestIn, int nValidHeightIn,
-                                     const CDestination& destMatchIn, const vector<char>& vDealDestIn)
+                                     const CDestination& destMatchIn, const vector<char>& vDealDestIn, uint32 nTimeStampIn)
   : CTemplate(TEMPLATE_DEXORDER),
     destSeller(destSellerIn),
     vCoinPair(vCoinPairIn),
@@ -27,7 +27,8 @@ CTemplateDexOrder::CTemplateDexOrder(const CDestination& destSellerIn, const vec
     vRecvDest(vRecvDestIn),
     nValidHeight(nValidHeightIn),
     destMatch(destMatchIn),
-    vDealDest(vDealDestIn)
+    vDealDest(vDealDestIn),
+    nTimeStamp(nTimeStampIn)
 {
 }
 
@@ -83,6 +84,8 @@ void CTemplateDexOrder::GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CD
         strDestTemp.assign(&(vDealDest[0]), vDealDest.size());
         obj.dexorder.strDeal_Address = strDestTemp;
     }
+
+    obj.dexorder.nTimestamp = nTimeStamp;
 }
 
 bool CTemplateDexOrder::ValidateParam() const
@@ -127,7 +130,7 @@ bool CTemplateDexOrder::SetTemplateData(const std::vector<uint8>& vchDataIn)
     CIDataStream is(vchDataIn);
     try
     {
-        is >> destSeller >> vCoinPair >> nPrice >> nFee >> vRecvDest >> nValidHeight >> destMatch >> vDealDest;
+        is >> destSeller >> vCoinPair >> nPrice >> nFee >> vRecvDest >> nValidHeight >> destMatch >> vDealDest >> nTimeStamp;
     }
     catch (exception& e)
     {
@@ -188,6 +191,8 @@ bool CTemplateDexOrder::SetTemplateData(const bigbang::rpc::CTemplateRequest& ob
         return false;
     }
     vDealDest.assign(obj.dexorder.strDeal_Address.c_str(), obj.dexorder.strDeal_Address.c_str() + obj.dexorder.strDeal_Address.size());
+
+    nTimeStamp = obj.dexorder.nTimestamp;
     return true;
 }
 
@@ -195,7 +200,7 @@ void CTemplateDexOrder::BuildTemplateData()
 {
     vchData.clear();
     CODataStream os(vchData);
-    os << destSeller << vCoinPair << nPrice << nFee << vRecvDest << nValidHeight << destMatch << vDealDest;
+    os << destSeller << vCoinPair << nPrice << nFee << vRecvDest << nValidHeight << destMatch << vDealDest << nTimeStamp;
 }
 
 bool CTemplateDexOrder::VerifyTxSignature(const uint256& hash, const uint16 nType, const uint256& hashAnchor, const CDestination& destTo,
