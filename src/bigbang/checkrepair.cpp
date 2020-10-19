@@ -2130,12 +2130,12 @@ bool CCheckRepairData::CheckBlockAddress()
     return fCheckResult;
 }
 
-bool CCheckRepairData::CheckBlockAddressIndex()
+bool CCheckRepairData::CheckBlockAddressUnspent()
 {
     CAddressUnspentDB dbAddressUnspent;
     if (!dbAddressUnspent.Initialize(path(strDataPath)))
     {
-        StdError("check", "CheckBlockAddressIndex: dbAddress Initialize fail");
+        StdError("check", "CheckBlockAddressUnspent: dbAddress Initialize fail");
         return false;
     }
 
@@ -2155,7 +2155,7 @@ bool CCheckRepairData::CheckBlockAddressIndex()
                 auto bt = checkBlockFork.mapBlockUnspent.find(it->first.out);
                 if (bt == checkBlockFork.mapBlockUnspent.end())
                 {
-                    StdLog("check", "CheckBlockAddressIndex: Find block address unspent fail, address: %s, fork: %s",
+                    StdLog("check", "CheckBlockAddressUnspent: Find block address unspent fail, address: %s, fork: %s",
                            CAddress(it->first.dest).ToString().c_str(), hashFork.GetHex().c_str());
                     vRemoveAddress.push_back(it->first);
                     addrWalker.mapAddressUnspent.erase(it++);
@@ -2164,8 +2164,9 @@ bool CCheckRepairData::CheckBlockAddressIndex()
                 {
                     if (it->first.dest != bt->second.destTo)
                     {
-                        StdLog("check", "CheckBlockAddressIndex: Find block address unspent fail, address: %s, fork: %s",
+                        StdLog("check", "CheckBlockAddressUnspent: Find block address unspent fail, address: %s, fork: %s",
                                CAddress(it->first.dest).ToString().c_str(), hashFork.GetHex().c_str());
+                        vRemoveAddress.push_back(it->first);
                         addrWalker.mapAddressUnspent.erase(it++);
                     }
                     else
@@ -2173,7 +2174,7 @@ bool CCheckRepairData::CheckBlockAddressIndex()
                         CUnspentOut unspent(static_cast<const CTxOut&>(bt->second), bt->second.nTxType, bt->second.nHeight);
                         if (it->second != unspent)
                         {
-                            StdLog("check", "CheckBlockAddressIndex: db address unspent error, address: %s, fork: %s",
+                            StdLog("check", "CheckBlockAddressUnspent: db address unspent error, address: %s, fork: %s",
                                    CAddress(it->first.dest).ToString().c_str(), hashFork.GetHex().c_str());
                             CAddrUnspentKey out(bt->second.destTo, bt->first);
                             vUpdateAddress.push_back(make_pair(out, unspent));
@@ -2190,7 +2191,7 @@ bool CCheckRepairData::CheckBlockAddressIndex()
                 CAddrUnspentKey out(vd.second.destTo, vd.first);
                 if (addrWalker.mapAddressUnspent.find(out) == addrWalker.mapAddressUnspent.end())
                 {
-                    StdLog("check", "CheckBlockAddressIndex: db address unspent missing data, address: %s, fork: %s",
+                    StdLog("check", "CheckBlockAddressUnspent: db address unspent missing data, address: %s, fork: %s",
                            CAddress(vd.second.destTo).ToString().c_str(), hashFork.GetHex().c_str());
 
                     CUnspentOut unspent(static_cast<const CTxOut&>(vd.second), vd.second.nTxType, vd.second.nHeight);
@@ -2201,7 +2202,7 @@ bool CCheckRepairData::CheckBlockAddressIndex()
         }
         if (!vUpdateAddress.empty() || !vRemoveAddress.empty())
         {
-            StdLog("check", "CheckBlockAddressIndex: Check fail, update: %lu, remove: %lu, fork: %s",
+            StdLog("check", "CheckBlockAddressUnspent: Check fail, update: %lu, remove: %lu, fork: %s",
                    vUpdateAddress.size(), vRemoveAddress.size(), hashFork.GetHex().c_str());
             if (fOnlyCheck)
             {
@@ -2211,18 +2212,18 @@ bool CCheckRepairData::CheckBlockAddressIndex()
             {
                 if (!dbAddressUnspent.AddNewFork(hashFork))
                 {
-                    StdLog("check", "CheckBlockAddressIndex: dbAddressUnspent AddNewFork fail.");
+                    StdLog("check", "CheckBlockAddressUnspent: dbAddressUnspent AddNewFork fail.");
                     dbAddressUnspent.Deinitialize();
                     return false;
                 }
                 if (!dbAddressUnspent.RepairAddressUnspent(hashFork, vUpdateAddress, vRemoveAddress))
                 {
-                    StdError("check", "CheckBlockAddressIndex: RepairAddressUnspent fail, update: %lu, remove: %lu, fork: %s",
+                    StdError("check", "CheckBlockAddressUnspent: RepairAddressUnspent fail, update: %lu, remove: %lu, fork: %s",
                              vUpdateAddress.size(), vRemoveAddress.size(), hashFork.GetHex().c_str());
                     dbAddressUnspent.Deinitialize();
                     return false;
                 }
-                StdLog("check", "CheckBlockAddressIndex: Repair address unspent success, fork: %s", hashFork.GetHex().c_str());
+                StdLog("check", "CheckBlockAddressUnspent: Repair address unspent success, fork: %s", hashFork.GetHex().c_str());
             }
         }
     }
@@ -2734,13 +2735,13 @@ bool CCheckRepairData::CheckRepairData()
     }
 
     StdLog("check", "Check block address index starting");
-    if (!CheckBlockAddressIndex())
+    if (!CheckBlockAddressUnspent())
     {
-        StdLog("check", "Check block address index fail");
+        StdLog("check", "Check block address unspent fail");
     }
     else
     {
-        StdLog("check", "Check block address index success");
+        StdLog("check", "Check block address unspent success");
     }
 
     StdLog("check", "Check wallet tx starting");

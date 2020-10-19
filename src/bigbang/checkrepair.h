@@ -444,7 +444,7 @@ protected:
     bool CheckRepairFork();
     bool CheckBlockUnspent();
     bool CheckBlockAddress();
-    bool CheckBlockAddressIndex();
+    bool CheckBlockAddressUnspent();
     bool CheckWalletTx(vector<CWalletTx>& vAddTx, vector<uint256>& vRemoveTx);
     bool CheckTxIndex();
 
