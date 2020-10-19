@@ -49,7 +49,7 @@ public:
     bool RemovePendingTx(const uint256& txid) override;
     bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent) override;
     bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent) override;
-    Errno ListForkAddressUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, int64 nAmount, std::vector<CTxUnspent>& vUnspent) override;
+    Errno ListForkAddressUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, int64 nAmount, std::vector<CTxUnspent>& vUnspent, std::string& strErr) override;
     bool GetVotes(const CDestination& destDelegate, int64& nVotes, string& strFailCause) override;
     bool ListDelegate(uint32 nCount, std::multimap<int64, CDestination>& mapVotes) override;
     /* Wallet */
@@ -99,11 +99,8 @@ protected:
     bool HandleInvoke() override;
     void HandleHalt() override;
 
-    bool ArrangeInputsByUnspent(const CDestination& destIn, const uint256& hashFork, int nForkHeight, CTransaction& tx);
-    int64 SelectCoinsToTransaction(const CDestination& dest, const uint256& hashFork, int nForkHeight,
-                                   int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxOutPoint>& vCoins);
-    Errno SelectCoinsToListUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight,
-                                   int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxUnspent>& vCoins);
+    Errno SelectCoinsByUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight,
+                               int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxUnspent>& vCoins, std::string& strErr);
 
 protected:
     ICoreProtocol* pCoreProtocol;

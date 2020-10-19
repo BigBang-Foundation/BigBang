@@ -3238,17 +3238,18 @@ CRPCResultPtr CRPCMod::RPCListUnspent(CRPCParamPtr param)
     }
     for (int i = 0; i < vAddr.size(); i++)
     {
+        string strErr;
         Errno err = pService->ListForkAddressUnspent(fork, static_cast<CDestination&>(vAddr[i]), spParam->nMax,
-                                                     nAmount, mapDest[static_cast<CDestination>(vAddr[i])]);
+                                                     nAmount, mapDest[static_cast<CDestination>(vAddr[i])], strErr);
         if (err != OK)
         {
             if (err == ERR_WALLET_INSUFFICIENT_FUNDS)
             {
-                throw CRPCException(RPC_WALLET_INSUFFICIENT_FUNDS, "Not enough funds in wallet or account.");
+                throw CRPCException(RPC_WALLET_INSUFFICIENT_FUNDS, strErr);
             }
             else
             {
-                throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Acquiring unspent list failed.");
+                throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, strErr);
             }
         }
     }

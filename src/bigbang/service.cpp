@@ -437,7 +437,7 @@ bool CService::ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::m
     return false;
 }
 
-Errno CService::ListForkAddressUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, int64 nAmount, vector<CTxUnspent>& vUnspent)
+Errno CService::ListForkAddressUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, int64 nAmount, vector<CTxUnspent>& vUnspent, string& strErr)
 {
     if (nAmount <= 0)
     {
@@ -483,7 +483,7 @@ Errno CService::ListForkAddressUnspent(const uint256& hashFork, const CDestinati
         nMaxTxCount = nMax;
     }
 
-    return SelectCoinsToListUnspent(dest, hashFork, nForkHeight, nTxTime, nTargetValue, nMaxTxCount, vUnspent);
+    return SelectCoinsByUnspent(dest, hashFork, nForkHeight, nTxTime, nTargetValue, nMaxTxCount, vUnspent, strErr);
 }
 
 bool CService::GetVotes(const CDestination& destDelegate, int64& nVotes, string& strFailCause)
@@ -784,136 +784,33 @@ boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256&
     txNew.nTxFee = nTxFee;
     txNew.vchData = vchData;
 
-    if (!ArrangeInputsByUnspent(destFrom, hashFork, nForkHeight, txNew))
+    string strErr;
+    vector<CTxUnspent> vCoins;
+    Errno err = SelectCoinsByUnspent(destFrom, hashFork, nForkHeight, txNew.GetTxTime(), txNew.nAmount + txNew.nTxFee, MAX_TX_INPUT_COUNT, vCoins, strErr);
+    if (err != OK)
     {
-        StdError("CService", "CreateTransactionByUnspent: SelectCoins fail, fork: %s", hashFork.GetHex().c_str());
-        return std::string("select coin fail, fork: ") + hashFork.GetHex();
+        StdError("CService", "CreateTransactionByUnspent: Select coin not enough, destIn: %s", CAddress(destFrom).ToString().c_str());
+        return strErr;
+    }
+
+    txNew.vInput.clear();
+    txNew.vInput.reserve(vCoins.size());
+    for (const CTxUnspent& unspent : vCoins)
+    {
+        txNew.vInput.emplace_back(CTxIn(static_cast<const CTxOutPoint&>(unspent)));
     }
 
     return boost::optional<std::string>{};
 }
 
-bool CService::ArrangeInputsByUnspent(const CDestination& destIn, const uint256& hashFork, int nForkHeight, CTransaction& tx)
-{
-    tx.vInput.clear();
-    int64 nTargetValue = tx.nAmount + tx.nTxFee;
-
-    // locked coin template
-    if (CTemplate::IsLockedCoin(destIn))
-    {
-        return false;
-    }
-
-    vector<CTxOutPoint> vCoins;
-    int64 nValueIn = SelectCoinsToTransaction(destIn, hashFork, nForkHeight, tx.GetTxTime(), nTargetValue, MAX_TX_INPUT_COUNT, vCoins);
-    if (nValueIn < nTargetValue)
-    {
-        StdError("CService", "ArrangeInputsByUnspent: Select coin not enough, destIn: %s, nValueIn: %ld < nTargeValue: %ld",
-                 CAddress(destIn).ToString().c_str(), nValueIn, nTargetValue);
-        return false;
-    }
-
-    tx.vInput.reserve(vCoins.size());
-    for (const CTxOutPoint& out : vCoins)
-    {
-        tx.vInput.emplace_back(CTxIn(out));
-    }
-    return true;
-}
-
-int64 CService::SelectCoinsToTransaction(const CDestination& dest, const uint256& hashFork, int nForkHeight,
-                                         int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxOutPoint>& vCoins)
+Errno CService::SelectCoinsByUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight,
+                                     int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxUnspent>& vCoins, string& strErr)
 {
     map<CTxOutPoint, CUnspentOut> mapUnspent;
     if (!pTxPool->FetchAddressUnspent(hashFork, dest, mapUnspent))
     {
-        StdError("CService", "Select coins to transaction: Fetch address unspent fail, dest: %s", CAddress(dest).ToString().c_str());
-        return 0;
-    }
-
-    vCoins.clear();
-
-    pair<int64, CTxUnspent> coinLowestLarger;
-    coinLowestLarger.first = std::numeric_limits<int64>::max();
-    int64 nTotalLower = 0;
-
-    multimap<int64, CTxUnspent> mapValue;
-
-    for (const auto& vd : mapUnspent)
-    {
-        const CUnspentOut& out = vd.second;
-        if (out.IsLocked(nForkHeight) || out.GetTxTime() > nTxTime
-            || (out.nTxType == CTransaction::TX_CERT && vd.first.n == 0))
-        {
-            continue;
-        }
-
-        int64 nValue = out.nAmount;
-        pair<int64, CTxUnspent> coin = make_pair(nValue, CTxUnspent(vd.first, CTxOut(dest, out.nAmount, out.nTxTime, out.nLockUntil)));
-
-        if (nValue == nTargetValue)
-        {
-            vCoins.push_back(vd.first);
-            return nValue;
-        }
-        else if (nValue < nTargetValue)
-        {
-            mapValue.insert(coin);
-            nTotalLower += nValue;
-            while (mapValue.size() > nMaxInput)
-            {
-                multimap<int64, CTxUnspent>::iterator mi = mapValue.begin();
-                nTotalLower -= (*mi).first;
-                mapValue.erase(mi);
-            }
-            if (nTotalLower >= nTargetValue)
-            {
-                break;
-            }
-        }
-        else if (nValue < coinLowestLarger.first)
-        {
-            coinLowestLarger = coin;
-        }
-    }
-
-    int64 nValueRet = 0;
-    if (nTotalLower >= nTargetValue)
-    {
-        while (nValueRet < nTargetValue)
-        {
-            int64 nShortage = nTargetValue - nValueRet;
-            multimap<int64, CTxUnspent>::iterator it = mapValue.lower_bound(nShortage);
-            if (it == mapValue.end())
-            {
-                --it;
-            }
-            vCoins.push_back(static_cast<const CTxOutPoint&>(it->second));
-            nValueRet += (*it).first;
-            mapValue.erase(it);
-        }
-    }
-    else if (!coinLowestLarger.second.IsNull())
-    {
-        vCoins.push_back(static_cast<const CTxOutPoint&>(coinLowestLarger.second));
-        nValueRet += coinLowestLarger.first;
-        multimap<int64, CTxUnspent>::iterator it = mapValue.begin();
-        for (int i = 0; i < 3 && it != mapValue.end(); i++, ++it)
-        {
-            vCoins.push_back(static_cast<const CTxOutPoint&>(it->second));
-            nValueRet += (*it).first;
-        }
-    }
-    return nValueRet;
-}
-
-Errno CService::SelectCoinsToListUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight,
-                                         int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxUnspent>& vCoins)
-{
-    map<CTxOutPoint, CUnspentOut> mapUnspent;
-    if (!pTxPool->FetchAddressUnspent(hashFork, dest, mapUnspent))
-    {
-        StdError("CService", "SelectCoinsToListUnspent: Fetch address unspent fail, dest: %s", CAddress(dest).ToString().c_str());
+        StdError("CService", "SelectCoinsByUnspent: Fetch address unspent fail, dest: %s", CAddress(dest).ToString().c_str());
+        strErr = "Fetch address unspent fail";
         return ERR_WALLET_NOT_FOUND;
     }
 
@@ -935,7 +832,7 @@ Errno CService::SelectCoinsToListUnspent(const CDestination& dest, const uint256
         }
 
         int64 nValue = out.nAmount;
-        pair<int64, CTxUnspent> coin = make_pair(nValue, CTxUnspent(vd.first, CTxOut(dest, out.nAmount, out.nTxTime, out.nLockUntil)));
+        pair<int64, CTxUnspent> coin = make_pair(nValue, CTxUnspent(vd.first, CTxOut(dest, out.nAmount, out.nTxTime, out.nLockUntil), vd.second.nTxType, vd.second.nHeight));
 
         if (nValue == nTargetValue)
         {
@@ -993,8 +890,12 @@ Errno CService::SelectCoinsToListUnspent(const CDestination& dest, const uint256
 
     if (nValueRet < nTargetValue)
     {
-        StdLog("CService", "SelectCoinsToListUnspent: Not enough funds in wallet or account, balance: %lu, need: %lu, dest: %s",
+        StdLog("CService", "SelectCoinsByUnspent: Not enough funds in wallet or account, balance: %lu, need: %lu, dest: %s",
                nValueRet, nTargetValue, CAddress(dest).ToString().c_str());
+        strErr = string("Not enough funds in wallet or account, balance: ")
+                 + to_string(nValueRet)
+                 + string(", need: ")
+                 + to_string(nTargetValue);
         return ERR_WALLET_INSUFFICIENT_FUNDS;
     }
 
