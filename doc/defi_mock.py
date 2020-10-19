@@ -37,7 +37,8 @@ def Compute(addrset, total_level, input, output, count):
     decaycycle = defi['decaycycle']
     coinbasedecaypercent = float(defi['coinbasedecaypercent']) / 100
     initcoinbasepercent = float(defi['initcoinbasepercent']) / 100
-    mapcoinbasepercent = [{'height': v['height'], 'percent': v['percent']} for v in defi['mapcoinbasepercent']]
+    mapcoinbasepercent = [{'height': v['height'], 'percent': v['percent']}
+                          for v in defi['mapcoinbasepercent']]
     if coinbasetype == 1:
         mapcoinbasepercent = sorted(
             mapcoinbasepercent, key=lambda x: x['height'])
@@ -51,8 +52,11 @@ def Compute(addrset, total_level, input, output, count):
     reward_count = supplycycle / rewardcycle
     supply = amount
     next_supply = amount
-    reward_percent = initcoinbasepercent if coinbasetype == 0 else mapcoinbasepercent[0]['percent']
-    next_reward_percent_height = mintheight + decaycycle if coinbasetype == 0 else mintheight + mapcoinbasepercent[0]['height']
+    reward_percent = initcoinbasepercent if coinbasetype == 0 else mapcoinbasepercent[
+        0]['percent']
+    next_reward_percent_height = mintheight + \
+        decaycycle if coinbasetype == 0 else mintheight + \
+        mapcoinbasepercent[0]['height']
     coinbase = 0
 
     for i in range(0, count):
@@ -73,7 +77,8 @@ def Compute(addrset, total_level, input, output, count):
                 for j in range(0, len(mapcoinbasepercent)):
                     if next_reward_percent_height == mintheight + mapcoinbasepercent[j]['height']:
                         if j < len(mapcoinbasepercent) - 1:
-                            next_reward_percent_height = mintheight + mapcoinbasepercent[j+1]['height']
+                            next_reward_percent_height = mintheight + \
+                                mapcoinbasepercent[j+1]['height']
                             reward_percent = mapcoinbasepercent[j+1]['percent']
                         else:
                             next_reward_percent_height = -1
@@ -252,7 +257,7 @@ if __name__ == "__main__":
     addrset = {}
     for addr, stake in input['stake'].items():
         addrset[addr] = {
-            'stake': stake * COIN,
+            'stake': stake,
             'upper': None,
             'lower': []
         }
