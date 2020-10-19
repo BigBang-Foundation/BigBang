@@ -2090,17 +2090,17 @@ list<CDeFiReward> CBlockChain::GetDeFiReward(const uint256& forkid, const uint25
         {
             auto itLower = idxByReward.lower_bound(lastReward.nReward);
             auto itUpper = idxByReward.upper_bound(lastReward.nReward);
-            for (it = itLower; it != itUpper; it++)
+            for (it = itLower; it != itUpper; ++it)
             {
                 if (it->dest == lastReward.dest)
                 {
-                    it++;
+                    ++it;
                     break;
                 }
             }
         }
 
-        for (; it != idxByReward.end() && (nMax < 0 || listReward.size() < nMax); it++)
+        for (; it != idxByReward.end() && (nMax < 0 || listReward.size() < nMax); ++it)
         {
             listReward.push_back(*it);
         }
