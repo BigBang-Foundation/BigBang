@@ -743,7 +743,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         {
         case TEMPLATE_DEXORDER:
         {
-            Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, pIndexPrev->GetBlockHeight() + 1);
+            Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight);
             if (err != OK)
             {
                 return DEBUG(err, "invalid dex order tx");
@@ -752,7 +752,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         }
         case TEMPLATE_DEXMATCH:
         {
-            Errno err = VerifyDexMatchTx(tx, nValueIn, pIndexPrev->GetBlockHeight() + 1);
+            Errno err = VerifyDexMatchTx(tx, nValueIn, nForkHeight);
             if (err != OK)
             {
                 return DEBUG(err, "invalid dex match tx");

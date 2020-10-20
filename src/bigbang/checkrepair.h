@@ -66,7 +66,7 @@ public:
     }
     friend bool operator!=(const CCheckTxOut& a, const CCheckTxOut& b)
     {
-        return !(a.destTo == b.destTo && a.nAmount == b.nAmount && a.nTxTime == b.nTxTime && a.nLockUntil == b.nLockUntil);
+        return !(a == b);
     }
 };
 

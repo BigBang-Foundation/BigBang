@@ -2070,17 +2070,17 @@ bool CCheckRepairData::CheckBlockAddress()
         }
         if (!vUpdateAddress.empty() || !vRemoveAddress.empty())
         {
+            StdLog("check", "CheckBlockAddress: Check fail, update: %lu, remove: %lu, fork: %s",
+                   vUpdateAddress.size(), vRemoveAddress.size(), hashFork.GetHex().c_str());
             if (fOnlyCheck)
             {
                 fCheckResult = false;
-                StdLog("check", "CheckBlockAddress: Check fail, update: %lu, remove: %lu, fork: %s",
-                       vUpdateAddress.size(), vRemoveAddress.size(), hashFork.GetHex().c_str());
             }
             else
             {
                 if (!dbAddress.AddNewFork(hashFork))
                 {
-                    StdLog("check", "dbAddress AddNewFork fail.");
+                    StdLog("check", "CheckBlockAddress: dbAddress AddNewFork fail.");
                     dbAddress.Deinitialize();
                     return false;
                 }
@@ -2088,8 +2088,11 @@ bool CCheckRepairData::CheckBlockAddress()
                 {
                     StdError("check", "CheckBlockAddress: RepairAddress fail, update: %lu, remove: %lu, fork: %s",
                              vUpdateAddress.size(), vRemoveAddress.size(), hashFork.GetHex().c_str());
+                    dbAddress.Deinitialize();
                     return false;
                 }
+                StdLog("check", "CheckBlockAddress: Repair address success, update: %lu, remove: %lu, fork: %s",
+                       vUpdateAddress.size(), vRemoveAddress.size(), hashFork.GetHex().c_str());
             }
         }
     }
