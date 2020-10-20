@@ -7,6 +7,9 @@
 
 #include "template.h"
 
+class CTemplateDexMatch;
+typedef boost::shared_ptr<CTemplateDexMatch> CTemplateDexMatchPtr;
+
 class CTemplateDexMatch : virtual public CTemplate, virtual public CSendToRecordedTemplate
 {
 public:
@@ -19,6 +22,12 @@ public:
     virtual bool GetSignDestination(const CTransaction& tx, const uint256& hashFork, int nHeight, const std::vector<uint8>& vchSig,
                                     std::set<CDestination>& setSubDest, std::vector<uint8>& vchSubSig) const;
     virtual void GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CDestination&& destInstance) const;
+
+    virtual bool BuildTxSignature(const uint256& hash, const uint16 nType,
+                                  const uint256& hashAnchor,
+                                  const CDestination& destTo,
+                                  const std::vector<uint8>& vchPreSig,
+                                  std::vector<uint8>& vchSig) const;
 
 protected:
     virtual bool ValidateParam() const;

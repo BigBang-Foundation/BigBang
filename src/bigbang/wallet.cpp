@@ -4,10 +4,11 @@
 
 #include "wallet.h"
 
-#include "../common/template/exchange.h"
 #include "address.h"
 #include "defs.h"
 #include "template/delegate.h"
+#include "template/dexmatch.h"
+#include "template/exchange.h"
 #include "template/mint.h"
 #include "template/payment.h"
 #include "template/vote.h"
@@ -684,6 +685,11 @@ bool CWallet::SignTransaction(const CDestination& destIn, CTransaction& tx, cons
     {
         Error("Sign Transaction: Parse dest fail, txid: %s", tx.GetHash().GetHex().c_str());
         return false;
+    }
+
+    if (destIn.GetTemplateId(tid) && tid.GetType() == TEMPLATE_DEXMATCH)
+    {
+        vchSig.clear();
     }
 
     set<crypto::CPubKey> setSignedKey;
@@ -1680,6 +1686,12 @@ bool CWallet::SignDestination(const CDestination& destIn, const CTransaction& tx
         if (ptr->GetTemplateType() == TEMPLATE_EXCHANGE)
         {
             CTemplateExchangePtr pe = boost::dynamic_pointer_cast<CTemplateExchange>(ptr);
+            vchSig = tx.vchSig;
+            return pe->BuildTxSignature(hash, tx.nType, tx.hashAnchor, tx.sendTo, vchSubSig, vchSig);
+        }
+        else if (ptr->GetTemplateType() == TEMPLATE_DEXMATCH)
+        {
+            CTemplateDexMatchPtr pe = boost::dynamic_pointer_cast<CTemplateDexMatch>(ptr);
             vchSig = tx.vchSig;
             return pe->BuildTxSignature(hash, tx.nType, tx.hashAnchor, tx.sendTo, vchSubSig, vchSig);
         }

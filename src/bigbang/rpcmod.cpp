@@ -1872,11 +1872,14 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
             }
             else
             {
-                txNew.vchData.clear();
+                txNew.vchSig.clear();
+                CODataStream ds(txNew.vchSig);
+                ds << vsm << vss;
+                /*txNew.vchData.clear();
                 CODataStream ds(txNew.vchData);
                 vector<unsigned char> vDataHead;
                 vDataHead.resize(21);
-                ds << vDataHead << vsm << vss;
+                ds << vDataHead << vsm << vss;*/
             }
         }
         else
