@@ -1524,13 +1524,22 @@ Errno CCoreProtocol::VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, in
             }
         }
 
+        set<CDestination> setSubDest;
+        vector<uint8> vchSigOut;
+        if (!ptrMatch->GetSignDestination(tx, uint256(), 0, vchSig, setSubDest, vchSigOut))
+        {
+            Log("Verify dex match tx: get sign data fail, tx: %s", tx.GetHash().GetHex().c_str());
+            return ERR_TRANSACTION_SIGNATURE_INVALID;
+        }
+
         vector<uint8> vms;
         vector<uint8> vss;
+        vector<uint8> vchSigSub;
         try
         {
             vector<uint8> head;
-            xengine::CIDataStream is(tx.vchData);
-            is >> head >> vms >> vss;
+            xengine::CIDataStream is(vchSigOut);
+            is >> vms >> vss >> vchSigSub;
         }
         catch (std::exception& e)
         {

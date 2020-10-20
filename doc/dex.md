@@ -79,12 +79,12 @@
 3）撮合模板地址B  ->  跨链交易地址B，比例：0.1%
 
 转帐数量计算：
-a）转帐给买方地址的amount计算：(撮合数量-0.03*3)*(1-费率)
-b）转帐给撮合方地址的amount计算：(撮合数量-0.03*3)*(费率/2)
-c）转帐给跨链交易方地址的amount计算：撮合数量 - ((撮合数量-0.03*3)*(1-费率)+0.03) - ((撮合数量-0.03*3)*(费率/2)+0.03) - 0.03     （即：剩余数量-0.03）
+a）转帐给买方地址的amount计算：(撮合数量-0.01*3)*(1-费率)
+b）转帐给撮合方地址的amount计算：(撮合数量-0.01*3)*(费率/2)
+c）转帐给跨链交易方地址的amount计算：撮合数量 - ((撮合数量-0.01*3)*(1-费率)+0.01) - ((撮合数量-0.01*3)*(费率/2)+0.01) - 0.01     （即：剩余数量-0.01）
 注：需要严格按上面的公式计算，否则可能较验失败。
 
-交易费率（必须）：0.03
+交易费率（必须）：0.01
 交易顺序（必须）：转帐给买方地址、转帐给撮合方地址、转帐给跨链交易方地址
 ```
 
@@ -259,12 +259,12 @@ sendfrom 21806854fx1t09990vbr2z1td5m9qhkw44jyq265q4xqnpky682y6n4n9 1f2b2n3asbm2r
 -ss：为买方的秘密；
 
 转帐数量计算：
-a）转帐给买方地址的amount计算：(撮合数量-0.03*3)*(1-费率)
-b）转帐给撮合方地址的amount计算：(撮合数量-0.03*3)*(费率/2)
-c）转帐给跨链交易方地址的amount计算：撮合数量 - ((撮合数量-0.03*3)*(1-费率)+0.03) - ((撮合数量-0.03*3)*(费率/2)+0.03) - 0.03     （即：剩余数量-0.03）
+a）转帐给买方地址的amount计算：(撮合数量-0.01*3)*(1-费率)
+b）转帐给撮合方地址的amount计算：(撮合数量-0.01*3)*(费率/2)
+c）转帐给跨链交易方地址的amount计算：撮合数量 - ((撮合数量-0.01*3)*(1-费率)+0.01) - ((撮合数量-0.01*3)*(费率/2)+0.01) - 0.01     （即：剩余数量-0.01）
 注：需要严格按上面的公式计算，否则可能较验失败。
 
-交易费率（必须）：0.03
+交易费率（必须）：0.01
 交易顺序（必须）：转帐给买方地址、转帐给撮合方地址、转帐给跨链交易方地址
 ```
 
@@ -287,7 +287,7 @@ unlockkey 15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd 123
 sendfrom 2140c6rd39hpdmgv9m1m80h738gz4f2c0kmpvn707p04c7x1kcb8gawj6 21806854fx1t09990vbr2z1td5m9qhkw44jyq265q4xqnpky682y6n4n9 15
 
 unlockkey 1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb 123
-sendfrom 21806854fx1t09990vbr2z1td5m9qhkw44jyq265q4xqnpky682y6n4n9 1njqk8wmenyvqs4cz7d8b9pjc6tsdhxtzza050a2n02eqpfcr22ggqg47 14.88018 0.03 -sm=b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef -ss=6836ba9b8f40f968888a7376f657f97c53cfa8db02872e0f1daf8376cb80b1e7
-sendfrom 21806854fx1t09990vbr2z1td5m9qhkw44jyq265q4xqnpky682y6n4n9 15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd 0.01491 0.03 -sm=b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef -ss=6836ba9b8f40f968888a7376f657f97c53cfa8db02872e0f1daf8376cb80b1e7
-sendfrom 21806854fx1t09990vbr2z1td5m9qhkw44jyq265q4xqnpky682y6n4n9 1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb 0.01491 0.03 -sm=b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef -ss=6836ba9b8f40f968888a7376f657f97c53cfa8db02872e0f1daf8376cb80b1e7
+sendfrom 21806854fx1t09990vbr2z1td5m9qhkw44jyq265q4xqnpky682y6n4n9 1njqk8wmenyvqs4cz7d8b9pjc6tsdhxtzza050a2n02eqpfcr22ggqg47 14.94006 -sm=b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef -ss=6836ba9b8f40f968888a7376f657f97c53cfa8db02872e0f1daf8376cb80b1e7
+sendfrom 21806854fx1t09990vbr2z1td5m9qhkw44jyq265q4xqnpky682y6n4n9 15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd 0.01497 -sm=b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef -ss=6836ba9b8f40f968888a7376f657f97c53cfa8db02872e0f1daf8376cb80b1e7
+sendfrom 21806854fx1t09990vbr2z1td5m9qhkw44jyq265q4xqnpky682y6n4n9 1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb 0.01497 -sm=b6103658b60234ade25b7389a08514b6803dff9c636dff92ef0edaa0f37e2eef -ss=6836ba9b8f40f968888a7376f657f97c53cfa8db02872e0f1daf8376cb80b1e7
 ```

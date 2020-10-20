@@ -282,7 +282,46 @@ bool CTemplateDexMatch::VerifyTxSignature(const uint256& hash, const uint16 nTyp
 {
     if (nForkHeight <= nSellerValidHeight)
     {
-        return destSellerDeal.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSig, nForkHeight, fCompleted);
+        vector<unsigned char> vsm;
+        vector<unsigned char> vss;
+        vector<uint8> vchSigSub;
+        xengine::CIDataStream ds(vchSig);
+        try
+        {
+            ds >> vsm >> vss >> vchSigSub;
+        }
+        catch (const std::exception& e)
+        {
+            StdError(__PRETTY_FUNCTION__, e.what());
+            return false;
+        }
+        return destSellerDeal.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSigSub, nForkHeight, fCompleted);
     }
     return destSeller.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSig, nForkHeight, fCompleted);
+}
+
+bool CTemplateDexMatch::BuildTxSignature(const uint256& hash, const uint16 nType,
+                                         const uint256& hashAnchor,
+                                         const CDestination& destTo,
+                                         const vector<uint8>& vchPreSig,
+                                         vector<uint8>& vchSig) const
+{
+    vector<unsigned char> vsm;
+    vector<unsigned char> vss;
+    xengine::CIDataStream ds(vchSig);
+    try
+    {
+        ds >> vsm >> vss;
+    }
+    catch (const std::exception& e)
+    {
+        StdError(__PRETTY_FUNCTION__, e.what());
+        return false;
+    }
+    vchSig = vchData;
+    std::vector<uint8_t> temp;
+    xengine::CODataStream ds_temp(temp);
+    ds_temp << vsm << vss << vchPreSig;
+    vchSig.insert(vchSig.end(), temp.begin(), temp.end());
+    return true;
 }
