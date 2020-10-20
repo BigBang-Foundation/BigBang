@@ -300,15 +300,12 @@ bool CTemplateDexMatch::VerifyTxSignature(const uint256& hash, const uint16 nTyp
     return destSeller.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSig, nForkHeight, fCompleted);
 }
 
-bool CTemplateDexMatch::BuildTxSignature(const uint256& hash, const uint16 nType,
-                                         const uint256& hashAnchor,
-                                         const CDestination& destTo,
-                                         const vector<uint8>& vchPreSig,
-                                         vector<uint8>& vchSig) const
+bool CTemplateDexMatch::BuildDexMatchTxSignature(const std::vector<uint8>& vchSignExtraData, const std::vector<uint8>& vchPreSig, std::vector<uint8>& vchSig) const
 {
     vector<unsigned char> vsm;
     vector<unsigned char> vss;
-    xengine::CIDataStream ds(vchSig);
+    xengine::CIDataStream ds(vchSignExtraData);
+
     try
     {
         ds >> vsm >> vss;
@@ -318,10 +315,12 @@ bool CTemplateDexMatch::BuildTxSignature(const uint256& hash, const uint16 nType
         StdError(__PRETTY_FUNCTION__, e.what());
         return false;
     }
+
+    std::vector<uint8_t> vchTempSigData;
+    xengine::CODataStream odsStream(vchTempSigData);
+    odsStream << vsm << vss << vchPreSig;
+
     vchSig = vchData;
-    std::vector<uint8_t> temp;
-    xengine::CODataStream ds_temp(temp);
-    ds_temp << vsm << vss << vchPreSig;
-    vchSig.insert(vchSig.end(), temp.begin(), temp.end());
+    vchSig.insert(vchSig.end(), vchTempSigData.begin(), vchTempSigData.end());
     return true;
 }

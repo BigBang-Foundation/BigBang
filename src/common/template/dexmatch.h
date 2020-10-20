@@ -23,11 +23,7 @@ public:
                                     std::set<CDestination>& setSubDest, std::vector<uint8>& vchSubSig) const;
     virtual void GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CDestination&& destInstance) const;
 
-    virtual bool BuildTxSignature(const uint256& hash, const uint16 nType,
-                                  const uint256& hashAnchor,
-                                  const CDestination& destTo,
-                                  const std::vector<uint8>& vchPreSig,
-                                  std::vector<uint8>& vchSig) const;
+    bool BuildDexMatchTxSignature(const std::vector<uint8>& vchSignExtraData, const std::vector<uint8>& vchPreSig, std::vector<uint8>& vchSig) const;
 
 protected:
     virtual bool ValidateParam() const;

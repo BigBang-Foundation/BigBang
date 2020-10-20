@@ -1843,6 +1843,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to create transaction: ") + *strErr + fmt.str());
     }
 
+    vector<uint8> vchSignExtraData;
     bool fCompleted = false;
     if (spParam->strSign_M.IsValid() && spParam->strSign_S.IsValid())
     {
@@ -1872,14 +1873,8 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
             }
             else
             {
-                txNew.vchSig.clear();
-                CODataStream ds(txNew.vchSig);
+                CODataStream ds(vchSignExtraData);
                 ds << vsm << vss;
-                /*txNew.vchData.clear();
-                CODataStream ds(txNew.vchData);
-                vector<unsigned char> vDataHead;
-                vDataHead.resize(21);
-                ds << vDataHead << vsm << vss;*/
             }
         }
         else
@@ -1907,7 +1902,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         vchSendToData = ParseHexString(spParam->strSendtodata);
     }
 
-    if (!pService->SignTransaction(txNew, vchFromData, vchSendToData, fCompleted))
+    if (!pService->SignTransaction(txNew, vchFromData, vchSendToData, vchSignExtraData, fCompleted))
     {
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign transaction");
     }
@@ -2025,6 +2020,7 @@ CRPCResultPtr CRPCMod::RPCSendFromWallet(CRPCParamPtr param)
         throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to create transaction: ") + *strErr + fmt.str());
     }
 
+    vector<uint8> vchSignExtraData;
     bool fCompleted = false;
     if (spParam->strSign_M.IsValid() && spParam->strSign_S.IsValid())
     {
@@ -2054,14 +2050,8 @@ CRPCResultPtr CRPCMod::RPCSendFromWallet(CRPCParamPtr param)
             }
             else
             {
-                txNew.vchSig.clear();
-                CODataStream ds(txNew.vchSig);
+                CODataStream ds(vchSignExtraData);
                 ds << vsm << vss;
-                /*txNew.vchData.clear();
-                CODataStream ds(txNew.vchData);
-                vector<unsigned char> vDataHead;
-                vDataHead.resize(21);
-                ds << vDataHead << vsm << vss;*/
             }
         }
         else
@@ -2089,7 +2079,7 @@ CRPCResultPtr CRPCMod::RPCSendFromWallet(CRPCParamPtr param)
         vchSendToData = ParseHexString(spParam->strSendtodata);
     }
 
-    if (!pService->SignTransaction(txNew, vchFromData, vchSendToData, fCompleted))
+    if (!pService->SignTransaction(txNew, vchFromData, vchSendToData, vchSignExtraData, fCompleted))
     {
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign transaction");
     }
@@ -2234,7 +2224,7 @@ CRPCResultPtr CRPCMod::RPCSignTransaction(CRPCParamPtr param)
     }
 
     bool fCompleted = false;
-    if (!pService->SignTransaction(rawTx, vchFromData, vchSendToData, fCompleted))
+    if (!pService->SignTransaction(rawTx, vchFromData, vchSendToData, vector<uint8>(), fCompleted))
     {
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign transaction");
     }
