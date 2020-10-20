@@ -114,7 +114,7 @@ protected:
 
     // defi
     std::list<uint256> GetDeFiSectionList(const uint256& forkid, const CBlockIndex* pIndexPrev, const int32 nHeight, uint256& nLastSection, CDeFiReward& lastReward);
-    CDeFiRewardSet ComputeDeFiSection(const uint256& forkid, const uint256& hash, const CProfile& profile);
+    CDeFiRewardSet ComputeDeFiSection(const uint256& forkid, const uint256& hash, const int32 nHeight, const CProfile& profile);
 
 protected:
     boost::shared_mutex rwAccess;

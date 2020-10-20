@@ -321,7 +321,7 @@ BOOST_AUTO_TEST_CASE(reward)
     profile1.strName = "BBC Test1";
     profile1.strSymbol = "BBCA";
     profile1.nVersion = 1;
-    profile1.nMinTxFee = NEW_MIN_TX_FEE;
+    profile1.nMinTxFee = CENT;
     profile1.nMintReward = 0;
     profile1.nAmount = 21000000 * COIN;
     profile1.nJointHeight = 150;
@@ -344,7 +344,7 @@ BOOST_AUTO_TEST_CASE(reward)
     profile2.strName = "BBC Test2";
     profile2.strSymbol = "BBCB";
     profile2.nVersion = 1;
-    profile2.nMinTxFee = NEW_MIN_TX_FEE;
+    profile2.nMinTxFee = CENT;
     profile2.nMintReward = 0;
     profile2.nAmount = 10000000 * COIN;
     profile2.nJointHeight = 150;
@@ -527,7 +527,7 @@ BOOST_AUTO_TEST_CASE(reward2)
     profile.strName = "BBC Test2";
     profile.strSymbol = "BBCB";
     profile.nVersion = 1;
-    profile.nMinTxFee = NEW_MIN_TX_FEE;
+    profile.nMinTxFee = CENT;
     profile.nMintReward = 0;
     profile.nAmount = 10000000 * COIN; // 首期发行一千万母币
     profile.nJointHeight = 15;

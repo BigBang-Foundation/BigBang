@@ -841,7 +841,7 @@ Errno CService::SubmitWork(const vector<unsigned char>& vchWorkData,
     size_t nSigSize = templMint->GetTemplateData().size() + 64 + 2;
     size_t nMaxTxSize = MAX_BLOCK_SIZE - GetSerializeSize(block) - nSigSize;
     int64 nTotalTxFee = 0;
-    if (!pTxPool->ArrangeBlockTx(pCoreProtocol->GetGenesisBlockHash(), block.hashPrev, block.nTimeStamp, nMaxTxSize, block.vtx, nTotalTxFee))
+    if (!pTxPool->ArrangeBlockTx(pCoreProtocol->GetGenesisBlockHash(), block.hashPrev, block.nTimeStamp, nMaxTxSize, block.GetBlockHeight(), block.vtx, nTotalTxFee))
     {
         StdError("CService", "SubmitWork: ArrangeBlockTx fail");
         return FAILED;

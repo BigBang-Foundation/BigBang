@@ -116,6 +116,13 @@ static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 0;
 static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 340935;
 #endif
 
+// min tx fee
+static const map<int32, int64> MAP_MIN_TX_FEE = {
+    { 0, CENT / 100 },
+    { 243800, CENT },
+    { 490000, CENT / 2 },
+};
+
 namespace bigbang
 {
 ///////////////////////////////
@@ -199,7 +206,7 @@ void CCoreProtocol::GetGenesisBlock(CBlock& block)
     profile.destOwner = destOwner;
     profile.nAmount = tx.nAmount;
     profile.nMintReward = BBCP_INIT_REWARD_TOKEN * COIN;
-    profile.nMinTxFee = OLD_MIN_TX_FEE;
+    profile.nMinTxFee = GetMinTxFee(0);
     profile.nHalveCycle = 0;
     profile.SetFlag(true, false, false);
 
@@ -266,25 +273,12 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
         return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "amount overflow %ld\n", tx.nAmount);
     }
 
-    if (IsDposHeight(nHeight))
+    if (!MoneyRange(tx.nTxFee)
+        || (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_DEFI_RELATION && tx.nTxFee != 0)
+        || ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), GetMinTxFee(nHeight)))
+        || (tx.nType == CTransaction::TX_DEFI_REWARD && tx.nTxFee != GetMinTxFee(nHeight)))
     {
-        if (!MoneyRange(tx.nTxFee)
-            || (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_DEFI_RELATION && tx.nTxFee != 0)
-            || ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), NEW_MIN_TX_FEE))
-            || (tx.nType == CTransaction::TX_DEFI_REWARD && tx.nTxFee != NEW_MIN_TX_FEE))
-        {
-            return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid %ld", tx.nTxFee);
-        }
-    }
-    else
-    {
-        if (!MoneyRange(tx.nTxFee)
-            || (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_DEFI_RELATION && tx.nTxFee != 0)
-            || ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), OLD_MIN_TX_FEE))
-            || (tx.nType == CTransaction::TX_DEFI_REWARD && tx.nTxFee != NEW_MIN_TX_FEE))
-        {
-            return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid %ld", tx.nTxFee);
-        }
+        return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid %ld", tx.nTxFee);
     }
 
     if (nHeight != 0 && !IsDposHeight(nHeight))
@@ -1267,6 +1261,18 @@ int CCoreProtocol::GetRefVacantHeight()
     return REF_VACANT_HEIGHT;
 }
 
+int64 CCoreProtocol::GetMinTxFee(const uint32 nHeight)
+{
+    for (auto it = MAP_MIN_TX_FEE.rbegin(); it != MAP_MIN_TX_FEE.rend(); ++it)
+    {
+        if (nHeight >= it->first)
+        {
+            return it->second;
+        }
+    }
+    return CENT;
+}
+
 bool CCoreProtocol::CheckBlockSignature(const CBlock& block)
 {
     if (block.GetHash() != GetGenesisBlockHash())
@@ -1415,7 +1421,7 @@ void CTestNetCoreProtocol::GetGenesisBlock(CBlock& block)
     profile.destOwner = destOwner;
     profile.nAmount = tx.nAmount;
     profile.nMintReward = BBCP_INIT_REWARD_TOKEN * COIN;
-    profile.nMinTxFee = OLD_MIN_TX_FEE;
+    profile.nMinTxFee = GetMinTxFee(0);
     profile.nHalveCycle = 0;
     profile.SetFlag(true, false, false);
 

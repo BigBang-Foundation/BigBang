@@ -3353,6 +3353,13 @@
                 "hexdata": {
                     "type": "string",
                     "desc": "Hex encoded vchData in transaction"
+                },
+                "height": {
+                    "type": "int",
+                    "desc": "Different height matches different tx fee",
+                    "required": false,
+                    "default": -1,
+                    "opt": "h"
                 }
             }
         },

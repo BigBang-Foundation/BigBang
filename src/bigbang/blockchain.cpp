@@ -611,7 +611,6 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
                 return ERR_TRANSACTION_INVALID;
             }
         }
-        
 
         if ((tx.nType != CTransaction::TX_DEFI_REWARD) && !pTxPool->Exists(txid))
         {
@@ -2189,7 +2188,7 @@ list<uint256> CBlockChain::GetDeFiSectionList(const uint256& forkid, const CBloc
             }
 
             // generate section
-            CDeFiRewardSet s = ComputeDeFiSection(forkid, section, profile);
+            CDeFiRewardSet s = ComputeDeFiSection(forkid, section, nHeight, profile);
             defiReward.AddForkSection(forkid, section, std::move(s));
         }
     }
@@ -2197,7 +2196,7 @@ list<uint256> CBlockChain::GetDeFiSectionList(const uint256& forkid, const CBloc
     return listSection;
 }
 
-CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint256& hash, const CProfile& profile)
+CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint256& hash, const int32 nHeight, const CProfile& profile)
 {
     CDeFiRewardSet s;
 
@@ -2251,7 +2250,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
         }
 
         // check reward > txfee
-        if (reward.nReward > NEW_MIN_TX_FEE)
+        if (reward.nReward > pCoreProtocol->GetMinTxFee(nHeight))
         {
             reward.hashAnchor = hash;
             s.insert(move(reward));
@@ -2261,7 +2260,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     for (auto& promotion : promotionReward)
     {
         // check reward > txfee
-        if (promotion.nReward > NEW_MIN_TX_FEE)
+        if (promotion.nReward > pCoreProtocol->GetMinTxFee(nHeight))
         {
             CDeFiReward reward = promotion;
             reward.hashAnchor = hash;

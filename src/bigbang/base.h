@@ -64,6 +64,7 @@ public:
     virtual uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight) = 0;
     virtual bool IsRefVacantHeight(uint32 nBlockHeight) = 0;
     virtual int GetRefVacantHeight() = 0;
+    virtual int64 GetMinTxFee(const uint32 nHeight) = 0;
 };
 
 class IBlockChain : public xengine::IBase
@@ -200,7 +201,7 @@ public:
     virtual bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, const std::map<CDestination, std::vector<CTxUnspent>>& mapUnspentOnChain, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent) = 0;
     virtual bool FilterTx(const uint256& hashFork, CTxFilter& filter) = 0;
     virtual bool ArrangeBlockTx(const uint256& hashFork, const uint256& hashPrev, int64 nBlockTime, std::size_t nMaxSize,
-                                std::vector<CTransaction>& vtx, int64& nTotalTxFee)
+                                const int64 nMinTxFee, std::vector<CTransaction>& vtx, int64& nTotalTxFee)
         = 0;
     virtual bool FetchInputs(const uint256& hashFork, const CTransaction& tx, std::vector<CTxOut>& vUnspent) = 0;
     virtual bool SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChange& change) = 0;

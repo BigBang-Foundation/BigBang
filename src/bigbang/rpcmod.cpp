@@ -1738,7 +1738,8 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         }
     }
 
-    int64 nTxFee = CalcMinTxFee(vchData.size(), NEW_MIN_TX_FEE);
+    int32 nHeight = pService->GetForkHeight(hashFork);
+    int64 nTxFee = CalcMinTxFee(vchData.size(), pCoreProtocol->GetMinTxFee(nHeight));
     if (spParam->dTxfee.IsValid())
     {
         int64 nUserTxFee = AmountFromValue(spParam->dTxfee);
@@ -1893,12 +1894,13 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
         vchData = ParseHexString(spParam->strData);
     }
 
-    int64 nTxFee = CalcMinTxFee(vchData.size(), NEW_MIN_TX_FEE);
+    int32 nHeight = pService->GetForkHeight(hashFork);
+    int64 nTxFee = CalcMinTxFee(vchData.size(), pCoreProtocol->GetMinTxFee(nHeight));
     if (spParam->dTxfee.IsValid())
     {
         nTxFee = AmountFromValue(spParam->dTxfee);
 
-        int64 nFee = CalcMinTxFee(vchData.size(), NEW_MIN_TX_FEE);
+        int64 nFee = CalcMinTxFee(vchData.size(), pCoreProtocol->GetMinTxFee(nHeight));
         if (nTxFee < nFee)
         {
             nTxFee = nFee;
@@ -2368,7 +2370,7 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
     profile.nJointHeight = nJointHeight;
     profile.nAmount = nAmount;
     profile.nMintReward = nMintReward;
-    profile.nMinTxFee = NEW_MIN_TX_FEE;
+    profile.nMinTxFee = pCoreProtocol->GetMinTxFee(nJointHeight + 1);
     profile.nHalveCycle = spParam->nHalvecycle;
     profile.SetFlag(spParam->fIsolated, spParam->fPrivate, spParam->fEnclosed);
 
@@ -2805,7 +2807,12 @@ CRPCResultPtr CRPCMod::RPCDecodeTransaction(CRPCParamPtr param)
 CRPCResultPtr CRPCMod::RPCGetTxFee(rpc::CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CGetTransactionFeeParam>(param);
-    int64 nTxFee = CalcMinTxFee(ParseHexString(spParam->strHexdata).size(), NEW_MIN_TX_FEE);
+    int32 nHeight = spParam->nHeight;
+    if (nHeight < 0)
+    {
+        nHeight = pService->GetForkHeight(pCoreProtocol->GetGenesisBlockHash());
+    }
+    int64 nTxFee = CalcMinTxFee(ParseHexString(spParam->strHexdata).size(), pCoreProtocol->GetMinTxFee(nHeight));
     auto spResult = MakeCGetTransactionFeeResultPtr();
     spResult->dTxfee = ValueFromAmount(nTxFee);
     return spResult;
