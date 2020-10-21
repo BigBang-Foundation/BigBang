@@ -88,6 +88,9 @@ uint256 CryptoHash(const void* msg, std::size_t len);
 uint256 CryptoHash(const uint256& h1, const uint256& h2);
 uint256 CryptoPowHash(const void* msg, size_t len);
 
+// SHA256
+uint256 CryptoSHA256(const void* msg, size_t len);
+
 // Sign & verify
 struct CCryptoKey
 {
@@ -148,6 +151,10 @@ struct CCryptoCipher
 void CryptoKeyFromPassphrase(int version, const CCryptoString& passphrase, const uint256& salt, CCryptoKeyData& key);
 bool CryptoEncryptSecret(int version, const CCryptoString& passphrase, const CCryptoKey& key, CCryptoCipher& cipher);
 bool CryptoDecryptSecret(int version, const CCryptoString& passphrase, const CCryptoCipher& cipher, CCryptoKey& key);
+
+// aes encrypt
+bool CryptoAesEncrypt(const uint256& secret_local, const uint256& pubkey_remote, const std::vector<uint8>& message, std::vector<uint8>& ciphertext);
+bool CryptoAesDecrypt(const uint256& secret_local, const uint256& pubkey_remote, const std::vector<uint8>& ciphertext, std::vector<uint8>& message);
 
 } // namespace crypto
 } // namespace bigbang

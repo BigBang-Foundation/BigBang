@@ -41,6 +41,7 @@ void CNetChannelPeer::CNetChannelPeerFork::AddKnownTx(const vector<uint256>& vTx
 void CNetChannelPeer::CNetChannelPeerFork::ClearExpiredTx()
 {
     int64 nExpiredAt = GetTime() - NETCHANNEL_KNOWNINV_EXPIREDTIME;
+    int64 nExpiredTime = GetTime() - NETCHANNEL_KNOWNINV_EXPIREDTIME * 6;
     size_t nCtrlCount = nCacheSynTxCount + network::CInv::MAX_INV_COUNT * 2;
     size_t nMaxCount = nCacheSynTxCount * 2;
     if (nMaxCount < nCtrlCount + network::CInv::MAX_INV_COUNT)
@@ -49,7 +50,7 @@ void CNetChannelPeer::CNetChannelPeerFork::ClearExpiredTx()
     }
     CPeerKnownTxSetByTime& index = setKnownTx.get<1>();
     CPeerKnownTxSetByTime::iterator it = index.begin();
-    while (it != index.end() && (((*it).nTime <= nExpiredAt && index.size() > nCtrlCount) || (index.size() > nMaxCount)))
+    while (it != index.end() && ((it->nTime <= nExpiredAt && index.size() > nCtrlCount) || (it->nTime <= nExpiredTime) || (index.size() > nMaxCount)))
     {
         index.erase(it++);
     }
@@ -719,20 +720,36 @@ bool CNetChannel::HandleEvent(network::CEventPeerInv& eventInv)
                 if (inv.nType == network::CInv::MSG_TX)
                 {
                     vTxHash.push_back(inv.nHash);
-                    if ((nLastBlockHeight == 0 || CTxId(inv.nHash).GetTxTime() < nLastTime + MAX_TXINV_INTERVAL_TIME)
-                        && !pTxPool->Exists(inv.nHash) && !pBlockChain->ExistsTx(inv.nHash))
+                    do
                     {
-                        if (sched.AddNewInv(inv, nNonce))
+                        if (nLastBlockHeight != 0 && CTxId(inv.nHash).GetTxTime() >= nLastTime + MAX_TXINV_INTERVAL_TIME)
                         {
-                            StdTrace("NetChannel", "CEventPeerInv: peer: %s, add tx inv success, txid: %s ",
-                                     GetPeerAddressInfo(nNonce).c_str(), inv.nHash.GetHex().c_str());
+                            StdTrace("NetChannel", "CEventPeerInv: peer: %s, received txinv: tx time error, tx time: %d, last time: %d, last height: %d, txid: %s",
+                                     GetPeerAddressInfo(nNonce).c_str(), CTxId(inv.nHash).GetTxTime(),
+                                     nLastTime + MAX_TXINV_INTERVAL_TIME, nLastBlockHeight, inv.nHash.GetHex().c_str());
+                            break;
                         }
-                        else
+                        if (pTxPool->Exists(inv.nHash))
                         {
-                            StdTrace("NetChannel", "CEventPeerInv: peer: %s, add tx inv fail, txid: %s ",
+                            StdTrace("NetChannel", "CEventPeerInv: peer: %s, received txinv: tx in txpool, txid: %s",
                                      GetPeerAddressInfo(nNonce).c_str(), inv.nHash.GetHex().c_str());
+                            break;
                         }
-                    }
+                        if (pBlockChain->ExistsTx(inv.nHash))
+                        {
+                            StdTrace("NetChannel", "CEventPeerInv: peer: %s, received txinv: tx in blockchain, txid: %s",
+                                     GetPeerAddressInfo(nNonce).c_str(), inv.nHash.GetHex().c_str());
+                            break;
+                        }
+                        if (!sched.AddNewInv(inv, nNonce))
+                        {
+                            StdTrace("NetChannel", "CEventPeerInv: peer: %s, received txinv: add tx inv fail, txid: %s",
+                                     GetPeerAddressInfo(nNonce).c_str(), inv.nHash.GetHex().c_str());
+                            break;
+                        }
+                        StdTrace("NetChannel", "CEventPeerInv: peer: %s, received txinv: add tx inv success, txid: %s",
+                                 GetPeerAddressInfo(nNonce).c_str(), inv.nHash.GetHex().c_str());
+                    } while (0);
                 }
                 else if (inv.nType == network::CInv::MSG_BLOCK)
                 {
