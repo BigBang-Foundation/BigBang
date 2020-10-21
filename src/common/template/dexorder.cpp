@@ -16,7 +16,7 @@ using namespace xengine;
 //////////////////////////////
 // CTemplateDexOrder
 
-CTemplateDexOrder::CTemplateDexOrder(const CDestination& destSellerIn, const vector<char> vCoinPairIn,
+CTemplateDexOrder::CTemplateDexOrder(const CDestination& destSellerIn, const vector<char>& vCoinPairIn,
                                      uint64 nPriceIn, int nFeeIn, const vector<char>& vRecvDestIn, int nValidHeightIn,
                                      const CDestination& destMatchIn, const vector<char>& vDealDestIn, uint32 nTimeStampIn)
   : CTemplate(TEMPLATE_DEXORDER),

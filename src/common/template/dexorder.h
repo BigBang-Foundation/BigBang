@@ -10,7 +10,7 @@
 class CTemplateDexOrder : virtual public CTemplate, virtual public CSendToRecordedTemplate
 {
 public:
-    CTemplateDexOrder(const CDestination& destSellerIn = CDestination(), const std::vector<char> vCoinPairIn = std::vector<char>(),
+    CTemplateDexOrder(const CDestination& destSellerIn = CDestination(), const std::vector<char>& vCoinPairIn = std::vector<char>(),
                       uint64 nPriceIn = 0, int nFeeIn = 0, const std::vector<char>& vRecvDestIn = std::vector<char>(), int nValidHeightIn = 0,
                       const CDestination& destMatchIn = CDestination(), const std::vector<char>& vDealDestIn = std::vector<char>(), uint32 nTimeStampIn = 0);
     virtual CTemplateDexOrder* clone() const;
