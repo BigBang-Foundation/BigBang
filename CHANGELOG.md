@@ -1,4 +1,4 @@
-# Version 2.2.0 (2020-10-20)
+# Version 2.2.0 (2020-10-21)
 
 ### Features
 * Fix some DeFi bugs
