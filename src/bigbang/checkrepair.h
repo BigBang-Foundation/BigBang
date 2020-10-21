@@ -7,6 +7,7 @@
 
 #include "address.h"
 #include "addressdb.h"
+#include "addressunspentdb.h"
 #include "block.h"
 #include "blockindexdb.h"
 #include "core.h"
@@ -50,15 +51,14 @@ public:
 class CCheckTxOut : public CTxOut
 {
 public:
-    CCheckTxOut() {}
-    CCheckTxOut(const CDestination destToIn, int64 nAmountIn, uint32 nTxTimeIn, uint32 nLockUntilIn)
-      : CTxOut(destToIn, nAmountIn, nTxTimeIn, nLockUntilIn) {}
-    CCheckTxOut(const CTransaction& tx)
-      : CTxOut(tx) {}
-    CCheckTxOut(const CTransaction& tx, const CDestination& destToIn, int64 nValueIn)
-      : CTxOut(tx, destToIn, nValueIn) {}
-    CCheckTxOut(const CTxOut& txOut)
-      : CTxOut(txOut) {}
+    int nTxType;
+    int nHeight;
+
+public:
+    CCheckTxOut()
+      : nTxType(-1), nHeight(-1) {}
+    CCheckTxOut(const CTxOut& txOut, int nTxTypeIn = -1, int nHeightIn = -1)
+      : CTxOut(txOut), nTxType(nTxTypeIn), nHeight(nHeightIn) {}
 
     friend bool operator==(const CCheckTxOut& a, const CCheckTxOut& b)
     {
@@ -364,7 +364,7 @@ public:
     void UpdateMaxTrust(CBlockIndex* pBlockIndex);
     bool AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, int nHeight, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn);
     bool AddBlockSpent(const CTxOutPoint& txPoint, const uint256& txidSpent, const CDestination& sendTo);
-    bool AddBlockUnspent(const CTxOutPoint& txPoint, const CTxOut& txOut);
+    bool AddBlockUnspent(const CTxOutPoint& txPoint, const CTxOut& txOut, int nTxType, int nHeight);
     bool CheckTxExist(const uint256& txid, int& nHeight);
 
 public:
@@ -439,10 +439,12 @@ protected:
     bool FetchWalletAddress();
     bool FetchWalletTx();
     bool FetchAddress();
+    bool FetchAddressUnspent();
 
     bool CheckRepairFork();
     bool CheckBlockUnspent();
     bool CheckBlockAddress();
+    bool CheckBlockAddressUnspent();
     bool CheckWalletTx(vector<CWalletTx>& vAddTx, vector<uint256>& vRemoveTx);
     bool CheckTxIndex();
 
@@ -463,6 +465,7 @@ protected:
     CCheckBlockWalker objBlockWalker;
     map<uint256, CCheckForkUnspentWalker> mapForkUnspentWalker;
     map<uint256, CListAddressWalker> mapForkAddressWalker;
+    map<uint256, CGetAddressUnspentWalker> mapForkAddressUnspentWalker;
     CCheckDBAddrWalker objWalletAddressWalker;
     CCheckWalletTxWalker objWalletTxWalker;
     CCheckTxPoolData objTxPoolData;

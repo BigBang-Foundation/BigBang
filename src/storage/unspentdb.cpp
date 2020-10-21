@@ -50,7 +50,7 @@ bool CForkUnspentDB::RemoveAll()
     return true;
 }
 
-bool CForkUnspentDB::UpdateUnspent(const vector<CTxUnspent>& vAddNew, const vector<CTxOutPoint>& vRemove)
+bool CForkUnspentDB::UpdateUnspent(const vector<CTxUnspent>& vAddNew, const vector<CTxUnspent>& vRemove)
 {
     xengine::CWriteLock wlock(rwUpper);
 
@@ -61,9 +61,9 @@ bool CForkUnspentDB::UpdateUnspent(const vector<CTxUnspent>& vAddNew, const vect
         mapUpper[static_cast<const CTxOutPoint&>(unspent)] = unspent.output;
     }
 
-    for (const CTxOutPoint& txout : vRemove)
+    for (const CTxUnspent& unspent : vRemove)
     {
-        mapUpper[txout].SetNull();
+        mapUpper[static_cast<const CTxOutPoint&>(unspent)].SetNull();
     }
 
     return true;
@@ -398,7 +398,7 @@ void CUnspentDB::Clear()
 }
 
 bool CUnspentDB::Update(const uint256& hashFork,
-                        const vector<CTxUnspent>& vAddNew, const vector<CTxOutPoint>& vRemove)
+                        const vector<CTxUnspent>& vAddNew, const vector<CTxUnspent>& vRemove)
 {
     CReadLock rlock(rwAccess);
 

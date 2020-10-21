@@ -529,7 +529,7 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
 
     if (!block.IsVacant() || !block.txMint.sendTo.IsNull())
     {
-        view.AddTx(block.txMint.GetHash(), block.txMint);
+        view.AddTx(block.txMint.GetHash(), block.txMint, block.GetBlockHeight());
     }
 
     CBlockEx blockex(block);
@@ -629,7 +629,7 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
         }
 
         vTxContxt.push_back(txContxt);
-        if (!view.AddTx(txid, tx, txContxt.destIn, txContxt.GetValueIn()))
+        if (!view.AddTx(txid, tx, block.GetBlockHeight(), txContxt.destIn, txContxt.GetValueIn()))
         {
             Log("AddNewBlock Add block view tx error, txid: %s", txid.ToString().c_str());
             return ERR_BLOCK_TRANSACTIONS_INVALID;
@@ -840,7 +840,7 @@ Errno CBlockChain::AddNewOrigin(const CBlock& block, CBlockChainUpdate& update)
 
     if (block.txMint.nAmount != 0)
     {
-        view.AddTx(block.txMint.GetHash(), block.txMint);
+        view.AddTx(block.txMint.GetHash(), block.txMint, block.GetBlockHeight());
     }
 
     // Get block trust
@@ -1215,7 +1215,7 @@ Errno CBlockChain::VerifyPowBlock(const CBlock& block, bool& fLongChain)
 
     if (!block.IsVacant() || !block.txMint.sendTo.IsNull())
     {
-        view.AddTx(block.txMint.GetHash(), block.txMint);
+        view.AddTx(block.txMint.GetHash(), block.txMint, block.GetBlockHeight());
     }
 
     CBlockEx blockex(block);
@@ -1258,7 +1258,7 @@ Errno CBlockChain::VerifyPowBlock(const CBlock& block, bool& fLongChain)
         }
 
         vTxContxt.push_back(txContxt);
-        if (!view.AddTx(txid, tx, txContxt.destIn, txContxt.GetValueIn()))
+        if (!view.AddTx(txid, tx, block.GetBlockHeight(), txContxt.destIn, txContxt.GetValueIn()))
         {
             Log("VerifyPowBlock Add block view tx error, txid: %s", txid.ToString().c_str());
             return ERR_BLOCK_TRANSACTIONS_INVALID;
@@ -2328,6 +2328,11 @@ bool CBlockChain::InitDeFiRelation(const uint256& hashFork)
 bool CBlockChain::CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent)
 {
     return cntrBlock.CheckAddDeFiRelation(hashFork, dest, parent);
+}
+
+bool CBlockChain::GetAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent)
+{
+    return cntrBlock.RetrieveAddressUnspent(hashFork, dest, mapUnspent);
 }
 
 } // namespace bigbang

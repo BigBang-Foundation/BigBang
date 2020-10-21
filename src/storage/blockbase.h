@@ -135,21 +135,27 @@ public:
     {
     public:
         int nOpt;
+        int nTxType;
+        int nHeight;
 
     public:
         CUnspent()
-          : nOpt(0) {}
-        void Enable(const CTxOut& output)
+          : nOpt(0), nTxType(-1), nHeight(-1) {}
+        void Enable(const CTxOut& output, int nTxTypeIn, int nHeightIn)
         {
             destTo = output.destTo;
             nAmount = output.nAmount;
             nTxTime = output.nTxTime;
             nLockUntil = output.nLockUntil;
+            nTxType = nTxTypeIn;
+            nHeight = nHeightIn;
             nOpt++;
         }
         void Disable()
         {
             SetNull();
+            nTxType = -1;
+            nHeight = -1;
             nOpt--;
         }
         bool IsModified() const
@@ -177,15 +183,15 @@ public:
     bool ExistsTx(const uint256& txid) const;
     bool RetrieveTx(const uint256& txid, CTransaction& tx);
     bool RetrieveUnspent(const CTxOutPoint& out, CTxOut& unspent);
-    bool AddTx(const uint256& txid, const CTransaction& tx, const CDestination& destIn = CDestination(), int64 nValueIn = 0);
-    bool AddTx(const uint256& txid, const CAssembledTx& tx)
+    bool AddTx(const uint256& txid, const CTransaction& tx, int nHeight, const CDestination& destIn = CDestination(), int64 nValueIn = 0);
+    /*bool AddTx(const uint256& txid, const CAssembledTx& tx)
     {
-        return AddTx(txid, tx, tx.destIn, tx.nValueIn);
-    }
+        return AddTx(txid, tx, 0, tx.destIn, tx.nValueIn);
+    }*/
     void RemoveTx(const uint256& txid, const CTransaction& tx, const CTxContxt& txContxt = CTxContxt());
     void AddBlock(const uint256& hash, const CBlockEx& block);
     void RemoveBlock(const uint256& hash, const CBlockEx& block);
-    void GetUnspentChanges(std::vector<CTxUnspent>& vAddNew, std::vector<CTxOutPoint>& vRemove);
+    void GetUnspentChanges(std::vector<CTxUnspent>& vAddNewUnspent, std::vector<CTxUnspent>& vRemoveUnspent);
     void GetTxUpdated(std::set<uint256>& setUpdate);
     void GetTxRemoved(std::vector<uint256>& vRemove);
     void GetBlockChanges(std::vector<CBlockEx>& vAdd, std::vector<CBlockEx>& vRemove) const;
@@ -291,6 +297,7 @@ public:
     bool RecordRollback(const std::vector<CBlockEx>& vBlockAddNew, const std::vector<CBlockEx>& vBlockRemove);
     bool RecordRemove(const CBlockEx& block);
     bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent);
+    bool RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent);
 
     // DeFi
     template <typename D, typename Convert>
