@@ -645,7 +645,6 @@ boost::optional<std::string> CService::CreateTransaction(const uint256& hashFork
                                                          const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
                                                          const vector<unsigned char>& vchData, CTransaction& txNew)
 {
-    int nForkHeight = 0;
     txNew.SetNull();
     {
         boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
@@ -655,18 +654,16 @@ boost::optional<std::string> CService::CreateTransaction(const uint256& hashFork
             StdError("CService", "CreateTransaction: find fork fail, fork: %s", hashFork.GetHex().c_str());
             return std::string("find fork fail, fork: ") + hashFork.GetHex();
         }
-        nForkHeight = it->second.nLastBlockHeight;
         txNew.hashAnchor = hashFork;
     }
-    txNew.nType = nType;
+    txNew.nType = CTransaction::TX_TOKEN;
     txNew.nTimeStamp = GetNetTime();
     txNew.nLockUntil = 0;
     txNew.sendTo = destSendTo;
     txNew.nAmount = nAmount;
     txNew.nTxFee = nTxFee;
     txNew.vchData = vchData;
-
-    return pWallet->ArrangeInputs(destFrom, hashFork, nForkHeight, txNew) ? boost::optional<std::string>{} : std::string("CWallet::ArrangeInputs failed");
+    return boost::optional<std::string>{};
 }
 
 bool CService::SynchronizeWalletTx(const CDestination& destNew)

@@ -1424,19 +1424,8 @@ CRPCResultPtr CRPCMod::RPCAddNewTemplate(CRPCParamPtr param)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid parameters,failed to make template");
     }
-    if (!pService->HaveTemplate(ptr->GetTemplateId()))
-    {
-        if (!pService->AddTemplate(ptr))
-        {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to add template");
-        }
-        if (spParam->data.fSynctx && !pService->SynchronizeWalletTx(CDestination(ptr->GetTemplateId())))
-        {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to sync wallet tx");
-        }
-    }
-
-    return MakeCAddNewTemplateResultPtr(CAddress(ptr->GetTemplateId()).ToString());
+    auto res = CAddress(ptr->GetTemplateId()).ToString() + "|" + ToHexString(ptr->Export()).substr(4);
+    return MakeCAddNewTemplateResultPtr(res);
 }
 
 CRPCResultPtr CRPCMod::RPCImportTemplate(CRPCParamPtr param)
@@ -1883,12 +1872,6 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid to address");
     }
 
-    uint16 nType = (uint16)spParam->nType;
-    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION)
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid tx type");
-    }
-
     int64 nAmount = AmountFromValue(spParam->dAmount);
 
     uint256 hashFork;
@@ -1921,39 +1904,35 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
         StdTrace("[CreateTransaction]", "txudatasize : %d ; mintxfee : %d", vchData.size(), nTxFee);
     }
 
-    CWalletBalance balance;
-    if (!pService->GetBalance(from, hashFork, balance))
-    {
-        throw CRPCException(RPC_WALLET_ERROR, "GetBalance failed");
-    }
-    if (nAmount == -1)
-    {
-        if (balance.nAvailable <= nTxFee)
-        {
-            throw CRPCException(RPC_WALLET_ERROR, "Your amount not enough for txfee");
-        }
-        nAmount = balance.nAvailable - nTxFee;
-    }
-
-    CTemplateId tid;
-    if (to.GetTemplateId(tid) && tid.GetType() == TEMPLATE_FORK && nAmount < CTemplateFork::CreatedCoin())
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "create transaction nAmount must be at least " + std::to_string(CTemplateFork::CreatedCoin() / COIN) + " for creating fork");
-    }
-
     CTransaction txNew;
-    auto strErr = pService->CreateTransaction(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransaction(hashFork, from, to, nAmount, nTxFee, CTransaction::TX_TOKEN, vchData, txNew);
     if (strErr)
     {
-        boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
-        throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to create transaction: ") + *strErr + fmt.str());
+        throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to create transaction: ") + *strErr);
+    }
+    if (spParam->nTs != 0)
+    {
+        txNew.nTimeStamp = spParam->nTs;
+    }
+    std::string str_inputs = spParam->strInputs;
+    std::vector<std::string> vecInputs;
+    boost::split(vecInputs, str_inputs, boost::is_any_of("|"));
+    for (int i = 0; i < vecInputs.size(); i++)
+    {
+        CTxIn obj;
+        obj.prevout.hash = uint256(vecInputs[i].substr(0, 64));
+        obj.prevout.n = 0;
+        if (vecInputs[i][65] == '1')
+        {
+            obj.prevout.n = 1;
+        }
+        txNew.vInput.push_back(obj);
     }
 
     CBufStream ss;
     ss << txNew;
-
-    return MakeCCreateTransactionResultPtr(
-        ToHexString((const unsigned char*)ss.GetData(), ss.GetSize()));
+    auto res = ToHexString((const unsigned char*)ss.GetData(), ss.GetSize()) + "|" + txNew.GetSignatureHash().GetHex();
+    return MakeCCreateTransactionResultPtr(res);
 }
 
 CRPCResultPtr CRPCMod::RPCSignTransaction(CRPCParamPtr param)

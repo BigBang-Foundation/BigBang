@@ -2818,6 +2818,14 @@
                     "desc": "transaction fee",
                     "required": false
                 },
+                "inputs": {
+                    "type": "string",
+                    "desc": "inputs data"
+                },
+                "ts": {
+                    "type": "int",
+                    "desc": "ts"
+                },
                 "fork": {
                     "type": "string",
                     "desc": "fork hash",
