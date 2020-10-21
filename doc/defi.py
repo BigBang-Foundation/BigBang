@@ -11,7 +11,7 @@ from pprint import pprint
 
 COIN = 1000000
 
-rpcurl = 'http://127.0.0.1:9902'
+rpcurl = 'http://127.0.0.1:9901'
 
 genesis_privkey = '9df809804369829983150491d1086b99f6493356f91ccc080e661a76a976a4ee'
 genesis_addr = '1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm'
@@ -629,7 +629,7 @@ def check(path):
 
             if error:
                 print('Checking failed height: {}'.format(height))
-                break
+                return
             elif len(reward) == 0:
                 print('Checking success height: {}'.format(height))
                 break
