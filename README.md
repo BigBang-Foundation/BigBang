@@ -1,7 +1,7 @@
 
 # BigBang Network Official Development Repo
 
-[![Build Status](https://travis-ci.com/BigBang-Foundation/BigBang.svg?branch=master)](https://travis-ci.com/BigBang-Foundation/BigBang)
+[![Build Status](https://api.travis-ci.org/BigBang-Foundation/BigBang.svg?branch=master)](https://travis-ci.com/BigBang-Foundation/BigBang)
 [![GitHub Release](https://img.shields.io/github/release/BigBang-Foundation/BigBang/all.svg)](https://github.com/BigBang-Foundation/BigBang/releases)
 [![MIT licensed](https://img.shields.io/github/license/BigBang-Foundation/BigBang)](https://raw.githubusercontent.com/BigBang-Foundation/BigBang/master/LICENSE)
 
