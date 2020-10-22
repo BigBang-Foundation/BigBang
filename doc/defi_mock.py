@@ -240,18 +240,17 @@ def Compute(addrset, total_level, input, output, count):
 
 if __name__ == "__main__":
     # json path
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 3:
         raise Exception(
             'Not enough param, should be "python defi_mock.py input.json output.json count"')
 
-    input_path = os.path.join(os.getcwd(), sys.argv[1])
-    output_path = os.path.join(os.getcwd(), sys.argv[2])
-    count = int(sys.argv[3])
+    path = os.path.join(os.getcwd(), sys.argv[1])
+    count = int(sys.argv[2])
 
     input = {}
     output = []
     # load json
-    with open(input_path, 'r') as r:
+    with open(path, 'r') as r:
         content = json.loads(r.read())
         input = content["input"]
 
@@ -321,5 +320,5 @@ if __name__ == "__main__":
     }
 
     # pprint(result, indent=2)
-    with open(output_path, 'w') as w:
-        w.write(json.dumps(result))
+    with open(path, 'w') as w:
+        json.dump(result, w, indent=4, sort_keys=True)
