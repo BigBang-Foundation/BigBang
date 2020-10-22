@@ -2139,8 +2139,8 @@ list<uint256> CBlockChain::GetDeFiSectionList(const uint256& forkid, const CBloc
     {
         if (pIndexLast->GetBlockHeight() == prevHeight + 1)
         {
-            listSection.push_front(pIndexLast->GetBlockHash());
-            prevHeight = defiReward.PrevRewardHeight(forkid, pIndexLast->GetBlockHeight());
+            listSection.push_front(pIndexLast->pPrev->GetBlockHash());
+            prevHeight = defiReward.PrevRewardHeight(forkid, prevHeight);
         }
         pIndexLast = pIndexLast->pPrev;
     }
