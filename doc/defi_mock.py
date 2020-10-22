@@ -242,7 +242,7 @@ if __name__ == "__main__":
     # json path
     if len(sys.argv) < 3:
         raise Exception(
-            'Not enough param, should be "python defi_mock.py input.json output.json count"')
+            'Not enough param, should be "python defi_mock.py file.json count"')
 
     path = os.path.join(os.getcwd(), sys.argv[1])
     count = int(sys.argv[2])
