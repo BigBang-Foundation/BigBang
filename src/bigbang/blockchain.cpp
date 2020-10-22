@@ -611,7 +611,6 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
                 return ERR_TRANSACTION_INVALID;
             }
         }
-        
 
         if ((tx.nType != CTransaction::TX_DEFI_REWARD) && !pTxPool->Exists(txid))
         {
@@ -1911,20 +1910,16 @@ void CBlockChain::InitCheckPoints()
               { 285060, uint256("00045984ae81f672b42525e0465dd05239c742fe0b6723a15c4fd03215362eae") },
               { 366692, uint256("00059864d72f76565cb8aa190c1e73ab4eb449d6641d73f7eba4e6a849589453") },
               { 400000, uint256("00061a8020ce3ddf579e34bfa38ff95c9667bf50fce8005069d8dcfeb695f0d9") },
-              { 450000, uint256("0006ddd0a514053cc0e11c1c04218a5cc40c8e01e9ad7010665cc3ce196c06b0")}});
+              { 450000, uint256("0006ddd0a514053cc0e11c1c04218a5cc40c8e01e9ad7010665cc3ce196c06b0") } });
 
         vecBBCN.assign(
             { { 300000, uint256("000493e02a0f6ef977ebd5f844014badb412b6db85847b120f162b8d913b9028") },
               { 335999, uint256("0005207f9be2e4f1a278054058d4c17029ae6733cc8f7163a4e3099000deb9ff") } });
 
-        vecBTCA.assign({
-            { 447532, uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805") },
-            { 450000, uint256("0006ddd04452bce958ba78a1e044108fb4e9eac31751151b01b236cd2041b9eb") }
-        });
-        vecBBCC.assign({
-            { 430001, uint256("00068fb1bad4194126b0d1c1fb46b9860d4e899730825bd9511de4b14277d136") },
-            { 450000, uint256("0006ddd011ca1049c434d5b6976b1534aef6c49883460afa05f5ac541aefbb0c") }
-        });
+        vecBTCA.assign({ { 447532, uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805") },
+                         { 450000, uint256("0006ddd04452bce958ba78a1e044108fb4e9eac31751151b01b236cd2041b9eb") } });
+        vecBBCC.assign({ { 430001, uint256("00068fb1bad4194126b0d1c1fb46b9860d4e899730825bd9511de4b14277d136") },
+                         { 450000, uint256("0006ddd011ca1049c434d5b6976b1534aef6c49883460afa05f5ac541aefbb0c") } });
         InitCheckPoints(uint256("00000000b0a9be545f022309e148894d1e1c853ccac3ef04cb6f5e5c70f41a70"), vecGenesisCheckPoints);
         InitCheckPoints(uint256("000493e02a0f6ef977ebd5f844014badb412b6db85847b120f162b8d913b9028"), vecBBCN);
         InitCheckPoints(uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"), vecBTCA);
@@ -2142,7 +2137,7 @@ list<uint256> CBlockChain::GetDeFiSectionList(const uint256& forkid, const CBloc
     const CBlockIndex* pIndexLast = pIndexPrev;
     while (pIndexLast->IsVacant())
     {
-        if (pIndexLast->GetBlockHeight() == prevHeight)
+        if (pIndexLast->GetBlockHeight() == prevHeight + 1)
         {
             listSection.push_front(pIndexLast->GetBlockHash());
             prevHeight = defiReward.PrevRewardHeight(forkid, pIndexLast->GetBlockHeight());
