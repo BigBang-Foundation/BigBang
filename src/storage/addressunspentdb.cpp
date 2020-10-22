@@ -56,14 +56,14 @@ bool CForkAddressUnspentDB::UpdateAddressUnspent(const vector<CTxUnspent>& vAddN
 
     MapType& mapUpper = dblCache.GetUpperMap();
 
-    for (const auto& vd : vRemove)
-    {
-        mapUpper[CAddrUnspentKey(vd.output.destTo, static_cast<const CTxOutPoint&>(vd))].SetNull();
-    }
-
     for (const auto& vd : vAddNew)
     {
         mapUpper[CAddrUnspentKey(vd.output.destTo, static_cast<const CTxOutPoint&>(vd))] = CUnspentOut(vd.output, vd.nTxType, vd.nHeight);
+    }
+
+    for (const auto& vd : vRemove)
+    {
+        mapUpper[CAddrUnspentKey(vd.output.destTo, static_cast<const CTxOutPoint&>(vd))].SetNull();
     }
 
     return true;
