@@ -620,7 +620,7 @@ def check(path):
                 block = getblock(hash)
 
                 # if block is vacant, continue to get next height block
-                if block['type'] == 'vacant':
+                if block['type'].startswith('vacant'):
                     h = h + 1
                     break
 
