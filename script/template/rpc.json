@@ -2148,6 +2148,13 @@
                 "pubkey": {
                     "type": "string",
                     "desc": "private key"
+                },
+                "synctx": {
+                    "type": "bool",
+                    "desc": "sync tx or not",
+                    "default": true,
+                    "required": false,
+                    "opt": "s"
                 }
             }
         },
@@ -3092,6 +3099,18 @@
                 "txdata": {
                     "type": "string",
                     "desc": "transaction data(hex string)"
+                },
+                "sign_m": {
+                    "type": "string",
+                    "desc": "exchange sign m",
+                    "required": false,
+                    "opt": "sm"
+                },
+                "sign_s": {
+                    "type": "string",
+                    "desc": "exchange sign s",
+                    "required": false,
+                    "opt": "ss"
                 },
                 "fromdata": {
                     "type": "string",
@@ -4344,6 +4363,30 @@
                 "txdata": {
                     "type": "string",
                     "desc": "raw transaction data(hex string)"
+                },
+                "sign_m": {
+                    "type": "string",
+                    "desc": "exchange sign m",
+                    "required": false,
+                    "opt": "sm"
+                },
+                "sign_s": {
+                    "type": "string",
+                    "desc": "exchange sign s",
+                    "required": false,
+                    "opt": "ss"
+                },
+                "fromdata": {
+                    "type": "string",
+                    "desc": "If the 'from' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "fd"
+                },
+                "sendtodata": {
+                    "type": "string",
+                    "desc": "If the 'to' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "td"
                 }
             }
         },

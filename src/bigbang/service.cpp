@@ -912,7 +912,7 @@ bool CService::ResynchronizeWalletTx()
     return pWallet->ResynchronizeWalletTx();
 }
 
-bool CService::SignOfflineTransaction(const CDestination& destIn, CTransaction& tx, bool& fCompleted)
+bool CService::SignOfflineTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, bool& fCompleted)
 {
     uint256 hashFork;
     int nHeight;
@@ -923,7 +923,7 @@ bool CService::SignOfflineTransaction(const CDestination& destIn, CTransaction& 
     }
 
     int32 nForkHeight = GetForkHeight(hashFork);
-    if (!pWallet->SignTransaction(destIn, tx, vector<uint8>(), vector<uint8>(), vector<uint8>(), hashFork, nForkHeight, fCompleted))
+    if (!pWallet->SignTransaction(destIn, tx, vchDestInData, vchSendToData, vchSignExtraData, hashFork, nForkHeight, fCompleted))
     {
         StdError("CService", "SignOfflineTransaction: Sign Transaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
         return false;
