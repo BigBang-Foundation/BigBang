@@ -392,7 +392,15 @@ def print_mode():
 
 
 # generate address mode
-def generate_addr():
+def generate_addr(path):
+    input = {}
+    output = []
+    # load json
+    with open(path, 'r') as r:
+        content = json.loads(r.read())
+        input = content["input"]
+        output = content["output"]
+
     generate_count = 50000 if len(sys.argv) < 4 else int(sys.argv[3])
     root_count = min(generate_count / 100, 1000)
     privkey_map = {}
@@ -416,20 +424,29 @@ def generate_addr():
         stake_map[addr] = int(random.random() * 20000000 + 100000000)
 
     privkey_list = [v for _, v in privkey_map.items()]
-    print(json.dumps({
-        'privkey': privkey_list,
-        'stake': stake_map,
-        'relation': relation_map
-    }))
+
+    # output
+    input['privkey'] = privkey_list
+    input['stake'] = stake_map
+    input['relation'] = relation_map
+
+    # pprint(result, indent=2)
+    with open(path, 'w') as w:
+        json.dump({
+            'input': input,
+            'output': output
+        }, w, indent=4, sort_keys=True)
 
 
 # create node mode
 def create_node(path):
     input = {}
+    output = []
     # load json
     with open(path, 'r') as r:
         content = json.loads(r.read())
         input = content["input"]
+        output = content["output"]
 
     # delegate dpos
     delegate_addr = dpos()
@@ -507,6 +524,19 @@ def create_node(path):
         genesis_addr, int(round(genesis_balance * COIN))))
     print("delegate_addr: {}, delegate_balance: {}".format(
         delegate_addr, int(round(delegate_balance * COIN))))
+
+    # output
+    input['makeorigin']['forkid'] = forkid
+    input['makeorigin']['delegate_addr'] = delegate_addr
+    input['stake'][genesis_addr] = int(round(genesis_balance * COIN))
+    input['stake'][delegate_addr] = int(round(delegate_balance * COIN))
+
+    # pprint(result, indent=2)
+    with open(path, 'w') as w:
+        json.dump({
+            'input': input,
+            'output': output
+        }, w, indent=4, sort_keys=True)
 
 
 # check mode
@@ -590,7 +620,7 @@ def check(path):
                 block = getblock(hash)
 
                 # if block is vacant, continue to get next height block
-                if block['type'] == 'vacant':
+                if block['type'].startswith('vacant'):
                     h = h + 1
                     break
 
@@ -663,7 +693,7 @@ if __name__ == "__main__":
 
     # generate address and relation mode
     if mode == GENERATE_ADDR_MODE:
-        generate_addr()
+        generate_addr(path)
         exit(0)
     elif mode == CREATE_NODE_MODE:
         create_node(path)
