@@ -612,7 +612,7 @@ def check(path):
                     break
                 print('fork height is {}'.format(getforkheight(forkid)))
                 time.sleep(60)
-            print('blockids of height: {}, blockids: {}'.format(height, blockids))
+            print('blockids of height: {}, blockids: {}'.format(h, blockids))
 
             error = False
             # loop to get every block of blockid array
@@ -627,7 +627,8 @@ def check(path):
                 # if no tx in block, print error
                 if len(block['tx']) == 0:
                     print('ERROR: no reward tx in height: {}'.format(height))
-                    continue
+                    error = True
+                    break
 
                 # loop to check every tx in block
                 for txid in block['tx']:
