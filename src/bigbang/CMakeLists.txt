@@ -55,6 +55,7 @@ set(src
     dbpserver.cpp       dbpserver.h
     dbpclient.cpp       dbpclient.h
     dbpservice.cpp      dbpservice.h
+    defi.cpp            defi.h
     event.h
     base.h
     struct.h

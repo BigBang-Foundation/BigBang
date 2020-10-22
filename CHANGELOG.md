@@ -1,3 +1,14 @@
+# Version 2.2.0 (2020-10-21)
+
+### Features
+* Fix some DeFi bugs
+* Add Decentral exchange(DEX) function
+
+# Version 2.1.0 (2020-09-26)
+
+### Features
+* Add DeFi Function
+
 # Version 2.0.5 (2020-08-04)
 
 ### Fixs
