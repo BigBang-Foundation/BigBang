@@ -10,6 +10,7 @@ import random
 from pprint import pprint
 
 COIN = 1000000
+TX_FEE = 0.01
 
 rpcurl = 'http://127.0.0.1:9902'
 
@@ -363,6 +364,7 @@ def dpos():
     delegate_addr = adddelegatetemplate(dpos_pubkey, genesis_addr)
     sendfrom(genesis_addr, delegate_addr, 280000000)
     print('Create dpos node success')
+    return delegate_addr
 
 
 # create fork
@@ -429,6 +431,9 @@ def create_node(path):
         content = json.loads(r.read())
         input = content["input"]
 
+    # delegate dpos
+    delegate_addr = dpos()
+
     # compute balance by stake and relation
     addrset = {}
     for addr, stake in input['stake'].items():
@@ -457,16 +462,15 @@ def create_node(path):
         addrset[upper_addr]['lower'].append(lower_addr)
 
     for addr, obj in addrset.items():
-        obj['stake'] = obj['stake'] - \
-            (0.01 if obj['upper'] else 0) + 0.02 * len(obj['lower'])
+        if addr != genesis_addr and addr != delegate_addr:
+            obj['stake'] = obj['stake'] - \
+                (TX_FEE if obj['upper'] else 0) + \
+                2 * TX_FEE * len(obj['lower'])
 
     # import priv key
     for privkey in input['privkey']:
         if privkey != genesis_privkey:
             importprivkey(privkey, False)
-
-    # delegate dpos
-    dpos()
 
     # create fork
     if 'makeorigin' not in input:
@@ -484,19 +488,25 @@ def create_node(path):
         time.sleep(10)
 
     time.sleep(10)
+    delegate_balance = 0
     # send token to addrset
     for addr, obj in addrset.items():
-        if addr != genesis_addr:
+        if addr != genesis_addr and addr != delegate_addr:
             sendfrom(genesis_addr, addr, obj['stake'], forkid)
+            delegate_balance += TX_FEE
 
     # send relation tx
     for addr, obj in addrset.items():
         for lower_addr in obj['lower']:
             sendfrom(addr, lower_addr, 0.01, forkid, 2)
+            delegate_balance += TX_FEE
 
     print("forkid: {}".format(forkid))
     genesis_balance = getbalance(genesis_addr, forkid)
-    print("genesis_balance: {}".format(int(round(genesis_balance * COIN))))
+    print("genesis_addr: {}, genesis_balance: {}".format(
+        genesis_addr, int(round(genesis_balance * COIN))))
+    print("delegate_addr: {}, delegate_balance: {}".format(
+        delegate_addr, int(round(delegate_balance * COIN))))
 
 
 # check mode

@@ -2,13 +2,14 @@
     "input": {
         "makeorigin": {
             "forkid": "00000001afc48d2a4a26c00c4b13ea39c0d189c71605ca19a63e127105037efe",
+            "delegate_addr": "20m01gxj66vthyw8fn63vk1tw3a4wz4mk4z9wd2nk686kvtyjvtg33vrw",
             "amount": 20000000,
             "name": "defi-test",
             "symbol": "BTCA",
             "defi": {
                 "rewardcycle": 5,
                 "supplycycle": 150,
-                "mintheight": 10,
+                "mintheight": 15,
                 "maxsupply": 1000000000,
                 "coinbasetype": 1,
                 "decaycycle": 3600,

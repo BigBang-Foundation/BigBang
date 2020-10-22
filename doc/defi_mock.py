@@ -12,9 +12,8 @@ from pprint import pprint
 COIN = 1000000
 TX_FEE = 10000
 
+
 # Mark tree node level recursively
-
-
 def MarkTreeLevel(root_addr, root_level, addrset):
     addrset[root_addr]['level'] = root_level
     # get childs
@@ -22,11 +21,11 @@ def MarkTreeLevel(root_addr, root_level, addrset):
     for child in childs:
         MarkTreeLevel(child, root_level - 1, addrset)
 
+
 # Compute DeFi rewards
-
-
 def Compute(addrset, total_level, input, output, count):
     makeorigin = input['makeorigin']
+    delegate_addr = makeorigin['delegate_addr']
     amount = makeorigin['amount'] * COIN
     defi = makeorigin['defi']
     rewardcycle = defi['rewardcycle']
@@ -226,6 +225,9 @@ def Compute(addrset, total_level, input, output, count):
                 del(result[addr])
         for addr, reward in result.items():
             addrset[addr]['stake'] += reward - TX_FEE
+
+        # dpos mint
+        addrset[delegate_addr]['stake'] += (TX_FEE * len(result))
 
         output.append({'height': height, 'reward': result})
 
