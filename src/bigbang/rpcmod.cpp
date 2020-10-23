@@ -1363,7 +1363,7 @@ CRPCResultPtr CRPCMod::RPCImportPubKey(CRPCParamPtr param)
         {
             throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to add key: ") + *strErr);
         }
-        if (!pService->SynchronizeWalletTx(CDestination(key.GetPubKey())))
+        if (spParam->fSynctx && !pService->SynchronizeWalletTx(CDestination(key.GetPubKey())))
         {
             throw CRPCException(RPC_WALLET_ERROR, "Failed to sync wallet tx");
         }
@@ -2237,6 +2237,15 @@ CRPCResultPtr CRPCMod::RPCSignTransaction(CRPCParamPtr param)
         throw CRPCException(RPC_DESERIALIZATION_ERROR, "TX decode failed");
     }
 
+    vector<uint8> vchSignExtraData;
+    if (spParam->strSign_M.IsValid() && spParam->strSign_S.IsValid())
+    {
+        vector<uint8> vsm = ParseHexString(spParam->strSign_M);
+        vector<uint8> vss = ParseHexString(spParam->strSign_S);
+        CODataStream ds(vchSignExtraData);
+        ds << vsm << vss;
+    }
+
     vector<uint8> vchFromData;
     if (spParam->strFromdata.IsValid())
     {
@@ -2250,7 +2259,7 @@ CRPCResultPtr CRPCMod::RPCSignTransaction(CRPCParamPtr param)
     }
 
     bool fCompleted = false;
-    if (!pService->SignTransaction(rawTx, vchFromData, vchSendToData, vector<uint8>(), fCompleted))
+    if (!pService->SignTransaction(rawTx, vchFromData, vchSendToData, vchSignExtraData, fCompleted))
     {
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign transaction");
     }
@@ -2927,7 +2936,28 @@ CRPCResultPtr CRPCMod::RPCSignRawTransactionWithWallet(CRPCParamPtr param)
         destIn.SetTemplateId(tid);
     }
 
-    if (!pService->SignOfflineTransaction(destIn, rawTx, fCompleted))
+    vector<uint8> vchSignExtraData;
+    if (spParam->strSign_M.IsValid() && spParam->strSign_S.IsValid())
+    {
+        vector<uint8> vsm = ParseHexString(spParam->strSign_M);
+        vector<uint8> vss = ParseHexString(spParam->strSign_S);
+        CODataStream ds(vchSignExtraData);
+        ds << vsm << vss;
+    }
+
+    vector<uint8> vchFromData;
+    if (spParam->strFromdata.IsValid())
+    {
+        vchFromData = ParseHexString(spParam->strFromdata);
+    }
+
+    vector<uint8> vchSendToData;
+    if (rawTx.sendTo.IsTemplate() && spParam->strSendtodata.IsValid())
+    {
+        vchSendToData = ParseHexString(spParam->strSendtodata);
+    }
+
+    if (!pService->SignOfflineTransaction(destIn, rawTx, vchFromData, vchSendToData, vchSignExtraData, fCompleted))
     {
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign offline transaction");
     }
