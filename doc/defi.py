@@ -309,6 +309,25 @@ def getblock(blockid):
         raise Exception('getblock error: {}'.format(error))
 
 
+# RPC: getblockdetail
+def getblockdetail(blockid):
+    result, error = call({
+        'id': 1,
+        'jsonrpc': '2.0',
+        'method': 'getblockdetail',
+        'params': {
+            'block': blockid,
+        }
+    })
+
+    if result:
+        block = result
+        # print('getblockdetail success, block: {}'.format(block))
+        return block
+    else:
+        raise Exception('getblockdetail error: {}'.format(error))
+
+
 # RPC: gettransaction
 def gettransaction(txid):
     result, error = call({
@@ -617,7 +636,7 @@ def check(path):
             error = False
             # loop to get every block of blockid array
             for hash in blockids:
-                block = getblock(hash)
+                block = getblockdetail(hash)
 
                 # if block is vacant, continue to get next height block
                 if block['type'].startswith('vacant'):
@@ -631,9 +650,7 @@ def check(path):
                     break
 
                 # loop to check every tx in block
-                for txid in block['tx']:
-                    tx = gettransaction(txid)
-
+                for tx in block['tx']:
                     if len(reward) == 0:
                         break
 
@@ -675,6 +692,9 @@ def check(path):
             elif len(reward) == 0:
                 print('Checking success height: {}'.format(height))
                 break
+            else:
+                h = h + 1
+                time.sleep(10)
 
 
 if __name__ == "__main__":

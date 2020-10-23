@@ -231,6 +231,8 @@ def Compute(addrset, total_level, input, output, count):
 
         output.append({'height': height, 'reward': result})
 
+        print("computed count: %d, now: %d, height: %d" % (count, i, height))
+
     addrlist = [
         {'addr': k, 'info': v['stake']} for k, v in addrset.items()]
     addrlist = sorted(addrlist, key=lambda x: x['addr'])
