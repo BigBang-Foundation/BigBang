@@ -23,7 +23,7 @@ def MarkTreeLevel(root_addr, root_level, addrset):
 
 
 # Compute DeFi rewards
-def Compute(addrset, total_level, input, output, count):
+def Compute(addrset, total_level, input, output, begin, end):
     makeorigin = input['makeorigin']
     delegate_addr = makeorigin['delegate_addr']
     amount = makeorigin['amount'] * COIN
@@ -58,7 +58,7 @@ def Compute(addrset, total_level, input, output, count):
         mapcoinbasepercent[0]['height']
     coinbase = 0
 
-    for i in range(0, count):
+    for i in range(begin, end):
         # to upper limit
         if supply >= maxsupply:
             break
@@ -231,7 +231,8 @@ def Compute(addrset, total_level, input, output, count):
 
         output.append({'height': height, 'reward': result})
 
-        print("computed count: %d, now: %d, height: %d" % (count, i, height))
+        print("computed begin: %d, end: %d, now: %d, height: %d" %
+              (begin, end, i, height))
 
     addrlist = [
         {'addr': k, 'info': v['stake']} for k, v in addrset.items()]
@@ -247,7 +248,8 @@ if __name__ == "__main__":
             'Not enough param, should be "python defi_mock.py file.json count"')
 
     path = os.path.join(os.getcwd(), sys.argv[1])
-    count = int(sys.argv[2])
+    begin = 0 if len(sys.argv) == 3 else int(sys.argv[2])
+    end = int(sys.argv[2]) if len(sys.argv) == 3 else int(sys.argv[3])
 
     input = {}
     output = []
@@ -313,7 +315,7 @@ if __name__ == "__main__":
     #print ("addrset:", addrset)
 
     # compute reward
-    Compute(addrset, total_level, input, output, count)
+    Compute(addrset, total_level, input, output, begin, end)
 
     # output
     result = {
