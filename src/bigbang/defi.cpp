@@ -231,7 +231,7 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
     }
 
     // compute promotion power
-    multimap<uint64, pair<CDestination, int64>> mapPower;
+    multimap<uint64, tuple<CDestination, int64, int64>> mapPower;
     uint64 nTotal = 0;
     relation.PostorderTraversal([&](NodePtr pNode) {
         // amount
@@ -288,7 +288,7 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
         if (pNode->data.nPower > 0)
         {
             nTotal += pNode->data.nPower;
-            mapPower.insert(make_pair(pNode->data.nPower, make_pair(pNode->key, nAmount)));
+            mapPower.insert(make_pair(pNode->data.nPower, make_tuple(pNode->key, nAmount, pNode->data.nAmount)));
         }
 
         return true;
@@ -301,8 +301,9 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
         for (auto& p : mapPower)
         {
             CDeFiReward reward;
-            reward.dest = p.second.first;
-            reward.nAmount = p.second.second;
+            reward.dest = get<0>(p.second);
+            reward.nAmount = get<1>(p.second);
+            reward.nAchievement = get<2>(p.second);
             reward.nPower = p.first;
             reward.nPromotionReward = fUnitReward * p.first;
             reward.nReward = reward.nPromotionReward;

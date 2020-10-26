@@ -2262,6 +2262,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
         auto it = destIdx.find(stake.dest);
         if (it != destIdx.end())
         {
+            reward.nAchievement = it->nAchievement;
             reward.nPower = it->nPower;
             reward.nPromotionReward = it->nPromotionReward;
             reward.nReward += it->nPromotionReward;

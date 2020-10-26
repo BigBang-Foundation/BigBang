@@ -363,9 +363,9 @@ void CBlockMaker::ArrangeBlockTx(CBlock& block, const uint256& hashFork, const C
             txNew.nAmount = reward.nReward - txNew.nTxFee;
             // save reward detailed
             CODataStream os(txNew.vchData, 40);
-            os << reward.nAmount << reward.nRank << reward.nStakeReward << reward.nPower << reward.nPromotionReward;
-            StdWarn("BlockMaker", "reward Amount %d Rank %d StakeReward %d Power %d PromotionReward %d", reward.nAmount, reward.nRank, reward.nStakeReward,
-                reward.nPower, reward.nPromotionReward);
+            os << reward.nAmount << reward.nRank << reward.nStakeReward << reward.nAchievement << reward.nPower << reward.nPromotionReward;
+            StdDebug("BlockMaker", "reward Amount: %ld, Rank: %lu, StakeReward: %ld, achievement: %ld, Power: %lu, PromotionReward: %ld",
+                     reward.nAmount, reward.nRank, reward.nStakeReward, reward.nAchievement, reward.nPower, reward.nPromotionReward);
             if (rewardTxSize + GetSerializeSize(txNew) > nRestOfSize)
             {
                 break;
