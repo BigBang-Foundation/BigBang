@@ -231,6 +231,8 @@ def Compute(addrset, total_level, input, output, count):
 
         output.append({'height': height, 'reward': result})
 
+        print("computed count: %d, now: %d, height: %d" % (count, i, height))
+
     addrlist = [
         {'addr': k, 'info': v['stake']} for k, v in addrset.items()]
     addrlist = sorted(addrlist, key=lambda x: x['addr'])
@@ -242,7 +244,7 @@ if __name__ == "__main__":
     # json path
     if len(sys.argv) < 3:
         raise Exception(
-            'Not enough param, should be "python defi_mock.py input.json output.json count"')
+            'Not enough param, should be "python defi_mock.py file.json count"')
 
     path = os.path.join(os.getcwd(), sys.argv[1])
     count = int(sys.argv[2])

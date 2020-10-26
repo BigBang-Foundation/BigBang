@@ -2080,7 +2080,7 @@ list<CDeFiReward> CBlockChain::GetDeFiReward(const uint256& forkid, const uint25
     CBlockIndex* pIndexPrev = nullptr;
     if (!cntrBlock.RetrieveIndex(hashPrev, &pIndexPrev))
     {
-        Error("GetDeFiSectionList retrieve prev block index fail: %s", hashPrev.ToString().c_str());
+        Error("GetDeFiReward retrieve prev block index fail: %s", hashPrev.ToString().c_str());
         return listReward;
     }
 
@@ -2090,7 +2090,18 @@ list<CDeFiReward> CBlockChain::GetDeFiReward(const uint256& forkid, const uint25
 
     for (const uint256& section : listSection)
     {
-        const CDeFiRewardSet& s = defiReward.GetForkSection(forkid, section);
+        bool fIsNull;
+        CDeFiRewardSet& s = defiReward.GetForkSection(forkid, section, fIsNull);
+
+        // generate section reward
+        if (fIsNull)
+        {
+            CProfile profile = defiReward.GetForkProfile(forkid);
+            CDeFiRewardSet st = ComputeDeFiSection(forkid, section, profile);
+            defiReward.AddForkSection(forkid, section, std::move(st));
+            s = defiReward.GetForkSection(forkid, section, fIsNull);
+        }
+
         const CDeFiRewardSetByReward& idxByReward = s.get<1>();
         CDeFiRewardSetByReward::iterator it = idxByReward.begin();
         if (section == nLastSection)
@@ -2110,6 +2121,11 @@ list<CDeFiReward> CBlockChain::GetDeFiReward(const uint256& forkid, const uint25
         for (; it != idxByReward.end() && (nMax < 0 || listReward.size() < nMax); ++it)
         {
             listReward.push_back(*it);
+        }
+
+        if (listReward.size() >= nMax)
+        {
+            break;
         }
     }
 
@@ -2139,8 +2155,8 @@ list<uint256> CBlockChain::GetDeFiSectionList(const uint256& forkid, const CBloc
     {
         if (pIndexLast->GetBlockHeight() == prevHeight + 1)
         {
-            listSection.push_front(pIndexLast->GetBlockHash());
-            prevHeight = defiReward.PrevRewardHeight(forkid, pIndexLast->GetBlockHeight());
+            listSection.push_front(pIndexLast->pPrev->GetBlockHash());
+            prevHeight = defiReward.PrevRewardHeight(forkid, prevHeight);
         }
         pIndexLast = pIndexLast->pPrev;
     }
@@ -2177,7 +2193,6 @@ list<uint256> CBlockChain::GetDeFiSectionList(const uint256& forkid, const CBloc
     }
 
     CProfile profile = defiReward.GetForkProfile(forkid);
-
     for (auto it = listSection.begin(); it != listSection.end(); it++)
     {
         const uint256& section = *it;
@@ -2194,10 +2209,6 @@ list<uint256> CBlockChain::GetDeFiSectionList(const uint256& forkid, const CBloc
                 listSection.erase(it, listSection.end());
                 break;
             }
-
-            // generate section
-            CDeFiRewardSet s = ComputeDeFiSection(forkid, section, profile);
-            defiReward.AddForkSection(forkid, section, std::move(s));
         }
     }
 

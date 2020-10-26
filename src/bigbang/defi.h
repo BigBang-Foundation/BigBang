@@ -67,7 +67,7 @@ public:
     // return exist section cache of fork or not
     bool ExistForkSection(const uint256& forkid, const uint256& section);
     // return the section reward set. Should use ExistForkSection to determine if it exists first.
-    const CDeFiRewardSet& GetForkSection(const uint256& forkid, const uint256& section);
+    CDeFiRewardSet& GetForkSection(const uint256& forkid, const uint256& section, bool& fIsNull);
     // Add a section reward set of fork
     void AddForkSection(const uint256& forkid, const uint256& hash, CDeFiRewardSet&& reward);
 

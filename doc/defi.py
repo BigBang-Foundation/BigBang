@@ -12,7 +12,7 @@ from pprint import pprint
 COIN = 1000000
 TX_FEE = 0.01
 
-rpcurl = 'http://127.0.0.1:9901'
+rpcurl = 'http://127.0.0.1:9902'
 
 genesis_privkey = '9df809804369829983150491d1086b99f6493356f91ccc080e661a76a976a4ee'
 genesis_addr = '1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm'
@@ -307,6 +307,25 @@ def getblock(blockid):
         return block
     else:
         raise Exception('getblock error: {}'.format(error))
+
+
+# RPC: getblockdetail
+def getblockdetail(blockid):
+    result, error = call({
+        'id': 1,
+        'jsonrpc': '2.0',
+        'method': 'getblockdetail',
+        'params': {
+            'block': blockid,
+        }
+    })
+
+    if result:
+        block = result
+        # print('getblockdetail success, block: {}'.format(block))
+        return block
+    else:
+        raise Exception('getblockdetail error: {}'.format(error))
 
 
 # RPC: gettransaction
@@ -617,7 +636,7 @@ def check(path):
             error = False
             # loop to get every block of blockid array
             for hash in blockids:
-                block = getblock(hash)
+                block = getblockdetail(hash)
 
                 # if block is vacant, continue to get next height block
                 if block['type'].startswith('vacant'):
@@ -631,9 +650,7 @@ def check(path):
                     break
 
                 # loop to check every tx in block
-                for txid in block['tx']:
-                    tx = gettransaction(txid)
-
+                for tx in block['tx']:
                     if len(reward) == 0:
                         break
 
@@ -675,6 +692,9 @@ def check(path):
             elif len(reward) == 0:
                 print('Checking success height: {}'.format(height))
                 break
+            else:
+                h = h + 1
+                time.sleep(10)
 
 
 if __name__ == "__main__":
