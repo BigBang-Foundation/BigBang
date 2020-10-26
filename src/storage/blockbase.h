@@ -149,7 +149,7 @@ public:
         }
         void Disable()
         {
-            SetNull();
+            SetReverseNull();
             nOpt--;
         }
         bool IsModified() const
@@ -186,6 +186,7 @@ public:
     void AddBlock(const uint256& hash, const CBlockEx& block);
     void RemoveBlock(const uint256& hash, const CBlockEx& block);
     void GetUnspentChanges(std::vector<CTxUnspent>& vAddNew, std::vector<CTxOutPoint>& vRemove);
+    void GetUnspentChanges(std::vector<CTxUnspent>& vAddNew, std::vector<CTxUnspent>& vRemove);
     void GetTxUpdated(std::set<uint256>& setUpdate);
     void GetTxRemoved(std::vector<uint256>& vRemove);
     void GetBlockChanges(std::vector<CBlockEx>& vAdd, std::vector<CBlockEx>& vRemove) const;
