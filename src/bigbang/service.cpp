@@ -623,7 +623,7 @@ bool CService::SignTransaction(CTransaction& tx, const vector<uint8>& vchDestInD
     int32 nForkHeight = GetForkHeight(hashFork);
     if (!pWallet->SignTransaction(destIn, tx, vchDestInData, vchSendToData, vchSignExtraData, hashFork, nForkHeight, fCompleted))
     {
-        StdError("CService", "Sign ransaction: Sign Transaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
+        StdError("CService", "Sign ransaction: Sign Transaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), CAddress(destIn).ToString().c_str());
         return false;
     }
 
@@ -634,7 +634,7 @@ bool CService::SignTransaction(CTransaction& tx, const vector<uint8>& vchDestInD
     {
         return true;
     }
-    StdError("CService", "Sign Transaction: ValidateTransaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
+    StdError("CService", "Sign Transaction: ValidateTransaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), CAddress(destIn).ToString().c_str());
     return false;
 }
 
@@ -979,6 +979,16 @@ bool CService::AesEncrypt(const crypto::CPubKey& pubkeyLocal, const crypto::CPub
 bool CService::AesDecrypt(const crypto::CPubKey& pubkeyLocal, const crypto::CPubKey& pubkeyRemote, const std::vector<uint8>& vCiphertext, std::vector<uint8>& vMessage)
 {
     return pWallet->AesDecrypt(pubkeyLocal, pubkeyRemote, vCiphertext, vMessage);
+}
+
+bool CService::AddMemKey(const uint256& secret, crypto::CPubKey& pubkey)
+{
+    return pWallet->AddMemKey(secret, pubkey);
+}
+
+void CService::RemoveMemKey(const crypto::CPubKey& pubkey)
+{
+    return pWallet->RemoveMemKey(pubkey);
 }
 
 bool CService::GetWork(vector<unsigned char>& vchWorkData, int& nPrevBlockHeight,

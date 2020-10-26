@@ -299,6 +299,8 @@ public:
     virtual bool SynchronizeTxSet(const CTxSetChange& change) = 0;
     virtual bool AddNewTx(const uint256& hashFork, const CAssembledTx& tx) = 0;
     virtual bool AddNewFork(const uint256& hashFork, const uint256& hashParent, int nOriginHeight) = 0;
+    virtual bool AddMemKey(const uint256& secret, crypto::CPubKey& pubkey) = 0;
+    virtual void RemoveMemKey(const crypto::CPubKey& pubkey) = 0;
     /* Sync */
     virtual bool SynchronizeWalletTx(const CDestination& destNew) = 0;
     virtual bool ResynchronizeWalletTx() = 0;
@@ -410,6 +412,8 @@ public:
     virtual Errno SendOfflineSignedTransaction(CTransaction& tx) = 0;
     virtual bool AesEncrypt(const crypto::CPubKey& pubkeyLocal, const crypto::CPubKey& pubkeyRemote, const std::vector<uint8>& vMessage, std::vector<uint8>& vCiphertext) = 0;
     virtual bool AesDecrypt(const crypto::CPubKey& pubkeyLocal, const crypto::CPubKey& pubkeyRemote, const std::vector<uint8>& vCiphertext, std::vector<uint8>& vMessage) = 0;
+    virtual bool AddMemKey(const uint256& secret, crypto::CPubKey& pubkey) = 0;
+    virtual void RemoveMemKey(const crypto::CPubKey& pubkey) = 0;
     /* Mint */
     virtual bool GetWork(std::vector<unsigned char>& vchWorkData, int& nPrevBlockHeight,
                          uint256& hashPrev, uint32& nPrevTime, int& nAlgo, int& nBits,

@@ -2862,6 +2862,12 @@
                     "default": 0,
                     "required": false,
                     "opt": "type"
+                },
+                "signsecret": {
+                    "type": "string",
+                    "desc": "sign secret",
+                    "required": false,
+                    "opt": "sec"
                 }
             }
         },
@@ -3157,6 +3163,12 @@
                     "desc": "If the 'to' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
                     "required": false,
                     "opt": "td"
+                },
+                "signsecret": {
+                    "type": "string",
+                    "desc": "sign secret",
+                    "required": false,
+                    "opt": "sec"
                 }
             }
         },
@@ -4421,6 +4433,12 @@
                     "desc": "If the 'to' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
                     "required": false,
                     "opt": "td"
+                },
+                "signsecret": {
+                    "type": "string",
+                    "desc": "sign secret",
+                    "required": false,
+                    "opt": "sec"
                 }
             }
         },

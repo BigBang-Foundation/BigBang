@@ -299,5 +299,13 @@ bool CKey::UpdateCipher(uint32 nVersionIn, const CCryptoString& strPassphrase)
     return false;
 }
 
+void CKey::MemSign(const uint256& secret, const uint256& pubkey, const uint256& hash, std::vector<uint8>& vchSig)
+{
+    CCryptoKey key;
+    key.secret = secret;
+    key.pubkey = pubkey;
+    CryptoSign(key, &hash, sizeof(hash), vchSig);
+}
+
 } // namespace crypto
 } // namespace bigbang
