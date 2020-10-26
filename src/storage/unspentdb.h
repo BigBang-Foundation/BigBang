@@ -144,13 +144,11 @@ public:
     CListAddressUnspentWalker() {}
     bool Walk(const CTxOutPoint& txout, const CTxOut& output) override
     {
-        //mapUnspent.insert(std::make_pair(txout, output));
         mapAddressAmount[output.destTo] += output.nAmount;
         return true; //continue walk through processing
     }
 
 public:
-    //std::map<CTxOutPoint, CTxOut> mapUnspent;
     std::map<CDestination, int64> mapAddressAmount;
 };
 

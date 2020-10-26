@@ -149,7 +149,6 @@ public:
         }
         void Disable()
         {
-            //SetNull();
             SetReverseNull();
             nOpt--;
         }

@@ -1931,25 +1931,15 @@ bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& v
 
     for (const CTxUnspent& unspent : vAddNew)
     {
-        //walker.mapUnspent[static_cast<const CTxOutPoint&>(unspent)] = unspent.output;
         walker.mapAddressAmount[unspent.output.destTo] += unspent.output.nAmount;
     }
     for (const CTxUnspent& unspent : vRemove)
     {
-        //walker.mapUnspent[txout].SetNull();
         if(unspent.output.nAmount < 0)
         {
             walker.mapAddressAmount[unspent.output.destTo] -= std::abs(unspent.output.nAmount);
         }
     }
-
-    // for (auto it = walker.mapUnspent.begin(); it != walker.mapUnspent.end(); ++it)
-    // {
-    //     if (!it->second.IsNull())
-    //     {
-    //         mapAddressAmount[it->second.destTo] += it->second.nAmount;
-    //     }
-    // }
     mapAddressAmount = walker.mapAddressAmount;
     return true;
 }
