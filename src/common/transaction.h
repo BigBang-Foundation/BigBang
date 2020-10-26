@@ -268,13 +268,6 @@ public:
         nTxTime = 0;
         nLockUntil = 0;
     }
-    void SetReverseNull()
-    {
-        if(nAmount > 0)
-        {
-            nAmount = -nAmount;
-        }
-    }
     bool IsNull() const
     {
         return (destTo.IsNull() || nAmount <= 0);

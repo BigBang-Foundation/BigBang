@@ -239,29 +239,6 @@ void CBlockView::GetUnspentChanges(vector<CTxUnspent>& vAddNew, vector<CTxOutPoi
     }
 }
 
-void CBlockView::GetUnspentChanges(std::vector<CTxUnspent>& vAddNew, std::vector<CTxUnspent>& vRemove)
-{
-    vAddNew.reserve(mapUnspent.size());
-    vRemove.reserve(mapUnspent.size());
-
-    for (map<CTxOutPoint, CUnspent>::iterator it = mapUnspent.begin(); it != mapUnspent.end(); ++it)
-    {
-        const CTxOutPoint& out = (*it).first;
-        const CUnspent& unspent = (*it).second;
-        if (unspent.IsModified())
-        {
-            if (!unspent.IsNull())
-            {
-                vAddNew.push_back(CTxUnspent(out, unspent));
-            }
-            else
-            {
-                vRemove.push_back(CTxUnspent(out, unspent));
-            }
-        }
-    }
-}
-
 void CBlockView::GetTxUpdated(set<uint256>& setUpdate)
 {
     for (int i = 0; i < vTxRemove.size(); i++)
@@ -1926,18 +1903,23 @@ bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& v
     }
 
     std::vector<CTxUnspent> vAddNew;
-    std::vector<CTxUnspent> vRemove;
+    std::vector<CTxOutPoint> vRemove;
     view.GetUnspentChanges(vAddNew, vRemove);
 
     for (const CTxUnspent& unspent : vAddNew)
     {
-        walker.mapAddressAmount[unspent.output.destTo] += unspent.output.nAmount;
+        walker.mapUnspent[static_cast<const CTxOutPoint&>(unspent)] = unspent.output;
     }
-    for (const CTxUnspent& unspent : vRemove)
+    for (const CTxOutPoint& txout : vRemove)
     {
-        if(unspent.output.nAmount < 0)
+        walker.mapUnspent[txout].SetNull();
+    }
+
+    for (auto it = walker.mapUnspent.begin(); it != walker.mapUnspent.end(); ++it)
+    {
+        if (!it->second.IsNull())
         {
-            walker.mapAddressAmount[unspent.output.destTo] -= std::abs(unspent.output.nAmount);
+            mapAddressAmount[it->second.destTo] += it->second.nAmount;
         }
     }
     mapAddressAmount = walker.mapAddressAmount;
