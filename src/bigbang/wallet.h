@@ -168,6 +168,8 @@ public:
     bool LoadTxUnspent(const CWalletTx& wtx);
     bool LoadTxSpent(const CWalletTx& wtx);
     bool AddNewFork(const uint256& hashFork, const uint256& hashParent, int nOriginHeight) override;
+    bool AddMemKey(const uint256& secret, crypto::CPubKey& pubkey) override;
+    void RemoveMemKey(const crypto::CPubKey& pubkey) override;
     /* Resync */
     bool SynchronizeWalletTx(const CDestination& destNew) override;
     bool ResynchronizeWalletTx() override;
@@ -219,6 +221,7 @@ protected:
     std::map<CDestination, CWalletUnspent> mapWalletUnspent;
     std::map<uint256, CWalletFork> mapFork;
     std::set<CTxOutPoint> setWalletTxOut;
+    std::map<crypto::CPubKey, uint256> mapMemSignKey;
 };
 
 // dummy wallet for on wallet server
@@ -342,6 +345,13 @@ public:
                             int nOriginHeight) override
     {
         return true;
+    }
+    virtual bool AddMemKey(const uint256& secret, crypto::CPubKey& pubkey) override
+    {
+        return true;
+    }
+    virtual void RemoveMemKey(const crypto::CPubKey& pubkey) override
+    {
     }
 
     virtual bool SynchronizeWalletTx(const CDestination& destNew) override

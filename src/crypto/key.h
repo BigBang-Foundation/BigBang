@@ -60,6 +60,8 @@ public:
     void Lock();
     bool Unlock(const CCryptoString& strPassphrase = "");
 
+    static void MemSign(const uint256& secret, const uint256& pubkey, const uint256& hash, std::vector<uint8>& vchSig);
+
 protected:
     bool UpdateCipher(uint32 nVersionIn = INIT, const CCryptoString& strPassphrase = "");
 

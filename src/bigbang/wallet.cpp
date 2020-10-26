@@ -931,6 +931,26 @@ bool CWallet::AddNewFork(const uint256& hashFork, const uint256& hashParent, int
     return true;
 }
 
+bool CWallet::AddMemKey(const uint256& secret, crypto::CPubKey& pubkey)
+{
+    crypto::CKey key;
+    if (!key.SetSecret(crypto::CCryptoKeyData(secret.begin(), secret.end())))
+    {
+        return false;
+    }
+    pubkey = key.GetPubKey();
+    if (Have(pubkey, crypto::CKey::PRIVATE_KEY))
+    {
+        return false;
+    }
+    return mapMemSignKey.insert(make_pair(pubkey, secret)).second;
+}
+
+void CWallet::RemoveMemKey(const crypto::CPubKey& pubkey)
+{
+    mapMemSignKey.erase(pubkey);
+}
+
 bool CWallet::ResynchronizeWalletTx()
 {
     boost::unique_lock<boost::shared_mutex> wlock(rwWalletTx);
@@ -1557,11 +1577,23 @@ bool CWallet::SignPubKey(const crypto::CPubKey& pubkey, const uint256& hash, vec
     auto it = mapKeyStore.find(pubkey);
     if (it == mapKeyStore.end())
     {
+        auto mt = mapMemSignKey.find(pubkey);
+        if (mt != mapMemSignKey.end())
+        {
+            crypto::CKey::MemSign(mt->second, pubkey, hash, vchSig);
+            return true;
+        }
         StdError("CWallet", "SignPubKey: find privkey fail, pubkey: %s", pubkey.GetHex().c_str());
         return false;
     }
     if (!it->second.key.IsPrivKey())
     {
+        auto mt = mapMemSignKey.find(pubkey);
+        if (mt != mapMemSignKey.end())
+        {
+            crypto::CKey::MemSign(mt->second, pubkey, hash, vchSig);
+            return true;
+        }
         StdError("CWallet", "SignPubKey: can't sign tx by non-privkey, pubkey: %s", pubkey.GetHex().c_str());
         return false;
     }

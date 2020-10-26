@@ -1902,13 +1902,41 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         vchSendToData = ParseHexString(spParam->strSendtodata);
     }
 
+    bool fMemSig = false;
+    crypto::CPubKey memPubkey;
+    if (spParam->strSignsecret.IsValid())
+    {
+        uint256 hashSignsecret;
+        if (hashSignsecret.SetHex(spParam->strSignsecret) != spParam->strSignsecret.size())
+        {
+            throw CRPCException(RPC_WALLET_ERROR, "signsecret error");
+        }
+        if (pService->AddMemKey(hashSignsecret, memPubkey))
+        {
+            fMemSig = true;
+        }
+    }
+
     if (!pService->SignTransaction(txNew, vchFromData, vchSendToData, vchSignExtraData, fCompleted))
     {
+        if (fMemSig)
+        {
+            pService->RemoveMemKey(memPubkey);
+        }
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign transaction");
     }
     if (!fCompleted)
     {
+        if (fMemSig)
+        {
+            pService->RemoveMemKey(memPubkey);
+        }
         throw CRPCException(RPC_WALLET_ERROR, "The signature is not completed");
+    }
+
+    if (fMemSig)
+    {
+        pService->RemoveMemKey(memPubkey);
     }
 
     Errno err = pService->SendTransaction(txNew);
@@ -2232,10 +2260,34 @@ CRPCResultPtr CRPCMod::RPCSignTransaction(CRPCParamPtr param)
         vchSendToData = ParseHexString(spParam->strSendtodata);
     }
 
+    bool fMemSig = false;
+    crypto::CPubKey memPubkey;
+    if (spParam->strSignsecret.IsValid())
+    {
+        uint256 hashSignsecret;
+        if (hashSignsecret.SetHex(spParam->strSignsecret) != spParam->strSignsecret.size())
+        {
+            throw CRPCException(RPC_WALLET_ERROR, "signsecret error");
+        }
+        if (pService->AddMemKey(hashSignsecret, memPubkey))
+        {
+            fMemSig = true;
+        }
+    }
+
     bool fCompleted = false;
     if (!pService->SignTransaction(rawTx, vchFromData, vchSendToData, vchSignExtraData, fCompleted))
     {
+        if (fMemSig)
+        {
+            pService->RemoveMemKey(memPubkey);
+        }
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign transaction");
+    }
+
+    if (fMemSig)
+    {
+        pService->RemoveMemKey(memPubkey);
     }
 
     CBufStream ssNew;
@@ -2924,9 +2976,33 @@ CRPCResultPtr CRPCMod::RPCSignRawTransactionWithWallet(CRPCParamPtr param)
         vchSendToData = ParseHexString(spParam->strSendtodata);
     }
 
+    bool fMemSig = false;
+    crypto::CPubKey memPubkey;
+    if (spParam->strSignsecret.IsValid())
+    {
+        uint256 hashSignsecret;
+        if (hashSignsecret.SetHex(spParam->strSignsecret) != spParam->strSignsecret.size())
+        {
+            throw CRPCException(RPC_WALLET_ERROR, "signsecret error");
+        }
+        if (pService->AddMemKey(hashSignsecret, memPubkey))
+        {
+            fMemSig = true;
+        }
+    }
+
     if (!pService->SignOfflineTransaction(destIn, rawTx, vchFromData, vchSendToData, vchSignExtraData, fCompleted))
     {
+        if (fMemSig)
+        {
+            pService->RemoveMemKey(memPubkey);
+        }
         throw CRPCException(RPC_WALLET_ERROR, "Failed to sign offline transaction");
+    }
+
+    if (fMemSig)
+    {
+        pService->RemoveMemKey(memPubkey);
     }
 
     CBufStream ssNew;

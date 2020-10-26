@@ -2909,6 +2909,7 @@ bool CBlockBase::LoadDB()
     CBlockWalker walker(this);
     if (!dbBlock.WalkThroughBlock(walker))
     {
+        StdLog("CBlockBase", "LoadDB: WalkThroughBlock fail");
         ClearCache();
         return false;
     }
@@ -2916,6 +2917,7 @@ bool CBlockBase::LoadDB()
     vector<pair<uint256, uint256>> vFork;
     if (!dbBlock.ListFork(vFork))
     {
+        StdLog("CBlockBase", "LoadDB: ListFork fail");
         ClearCache();
         return false;
     }
@@ -2924,17 +2926,20 @@ bool CBlockBase::LoadDB()
         CBlockIndex* pIndex = GetIndex(vFork[i].second);
         if (pIndex == nullptr)
         {
+            StdLog("CBlockBase", "LoadDB: GetIndex fail, forkid: %s, lastblock: %s", vFork[i].first.GetHex().c_str(), vFork[i].second.GetHex().c_str());
             ClearCache();
             return false;
         }
         CProfile profile;
         if (!LoadForkProfile(pIndex->pOrigin, profile))
         {
+            StdLog("CBlockBase", "LoadDB: LoadForkProfile fail, forkid: %s", vFork[i].first.GetHex().c_str());
             return false;
         }
         boost::shared_ptr<CBlockFork> spFork = AddNewFork(profile, pIndex);
         if (spFork == nullptr)
         {
+            StdLog("CBlockBase", "LoadDB: AddNewFork fail, forkid: %s", vFork[i].first.GetHex().c_str());
             return false;
         }
     }
