@@ -142,14 +142,22 @@ class CListAddressUnspentWalker : public CForkUnspentDBWalker
 {
 public:
     CListAddressUnspentWalker() {}
+    CListAddressUnspentWalker(const std::vector<CTxOutPoint>& vRemove)
+    {
+        setRemove.insert(vRemove.begin(), vRemove.end());
+    }
     bool Walk(const CTxOutPoint& txout, const CTxOut& output) override
     {
-        mapAddressAmount[output.destTo] += output.nAmount;
+        if(setRemove.count(txout) == 0)
+        {
+            mapAddressAmount[output.destTo] += output.nAmount;
+        }   
         return true; //continue walk through processing
     }
 
 public:
     std::map<CDestination, int64> mapAddressAmount;
+    std::set<CTxOutPoint> setRemove;
 };
 
 //////////////////////////////
