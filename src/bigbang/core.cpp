@@ -240,9 +240,9 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
             }
         }
     }
-    if (tx.nType == CTransaction::TX_DEFI_REWARD && (tx.vchData.size() > 40))
+    if (tx.nType == CTransaction::TX_DEFI_REWARD && (tx.vchData.size() > 48))
     {
-        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi reward tx data length is not 40\n");
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi reward tx data length is not 48\n");
     }
     if (!tx.vchData.empty() && (tx.nType == CTransaction::TX_WORK || tx.nType == CTransaction::TX_STAKE))
     {
@@ -719,7 +719,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     {
         return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
     }
-    if(tx.nType == CTransaction::TX_DEFI_RELATION && (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
     }
@@ -868,7 +868,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
     }
-    if(tx.nType == CTransaction::TX_DEFI_RELATION && (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
     }

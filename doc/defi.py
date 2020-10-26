@@ -640,7 +640,6 @@ def check(path):
 
                 # if block is vacant, continue to get next height block
                 if block['type'].startswith('vacant'):
-                    h = h + 1
                     break
 
                 # if no tx in block, print error
@@ -681,9 +680,10 @@ def check(path):
                             print('ERROR: addr reward error in height, addr: {}, height: {} should be: {}, actrual: {}'.format(
                                 tx['sendto'], height, should_reward, actrual_reward))
                             error = True
+                            break
                         del(reward[tx['sendto']])
 
-                if len(reward) == 0:
+                if error or len(reward) == 0:
                     break
 
             if error:
@@ -694,7 +694,7 @@ def check(path):
                 break
             else:
                 h = h + 1
-                time.sleep(10)
+                time.sleep(1)
 
 
 if __name__ == "__main__":
