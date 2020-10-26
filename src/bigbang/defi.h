@@ -40,7 +40,7 @@ class CDeFiForkReward
 public:
     enum
     {
-        MAX_REWARD_CACHE = 20
+        MAX_REWARD_CACHE = 5
     };
 
     typedef std::map<uint256, CDeFiRewardSet> MapSectionReward;
