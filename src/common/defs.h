@@ -2,8 +2,8 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef BIGBANG_DEFS_H
-#define BIGBANG_DEFS_H
+#ifndef COMMON_DEFS_H
+#define COMMON_DEFS_H
 
 //hard fork: change of hash algorithm and its input, and update of template address of multiple signature
 
@@ -22,4 +22,4 @@ extern "C"
 }
 #endif
 
-#endif //BIGBANG_DEFS_H
+#endif //COMMON_DEFS_H

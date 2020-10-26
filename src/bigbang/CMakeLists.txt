@@ -54,6 +54,7 @@ set(src
     datastat.cpp        datastat.h
     recovery.cpp        recovery.h
     checkrepair.cpp     checkrepair.h
+    defi.cpp            defi.h
     event.h
     base.h
     struct.h

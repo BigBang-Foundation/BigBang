@@ -20,8 +20,10 @@ set(sources
     crypto_tests.cpp
     delegate_tests.cpp
     storage_tests.cpp
+    structure_tests.cpp
     txpool_tests.cpp
     util_tests.cpp
+    defi_test.cpp
 )
 
 #set(lib_src ../src/common/destination.h ../src/common/destination.cpp)
