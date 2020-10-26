@@ -239,6 +239,29 @@ void CBlockView::GetUnspentChanges(vector<CTxUnspent>& vAddNew, vector<CTxOutPoi
     }
 }
 
+void CBlockView::GetUnspentChanges(std::vector<CTxUnspent>& vAddNew, std::vector<CTxUnspent>& vRemove)
+{
+    vAddNew.reserve(mapUnspent.size());
+    vRemove.reserve(mapUnspent.size());
+
+    for (map<CTxOutPoint, CUnspent>::iterator it = mapUnspent.begin(); it != mapUnspent.end(); ++it)
+    {
+        const CTxOutPoint& out = (*it).first;
+        const CUnspent& unspent = (*it).second;
+        if (unspent.IsModified())
+        {
+            if (!unspent.IsNull())
+            {
+                vAddNew.push_back(CTxUnspent(out, unspent));
+            }
+            else
+            {
+                vRemove.push_back(CTxUnspent(out, unspent));
+            }
+        }
+    }
+}
+
 void CBlockView::GetTxUpdated(set<uint256>& setUpdate)
 {
     for (int i = 0; i < vTxRemove.size(); i++)
@@ -1903,25 +1926,31 @@ bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& v
     }
 
     std::vector<CTxUnspent> vAddNew;
-    std::vector<CTxOutPoint> vRemove;
+    std::vector<CTxUnspent> vRemove;
     view.GetUnspentChanges(vAddNew, vRemove);
 
     for (const CTxUnspent& unspent : vAddNew)
     {
-        walker.mapUnspent[static_cast<const CTxOutPoint&>(unspent)] = unspent.output;
+        //walker.mapUnspent[static_cast<const CTxOutPoint&>(unspent)] = unspent.output;
+        walker.mapAddressAmount[unspent.output.destTo] += unspent.output.nAmount;
     }
-    for (const CTxOutPoint& txout : vRemove)
+    for (const CTxUnspent& unspent : vRemove)
     {
-        walker.mapUnspent[txout].SetNull();
-    }
-
-    for (auto it = walker.mapUnspent.begin(); it != walker.mapUnspent.end(); ++it)
-    {
-        if (!it->second.IsNull())
+        //walker.mapUnspent[txout].SetNull();
+        if(unspent.output.nAmount < 0)
         {
-            mapAddressAmount[it->second.destTo] += it->second.nAmount;
+            walker.mapAddressAmount[unspent.output.destTo] -= std::abs(unspent.output.nAmount);
         }
     }
+
+    // for (auto it = walker.mapUnspent.begin(); it != walker.mapUnspent.end(); ++it)
+    // {
+    //     if (!it->second.IsNull())
+    //     {
+    //         mapAddressAmount[it->second.destTo] += it->second.nAmount;
+    //     }
+    // }
+    mapAddressAmount = walker.mapAddressAmount;
     return true;
 }
 
