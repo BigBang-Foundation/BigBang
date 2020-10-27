@@ -110,7 +110,7 @@ bool CTemplateDexOrder::ValidateParam() const
     {
         return false;
     }
-    if (nValidHeight <= 0)
+    if (nValidHeight < 10)
     {
         return false;
     }
