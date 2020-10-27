@@ -142,13 +142,14 @@ void CDeFiForkReward::AddForkSection(const uint256& forkid, const uint256& hash,
     auto it = forkReward.find(forkid);
     if (it != forkReward.end())
     {
-        it->second.reward[hash] = std::move(reward);
+        auto& mapReward = it->second.reward;
+        mapReward[hash] = std::move(reward);
 
-        while (forkReward.size() > MAX_REWARD_CACHE)
+        while (mapReward.size() > MAX_REWARD_CACHE)
         {
-            if (forkReward.begin()->first != hash)
+            if (mapReward.begin()->first != hash)
             {
-                forkReward.erase(forkReward.begin());
+                mapReward.erase(mapReward.begin());
             }
             else
             {
