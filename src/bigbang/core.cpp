@@ -61,6 +61,12 @@ static const uint32 REF_VACANT_HEIGHT = 368638;
 #endif
 
 #ifdef BIGBANG_TESTNET
+static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
+#else
+static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 490566;
+#endif
+
+#ifdef BIGBANG_TESTNET
 static const int64 BBCP_TOKEN_INIT = 300000000;
 static const int64 BBCP_BASE_REWARD_TOKEN = 20;
 static const int64 BBCP_INIT_REWARD_TOKEN = 20;
@@ -820,6 +826,12 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     if (tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK && tx.nAmount < CTemplateFork::CreatedCoin())
     {
         throw DEBUG(ERR_TRANSACTION_INPUT_INVALID, "creating fork nAmount must be at least %ld", CTemplateFork::CreatedCoin());
+    }
+
+    if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_DEXMATCH
+        && nForkHeight == MATCH_VERIFY_ERROR_HEIGHT)
+    {
+        nForkHeight -= 1;
     }
 
     if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vchSig, nForkHeight, fork))
