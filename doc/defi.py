@@ -693,6 +693,7 @@ def check(path):
                 print('Checking success height: {}'.format(height))
                 break
             else:
+                h = h + 1
                 time.sleep(1)
 
 
