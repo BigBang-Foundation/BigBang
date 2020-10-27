@@ -58,7 +58,7 @@ def Compute(addrset, total_level, input, output, begin, end):
         mapcoinbasepercent[0]['height']
     coinbase = 0
 
-    for i in range(begin, end):
+    for i in range(0, end):
         # to upper limit
         if supply >= maxsupply:
             break
@@ -229,10 +229,10 @@ def Compute(addrset, total_level, input, output, begin, end):
         # dpos mint
         addrset[delegate_addr]['stake'] += (TX_FEE * len(result))
 
-        output.append({'height': height, 'reward': result})
-
-        print("computed begin: %d, end: %d, now: %d, height: %d" %
-              (begin, end, i, height))
+        if i >= begin:
+            output.append({'height': height, 'reward': result})
+            print("computed begin: %d, end: %d, now: %d, height: %d" %
+                (begin, end, i, height))
 
     addrlist = [
         {'addr': k, 'info': v['stake']} for k, v in addrset.items()]
