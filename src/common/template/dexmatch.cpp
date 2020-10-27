@@ -280,40 +280,43 @@ void CTemplateDexMatch::BuildTemplateData()
 bool CTemplateDexMatch::VerifyTxSignature(const uint256& hash, const uint16 nType, const uint256& hashAnchor, const CDestination& destTo,
                                           const vector<uint8>& vchSig, const int32 nForkHeight, bool& fCompleted) const
 {
+    vector<unsigned char> vsm;
+    vector<unsigned char> vss;
+    vector<uint8> vchSigSub;
+    xengine::CIDataStream ds(vchSig);
+    try
+    {
+        ds >> vsm >> vss >> vchSigSub;
+    }
+    catch (const std::exception& e)
+    {
+        StdError(__PRETTY_FUNCTION__, e.what());
+        return false;
+    }
     if (nForkHeight <= nSellerValidHeight)
     {
-        vector<unsigned char> vsm;
-        vector<unsigned char> vss;
-        vector<uint8> vchSigSub;
-        xengine::CIDataStream ds(vchSig);
-        try
-        {
-            ds >> vsm >> vss >> vchSigSub;
-        }
-        catch (const std::exception& e)
-        {
-            StdError(__PRETTY_FUNCTION__, e.what());
-            return false;
-        }
         return destSellerDeal.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSigSub, nForkHeight, fCompleted);
     }
-    return destSeller.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSig, nForkHeight, fCompleted);
+    return destSeller.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSigSub, nForkHeight, fCompleted);
 }
 
 bool CTemplateDexMatch::BuildDexMatchTxSignature(const std::vector<uint8>& vchSignExtraData, const std::vector<uint8>& vchPreSig, std::vector<uint8>& vchSig) const
 {
     vector<unsigned char> vsm;
     vector<unsigned char> vss;
-    xengine::CIDataStream ds(vchSignExtraData);
 
-    try
+    if (!vchSignExtraData.empty())
     {
-        ds >> vsm >> vss;
-    }
-    catch (const std::exception& e)
-    {
-        StdError(__PRETTY_FUNCTION__, e.what());
-        return false;
+        xengine::CIDataStream ds(vchSignExtraData);
+        try
+        {
+            ds >> vsm >> vss;
+        }
+        catch (const std::exception& e)
+        {
+            StdError(__PRETTY_FUNCTION__, e.what());
+            return false;
+        }
     }
 
     std::vector<uint8_t> vchTempSigData;
