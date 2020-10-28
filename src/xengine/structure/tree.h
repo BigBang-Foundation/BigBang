@@ -52,13 +52,6 @@ public:
       : spRoot(spRootIn)
     {
     }
-    ~CMultiwayTree()
-    {
-        PostorderTraversal([](NodePtr ptr) {
-            ptr->setChildren.clear();
-            return true;
-        });
-    }
 
     // postorder traversal
     // walker: bool (*function)(std::shared_ptr<CTreeNode<K, D>>)
@@ -129,10 +122,7 @@ public:
     std::map<K, TreePtr> mapRoot;
 
     CForest() {}
-    ~CForest()
-    {
-        Clear();
-    }
+    ~CForest() {}
 
     void Clear()
     {
