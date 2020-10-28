@@ -60,11 +60,11 @@ static const uint32 REF_VACANT_HEIGHT = 20;
 static const uint32 REF_VACANT_HEIGHT = 368638;
 #endif
 
-#ifdef BIGBANG_TESTNET
-static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
-#else
-static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 490566;
-#endif
+//#ifdef BIGBANG_TESTNET
+//static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
+//#else
+//static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 493149;
+//#endif
 
 #ifdef BIGBANG_TESTNET
 static const int64 BBCP_TOKEN_INIT = 300000000;
@@ -828,11 +828,11 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         throw DEBUG(ERR_TRANSACTION_INPUT_INVALID, "creating fork nAmount must be at least %ld", CTemplateFork::CreatedCoin());
     }
 
-    if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_DEXMATCH
-        && nForkHeight == MATCH_VERIFY_ERROR_HEIGHT)
-    {
-        nForkHeight -= 1;
-    }
+    //if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_DEXMATCH
+    //    && nForkHeight < MATCH_VERIFY_ERROR_HEIGHT)
+    //{
+    nForkHeight -= 1;
+    //}
 
     if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vchSig, nForkHeight, fork))
     {
@@ -934,7 +934,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid recoreded destination");
     }
 
-    if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vchSig, nForkHeight, fork))
+    if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vchSig, nForkHeight + 1, fork))
     {
         return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature\n");
     }
