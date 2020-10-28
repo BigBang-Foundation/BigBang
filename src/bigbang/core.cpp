@@ -828,11 +828,11 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         throw DEBUG(ERR_TRANSACTION_INPUT_INVALID, "creating fork nAmount must be at least %ld", CTemplateFork::CreatedCoin());
     }
 
-    //if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_DEXMATCH
-    //    && nForkHeight < MATCH_VERIFY_ERROR_HEIGHT)
-    //{
-    nForkHeight -= 1;
-    //}
+    if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_DEXMATCH
+        /*&& nForkHeight < MATCH_VERIFY_ERROR_HEIGHT*/)
+    {
+        nForkHeight -= 1;
+    }
 
     if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vchSig, nForkHeight, fork))
     {
