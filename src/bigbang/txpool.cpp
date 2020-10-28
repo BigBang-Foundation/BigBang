@@ -946,7 +946,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                     {
                         certTxDest.RemoveCertTx(tx.sendTo, txid);
                     }
-                    if(tx.IsDeFiRelation())
+                    if (tx.IsDeFiRelation())
                     {
                         txView.relation.RemoveRelation(tx.sendTo);
                     }
@@ -1030,7 +1030,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             {
                 certTxDest.RemoveCertTx(it->second.sendTo, txseq.hashTX);
             }
-            if(it->second.IsDeFiRelation())
+            if (it->second.IsDeFiRelation())
             {
                 txView.relation.RemoveRelation(it->second.sendTo);
             }
@@ -1261,7 +1261,11 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
             CDestination destParent;
             if (spTreeNode)
             {
-                destParent = spTreeNode->spParent->key;
+                auto spParent = spTreeNode->spParent.lock();
+                if (spParent)
+                {
+                    destParent = spParent->key;
+                }
                 oldTxid = spTreeNode->data;
             }
 
