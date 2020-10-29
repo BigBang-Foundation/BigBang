@@ -946,6 +946,10 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                     {
                         certTxDest.RemoveCertTx(tx.sendTo, txid);
                     }
+                    if (tx.IsDeFiRelation())
+                    {
+                        txView.relation.RemoveRelation(tx.sendTo);
+                    }
                     mapTx.erase(txid);
                     change.mapTxUpdate.insert(make_pair(txid, nBlockHeight));
                 }
@@ -961,36 +965,6 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             else
             {
                 change.mapTxUpdate.insert(make_pair(txid, nBlockHeight));
-            }
-
-            if (tx.IsDeFiRelation())
-            {
-                Debug("BlockAddNew trying Remove Relation Tx id %s", tx.GetHash().ToString().c_str());
-                auto spTreeNode = txView.relation.RemoveRelation(tx.sendTo);
-                if (spTreeNode)
-                {
-                    auto iter = mapTx.find(spTreeNode->data);
-                    if (iter != mapTx.end())
-                    {
-                        Debug("BlockAddNew Finded Remove Relation Tx id %s", spTreeNode->data.ToString().c_str());
-
-                        for (const CTxIn& txin : iter->second.vInput)
-                        {
-                            txView.InvalidateSpent(txin.prevout, viewInvolvedTx);
-                        }
-
-                        auto iterInvolvedTx = viewInvolvedTx.setTxLinkIndex.begin();
-                        while (iterInvolvedTx != viewInvolvedTx.setTxLinkIndex.end())
-                        {
-                            Debug("BlockAddNew Self and next Removed Relation Tx id %s", iterInvolvedTx->hashTX.ToString().c_str());
-                            iterInvolvedTx++;
-                        }
-                    }
-                    else
-                    {
-                        Error("SynchronizeBlockChain BlockAndNew find relation tx failed: %s", spTreeNode->data.ToString().c_str());
-                    }
-                }
             }
         }
     }
@@ -1055,6 +1029,10 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             if (it->second.nType == CTransaction::TX_CERT)
             {
                 certTxDest.RemoveCertTx(it->second.sendTo, txseq.hashTX);
+            }
+            if (it->second.IsDeFiRelation())
+            {
+                txView.relation.RemoveRelation(it->second.sendTo);
             }
             mapTx.erase(it);
         }
@@ -1283,7 +1261,11 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
             CDestination destParent;
             if (spTreeNode)
             {
-                destParent = spTreeNode->spParent->key;
+                auto spParent = spTreeNode->spParent.lock();
+                if (spParent)
+                {
+                    destParent = spParent->key;
+                }
                 oldTxid = spTreeNode->data;
             }
 

@@ -1,3 +1,12 @@
+# Version 2.2.1 (2020-10-29)
+
+### Fixs
+
+- Reduce memory usage of DeFi function
+- Fix memory leak of CForest of DeFi relation
+- Comparative study on avoiding the wrong matchmaking
+- modify match verify height
+
 # Version 2.2.0 (2020-10-21)
 
 ### Features

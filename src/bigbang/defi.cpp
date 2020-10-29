@@ -121,7 +121,7 @@ bool CDeFiForkReward::ExistForkSection(const uint256& forkid, const uint256& sec
     return false;
 }
 
-const CDeFiRewardSet& CDeFiForkReward::GetForkSection(const uint256& forkid, const uint256& section)
+CDeFiRewardSet& CDeFiForkReward::GetForkSection(const uint256& forkid, const uint256& section, bool& fIsNull)
 {
     auto it = forkReward.find(forkid);
     if (it != forkReward.end())
@@ -129,9 +129,11 @@ const CDeFiRewardSet& CDeFiForkReward::GetForkSection(const uint256& forkid, con
         auto im = it->second.reward.find(section);
         if (im != it->second.reward.end())
         {
+            fIsNull = false;
             return im->second;
         }
     }
+    fIsNull = true;
     return null;
 }
 
@@ -140,17 +142,19 @@ void CDeFiForkReward::AddForkSection(const uint256& forkid, const uint256& hash,
     auto it = forkReward.find(forkid);
     if (it != forkReward.end())
     {
-        it->second.reward[hash] = std::move(reward);
-    }
-    while (forkReward.size() > MAX_REWARD_CACHE)
-    {
-        if (forkReward.begin()->first != hash)
+        auto& mapReward = it->second.reward;
+        mapReward[hash] = std::move(reward);
+
+        while (mapReward.size() > MAX_REWARD_CACHE)
         {
-            forkReward.erase(forkReward.begin());
-        }
-        else
-        {
-            break;
+            if (mapReward.begin()->first != hash)
+            {
+                mapReward.erase(mapReward.begin());
+            }
+            else
+            {
+                break;
+            }
         }
     }
 }
@@ -228,7 +232,7 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
     }
 
     // compute promotion power
-    multimap<uint64, pair<CDestination, int64>> mapPower;
+    multimap<uint64, tuple<CDestination, int64, int64>> mapPower;
     uint64 nTotal = 0;
     relation.PostorderTraversal([&](NodePtr pNode) {
         // amount
@@ -285,7 +289,7 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
         if (pNode->data.nPower > 0)
         {
             nTotal += pNode->data.nPower;
-            mapPower.insert(make_pair(pNode->data.nPower, make_pair(pNode->key, nAmount)));
+            mapPower.insert(make_pair(pNode->data.nPower, make_tuple(pNode->key, nAmount, pNode->data.nAmount)));
         }
 
         return true;
@@ -298,8 +302,9 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
         for (auto& p : mapPower)
         {
             CDeFiReward reward;
-            reward.dest = p.second.first;
-            reward.nAmount = p.second.second;
+            reward.dest = get<0>(p.second);
+            reward.nAmount = get<1>(p.second);
+            reward.nAchievement = get<2>(p.second);
             reward.nPower = p.first;
             reward.nPromotionReward = fUnitReward * p.first;
             reward.nReward = reward.nPromotionReward;

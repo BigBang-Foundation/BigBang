@@ -17,11 +17,12 @@ template <typename K, typename D>
 class CTreeNode
 {
 public:
+    typedef std::weak_ptr<CTreeNode> ParentPtr;
     typedef std::shared_ptr<CTreeNode> NodePtr;
 
     K key;
     D data;
-    NodePtr spParent;
+    ParentPtr spParent;
     std::set<NodePtr> setChildren;
 
     CTreeNode()
@@ -87,14 +88,15 @@ public:
             }
 
             // root or the last child of parent. fetch from stack when next loop
-            if (!spNode->spParent || spNode == *spNode->spParent->setChildren.rbegin())
+            NodePtr spParent = spNode->spParent.lock();
+            if (!spParent || spNode == *spParent->setChildren.rbegin())
             {
                 spNode = nullptr;
             }
             else
             {
-                auto it = spNode->spParent->setChildren.find(spNode);
-                if (it == spNode->spParent->setChildren.end())
+                auto it = spParent->setChildren.find(spNode);
+                if (it == spParent->setChildren.end())
                 {
                     return false;
                 }
@@ -115,6 +117,7 @@ class CForest
 public:
     typedef CTreeNode<K, D> Node;
     typedef typename Node::NodePtr NodePtr;
+    typedef typename Node::ParentPtr ParentPtr;
     typedef CMultiwayTree<K, D> Tree;
     typedef typename Tree::TreePtr TreePtr;
 
@@ -158,20 +161,20 @@ public:
         if (spNode)
         {
             // already have parent
-            if (spNode->spParent && !setInvalid.count(key))
+            if (!spNode->spParent.expired() && !setInvalid.count(key))
             {
                 return false;
             }
 
             // cyclic graph
-            for (; sp; sp = sp->spParent)
+            for (; sp; sp = sp->spParent.lock())
             {
                 if (sp->key == key)
                 {
                     return false;
                 }
 
-                if (!sp->spParent || (!setInvalid.empty() && (setInvalid.find(sp->key) != setInvalid.end())))
+                if (sp->spParent.expired() || (!setInvalid.empty() && (setInvalid.find(sp->key) != setInvalid.end())))
                 {
                     root = sp->key;
                     break;
@@ -181,9 +184,9 @@ public:
         else
         {
             // get parent root
-            for (; sp; sp = sp->spParent)
+            for (; sp; sp = sp->spParent.lock())
             {
-                if (!sp->spParent || (!setInvalid.empty() && (setInvalid.find(sp->key) != setInvalid.end())))
+                if (sp->spParent.expired() || (!setInvalid.empty() && (setInvalid.find(sp->key) != setInvalid.end())))
                 {
                     root = sp->key;
                     break;
@@ -225,7 +228,7 @@ public:
             mapRoot.erase(key);
         }
 
-        it->second->spParent = im->second;
+        it->second->spParent = ParentPtr(im->second);
         im->second->setChildren.insert(it->second);
 
         return true;
@@ -240,18 +243,18 @@ public:
         }
 
         NodePtr spNode = it->second;
-        NodePtr spParent = spNode->spParent;
+        NodePtr spParent = spNode->spParent.lock();
         if (spParent)
         {
             spParent->setChildren.erase(spNode);
             // parent is root and no children
-            if (spParent->setChildren.empty() && !spParent->spParent)
+            if (spParent->setChildren.empty() && spParent->spParent.expired())
             {
                 mapRoot.erase(spParent->key);
                 mapNode.erase(spParent->key);
             }
 
-            spNode->spParent = nullptr;
+            spNode->spParent.reset();
             if (!spNode->setChildren.empty())
             {
                 mapRoot.insert(make_pair(key, TreePtr(new Tree(spNode))));
@@ -276,6 +279,7 @@ public:
     CForest<K, F> Copy()
     {
         typedef typename CTreeNode<K, F>::NodePtr NewNodePtr;
+        typedef typename CTreeNode<K, F>::ParentPtr NewParentPtr;
         typedef typename CMultiwayTree<K, F>::TreePtr NewTreePtr;
 
         CForest<K, F> f;
@@ -286,7 +290,7 @@ public:
             f.mapNode.insert(std::make_pair(spNewNode->key, spNewNode));
 
             // root
-            if (!spNode->spParent)
+            if (spNode->spParent.expired())
             {
                 NewTreePtr spTreePtr = NewTreePtr(new CMultiwayTree<K, F>(spNewNode));
                 f.mapRoot.insert(make_pair(spNewNode->key, spTreePtr));
@@ -301,7 +305,7 @@ public:
                     return false;
                 }
                 spNewNode->setChildren.insert(it->second);
-                it->second->spParent = spNewNode;
+                it->second->spParent = NewParentPtr(spNewNode);
             }
             return true;
         });
