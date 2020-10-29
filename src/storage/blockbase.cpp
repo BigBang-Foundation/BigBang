@@ -1896,32 +1896,20 @@ bool CBlockBase::ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std:
 
 bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount)
 {
-    CListAddressUnspentWalker walker;
+    std::vector<CTxUnspent> vAddNew;
+    std::vector<CTxOutPoint> vRemove;
+    view.GetUnspentChanges(vAddNew, vRemove);
+    
+    CListAddressUnspentWalker walker(vRemove);
     if (!dbBlock.WalkThroughUnspent(hashFork, walker))
     {
         return false;
     }
-
-    std::vector<CTxUnspent> vAddNew;
-    std::vector<CTxOutPoint> vRemove;
-    view.GetUnspentChanges(vAddNew, vRemove);
-
     for (const CTxUnspent& unspent : vAddNew)
     {
-        walker.mapUnspent[static_cast<const CTxOutPoint&>(unspent)] = unspent.output;
+        walker.mapAddressAmount[unspent.output.destTo] += unspent.output.nAmount;
     }
-    for (const CTxOutPoint& txout : vRemove)
-    {
-        walker.mapUnspent[txout].SetNull();
-    }
-
-    for (auto it = walker.mapUnspent.begin(); it != walker.mapUnspent.end(); ++it)
-    {
-        if (!it->second.IsNull())
-        {
-            mapAddressAmount[it->second.destTo] += it->second.nAmount;
-        }
-    }
+    mapAddressAmount = walker.mapAddressAmount;
     return true;
 }
 
