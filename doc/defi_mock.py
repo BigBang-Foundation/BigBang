@@ -12,9 +12,8 @@ from pprint import pprint
 COIN = 1000000
 TX_FEE = 10000
 
+
 # Mark tree node level recursively
-
-
 def MarkTreeLevel(root_addr, root_level, addrset):
     addrset[root_addr]['level'] = root_level
     # get childs
@@ -22,11 +21,11 @@ def MarkTreeLevel(root_addr, root_level, addrset):
     for child in childs:
         MarkTreeLevel(child, root_level - 1, addrset)
 
+
 # Compute DeFi rewards
-
-
-def Compute(addrset, total_level, input, output, count):
+def Compute(addrset, total_level, input, output, begin, end):
     makeorigin = input['makeorigin']
+    delegate_addr = makeorigin['delegate_addr']
     amount = makeorigin['amount'] * COIN
     defi = makeorigin['defi']
     rewardcycle = defi['rewardcycle']
@@ -59,7 +58,7 @@ def Compute(addrset, total_level, input, output, count):
         mapcoinbasepercent[0]['height']
     coinbase = 0
 
-    for i in range(0, count):
+    for i in range(0, end):
         # to upper limit
         if supply >= maxsupply:
             break
@@ -227,7 +226,13 @@ def Compute(addrset, total_level, input, output, count):
         for addr, reward in result.items():
             addrset[addr]['stake'] += reward - TX_FEE
 
-        output.append({'height': height, 'reward': result})
+        # dpos mint
+        addrset[delegate_addr]['stake'] += (TX_FEE * len(result))
+
+        if i >= begin:
+            output.append({'height': height, 'reward': result})
+            print("computed begin: %d, end: %d, now: %d, height: %d" %
+                (begin, end, i, height))
 
     addrlist = [
         {'addr': k, 'info': v['stake']} for k, v in addrset.items()]
@@ -238,18 +243,18 @@ def Compute(addrset, total_level, input, output, count):
 
 if __name__ == "__main__":
     # json path
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 3:
         raise Exception(
-            'Not enough param, should be "python defi_mock.py input.json output.json count"')
+            'Not enough param, should be "python defi_mock.py file.json count"')
 
-    input_path = os.path.join(os.getcwd(), sys.argv[1])
-    output_path = os.path.join(os.getcwd(), sys.argv[2])
-    count = int(sys.argv[3])
+    path = os.path.join(os.getcwd(), sys.argv[1])
+    begin = 0 if len(sys.argv) == 3 else int(sys.argv[2])
+    end = int(sys.argv[2]) if len(sys.argv) == 3 else int(sys.argv[3])
 
     input = {}
     output = []
     # load json
-    with open(input_path, 'r') as r:
+    with open(path, 'r') as r:
         content = json.loads(r.read())
         input = content["input"]
 
@@ -310,7 +315,7 @@ if __name__ == "__main__":
     #print ("addrset:", addrset)
 
     # compute reward
-    Compute(addrset, total_level, input, output, count)
+    Compute(addrset, total_level, input, output, begin, end)
 
     # output
     result = {
@@ -319,5 +324,5 @@ if __name__ == "__main__":
     }
 
     # pprint(result, indent=2)
-    with open(output_path, 'w') as w:
-        w.write(json.dumps(result))
+    with open(path, 'w') as w:
+        json.dump(result, w, indent=4, sort_keys=True)

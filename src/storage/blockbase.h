@@ -193,6 +193,7 @@ public:
     void RemoveTx(const uint256& txid, const CTransaction& tx, int nHeight, const CTxContxt& txContxt);
     void AddBlock(const uint256& hash, const CBlockEx& block);
     void RemoveBlock(const uint256& hash, const CBlockEx& block);
+    void GetUnspentChanges(std::vector<CTxUnspent>& vAddNew, std::vector<CTxOutPoint>& vRemove);
     void GetUnspentChanges(std::vector<CTxUnspent>& vAddNewUnspent, std::vector<CTxUnspent>& vRemoveUnspent);
     void GetTxUpdated(std::set<uint256>& setUpdate);
     void GetTxRemoved(std::vector<uint256>& vRemove);

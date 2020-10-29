@@ -228,6 +228,29 @@ void CBlockView::RemoveBlock(const uint256& hash, const CBlockEx& block)
     InsertBlockList(hash, block, vBlockRemove);
 }
 
+void CBlockView::GetUnspentChanges(vector<CTxUnspent>& vAddNew, vector<CTxOutPoint>& vRemove)
+{
+    vAddNew.reserve(mapUnspent.size());
+    vRemove.reserve(mapUnspent.size());
+
+    for (map<CTxOutPoint, CViewUnspent>::iterator it = mapUnspent.begin(); it != mapUnspent.end(); ++it)
+    {
+        const CTxOutPoint& out = (*it).first;
+        CViewUnspent& unspent = (*it).second;
+        if (unspent.IsModified())
+        {
+            if (!unspent.IsSpent())
+            {
+                vAddNew.push_back(CTxUnspent(out, unspent.output, unspent.nTxType, unspent.nHeight));
+            }
+            else
+            {
+                vRemove.push_back(out);
+            }
+        }
+    }
+}
+
 void CBlockView::GetUnspentChanges(vector<CTxUnspent>& vAddNewUnspent, vector<CTxUnspent>& vRemoveUnspent)
 {
     vAddNewUnspent.reserve(mapUnspent.size());
@@ -1928,32 +1951,20 @@ bool CBlockBase::RetrieveAddressUnspent(const uint256& hashFork, const CDestinat
 
 bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount)
 {
-    CListAddressUnspentWalker walker;
+    std::vector<CTxUnspent> vAddNew;
+    std::vector<CTxOutPoint> vRemove;
+    view.GetUnspentChanges(vAddNew, vRemove);
+
+    CListAddressUnspentWalker walker(vRemove);
     if (!dbBlock.WalkThroughUnspent(hashFork, walker))
     {
         return false;
     }
-
-    std::vector<CTxUnspent> vAddNew;
-    std::vector<CTxUnspent> vRemove;
-    view.GetUnspentChanges(vAddNew, vRemove);
-
     for (const CTxUnspent& unspent : vAddNew)
     {
-        walker.mapUnspent[static_cast<const CTxOutPoint&>(unspent)] = unspent.output;
+        walker.mapAddressAmount[unspent.output.destTo] += unspent.output.nAmount;
     }
-    for (const CTxUnspent& unspent : vRemove)
-    {
-        walker.mapUnspent[static_cast<const CTxOutPoint&>(unspent)].SetNull();
-    }
-
-    for (auto it = walker.mapUnspent.begin(); it != walker.mapUnspent.end(); ++it)
-    {
-        if (!it->second.IsNull())
-        {
-            mapAddressAmount[it->second.destTo] += it->second.nAmount;
-        }
-    }
+    mapAddressAmount = walker.mapAddressAmount;
     return true;
 }
 

@@ -60,11 +60,11 @@ static const uint32 REF_VACANT_HEIGHT = 20;
 static const uint32 REF_VACANT_HEIGHT = 368638;
 #endif
 
-#ifdef BIGBANG_TESTNET
-static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
-#else
-static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 490566;
-#endif
+//#ifdef BIGBANG_TESTNET
+//static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
+//#else
+//static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 493149;
+//#endif
 
 #ifdef BIGBANG_TESTNET
 static const int64 BBCP_TOKEN_INIT = 300000000;
@@ -246,9 +246,9 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
             }
         }
     }
-    if (tx.nType == CTransaction::TX_DEFI_REWARD && (tx.vchData.size() > 40))
+    if (tx.nType == CTransaction::TX_DEFI_REWARD && (tx.vchData.size() > 48))
     {
-        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi reward tx data length is not 40\n");
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi reward tx data length is not 48\n");
     }
     if (!tx.vchData.empty() && (tx.nType == CTransaction::TX_WORK || tx.nType == CTransaction::TX_STAKE))
     {
@@ -829,7 +829,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     }
 
     if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_DEXMATCH
-        && nForkHeight == MATCH_VERIFY_ERROR_HEIGHT)
+        /*&& nForkHeight < MATCH_VERIFY_ERROR_HEIGHT*/)
     {
         nForkHeight -= 1;
     }
@@ -934,7 +934,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid recoreded destination");
     }
 
-    if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vchSig, nForkHeight, fork))
+    if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vchSig, nForkHeight + 1, fork))
     {
         return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature\n");
     }

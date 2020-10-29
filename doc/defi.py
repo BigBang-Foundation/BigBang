@@ -10,6 +10,7 @@ import random
 from pprint import pprint
 
 COIN = 1000000
+TX_FEE = 0.01
 
 rpcurl = 'http://127.0.0.1:9902'
 
@@ -308,6 +309,25 @@ def getblock(blockid):
         raise Exception('getblock error: {}'.format(error))
 
 
+# RPC: getblockdetail
+def getblockdetail(blockid):
+    result, error = call({
+        'id': 1,
+        'jsonrpc': '2.0',
+        'method': 'getblockdetail',
+        'params': {
+            'block': blockid,
+        }
+    })
+
+    if result:
+        block = result
+        # print('getblockdetail success, block: {}'.format(block))
+        return block
+    else:
+        raise Exception('getblockdetail error: {}'.format(error))
+
+
 # RPC: gettransaction
 def gettransaction(txid):
     result, error = call({
@@ -363,6 +383,7 @@ def dpos():
     delegate_addr = adddelegatetemplate(dpos_pubkey, genesis_addr)
     sendfrom(genesis_addr, delegate_addr, 280000000)
     print('Create dpos node success')
+    return delegate_addr
 
 
 # create fork
@@ -390,7 +411,15 @@ def print_mode():
 
 
 # generate address mode
-def generate_addr():
+def generate_addr(path):
+    input = {}
+    output = []
+    # load json
+    with open(path, 'r') as r:
+        content = json.loads(r.read())
+        input = content["input"]
+        output = content["output"]
+
     generate_count = 50000 if len(sys.argv) < 4 else int(sys.argv[3])
     root_count = min(generate_count / 100, 1000)
     privkey_map = {}
@@ -414,20 +443,32 @@ def generate_addr():
         stake_map[addr] = int(random.random() * 20000000 + 100000000)
 
     privkey_list = [v for _, v in privkey_map.items()]
-    print(json.dumps({
-        'privkey': privkey_list,
-        'stake': stake_map,
-        'relation': relation_map
-    }))
+
+    # output
+    input['privkey'] = privkey_list
+    input['stake'] = stake_map
+    input['relation'] = relation_map
+
+    # pprint(result, indent=2)
+    with open(path, 'w') as w:
+        json.dump({
+            'input': input,
+            'output': output
+        }, w, indent=4, sort_keys=True)
 
 
 # create node mode
 def create_node(path):
     input = {}
+    output = []
     # load json
     with open(path, 'r') as r:
         content = json.loads(r.read())
         input = content["input"]
+        output = content["output"]
+
+    # delegate dpos
+    delegate_addr = dpos()
 
     # compute balance by stake and relation
     addrset = {}
@@ -457,16 +498,15 @@ def create_node(path):
         addrset[upper_addr]['lower'].append(lower_addr)
 
     for addr, obj in addrset.items():
-        obj['stake'] = obj['stake'] - \
-            (0.01 if obj['upper'] else 0) + 0.02 * len(obj['lower'])
+        if addr != genesis_addr and addr != delegate_addr:
+            obj['stake'] = obj['stake'] - \
+                (TX_FEE if obj['upper'] else 0) + \
+                2 * TX_FEE * len(obj['lower'])
 
     # import priv key
     for privkey in input['privkey']:
         if privkey != genesis_privkey:
             importprivkey(privkey, False)
-
-    # delegate dpos
-    dpos()
 
     # create fork
     if 'makeorigin' not in input:
@@ -484,19 +524,38 @@ def create_node(path):
         time.sleep(10)
 
     time.sleep(10)
+    delegate_balance = 0
     # send token to addrset
     for addr, obj in addrset.items():
-        if addr != genesis_addr:
+        if addr != genesis_addr and addr != delegate_addr:
             sendfrom(genesis_addr, addr, obj['stake'], forkid)
+            delegate_balance += TX_FEE
 
     # send relation tx
     for addr, obj in addrset.items():
         for lower_addr in obj['lower']:
             sendfrom(addr, lower_addr, 0.01, forkid, 2)
+            delegate_balance += TX_FEE
 
     print("forkid: {}".format(forkid))
     genesis_balance = getbalance(genesis_addr, forkid)
-    print("genesis_balance: {}".format(int(round(genesis_balance * COIN))))
+    print("genesis_addr: {}, genesis_balance: {}".format(
+        genesis_addr, int(round(genesis_balance * COIN))))
+    print("delegate_addr: {}, delegate_balance: {}".format(
+        delegate_addr, int(round(delegate_balance * COIN))))
+
+    # output
+    input['makeorigin']['forkid'] = forkid
+    input['makeorigin']['delegate_addr'] = delegate_addr
+    input['stake'][genesis_addr] = int(round(genesis_balance * COIN))
+    input['stake'][delegate_addr] = int(round(delegate_balance * COIN))
+
+    # pprint(result, indent=2)
+    with open(path, 'w') as w:
+        json.dump({
+            'input': input,
+            'output': output
+        }, w, indent=4, sort_keys=True)
 
 
 # check mode
@@ -572,26 +631,25 @@ def check(path):
                     break
                 print('fork height is {}'.format(getforkheight(forkid)))
                 time.sleep(60)
-            print('blockids of height: {}, blockids: {}'.format(height, blockids))
+            print('blockids of height: {}, blockids: {}'.format(h, blockids))
 
             error = False
             # loop to get every block of blockid array
             for hash in blockids:
-                block = getblock(hash)
+                block = getblockdetail(hash)
 
                 # if block is vacant, continue to get next height block
-                if block['type'] == 'vacant':
-                    h = h + 1
+                if block['type'].startswith('vacant'):
                     break
 
                 # if no tx in block, print error
                 if len(block['tx']) == 0:
                     print('ERROR: no reward tx in height: {}'.format(height))
+                    error = True
+                    break
 
                 # loop to check every tx in block
-                for txid in block['tx']:
-                    tx = gettransaction(txid)
-
+                for tx in block['tx']:
                     if len(reward) == 0:
                         break
 
@@ -622,17 +680,21 @@ def check(path):
                             print('ERROR: addr reward error in height, addr: {}, height: {} should be: {}, actrual: {}'.format(
                                 tx['sendto'], height, should_reward, actrual_reward))
                             error = True
+                            break
                         del(reward[tx['sendto']])
 
-                if len(reward) == 0:
+                if error or len(reward) == 0:
                     break
 
             if error:
                 print('Checking failed height: {}'.format(height))
-                break
+                return
             elif len(reward) == 0:
                 print('Checking success height: {}'.format(height))
                 break
+            else:
+                h = h + 1
+                time.sleep(1)
 
 
 if __name__ == "__main__":
@@ -652,7 +714,7 @@ if __name__ == "__main__":
 
     # generate address and relation mode
     if mode == GENERATE_ADDR_MODE:
-        generate_addr()
+        generate_addr(path)
         exit(0)
     elif mode == CREATE_NODE_MODE:
         create_node(path)
