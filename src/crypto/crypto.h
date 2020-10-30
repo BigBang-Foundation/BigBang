@@ -62,11 +62,14 @@ public:
     T* allocate(std::size_t n, const void* hint = 0)
     {
         (void)hint;
-        return static_cast<T*>(CryptoAlloc(sizeof(T) * n));
+        T* t = static_cast<T*>(CryptoAlloc(sizeof(T) * n));
+        std::cout << "CSH::CryptoAlloc addr " << std::hex << t  << std::dec << " size " << sizeof(T) * n << std::endl;
+        return t;
     }
     void deallocate(T* p, std::size_t n)
     {
         (void)n;
+        std::cout << "CSH::CryptoFree addr " << std::hex << p << std::dec << " size " << n << std::endl;
         CryptoFree(p);
     }
 };
