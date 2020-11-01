@@ -1502,6 +1502,11 @@ int64 CWallet::SelectCoins(const CDestination& dest, const uint256& hashFork, in
     pair<int64, CWalletTxOut> coinLowestLarger;
     coinLowestLarger.first = std::numeric_limits<int64>::max();
     int64 nTotalLower = 0;
+    uint16 nDestTemplateType = 0;
+    if (dest.IsTemplate())
+    {
+        nDestTemplateType = dest.GetTemplateId().GetType();
+    }
 
     multimap<int64, CWalletTxOut> mapValue;
 
@@ -1509,6 +1514,10 @@ int64 CWallet::SelectCoins(const CDestination& dest, const uint256& hashFork, in
     {
         if (out.IsLocked(nForkHeight) || out.GetTxTime() > nTxTime
             || (out.spWalletTx->nType == CTransaction::TX_CERT && out.n == 0))
+        {
+            continue;
+        }
+        if (out.spWalletTx->nType == CTransaction::TX_DEFI_REWARD && nDestTemplateType == TEMPLATE_DEXMATCH)
         {
             continue;
         }
