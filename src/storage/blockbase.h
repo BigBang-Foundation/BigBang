@@ -345,7 +345,7 @@ public:
         return true;
     }
 
-    bool ListForkAllAddressAmount(const uint256& hashFork, int32 nHeight, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount);
+    bool ListForkAllAddressAmount(const uint256& hashFork, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount);
     bool AddDeFiRelation(const uint256& hashFork, CBlockView& view, boost::shared_ptr<CBlockFork> spFork);
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CAddrInfo& addrInfo);
     bool InitDeFiRelation(const uint256& hashFork);

@@ -12,6 +12,8 @@ using namespace xengine;
 
 #define ENROLLED_CACHE_COUNT (120)
 #define AGREEMENT_CACHE_COUNT (16)
+#define NO_DEFI_TEMPLATE_ADDRESS_HEIGHT (500000)
+
 
 namespace bigbang
 {
@@ -2233,10 +2235,27 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     }
 
     map<CDestination, int64> mapAddressAmount;
-    if (!cntrBlock.ListForkAllAddressAmount(forkid, CBlock::GetBlockHeightByHash(hash), view, mapAddressAmount) || mapAddressAmount.empty())
+    if (!cntrBlock.ListForkAllAddressAmount(forkid, view, mapAddressAmount) || mapAddressAmount.empty())
     {
         Error("ComputeDeFiSection ListForkAllAddressAmount error, fork: %s, hash: %s", forkid.ToString().c_str(), hash.ToString().c_str());
         return s;
+    }
+
+    if(CBlock::GetBlockHeightByHash(hash) > NO_DEFI_TEMPLATE_ADDRESS_HEIGHT)
+    {
+        auto iter = mapAddressAmount.begin();
+        for(; iter != mapAddressAmount.end(); )
+        {
+            const CDestination& destTo = iter->first;
+            if (!CTemplate::IsTxSpendable(destTo)) 
+            {
+                mapAddressAmount.erase(iter++);
+            } 
+            else 
+            {
+                ++iter;
+            }
+        }
     }
 
     int64 nStakeReward = nReward * profile.defi.nStakeRewardPercent / 100;
