@@ -2233,7 +2233,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     }
 
     map<CDestination, int64> mapAddressAmount;
-    if (!cntrBlock.ListForkAllAddressAmount(forkid, view, mapAddressAmount) || mapAddressAmount.empty())
+    if (!cntrBlock.ListForkAllAddressAmount(forkid, CBlock::GetBlockHeightByHash(hash), view, mapAddressAmount) || mapAddressAmount.empty())
     {
         Error("ComputeDeFiSection ListForkAllAddressAmount error, fork: %s, hash: %s", forkid.ToString().c_str(), hash.ToString().c_str());
         return s;

@@ -20,6 +20,8 @@ using namespace xengine;
 #define BLOCKFILE_PREFIX "block"
 #define LOGFILE_NAME "storage.log"
 
+#define NO_DEFI_TEMPLATE_ADDRESS_HEIGHT 500000
+
 namespace bigbang
 {
 namespace storage
@@ -1894,7 +1896,7 @@ bool CBlockBase::ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std:
     return true;
 }
 
-bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount)
+bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, int32 nHeight, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount)
 {
     std::vector<CTxUnspent> vAddNew;
     std::vector<CTxOutPoint> vRemove;
@@ -1909,6 +1911,25 @@ bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& v
     {
         walker.mapAddressAmount[unspent.output.destTo] += unspent.output.nAmount;
     }
+
+    if(nHeight > NO_DEFI_TEMPLATE_ADDRESS_HEIGHT)
+    {
+        auto iter = walker.mapAddressAmount.begin();
+        for(; iter != walker.mapAddressAmount.end(); )
+        {
+            if (iter->first.IsTemplate()) 
+            {
+
+                walker.mapAddressAmount.erase(iter++);
+            } 
+            else 
+            {
+                ++iter;
+            }
+        }
+    }
+    
+
     mapAddressAmount = walker.mapAddressAmount;
     return true;
 }
