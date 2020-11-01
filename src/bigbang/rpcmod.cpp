@@ -125,7 +125,7 @@ static CTransactionData TxToJSON(const uint256& txid, const CTransaction& tx,
 
     return ret;
 }
-
+/*
 static CWalletTxData WalletTxToJSON(const CWalletTx& wtx)
 {
     CWalletTxData data;
@@ -148,7 +148,7 @@ static CWalletTxData WalletTxToJSON(const CWalletTx& wtx)
     data.nLockuntil = (boost::int64_t)wtx.nLockUntil;
     return data;
 }
-
+*/
 static CUnspentData UnspentToJSON(const CTxUnspent& unspent)
 {
     CUnspentData data;
@@ -1738,7 +1738,7 @@ CRPCResultPtr CRPCMod::RPCGetBalanceWallet(CRPCParamPtr param)
 
 CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
 {
-    auto spParam = CastParamPtr<CListTransactionParam>(param);
+    /*auto spParam = CastParamPtr<CListTransactionParam>(param);
 
     const CRPCString& strFork = spParam->strFork;
     const CRPCString& strAddress = spParam->strAddress;
@@ -1772,8 +1772,12 @@ CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
     for (const CWalletTx& wtx : vWalletTx)
     {
         spResult->vecTransaction.push_back(WalletTxToJSON(wtx));
-    }
-    return spResult;
+    }*/
+
+    throw CRPCException(RPC_REQUEST_FUNC_OBSOLETE, "Requested function is obsolete");
+
+    //auto spResult = MakeCListTransactionResultPtr();
+    //return spResult;
 }
 
 CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)

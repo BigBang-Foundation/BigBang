@@ -738,38 +738,51 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         }
     }
 
-    if (destIn.IsTemplate())
+    uint16 nDestInTemplateType = 0;
+    uint16 nSendToTemplateType = 0;
+    CTemplateId tid;
+    if (destIn.GetTemplateId(tid))
     {
-        uint16 nDestInTemplateType = destIn.GetTemplateId().GetType();
-        if (nDestInTemplateType == TEMPLATE_VOTE || (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_VOTE))
-        {
-            if (VerifyVoteTx(tx, destIn, fork) != OK)
-            {
-                return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
-            }
-        }
+        nDestInTemplateType = tid.GetType();
+    }
+    if (tx.sendTo.GetTemplateId(tid))
+    {
+        nSendToTemplateType = tid.GetType();
+    }
 
-        switch (nDestInTemplateType)
+    if (nDestInTemplateType == TEMPLATE_VOTE || nSendToTemplateType == TEMPLATE_VOTE)
+    {
+        if (VerifyVoteTx(tx, destIn, fork) != OK)
         {
-        case TEMPLATE_DEXORDER:
+            return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
+        }
+    }
+
+    switch (nDestInTemplateType)
+    {
+    case TEMPLATE_DEXORDER:
+    {
+        Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight);
+        if (err != OK)
         {
-            Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight);
-            if (err != OK)
-            {
-                return DEBUG(err, "invalid dex order tx");
-            }
-            break;
+            return DEBUG(err, "invalid dex order tx");
         }
-        case TEMPLATE_DEXMATCH:
+        break;
+    }
+    case TEMPLATE_DEXMATCH:
+    {
+        Errno err = VerifyDexMatchTx(tx, nValueIn, nForkHeight);
+        if (err != OK)
         {
-            Errno err = VerifyDexMatchTx(tx, nValueIn, nForkHeight);
-            if (err != OK)
-            {
-                return DEBUG(err, "invalid dex match tx");
-            }
-            break;
+            return DEBUG(err, "invalid dex match tx");
         }
-        }
+        break;
+    }
+    }
+
+    if (nSendToTemplateType == TEMPLATE_DEXMATCH && nDestInTemplateType != TEMPLATE_DEXORDER)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid sendto dex match tx");
     }
 
     vector<uint8> vchSig;
@@ -893,38 +906,51 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         }
     }
 
-    if (destIn.IsTemplate())
+    uint16 nDestInTemplateType = 0;
+    uint16 nSendToTemplateType = 0;
+    CTemplateId tid;
+    if (destIn.GetTemplateId(tid))
     {
-        uint16 nDestInTemplateType = destIn.GetTemplateId().GetType();
-        if (nDestInTemplateType == TEMPLATE_VOTE || (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_VOTE))
-        {
-            if (VerifyVoteTx(tx, destIn, fork) != OK)
-            {
-                return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
-            }
-        }
+        nDestInTemplateType = tid.GetType();
+    }
+    if (tx.sendTo.GetTemplateId(tid))
+    {
+        nSendToTemplateType = tid.GetType();
+    }
 
-        switch (nDestInTemplateType)
+    if (nDestInTemplateType == TEMPLATE_VOTE || nSendToTemplateType == TEMPLATE_VOTE)
+    {
+        if (VerifyVoteTx(tx, destIn, fork) != OK)
         {
-        case TEMPLATE_DEXORDER:
+            return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
+        }
+    }
+
+    switch (nDestInTemplateType)
+    {
+    case TEMPLATE_DEXORDER:
+    {
+        Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight + 1);
+        if (err != OK)
         {
-            Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight + 1);
-            if (err != OK)
-            {
-                return DEBUG(err, "invalid dex order tx");
-            }
-            break;
+            return DEBUG(err, "invalid dex order tx");
         }
-        case TEMPLATE_DEXMATCH:
+        break;
+    }
+    case TEMPLATE_DEXMATCH:
+    {
+        Errno err = VerifyDexMatchTx(tx, nValueIn, nForkHeight + 1);
+        if (err != OK)
         {
-            Errno err = VerifyDexMatchTx(tx, nValueIn, nForkHeight + 1);
-            if (err != OK)
-            {
-                return DEBUG(err, "invalid dex match tx");
-            }
-            break;
+            return DEBUG(err, "invalid dex match tx");
         }
-        }
+        break;
+    }
+    }
+
+    if (nSendToTemplateType == TEMPLATE_DEXMATCH && nDestInTemplateType != TEMPLATE_DEXORDER)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid sendto dex match tx");
     }
 
     // record destIn in vchSig

@@ -323,7 +323,7 @@
             "synctx": {
                 "type": "bool",
                 "desc": "sync tx or not",
-                "default": true,
+                "default": false,
                 "required": false
             }
         }
@@ -2110,7 +2110,7 @@
                 "synctx": {
                     "type": "bool",
                     "desc": "sync tx or not",
-                    "default": true,
+                    "default": false,
                     "required": false,
                     "opt": "s"
                 }
@@ -2152,7 +2152,7 @@
                 "synctx": {
                     "type": "bool",
                     "desc": "sync tx or not",
-                    "default": true,
+                    "default": false,
                     "required": false,
                     "opt": "s"
                 }
@@ -2193,7 +2193,7 @@
                 "synctx": {
                     "type": "bool",
                     "desc": "sync tx or not",
-                    "default": true,
+                    "default": false,
                     "required": false,
                     "opt": "s"
                 }
@@ -2313,7 +2313,7 @@
                 "synctx": {
                     "type": "bool",
                     "desc": "sync tx or not",
-                    "default": true,
+                    "default": false,
                     "required": false,
                     "opt": "s"
                 }
