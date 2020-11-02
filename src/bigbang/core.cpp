@@ -126,7 +126,7 @@ static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 340935;
 #endif
 
 #ifdef BIGBANG_TESTNET
-static const map<uint256, map<int32, vector<bigbang::CAddress>>> mapDeFiBlacklist = {};
+static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {};
 #else
 static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
     {
