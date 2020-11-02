@@ -2306,6 +2306,31 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
         }
     }
 
+    // FIXME: only for DeFi App
+    // print all reward address info
+    for (auto& reward : s)
+    {
+        printf("%d|%s|%s|%s|%ld|%lu|%ld|%lu|%lu|%ld\n",
+               CBlock::GetBlockHeightByHash(hash), forkid.ToString().c_str(), hash.ToString().c_str(), CAddress(reward.dest).ToString().c_str(),
+               reward.nAmount, reward.nRank, reward.nStakeReward, reward.nAchievement, reward.nPower, reward.nPromotionReward);
+    }
+    // print non-reward address info
+    auto& idx = s.get<0>();
+    for (auto& x : mapAddressAmount)
+    {
+        auto it = idx.find(x.first);
+        if (it == idx.end())
+        {
+            printf("%d|%s|%s|%s|%ld|%lu|%ld|%lu|%lu|%ld\n",
+                   CBlock::GetBlockHeightByHash(hash), forkid.ToString().c_str(), hash.ToString().c_str(), CAddress(x.first).ToString().c_str(),
+                   x.second, (uint64)0, (int64)0, x.second / COIN, (uint64)0, (int64)0);
+        }
+        else if (it->nReward == 0)
+        {
+            idx.erase(it);
+        }
+    }
+
     return s;
 }
 
