@@ -2239,6 +2239,13 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
         return s;
     }
 
+    // blacklist
+    const set<CDestination>& setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, CBlock::GetBlockHeightByHash(hash));
+    for (auto& dest : setBlacklist)
+    {
+        mapAddressAmount.erase(dest);
+    }
+
     int64 nStakeReward = nReward * profile.defi.nStakeRewardPercent / 100;
     CDeFiRewardSet stakeReward = defiReward.ComputeStakeReward(profile.defi.nStakeMinToken, nStakeReward, mapAddressAmount);
 
@@ -2253,7 +2260,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     }
 
     int64 nPromotionReward = nReward * profile.defi.nPromotionRewardPercent / 100;
-    CDeFiRewardSet promotionReward = defiReward.ComputePromotionReward(nPromotionReward, mapAddressAmount, profile.defi.mapPromotionTokenTimes, relation);
+    CDeFiRewardSet promotionReward = defiReward.ComputePromotionReward(nPromotionReward, mapAddressAmount, profile.defi.mapPromotionTokenTimes, relation, setBlacklist);
 
     CDeFiRewardSetByDest& destIdx = promotionReward.get<0>();
     for (auto& stake : stakeReward)

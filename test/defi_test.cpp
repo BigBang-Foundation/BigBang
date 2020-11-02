@@ -5,6 +5,7 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/test/unit_test.hpp>
 #include <map>
+#include <set>
 
 #include "defi.h"
 #include "forkcontext.h"
@@ -528,7 +529,7 @@ BOOST_AUTO_TEST_CASE(reward)
         BOOST_CHECK(relation.Insert(x.first, x.second.destParent, x.second.destParent));
     }
     {
-        CDeFiRewardSet reward = r.ComputePromotionReward(nReward, balance, profile1.defi.mapPromotionTokenTimes, relation);
+        CDeFiRewardSet reward = r.ComputePromotionReward(nReward, balance, profile1.defi.mapPromotionTokenTimes, relation, set<CDestination>());
         BOOST_CHECK(reward.size() == 6);
 
         auto& destIdx = reward.get<0>();
@@ -756,7 +757,7 @@ BOOST_AUTO_TEST_CASE(reward2)
         BOOST_CHECK(relation.Insert(x.first, x.second.destParent, x.second.destParent));
     }
     {
-        CDeFiRewardSet reward = r.ComputePromotionReward(nReward, balance, profile.defi.mapPromotionTokenTimes, relation);
+        CDeFiRewardSet reward = r.ComputePromotionReward(nReward, balance, profile.defi.mapPromotionTokenTimes, relation, set<CDestination>());
         BOOST_CHECK(reward.size() == 6);
         auto& destIdx = reward.get<0>();
 
@@ -925,7 +926,7 @@ BOOST_AUTO_TEST_CASE(reward_fixed)
         }
 
         int64 nPromotionReward = nReward * profile.defi.nPromotionRewardPercent / 100;
-        CDeFiRewardSet promotionReward = r.ComputePromotionReward(nPromotionReward, balance, profile.defi.mapPromotionTokenTimes, relation);
+        CDeFiRewardSet promotionReward = r.ComputePromotionReward(nPromotionReward, balance, profile.defi.mapPromotionTokenTimes, relation, set<CDestination>());
         // cout << "promotion reward: " << nPromotionReward << ", size: " << promotionReward.size() << endl;
         for (auto& x : mapReward)
         {
@@ -1023,10 +1024,10 @@ BOOST_AUTO_TEST_CASE(reward_specific)
     // profile.defi.nCoinbaseDecayPercent = 50;
     // profile.defi.nInitCoinbasePercent = 10;
     profile.defi.mapCoinbasePercent = { { 900, 10 }, { 2700, 8 }, { 6300, 5 }, { 11700, 3 }, { 18000, 2 } }; // 发行阶段，半年，1年（用高度表示），参考BTCA白皮书，月增长原有基数的10%，8%
-    profile.defi.nStakeMinToken = 100 * COIN;                              // min token required, >= 100, can be required to join this defi game
-    profile.defi.nStakeRewardPercent = 50;                                 // 50% of supply amount per day
-    profile.defi.nPromotionRewardPercent = 50;                             // 50% of supply amount per day
-    profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10)); // 用于推广收益，小于等于10000的部分，要放大10倍
+    profile.defi.nStakeMinToken = 100 * COIN;                                                                // min token required, >= 100, can be required to join this defi game
+    profile.defi.nStakeRewardPercent = 50;                                                                   // 50% of supply amount per day
+    profile.defi.nPromotionRewardPercent = 50;                                                               // 50% of supply amount per day
+    profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));                                   // 用于推广收益，小于等于10000的部分，要放大10倍
     r.AddFork(forkid, profile);
 
     BOOST_CHECK(r.ExistFork(forkid));
@@ -1138,7 +1139,7 @@ BOOST_AUTO_TEST_CASE(reward_specific)
         }
 
         int64 nPromotionReward = nReward * profile.defi.nPromotionRewardPercent / 100;
-        CDeFiRewardSet promotionReward = r.ComputePromotionReward(nPromotionReward, balance, profile.defi.mapPromotionTokenTimes, relation);
+        CDeFiRewardSet promotionReward = r.ComputePromotionReward(nPromotionReward, balance, profile.defi.mapPromotionTokenTimes, relation, set<CDestination>());
         // cout << "promotion reward: " << nPromotionReward << ", size: " << promotionReward.size() << endl;
         for (auto& x : mapReward)
         {

@@ -125,6 +125,25 @@ static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 0;
 static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 340935;
 #endif
 
+#ifdef BIGBANG_TESTNET
+static const map<uint256, map<int32, vector<bigbang::CAddress>>> mapDeFiBlacklist = {};
+#else
+static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
+    {
+        uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"),
+        {
+            {
+                510000,
+                {
+                    bigbang::CAddress("103vf0z8f5kry0937ar3ac864cbhkfh8efmmy8mxxy27kaq5sf3svbare"),
+                    bigbang::CAddress("1m8sm8bsydnwaabhhfzjgwnxd2rd879g2cnj1nw8d5j3bhv29ftp5z2bs"),
+                },
+            },
+        },
+    },
+};
+#endif
+
 namespace bigbang
 {
 ///////////////////////////////
@@ -721,13 +740,23 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork\n");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION && destIn == tx.sendTo)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION)
     {
-        return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
-    }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION && (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
-    {
-        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
+        if (destIn == tx.sendTo)
+        {
+            return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
+        }
+
+        if (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
+        }
+
+        const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nForkHeight);
+        if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist\n");
+        }
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -876,13 +905,23 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork\n");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION && destIn == tx.sendTo)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION)
     {
-        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
-    }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION && (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
-    {
-        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
+        if (destIn == tx.sendTo)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
+        }
+
+        if ((!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
+        }
+
+        const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nForkHeight);
+        if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist\n");
+        }
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -1304,6 +1343,25 @@ bool CCoreProtocol::IsRefVacantHeight(uint32 nBlockHeight)
 int CCoreProtocol::GetRefVacantHeight()
 {
     return REF_VACANT_HEIGHT;
+}
+
+const std::set<CDestination>& CCoreProtocol::GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight)
+{
+    static set<CDestination> null;
+
+    auto it = mapDeFiBlacklist.find(hashFork);
+    if (it != mapDeFiBlacklist.end())
+    {
+        for (auto& list : it->second)
+        {
+            if (nHeight >= list.first)
+            {
+                return list.second;
+            }
+        }
+    }
+
+    return null;
 }
 
 bool CCoreProtocol::CheckBlockSignature(const CBlock& block)
