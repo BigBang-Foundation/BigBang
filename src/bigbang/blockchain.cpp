@@ -12,7 +12,7 @@ using namespace xengine;
 
 #define ENROLLED_CACHE_COUNT (120)
 #define AGREEMENT_CACHE_COUNT (16)
-#define NO_DEFI_TEMPLATE_ADDRESS_HEIGHT (5000824)
+#define NO_DEFI_TEMPLATE_ADDRESS_HEIGHT (500824)
 
 
 namespace bigbang
