@@ -20,7 +20,6 @@ using namespace xengine;
 
 #define BLOCKFILE_PREFIX "block"
 #define LOGFILE_NAME "storage.log"
-
 namespace bigbang
 {
 namespace storage

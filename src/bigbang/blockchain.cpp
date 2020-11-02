@@ -12,6 +12,8 @@ using namespace xengine;
 
 #define ENROLLED_CACHE_COUNT (120)
 #define AGREEMENT_CACHE_COUNT (16)
+#define NO_DEFI_TEMPLATE_ADDRESS_HEIGHT (500824)
+
 
 namespace bigbang
 {
@@ -2257,6 +2259,30 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
         return s;
     }
 
+    if(CBlock::GetBlockHeightByHash(hash) > NO_DEFI_TEMPLATE_ADDRESS_HEIGHT)
+    {
+        auto iter = mapAddressAmount.begin();
+        for(; iter != mapAddressAmount.end(); )
+        {
+            const CDestination& destTo = iter->first;
+            if (!CTemplate::IsTxSpendable(destTo)) 
+            {
+                mapAddressAmount.erase(iter++);
+            } 
+            else 
+            {
+                ++iter;
+            }
+        }
+    }
+  
+    // blacklist
+    const set<CDestination>& setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, CBlock::GetBlockHeightByHash(hash));
+    for (auto& dest : setBlacklist)
+    {
+        mapAddressAmount.erase(dest);
+    }
+
     int64 nStakeReward = nReward * profile.defi.nStakeRewardPercent / 100;
     CDeFiRewardSet stakeReward = defiReward.ComputeStakeReward(profile.defi.nStakeMinToken, nStakeReward, mapAddressAmount);
 
@@ -2271,7 +2297,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     }
 
     int64 nPromotionReward = nReward * profile.defi.nPromotionRewardPercent / 100;
-    CDeFiRewardSet promotionReward = defiReward.ComputePromotionReward(nPromotionReward, mapAddressAmount, profile.defi.mapPromotionTokenTimes, relation);
+    CDeFiRewardSet promotionReward = defiReward.ComputePromotionReward(nPromotionReward, mapAddressAmount, profile.defi.mapPromotionTokenTimes, relation, setBlacklist);
 
     CDeFiRewardSetByDest& destIdx = promotionReward.get<0>();
     for (auto& stake : stakeReward)
