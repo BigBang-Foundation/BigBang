@@ -95,8 +95,6 @@ bool CLevelDBEngine::TxnCommit()
 {
     if (pbatch != nullptr)
     {
-        leveldb::WriteOptions batchoption;
-
         leveldb::Status status = pdb->Write(batchoptions, pbatch);
         delete pbatch;
         pbatch = nullptr;
