@@ -1097,6 +1097,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
 
     for (const auto& vd : vArrangeTxRemove)
     {
+        txView.Remove(vd.first);
         txView.InvalidateSpent(CTxOutPoint(vd.first, 0), viewInvolvedTx);
         txView.InvalidateSpent(CTxOutPoint(vd.first, 1), viewInvolvedTx);
     }
