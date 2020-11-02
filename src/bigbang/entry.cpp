@@ -151,7 +151,8 @@ bool CBbEntry::Initialize(int argc, char* argv[])
         {
             return false;
         }
-        cout << "bigbang server starting\n";
+        // FIXME: only for DeFi App
+        // cout << "bigbang server starting\n";
     }
 
     // log
