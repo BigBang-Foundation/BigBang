@@ -12,6 +12,8 @@ using namespace xengine;
 
 #define ENROLLED_CACHE_COUNT (120)
 #define AGREEMENT_CACHE_COUNT (16)
+#define NO_DEFI_TEMPLATE_ADDRESS_HEIGHT (500824)
+
 
 namespace bigbang
 {
@@ -2239,6 +2241,23 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
         return s;
     }
 
+    if(CBlock::GetBlockHeightByHash(hash) > NO_DEFI_TEMPLATE_ADDRESS_HEIGHT)
+    {
+        auto iter = mapAddressAmount.begin();
+        for(; iter != mapAddressAmount.end(); )
+        {
+            const CDestination& destTo = iter->first;
+            if (!CTemplate::IsTxSpendable(destTo)) 
+            {
+                mapAddressAmount.erase(iter++);
+            } 
+            else 
+            {
+                ++iter;
+            }
+        }
+    }
+  
     // blacklist
     const set<CDestination>& setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, CBlock::GetBlockHeightByHash(hash));
     for (auto& dest : setBlacklist)
