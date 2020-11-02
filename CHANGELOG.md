@@ -4,6 +4,7 @@
 
 - Add black list for invalid relation node
 - DeFi Reward do not send to template address
+- Modify dexmatch dest verify
 
 
 # Version 2.2.1 (2020-10-29)
