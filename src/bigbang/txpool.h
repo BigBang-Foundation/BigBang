@@ -339,7 +339,7 @@ public:
 class CTxCache
 {
 public:
-    CTxCache(size_t nHeightIntervalIn = 0)
+    CTxCache(uint32 nHeightIntervalIn = 0)
       : nHeightInterval(nHeightIntervalIn) {}
     CTxCache(const CTxCache& cache)
       : nHeightInterval(cache.nHeightInterval), mapCache(cache.mapCache) {}
@@ -400,7 +400,7 @@ public:
     }
 
 private:
-    size_t nHeightInterval;
+    uint32 nHeightInterval;
     std::map<uint256, std::vector<CTransaction>> mapCache;
 };
 

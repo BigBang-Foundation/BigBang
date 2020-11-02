@@ -7,6 +7,7 @@
 
 #include <boost/optional.hpp>
 #include <map>
+#include <set>
 #include <xengine.h>
 
 #include "address.h"
@@ -64,6 +65,7 @@ public:
     virtual uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight) = 0;
     virtual bool IsRefVacantHeight(uint32 nBlockHeight) = 0;
     virtual int GetRefVacantHeight() = 0;
+    virtual const std::set<CDestination>& GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) = 0;
 };
 
 class IBlockChain : public xengine::IBase
