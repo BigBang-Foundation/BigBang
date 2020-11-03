@@ -175,21 +175,21 @@ BOOST_AUTO_TEST_CASE(tree)
                 && ((++relation2.mapRoot.begin())->second->spRoot->key == a2)
                 && (relation2.mapRoot.rbegin()->second->spRoot->key == A));
 
-    BOOST_CHECK(!relation2.GetRelation(A)->spParent);
-    BOOST_CHECK(relation2.GetRelation(a1)->spParent->key == A);
-    BOOST_CHECK(relation2.GetRelation(a3)->spParent->key == A);
-    BOOST_CHECK(relation2.GetRelation(a11)->spParent->key == a1);
-    BOOST_CHECK(relation2.GetRelation(a111)->spParent->key == a11);
-    BOOST_CHECK(!relation2.GetRelation(a2)->spParent);
-    BOOST_CHECK(relation2.GetRelation(a21)->spParent->key == a2);
-    BOOST_CHECK(relation2.GetRelation(a22)->spParent->key == a2);
-    BOOST_CHECK(relation2.GetRelation(a221)->spParent->key == a22);
-    BOOST_CHECK(relation2.GetRelation(a222)->spParent->key == a22);
-    BOOST_CHECK(!relation2.GetRelation(B)->spParent);
-    BOOST_CHECK(relation2.GetRelation(b1)->spParent->key == B);
-    BOOST_CHECK(relation2.GetRelation(b2)->spParent->key == B);
-    BOOST_CHECK(relation2.GetRelation(b3)->spParent->key == B);
-    BOOST_CHECK(relation2.GetRelation(b4)->spParent->key == B);
+    BOOST_CHECK(!relation2.GetRelation(A)->spParent.lock());
+    BOOST_CHECK(relation2.GetRelation(a1)->spParent.lock()->key == A);
+    BOOST_CHECK(relation2.GetRelation(a3)->spParent.lock()->key == A);
+    BOOST_CHECK(relation2.GetRelation(a11)->spParent.lock()->key == a1);
+    BOOST_CHECK(relation2.GetRelation(a111)->spParent.lock()->key == a11);
+    BOOST_CHECK(!relation2.GetRelation(a2)->spParent.lock());
+    BOOST_CHECK(relation2.GetRelation(a21)->spParent.lock()->key == a2);
+    BOOST_CHECK(relation2.GetRelation(a22)->spParent.lock()->key == a2);
+    BOOST_CHECK(relation2.GetRelation(a221)->spParent.lock()->key == a22);
+    BOOST_CHECK(relation2.GetRelation(a222)->spParent.lock()->key == a22);
+    BOOST_CHECK(!relation2.GetRelation(B)->spParent.lock());
+    BOOST_CHECK(relation2.GetRelation(b1)->spParent.lock()->key == B);
+    BOOST_CHECK(relation2.GetRelation(b2)->spParent.lock()->key == B);
+    BOOST_CHECK(relation2.GetRelation(b3)->spParent.lock()->key == B);
+    BOOST_CHECK(relation2.GetRelation(b4)->spParent.lock()->key == B);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -363,12 +363,13 @@ struct CDeFiReward
     int64 nAmount;
     uint64 nRank;
     int64 nStakeReward;
+    int64 nAchievement; // all children amount
     uint64 nPower;
     int64 nPromotionReward;
     uint256 hashAnchor;
 
     CDeFiReward()
-      : nReward(0), nAmount(0), nRank(0), nStakeReward(0), nPower(0), nPromotionReward(0)
+      : nReward(0), nAmount(0), nRank(0), nStakeReward(0), nAchievement(0), nPower(0), nPromotionReward(0)
     {
     }
 };

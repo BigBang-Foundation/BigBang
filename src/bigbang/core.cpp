@@ -60,6 +60,12 @@ static const uint32 REF_VACANT_HEIGHT = 20;
 static const uint32 REF_VACANT_HEIGHT = 368638;
 #endif
 
+//#ifdef BIGBANG_TESTNET
+//static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
+//#else
+//static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 493149;
+//#endif
+
 #ifdef BIGBANG_TESTNET
 static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
 #else
@@ -123,6 +129,27 @@ static const int64 BBCP_INIT_REWARD_TOKEN = BBCP_REWARD_TOKEN[0];
 static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 0;
 #else
 static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 340935;
+#endif
+
+#ifdef BIGBANG_TESTNET
+static const map<uint256, map<int32, vector<bigbang::CAddress>>> mapDeFiBlacklist = {};
+#else
+static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
+    {
+        uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"),
+        {
+            {
+                500824,
+                {
+                    bigbang::CAddress("103vf0z8f5kry0937ar3ac864cbhkfh8efmmy8mxxy27kaq5sf3svbare"),
+                    bigbang::CAddress("1m8sm8bsydnwaabhhfzjgwnxd2rd879g2cnj1nw8d5j3bhv29ftp5z2bs"),
+                    bigbang::CAddress("1r4hh5jnzp5c3pcr92vaqt579b65kpvafx5j8avkn2xq0ksqkdden32g9"),
+                    bigbang::CAddress("1agwkgwhdbzhd1hqa5fjvpst42v727befdc6e7a2kv77scr4qapqfhrk1"),
+                },
+            },
+        },
+    },
+};
 #endif
 
 namespace bigbang
@@ -246,9 +273,9 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
             }
         }
     }
-    if (tx.nType == CTransaction::TX_DEFI_REWARD && (tx.vchData.size() > 40))
+    if (tx.nType == CTransaction::TX_DEFI_REWARD && (tx.vchData.size() > 48))
     {
-        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi reward tx data length is not 40\n");
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi reward tx data length is not 48\n");
     }
     if (!tx.vchData.empty() && (tx.nType == CTransaction::TX_WORK || tx.nType == CTransaction::TX_STAKE))
     {
@@ -721,13 +748,23 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork\n");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION && destIn == tx.sendTo)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION)
     {
-        return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
-    }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION && (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
-    {
-        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
+        if (destIn == tx.sendTo)
+        {
+            return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
+        }
+
+        if (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
+        }
+
+        const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nForkHeight);
+        if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist\n");
+        }
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -738,38 +775,51 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         }
     }
 
-    if (destIn.IsTemplate())
+    uint16 nDestInTemplateType = 0;
+    uint16 nSendToTemplateType = 0;
+    CTemplateId tid;
+    if (destIn.GetTemplateId(tid))
     {
-        uint16 nDestInTemplateType = destIn.GetTemplateId().GetType();
-        if (nDestInTemplateType == TEMPLATE_VOTE || (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_VOTE))
-        {
-            if (VerifyVoteTx(tx, destIn, fork) != OK)
-            {
-                return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
-            }
-        }
+        nDestInTemplateType = tid.GetType();
+    }
+    if (tx.sendTo.GetTemplateId(tid))
+    {
+        nSendToTemplateType = tid.GetType();
+    }
 
-        switch (nDestInTemplateType)
+    if (nDestInTemplateType == TEMPLATE_VOTE || nSendToTemplateType == TEMPLATE_VOTE)
+    {
+        if (VerifyVoteTx(tx, destIn, fork) != OK)
         {
-        case TEMPLATE_DEXORDER:
+            return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
+        }
+    }
+
+    switch (nDestInTemplateType)
+    {
+    case TEMPLATE_DEXORDER:
+    {
+        Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight);
+        if (err != OK)
         {
-            Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight);
-            if (err != OK)
-            {
-                return DEBUG(err, "invalid dex order tx");
-            }
-            break;
+            return DEBUG(err, "invalid dex order tx");
         }
-        case TEMPLATE_DEXMATCH:
+        break;
+    }
+    case TEMPLATE_DEXMATCH:
+    {
+        Errno err = VerifyDexMatchTx(tx, nValueIn, nForkHeight);
+        if (err != OK)
         {
-            Errno err = VerifyDexMatchTx(tx, nValueIn, nForkHeight);
-            if (err != OK)
-            {
-                return DEBUG(err, "invalid dex match tx");
-            }
-            break;
+            return DEBUG(err, "invalid dex match tx");
         }
-        }
+        break;
+    }
+    }
+
+    if (nSendToTemplateType == TEMPLATE_DEXMATCH && nDestInTemplateType != TEMPLATE_DEXORDER)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid sendto dex match tx");
     }
 
     vector<uint8> vchSig;
@@ -829,7 +879,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     }
 
     if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_DEXMATCH
-        && nForkHeight == MATCH_VERIFY_ERROR_HEIGHT)
+        /*&& nForkHeight < MATCH_VERIFY_ERROR_HEIGHT*/)
     {
         nForkHeight -= 1;
     }
@@ -876,13 +926,23 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork\n");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION && destIn == tx.sendTo)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION)
     {
-        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
-    }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION && (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
-    {
-        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
+        if (destIn == tx.sendTo)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address\n");
+        }
+
+        if ((!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable\n");
+        }
+
+        const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nForkHeight);
+        if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist\n");
+        }
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -893,38 +953,51 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         }
     }
 
-    if (destIn.IsTemplate())
+    uint16 nDestInTemplateType = 0;
+    uint16 nSendToTemplateType = 0;
+    CTemplateId tid;
+    if (destIn.GetTemplateId(tid))
     {
-        uint16 nDestInTemplateType = destIn.GetTemplateId().GetType();
-        if (nDestInTemplateType == TEMPLATE_VOTE || (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_VOTE))
-        {
-            if (VerifyVoteTx(tx, destIn, fork) != OK)
-            {
-                return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
-            }
-        }
+        nDestInTemplateType = tid.GetType();
+    }
+    if (tx.sendTo.GetTemplateId(tid))
+    {
+        nSendToTemplateType = tid.GetType();
+    }
 
-        switch (nDestInTemplateType)
+    if (nDestInTemplateType == TEMPLATE_VOTE || nSendToTemplateType == TEMPLATE_VOTE)
+    {
+        if (VerifyVoteTx(tx, destIn, fork) != OK)
         {
-        case TEMPLATE_DEXORDER:
+            return DEBUG(ERR_TRANSACTION_INVALID, "invalid vote tx");
+        }
+    }
+
+    switch (nDestInTemplateType)
+    {
+    case TEMPLATE_DEXORDER:
+    {
+        Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight + 1);
+        if (err != OK)
         {
-            Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight + 1);
-            if (err != OK)
-            {
-                return DEBUG(err, "invalid dex order tx");
-            }
-            break;
+            return DEBUG(err, "invalid dex order tx");
         }
-        case TEMPLATE_DEXMATCH:
+        break;
+    }
+    case TEMPLATE_DEXMATCH:
+    {
+        Errno err = VerifyDexMatchTx(tx, nValueIn, nForkHeight + 1);
+        if (err != OK)
         {
-            Errno err = VerifyDexMatchTx(tx, nValueIn, nForkHeight + 1);
-            if (err != OK)
-            {
-                return DEBUG(err, "invalid dex match tx");
-            }
-            break;
+            return DEBUG(err, "invalid dex match tx");
         }
-        }
+        break;
+    }
+    }
+
+    if (nSendToTemplateType == TEMPLATE_DEXMATCH && nDestInTemplateType != TEMPLATE_DEXORDER)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid sendto dex match tx");
     }
 
     // record destIn in vchSig
@@ -934,7 +1007,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid recoreded destination");
     }
 
-    if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vchSig, nForkHeight, fork))
+    if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vchSig, nForkHeight + 1, fork))
     {
         return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature\n");
     }
@@ -1304,6 +1377,25 @@ bool CCoreProtocol::IsRefVacantHeight(uint32 nBlockHeight)
 int CCoreProtocol::GetRefVacantHeight()
 {
     return REF_VACANT_HEIGHT;
+}
+
+const std::set<CDestination>& CCoreProtocol::GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight)
+{
+    static set<CDestination> null;
+
+    auto it = mapDeFiBlacklist.find(hashFork);
+    if (it != mapDeFiBlacklist.end())
+    {
+        for (auto& list : it->second)
+        {
+            if (nHeight >= list.first)
+            {
+                return list.second;
+            }
+        }
+    }
+
+    return null;
 }
 
 bool CCoreProtocol::CheckBlockSignature(const CBlock& block)

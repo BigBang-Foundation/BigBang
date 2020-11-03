@@ -12,6 +12,8 @@ using namespace xengine;
 
 #define ENROLLED_CACHE_COUNT (120)
 #define AGREEMENT_CACHE_COUNT (16)
+#define NO_DEFI_TEMPLATE_ADDRESS_HEIGHT (500824)
+
 
 namespace bigbang
 {
@@ -611,7 +613,6 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
                 return ERR_TRANSACTION_INVALID;
             }
         }
-        
 
         if ((tx.nType != CTransaction::TX_DEFI_REWARD) && !pTxPool->Exists(txid))
         {
@@ -1911,20 +1912,16 @@ void CBlockChain::InitCheckPoints()
               { 285060, uint256("00045984ae81f672b42525e0465dd05239c742fe0b6723a15c4fd03215362eae") },
               { 366692, uint256("00059864d72f76565cb8aa190c1e73ab4eb449d6641d73f7eba4e6a849589453") },
               { 400000, uint256("00061a8020ce3ddf579e34bfa38ff95c9667bf50fce8005069d8dcfeb695f0d9") },
-              { 450000, uint256("0006ddd0a514053cc0e11c1c04218a5cc40c8e01e9ad7010665cc3ce196c06b0")}});
+              { 450000, uint256("0006ddd0a514053cc0e11c1c04218a5cc40c8e01e9ad7010665cc3ce196c06b0") } });
 
         vecBBCN.assign(
             { { 300000, uint256("000493e02a0f6ef977ebd5f844014badb412b6db85847b120f162b8d913b9028") },
               { 335999, uint256("0005207f9be2e4f1a278054058d4c17029ae6733cc8f7163a4e3099000deb9ff") } });
 
-        vecBTCA.assign({
-            { 447532, uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805") },
-            { 450000, uint256("0006ddd04452bce958ba78a1e044108fb4e9eac31751151b01b236cd2041b9eb") }
-        });
-        vecBBCC.assign({
-            { 430001, uint256("00068fb1bad4194126b0d1c1fb46b9860d4e899730825bd9511de4b14277d136") },
-            { 450000, uint256("0006ddd011ca1049c434d5b6976b1534aef6c49883460afa05f5ac541aefbb0c") }
-        });
+        vecBTCA.assign({ { 447532, uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805") },
+                         { 450000, uint256("0006ddd04452bce958ba78a1e044108fb4e9eac31751151b01b236cd2041b9eb") } });
+        vecBBCC.assign({ { 430001, uint256("00068fb1bad4194126b0d1c1fb46b9860d4e899730825bd9511de4b14277d136") },
+                         { 450000, uint256("0006ddd011ca1049c434d5b6976b1534aef6c49883460afa05f5ac541aefbb0c") } });
         InitCheckPoints(uint256("00000000b0a9be545f022309e148894d1e1c853ccac3ef04cb6f5e5c70f41a70"), vecGenesisCheckPoints);
         InitCheckPoints(uint256("000493e02a0f6ef977ebd5f844014badb412b6db85847b120f162b8d913b9028"), vecBBCN);
         InitCheckPoints(uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"), vecBTCA);
@@ -2085,7 +2082,7 @@ list<CDeFiReward> CBlockChain::GetDeFiReward(const uint256& forkid, const uint25
     CBlockIndex* pIndexPrev = nullptr;
     if (!cntrBlock.RetrieveIndex(hashPrev, &pIndexPrev))
     {
-        Error("GetDeFiSectionList retrieve prev block index fail: %s", hashPrev.ToString().c_str());
+        Error("GetDeFiReward retrieve prev block index fail: %s", hashPrev.ToString().c_str());
         return listReward;
     }
 
@@ -2095,7 +2092,18 @@ list<CDeFiReward> CBlockChain::GetDeFiReward(const uint256& forkid, const uint25
 
     for (const uint256& section : listSection)
     {
-        const CDeFiRewardSet& s = defiReward.GetForkSection(forkid, section);
+        bool fIsNull;
+        CDeFiRewardSet& s = defiReward.GetForkSection(forkid, section, fIsNull);
+
+        // generate section reward
+        if (fIsNull)
+        {
+            CProfile profile = defiReward.GetForkProfile(forkid);
+            CDeFiRewardSet st = ComputeDeFiSection(forkid, section, profile);
+            defiReward.AddForkSection(forkid, section, std::move(st));
+            s = defiReward.GetForkSection(forkid, section, fIsNull);
+        }
+
         const CDeFiRewardSetByReward& idxByReward = s.get<1>();
         CDeFiRewardSetByReward::iterator it = idxByReward.begin();
         if (section == nLastSection)
@@ -2115,6 +2123,11 @@ list<CDeFiReward> CBlockChain::GetDeFiReward(const uint256& forkid, const uint25
         for (; it != idxByReward.end() && (nMax < 0 || listReward.size() < nMax); ++it)
         {
             listReward.push_back(*it);
+        }
+
+        if (listReward.size() >= nMax)
+        {
+            break;
         }
     }
 
@@ -2142,10 +2155,10 @@ list<uint256> CBlockChain::GetDeFiSectionList(const uint256& forkid, const CBloc
     const CBlockIndex* pIndexLast = pIndexPrev;
     while (pIndexLast->IsVacant())
     {
-        if (pIndexLast->GetBlockHeight() == prevHeight)
+        if (pIndexLast->GetBlockHeight() == prevHeight + 1)
         {
-            listSection.push_front(pIndexLast->GetBlockHash());
-            prevHeight = defiReward.PrevRewardHeight(forkid, pIndexLast->GetBlockHeight());
+            listSection.push_front(pIndexLast->pPrev->GetBlockHash());
+            prevHeight = defiReward.PrevRewardHeight(forkid, prevHeight);
         }
         pIndexLast = pIndexLast->pPrev;
     }
@@ -2182,7 +2195,6 @@ list<uint256> CBlockChain::GetDeFiSectionList(const uint256& forkid, const CBloc
     }
 
     CProfile profile = defiReward.GetForkProfile(forkid);
-
     for (auto it = listSection.begin(); it != listSection.end(); it++)
     {
         const uint256& section = *it;
@@ -2199,10 +2211,6 @@ list<uint256> CBlockChain::GetDeFiSectionList(const uint256& forkid, const CBloc
                 listSection.erase(it, listSection.end());
                 break;
             }
-
-            // generate section
-            CDeFiRewardSet s = ComputeDeFiSection(forkid, section, profile);
-            defiReward.AddForkSection(forkid, section, std::move(s));
         }
     }
 
@@ -2233,6 +2241,30 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
         return s;
     }
 
+    if(CBlock::GetBlockHeightByHash(hash) > NO_DEFI_TEMPLATE_ADDRESS_HEIGHT)
+    {
+        auto iter = mapAddressAmount.begin();
+        for(; iter != mapAddressAmount.end(); )
+        {
+            const CDestination& destTo = iter->first;
+            if (!CTemplate::IsTxSpendable(destTo)) 
+            {
+                mapAddressAmount.erase(iter++);
+            } 
+            else 
+            {
+                ++iter;
+            }
+        }
+    }
+  
+    // blacklist
+    const set<CDestination>& setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, CBlock::GetBlockHeightByHash(hash));
+    for (auto& dest : setBlacklist)
+    {
+        mapAddressAmount.erase(dest);
+    }
+
     int64 nStakeReward = nReward * profile.defi.nStakeRewardPercent / 100;
     CDeFiRewardSet stakeReward = defiReward.ComputeStakeReward(profile.defi.nStakeMinToken, nStakeReward, mapAddressAmount);
 
@@ -2247,7 +2279,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     }
 
     int64 nPromotionReward = nReward * profile.defi.nPromotionRewardPercent / 100;
-    CDeFiRewardSet promotionReward = defiReward.ComputePromotionReward(nPromotionReward, mapAddressAmount, profile.defi.mapPromotionTokenTimes, relation);
+    CDeFiRewardSet promotionReward = defiReward.ComputePromotionReward(nPromotionReward, mapAddressAmount, profile.defi.mapPromotionTokenTimes, relation, setBlacklist);
 
     CDeFiRewardSetByDest& destIdx = promotionReward.get<0>();
     for (auto& stake : stakeReward)
@@ -2256,6 +2288,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
         auto it = destIdx.find(stake.dest);
         if (it != destIdx.end())
         {
+            reward.nAchievement = it->nAchievement;
             reward.nPower = it->nPower;
             reward.nPromotionReward = it->nPromotionReward;
             reward.nReward += it->nPromotionReward;

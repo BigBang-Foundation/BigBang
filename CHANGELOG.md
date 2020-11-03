@@ -1,3 +1,21 @@
+# Version 2.2.2 (2020-11-02)
+
+### Fixs
+
+- Add black list for invalid relation node
+- DeFi Reward do not send to template address
+- Modify dexmatch dest verify
+
+
+# Version 2.2.1 (2020-10-29)
+
+### Fixs
+
+- Reduce memory usage of DeFi function
+- Fix memory leak of CForest of DeFi relation
+- Comparative study on avoiding the wrong matchmaking
+- modify match verify height
+
 # Version 2.2.0 (2020-10-21)
 
 ### Features

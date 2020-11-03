@@ -5,6 +5,7 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/test/unit_test.hpp>
 #include <map>
+#include <set>
 
 #include "defi.h"
 #include "forkcontext.h"
@@ -528,7 +529,7 @@ BOOST_AUTO_TEST_CASE(reward)
         BOOST_CHECK(relation.Insert(x.first, x.second.destParent, x.second.destParent));
     }
     {
-        CDeFiRewardSet reward = r.ComputePromotionReward(nReward, balance, profile1.defi.mapPromotionTokenTimes, relation);
+        CDeFiRewardSet reward = r.ComputePromotionReward(nReward, balance, profile1.defi.mapPromotionTokenTimes, relation, set<CDestination>());
         BOOST_CHECK(reward.size() == 6);
 
         auto& destIdx = reward.get<0>();
@@ -564,18 +565,18 @@ BOOST_AUTO_TEST_CASE(reward2)
     profile.nVersion = 1;
     profile.nMinTxFee = NEW_MIN_TX_FEE;
     profile.nMintReward = 0;
-    profile.nAmount = 10000000 * COIN; // È¶ñÊúüÂèëË°å‰∏ÄÂçÉ‰∏áÊØçÂ∏Å
+    profile.nAmount = 10000000 * COIN; //  ◊∆⁄∑¢––“ª«ßÕÚƒ∏±“
     profile.nJointHeight = 15;
     profile.nForkType = FORK_TYPE_DEFI;
     profile.defi.nMintHeight = 20;
-    profile.defi.nMaxSupply = 1000000000 * COIN; // BTCA ÊÄªÂÖ±ÂèëË°åÂçÅ‰∫øÊûö
+    profile.defi.nMaxSupply = 1000000000 * COIN; // BTCA ◊‹π≤∑¢–– Æ“⁄√∂
     profile.defi.nCoinbaseType = SPECIFIC_DEFI_COINBASE_TYPE;
-    profile.defi.mapCoinbasePercent = { { 259200, 10 }, { 777600, 8 }, { 1814400, 5 }, { 3369600, 3 }, { 5184000, 2 } }; // ÂèëË°åÈò∂ÊÆµÔºåÂçäÂπ¥Ôºå1Âπ¥ÔºàÁî®È´òÂ∫¶Ë°®Á§∫ÔºâÔºåÂèÇËÄÉBTCAÁôΩÁöÆ‰π¶ÔºåÊúàÂ¢ûÈïøÂéüÊúâÂü∫Êï∞ÁöÑ10%Ôºå8%
+    profile.defi.mapCoinbasePercent = { { 259200, 10 }, { 777600, 8 }, { 1814400, 5 }, { 3369600, 3 }, { 5184000, 2 } }; // ∑¢––Ω◊∂Œ£¨∞ÎƒÍ£¨1ƒÍ£®”√∏ﬂ∂»±Ì æ£©£¨≤ŒøºBTCA∞◊∆§ È£¨‘¬‘ˆ≥§‘≠”–ª˘ ˝µƒ10%£¨8%
     profile.defi.nRewardCycle = 5;                                                                                       // every 5 height once reward
     profile.defi.nSupplyCycle = 150;                                                                                     // every 150  once supply
     profile.defi.nStakeMinToken = 100 * COIN;                                                                            // min token required, >= 100, can be required to join this defi game
     profile.defi.nStakeRewardPercent = 50;                                                                               // 50% of supply amount per day
-    profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));                                               // Áî®‰∫éÊé®ÂπøÊî∂ÁõäÔºåÂ∞è‰∫éÁ≠â‰∫é10000ÁöÑÈÉ®ÂàÜÔºåË¶ÅÊîæÂ§ß10ÂÄç
+    profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));                                               // ”√”⁄Õ∆π„ ’“Ê£¨–°”⁄µ»”⁄10000µƒ≤ø∑÷£¨“™∑≈¥Û10±∂
     r.AddFork(forkid, profile);
 
     BOOST_CHECK(r.ExistFork(forkid));
@@ -613,8 +614,8 @@ BOOST_AUTO_TEST_CASE(reward2)
         BOOST_CHECK(reward.size() == 1);
         auto it = reward.begin();
 
-        // BÁöÑÊåÅÂ∏ÅÈáèÊéíÂêç 1
-        // ÂêÑ‰∏™Âú∞ÂùÄÁöÑÊéíÂêçÁõ∏Âä† 1
+        // Bµƒ≥÷±“¡ø≈≈√˚ 1
+        // ∏˜∏ˆµÿ÷∑µƒ≈≈√˚œ‡º” 1
         // nReward = 925925925
         // 1 / 1 * nReward * 50%
         BOOST_CHECK(it->dest == B && it->nReward == (nReward));
@@ -756,7 +757,7 @@ BOOST_AUTO_TEST_CASE(reward2)
         BOOST_CHECK(relation.Insert(x.first, x.second.destParent, x.second.destParent));
     }
     {
-        CDeFiRewardSet reward = r.ComputePromotionReward(nReward, balance, profile.defi.mapPromotionTokenTimes, relation);
+        CDeFiRewardSet reward = r.ComputePromotionReward(nReward, balance, profile.defi.mapPromotionTokenTimes, relation, set<CDestination>());
         BOOST_CHECK(reward.size() == 6);
         auto& destIdx = reward.get<0>();
 
@@ -802,11 +803,11 @@ BOOST_AUTO_TEST_CASE(reward_fixed)
     profile.nVersion = 1;
     profile.nMinTxFee = NEW_MIN_TX_FEE;
     profile.nMintReward = 0;
-    profile.nAmount = 20000000 * COIN; // È¶ñÊúüÂèëË°å‰∫åÂçÉ‰∏áÊØçÂ∏Å
+    profile.nAmount = 20000000 * COIN; //  ◊∆⁄∑¢––∂˛«ßÕÚƒ∏±“
     profile.nJointHeight = 0;
     profile.nForkType = FORK_TYPE_DEFI;
     profile.defi.nMintHeight = 10;
-    profile.defi.nMaxSupply = 1000000000 * COIN; // BTCA ÊÄªÂÖ±ÂèëË°åÂçÅ‰∫øÊûö
+    profile.defi.nMaxSupply = 1000000000 * COIN; // BTCA ◊‹π≤∑¢–– Æ“⁄√∂
     profile.defi.nCoinbaseType = FIXED_DEFI_COINBASE_TYPE;
     profile.defi.nRewardCycle = 5;   // 1440 = 60 * 24  every N height once reward
     profile.defi.nSupplyCycle = 150; // 43200 = 60 * 24 * 30 every N height once supply
@@ -816,7 +817,7 @@ BOOST_AUTO_TEST_CASE(reward_fixed)
     profile.defi.nStakeMinToken = 100 * COIN;                              // min token required, >= 100, can be required to join this defi game
     profile.defi.nStakeRewardPercent = 50;                                 // 50% of supply amount per day
     profile.defi.nPromotionRewardPercent = 50;                             // 50% of supply amount per day
-    profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10)); // Áî®‰∫éÊé®ÂπøÊî∂ÁõäÔºåÂ∞è‰∫éÁ≠â‰∫é10000ÁöÑÈÉ®ÂàÜÔºåË¶ÅÊîæÂ§ß10ÂÄç
+    profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10)); // ”√”⁄Õ∆π„ ’“Ê£¨–°”⁄µ»”⁄10000µƒ≤ø∑÷£¨“™∑≈¥Û10±∂
     r.AddFork(forkid, profile);
 
     BOOST_CHECK(r.ExistFork(forkid));
@@ -925,7 +926,7 @@ BOOST_AUTO_TEST_CASE(reward_fixed)
         }
 
         int64 nPromotionReward = nReward * profile.defi.nPromotionRewardPercent / 100;
-        CDeFiRewardSet promotionReward = r.ComputePromotionReward(nPromotionReward, balance, profile.defi.mapPromotionTokenTimes, relation);
+        CDeFiRewardSet promotionReward = r.ComputePromotionReward(nPromotionReward, balance, profile.defi.mapPromotionTokenTimes, relation, set<CDestination>());
         // cout << "promotion reward: " << nPromotionReward << ", size: " << promotionReward.size() << endl;
         for (auto& x : mapReward)
         {
@@ -1011,22 +1012,22 @@ BOOST_AUTO_TEST_CASE(reward_specific)
     profile.nVersion = 1;
     profile.nMinTxFee = NEW_MIN_TX_FEE;
     profile.nMintReward = 0;
-    profile.nAmount = 20000000 * COIN; // È¶ñÊúüÂèëË°å‰∫åÂçÉ‰∏áÊØçÂ∏Å
+    profile.nAmount = 20000000 * COIN; //  ◊∆⁄∑¢––∂˛«ßÕÚƒ∏±“
     profile.nJointHeight = 0;
     profile.nForkType = FORK_TYPE_DEFI;
     profile.defi.nMintHeight = 10;
-    profile.defi.nMaxSupply = 1000000000 * COIN; // BTCA ÊÄªÂÖ±ÂèëË°åÂçÅ‰∫øÊûö
+    profile.defi.nMaxSupply = 1000000000 * COIN; // BTCA ◊‹π≤∑¢–– Æ“⁄√∂
     profile.defi.nCoinbaseType = SPECIFIC_DEFI_COINBASE_TYPE;
     profile.defi.nRewardCycle = 5;   // 1440 = 60 * 24  every N height once reward
     profile.defi.nSupplyCycle = 150; // 43200 = 60 * 24 * 30 every N height once supply
     // profile.defi.nDecayCycle = 3600;
     // profile.defi.nCoinbaseDecayPercent = 50;
     // profile.defi.nInitCoinbasePercent = 10;
-    profile.defi.mapCoinbasePercent = { { 900, 10 }, { 2700, 8 }, { 6300, 5 }, { 11700, 3 }, { 18000, 2 } }; // ÂèëË°åÈò∂ÊÆµÔºåÂçäÂπ¥Ôºå1Âπ¥ÔºàÁî®È´òÂ∫¶Ë°®Á§∫ÔºâÔºåÂèÇËÄÉBTCAÁôΩÁöÆ‰π¶ÔºåÊúàÂ¢ûÈïøÂéüÊúâÂü∫Êï∞ÁöÑ10%Ôºå8%
-    profile.defi.nStakeMinToken = 100 * COIN;                              // min token required, >= 100, can be required to join this defi game
-    profile.defi.nStakeRewardPercent = 50;                                 // 50% of supply amount per day
-    profile.defi.nPromotionRewardPercent = 50;                             // 50% of supply amount per day
-    profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10)); // Áî®‰∫éÊé®ÂπøÊî∂ÁõäÔºåÂ∞è‰∫éÁ≠â‰∫é10000ÁöÑÈÉ®ÂàÜÔºåË¶ÅÊîæÂ§ß10ÂÄç
+    profile.defi.mapCoinbasePercent = { { 900, 10 }, { 2700, 8 }, { 6300, 5 }, { 11700, 3 }, { 18000, 2 } }; // ∑¢––Ω◊∂Œ£¨∞ÎƒÍ£¨1ƒÍ£®”√∏ﬂ∂»±Ì æ£©£¨≤ŒøºBTCA∞◊∆§ È£¨‘¬‘ˆ≥§‘≠”–ª˘ ˝µƒ10%£¨8%
+    profile.defi.nStakeMinToken = 100 * COIN;                                                                // min token required, >= 100, can be required to join this defi game
+    profile.defi.nStakeRewardPercent = 50;                                                                   // 50% of supply amount per day
+    profile.defi.nPromotionRewardPercent = 50;                                                               // 50% of supply amount per day
+    profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));                                   // ”√”⁄Õ∆π„ ’“Ê£¨–°”⁄µ»”⁄10000µƒ≤ø∑÷£¨“™∑≈¥Û10±∂
     r.AddFork(forkid, profile);
 
     BOOST_CHECK(r.ExistFork(forkid));
@@ -1138,7 +1139,7 @@ BOOST_AUTO_TEST_CASE(reward_specific)
         }
 
         int64 nPromotionReward = nReward * profile.defi.nPromotionRewardPercent / 100;
-        CDeFiRewardSet promotionReward = r.ComputePromotionReward(nPromotionReward, balance, profile.defi.mapPromotionTokenTimes, relation);
+        CDeFiRewardSet promotionReward = r.ComputePromotionReward(nPromotionReward, balance, profile.defi.mapPromotionTokenTimes, relation, set<CDestination>());
         // cout << "promotion reward: " << nPromotionReward << ", size: " << promotionReward.size() << endl;
         for (auto& x : mapReward)
         {

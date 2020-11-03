@@ -40,7 +40,7 @@ class CDeFiForkReward
 public:
     enum
     {
-        MAX_REWARD_CACHE = 20
+        MAX_REWARD_CACHE = 5
     };
 
     typedef std::map<uint256, CDeFiRewardSet> MapSectionReward;
@@ -67,7 +67,7 @@ public:
     // return exist section cache of fork or not
     bool ExistForkSection(const uint256& forkid, const uint256& section);
     // return the section reward set. Should use ExistForkSection to determine if it exists first.
-    const CDeFiRewardSet& GetForkSection(const uint256& forkid, const uint256& section);
+    CDeFiRewardSet& GetForkSection(const uint256& forkid, const uint256& section, bool& fIsNull);
     // Add a section reward set of fork
     void AddForkSection(const uint256& forkid, const uint256& hash, CDeFiRewardSet&& reward);
 
@@ -78,7 +78,8 @@ public:
     CDeFiRewardSet ComputePromotionReward(const int64 nReward,
                                           const std::map<CDestination, int64>& mapAddressAmount,
                                           const std::map<int64, uint32>& mapPromotionTokenTimes,
-                                          CDeFiRelationGraph& relation);
+                                          CDeFiRelationGraph& relation,
+                                          const std::set<CDestination>& setBlackList);
     // for fixed decay coinbase, return the reward of between [nBeginHeight, nEndHeight)
     int64 GetFixedDecayReward(const CProfile& profile, const int32 nBeginHeight, const int32 nEndHeight);
     // for specific decay coinbase, return the reward of between [nBeginHeight, nEndHeight)
