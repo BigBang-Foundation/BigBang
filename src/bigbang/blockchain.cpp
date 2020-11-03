@@ -2312,24 +2312,36 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
             reward.nReward += it->nPromotionReward;
             destIdx.erase(it);
         }
-
-        // check reward > txfee
-        if (reward.nReward > NEW_MIN_TX_FEE)
+        // FIXME: only for DeFi App
+        else
         {
-            reward.hashAnchor = hash;
-            s.insert(move(reward));
+            reward.nAchievement = stake.nAmount / COIN;
         }
+
+        // FIXME: only for DeFi App
+        // // check reward > txfee
+        // if (reward.nReward > NEW_MIN_TX_FEE)
+        // {
+        //     reward.hashAnchor = hash;
+        //     s.insert(move(reward));
+        // }
+        reward.hashAnchor = hash;
+        s.insert(move(reward));
     }
 
     for (auto& promotion : promotionReward)
     {
-        // check reward > txfee
-        if (promotion.nReward > NEW_MIN_TX_FEE)
-        {
-            CDeFiReward reward = promotion;
-            reward.hashAnchor = hash;
-            s.insert(move(reward));
-        }
+        // FIXME: only for DeFi App
+        // // check reward > txfee
+        // if (promotion.nReward > NEW_MIN_TX_FEE)
+        // {
+        //     CDeFiReward reward = promotion;
+        //     reward.hashAnchor = hash;
+        //     s.insert(move(reward));
+        // }
+        CDeFiReward reward = promotion;
+        reward.hashAnchor = hash;
+        s.insert(move(reward));
     }
 
     // FIXME: only for DeFi App
@@ -2351,9 +2363,16 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
                    CBlock::GetBlockHeightByHash(hash), forkid.ToString().c_str(), hash.ToString().c_str(), CAddress(x.first).ToString().c_str(),
                    x.second, (uint64)0, (int64)0, x.second / COIN, (uint64)0, (int64)0);
         }
-        else if (it->nReward == 0)
+    }
+    for (auto it = idx.begin(); it != idx.end();)
+    {
+        if (it->nReward <= NEW_MIN_TX_FEE)
         {
-            idx.erase(it);
+            idx.erase(it++);
+        }
+        else
+        {
+            ++it;
         }
     }
 
