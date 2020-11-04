@@ -178,8 +178,7 @@ public:
                 EModuleType::RECOVERY,
                 EModuleType::DBPCLIENT,
                 EModuleType::DBPSERVER,
-                EModuleType::DBPSERVICE,
-                EModuleType::RECOVERY } },
+                EModuleType::DBPSERVICE } },
             { EModeType::MODE_CONSOLE, { EModuleType::HTTPGET, EModuleType::RPCCLIENT } },
             { EModeType::MODE_MINER, { EModuleType::HTTPGET, EModuleType::MINER } }
             // Add new mode-config relationship here.
