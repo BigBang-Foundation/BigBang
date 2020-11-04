@@ -19,7 +19,6 @@ using namespace xengine;
 
 #define BLOCKFILE_PREFIX "block"
 #define LOGFILE_NAME "storage.log"
-
 namespace bigbang
 {
 namespace storage
@@ -935,7 +934,7 @@ bool CBlockBase::RetrieveAvailDelegate(const uint256& hash, int height, const ve
         mapEnrollData.insert(make_pair(it->second.first, it->second.second));
         vecAmount.push_back(make_pair(it->second.first, it->first.first));
     }
-    for (const auto d : vecAmount)
+    for (const auto& d : vecAmount)
     {
         StdTrace("BlockBase", "RetrieveAvailDelegate: dest: %s, amount: %.6f",
                  CAddress(d.first).ToString().c_str(), ValueFromToken(d.second));
