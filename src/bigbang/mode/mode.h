@@ -25,7 +25,7 @@
 //                  {
 //                      return create<config_type1, config_type2, ...>();
 //                  }
-//          e.g:    case EModeType::SERVER:
+//          e.g:    case EModeType::MODE_SERVER:
 //                  {
 //                      return create<
 //                                      EConfigType::MINT,
@@ -45,7 +45,7 @@
 //                      }
 //                  },
 //          e.g.:   {
-//                      EModeType::MINER,
+//                      EModeType::MODE_MINER,
 //                      {
 //                          EModuleType::HTTPGET,
 //                          EModuleType::MINER
@@ -119,11 +119,11 @@ public:
     {
         switch (type)
         {
-        case EModeType::ERROR:
+        case EModeType::MODE_ERROR:
         {
             return nullptr;
         }
-        case EModeType::SERVER:
+        case EModeType::MODE_SERVER:
         {
             return Create<
                 EConfigType::FORK,
@@ -134,12 +134,12 @@ public:
                 EConfigType::DBPSERVER,
                 EConfigType::DBPCLIENT>(cmd);
         }
-        case EModeType::CONSOLE:
+        case EModeType::MODE_CONSOLE:
         {
             return Create<
                 EConfigType::RPCCLIENT>(cmd);
         }
-        case EModeType::MINER:
+        case EModeType::MODE_MINER:
         {
             return Create<
                 EConfigType::RPCCLIENT>(cmd);
@@ -158,7 +158,7 @@ public:
     static const std::vector<EModuleType> GetModules(const EModeType& mode) noexcept
     {
         static std::map<EModeType, std::vector<EModuleType>> mapping = {
-            { EModeType::SERVER,
+            { EModeType::MODE_SERVER,
               { EModuleType::LOCK,
                 EModuleType::COREPROTOCOL,
                 EModuleType::BLOCKCHAIN,
@@ -178,13 +178,10 @@ public:
                 EModuleType::RECOVERY,
                 EModuleType::DBPCLIENT,
                 EModuleType::DBPSERVER,
-                EModuleType::DBPSERVICE } },
-            { EModeType::CONSOLE,
-              { EModuleType::HTTPGET,
-                EModuleType::RPCCLIENT } },
-            { EModeType::MINER,
-              { EModuleType::HTTPGET,
-                EModuleType::MINER } }
+                EModuleType::DBPSERVICE,
+                EModuleType::RECOVERY } },
+            { EModeType::MODE_CONSOLE, { EModuleType::HTTPGET, EModuleType::RPCCLIENT } },
+            { EModeType::MODE_MINER, { EModuleType::HTTPGET, EModuleType::MINER } }
             // Add new mode-config relationship here.
         };
 
@@ -195,11 +192,12 @@ public:
     /**
      * Entry of auto_rpc function "Help"
      */
-    static std::string Help(EModeType type, const std::string& subCmd, const std::string& options = "")
+    static std::string
+    Help(EModeType type, const std::string& subCmd, const std::string& options = "")
     {
         return RPCHelpInfo(type, subCmd, options);
     }
-};
+}; // namespace bigbang
 
 } // namespace bigbang
 

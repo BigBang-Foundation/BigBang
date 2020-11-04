@@ -6,6 +6,7 @@
 #define BIGBANG_TXPOOL_H
 
 #include "base.h"
+#include "defi.h"
 #include "txpooldata.h"
 #include "util.h"
 
@@ -150,6 +151,10 @@ public:
     };
 
 public:
+    CTxPoolView()
+      : nForkType(-1)
+    {
+    }
     std::size_t Count() const
     {
         return setTxLinkIndex.size();
@@ -286,12 +291,14 @@ public:
     std::map<CTxOutPoint, CSpent> mapSpent;
     uint256 hashLastBlock;
     int64 nLastBlockTime;
+    int nForkType;
+    xengine::CForest<CDestination, uint256> relation;
 };
 
 class CTxCache
 {
 public:
-    CTxCache(size_t nHeightIntervalIn = 0)
+    CTxCache(uint32 nHeightIntervalIn = 0)
       : nHeightInterval(nHeightIntervalIn) {}
     CTxCache(const CTxCache& cache)
       : nHeightInterval(cache.nHeightInterval), mapCache(cache.mapCache) {}
@@ -352,7 +359,7 @@ public:
     }
 
 private:
-    size_t nHeightInterval;
+    uint32 nHeightInterval;
     std::map<uint256, std::vector<CTransaction>> mapCache;
 };
 

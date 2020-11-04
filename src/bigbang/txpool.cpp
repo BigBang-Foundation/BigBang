@@ -371,7 +371,6 @@ void CTxPoolView::ArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFee, 
     set<uint256> setUnTx;
     CPooledCertTxLinkSet setCertRelativesIndex;
     std::vector<CPooledTxLink> prevLinks;
-    nTotalTxFee = 0;
 
     // Collect all cert related tx
     const CPooledTxLinkSetByTxType& idxTxLinkType = setTxLinkIndex.get<2>();
@@ -592,7 +591,7 @@ Errno CTxPool::Push(const CTransaction& tx, uint256& hashFork, CDestination& des
         return ERR_ALREADY_HAVE;
     }
 
-    if (tx.IsMintTx())
+    if (tx.IsMintTx() || tx.nType == CTransaction::TX_DEFI_REWARD)
     {
         StdError("CTxPool", "Push: tx is mint, txid: %s", txid.GetHex().c_str());
         return ERR_TRANSACTION_INVALID;
@@ -813,7 +812,6 @@ bool CTxPool::ArrangeBlockTx(const uint256& hashFork, const uint256& hashPrev, i
     }
     else
     {
-        nTotalTxFee = 0;
         size_t currentSize = 0;
         for (const auto& tx : vCacheTx)
         {
@@ -931,6 +929,13 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
         {
             const CTransaction& tx = block.vtx[i];
             const CTxContxt& txContxt = block.vTxContxt[i];
+            // defi
+            if (tx.nType == CTransaction::TX_DEFI_REWARD)
+            {
+                change.vTxAddNew.push_back(CAssembledTx(tx, nBlockHeight));
+                continue;
+            }
+
             uint256 txid = tx.GetHash();
             if (!update.setTxUpdate.count(txid))
             {
@@ -940,6 +945,10 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                     if (tx.nType == CTransaction::TX_CERT)
                     {
                         certTxDest.RemoveCertTx(tx.sendTo, txid);
+                    }
+                    if (tx.IsDeFiRelation())
+                    {
+                        txView.relation.RemoveRelation(tx.sendTo);
                     }
                     mapTx.erase(txid);
                     change.mapTxUpdate.insert(make_pair(txid, nBlockHeight));
@@ -967,6 +976,15 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
         {
             const CTransaction& tx = block.vtx[i];
             uint256 txid = tx.GetHash();
+
+            // defi
+            if (tx.nType == CTransaction::TX_DEFI_REWARD)
+            {
+                txView.InvalidateSpent(CTxOutPoint(txid, 0), viewInvolvedTx);
+                vTxRemove.push_back(make_pair(txid, tx.vInput));
+                continue;
+            }
+
             if (!update.setTxUpdate.count(txid))
             {
                 uint256 spent0, spent1;
@@ -1012,6 +1030,10 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             {
                 certTxDest.RemoveCertTx(it->second.sendTo, txseq.hashTX);
             }
+            if (it->second.IsDeFiRelation())
+            {
+                txView.relation.RemoveRelation(it->second.sendTo);
+            }
             mapTx.erase(it);
         }
     }
@@ -1051,6 +1073,8 @@ bool CTxPool::LoadData()
         return false;
     }
 
+    map<uint256, int> mapForkHeight;
+
     for (int i = 0; i < vTx.size(); i++)
     {
         const uint256& hashFork = vTx[i].first;
@@ -1058,7 +1082,29 @@ bool CTxPool::LoadData()
         const CAssembledTx& tx = vTx[i].second.second;
 
         map<uint256, CPooledTx>::iterator mi = mapTx.insert(make_pair(txid, CPooledTx(tx, GetSequenceNumber()))).first;
-        mapPoolView[hashFork].AddNew(txid, (*mi).second);
+
+        auto it = mapForkHeight.find(hashFork);
+        if (it == mapForkHeight.end())
+        {
+            uint256 hashLast;
+            int64 nTime;
+            uint16 nMintType;
+            int nHeight;
+            if (!pBlockChain->GetLastBlock(hashFork, hashLast, nHeight, nTime, nMintType))
+            {
+                Error("LoadData: GetLastBlock fail, txid: %s, hashFork: %s",
+                      txid.GetHex().c_str(), hashFork.GetHex().c_str());
+                continue;
+            }
+
+            it = mapForkHeight.insert(make_pair(hashFork, nHeight)).first;
+        }
+
+        if (AddNew(mapPoolView[hashFork], txid, mi->second, hashFork, it->second) != OK)
+        {
+            Error("LoadData error, txid: %s", txid.ToString().c_str());
+            continue;
+        }
 
         if (tx.nType == CTransaction::TX_CERT)
         {
@@ -1161,7 +1207,19 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
         nValueIn += vPrevOutput[i].nAmount;
     }
 
-    Errno err = pCoreProtocol->VerifyTransaction(tx, vPrevOutput, nForkHeight, hashFork);
+    //init fork type and DeFi relation
+    if (txView.nForkType < 0)
+    {
+        CProfile profile;
+        if (!pBlockChain->GetForkProfile(hashFork, profile))
+        {
+            Error("AddNew Get fork profile error, fork: %s", hashFork.ToString().c_str());
+            return ERR_SYS_STORAGE_ERROR;
+        }
+        txView.nForkType = profile.nForkType;
+    }
+
+    Errno err = pCoreProtocol->VerifyTransaction(tx, vPrevOutput, nForkHeight, hashFork, txView.nForkType);
     if (err != OK)
     {
         StdTrace("CTxPool", "AddNew: VerifyTransaction fail, txid: %s", txid.GetHex().c_str());
@@ -1178,6 +1236,46 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     }
 
     CDestination destIn = vPrevOutput[0].destTo;
+    if (txView.nForkType != FORK_TYPE_DEFI && tx.IsDeFiRelation())
+    {
+        return ERR_TRANSACTION_INVALID_RELATION_TX;
+    }
+
+    if (txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
+    {
+        CDestination root;
+        if (!txView.relation.CheckInsert(tx.sendTo, destIn, root))
+        {
+            return ERR_TRANSACTION_INVALID_RELATION_TX;
+        }
+
+        if (!pBlockChain->CheckAddDeFiRelation(hashFork, tx.sendTo, root))
+        {
+            return ERR_TRANSACTION_INVALID_RELATION_TX;
+        }
+
+        if (!txView.relation.Insert(tx.sendTo, destIn, txid))
+        {
+            uint256 oldTxid;
+            auto spTreeNode = txView.relation.GetRelation(tx.sendTo);
+            CDestination destParent;
+            if (spTreeNode)
+            {
+                auto spParent = spTreeNode->spParent.lock();
+                if (spParent)
+                {
+                    destParent = spParent->key;
+                }
+                oldTxid = spTreeNode->data;
+            }
+
+            Error("AddNew relation tx failedtxid: %s, dest: %s, parent: %s", txid.ToString().c_str(),
+                  CAddress(tx.sendTo).ToString().c_str(), CAddress(destIn).ToString().c_str());
+
+            return ERR_TRANSACTION_INVALID_RELATION_TX;
+        }
+    }
+
     map<uint256, CPooledTx>::iterator mi = mapTx.insert(make_pair(txid, CPooledTx(tx, -1, GetSequenceNumber(), destIn, nValueIn))).first;
     if (!txView.AddNew(txid, (*mi).second))
     {
