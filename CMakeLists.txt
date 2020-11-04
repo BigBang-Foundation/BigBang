@@ -69,7 +69,7 @@ endif()
 if(UNIX AND NOT CYGWIN)
     string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra -Werror -Wno-char-subscripts -Wno-unused-parameter -Wno-sign-compare -Wno-reorder -Wno-unused-local-typedefs -Wno-implicit-fallthrough -Wno-overloaded-virtual -Wno-strict-aliasing")
     if (APPLE)
-        string(APPEND CMAKE_CXX_FLAGS " -fvisibility-inlines-hidden -fvisibility=hidden")
+        string(APPEND CMAKE_CXX_FLAGS " -fvisibility-inlines-hidden -fvisibility=hidden -Wno-unknown-warning-option -Wno-tautological-overlap-compare")
     endif()
 elseif(MSVC)
     # C4018: 'expression' : signed/unsigned mismatch
@@ -135,6 +135,9 @@ if(OPENSSL_VERSION VERSION_EQUAL 1.1.0 OR
     add_definitions(-DUSE_SSL_110)
 endif()
 
+# use _1 instead of boost::placeholders::_1
+add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
+
 if(CYGWIN)
     add_definitions(-DBOOST_LOG_DYN_LINK)
     add_definitions(-DBOOST_CYGWIN_FS_PATH)
@@ -143,7 +146,6 @@ endif()
 if(MSVC)
     add_definitions(-D_WIN32_WINNT=0x0601)
     add_definitions(-DBOOST_ALL_DYN_LINK)
-    add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
 endif()
 
 if(TESTNET)
