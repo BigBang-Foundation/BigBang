@@ -140,6 +140,8 @@ static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
                     bigbang::CAddress("1r4hh5jnzp5c3pcr92vaqt579b65kpvafx5j8avkn2xq0ksqkdden32g9"),
                     bigbang::CAddress("1agwkgwhdbzhd1hqa5fjvpst42v727befdc6e7a2kv77scr4qapqfhrk1"),
                 },
+            },
+            {
                 503704,
                 {
                     bigbang::CAddress("103vf0z8f5kry0937ar3ac864cbhkfh8efmmy8mxxy27kaq5sf3svbare"),
@@ -1386,7 +1388,7 @@ const std::set<CDestination>& CCoreProtocol::GetDeFiBlacklist(const uint256& has
     auto it = mapDeFiBlacklist.find(hashFork);
     if (it != mapDeFiBlacklist.end())
     {
-        for (auto& list : it->second)
+        for (auto& list : boost::adaptors::reverse(it->second))
         {
             if (nHeight >= list.first)
             {
