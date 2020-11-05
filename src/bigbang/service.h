@@ -71,17 +71,10 @@ public:
     bool AddTemplate(CTemplatePtr& ptr) override;
     CTemplatePtr GetTemplate(const CTemplateId& tid) override;
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) override;
-    bool GetBalanceByWallet(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) override;
     bool GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) override;
-    bool ListWalletTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) override;
-    boost::optional<std::string> CreateTransactionByWallet(const uint256& hashFork, const CDestination& destFrom,
-                                                           const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
-                                                           const std::vector<unsigned char>& vchData, CTransaction& txNew) override;
     boost::optional<std::string> CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
                                                             const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
                                                             const std::vector<unsigned char>& vchData, CTransaction& txNew) override;
-    bool SynchronizeWalletTx(const CDestination& destNew) override;
-    bool ResynchronizeWalletTx() override;
     bool SignOfflineTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, bool& fCompleted) override;
     Errno SendOfflineSignedTransaction(CTransaction& tx) override;
     bool AesEncrypt(const crypto::CPubKey& pubkeyLocal, const crypto::CPubKey& pubkeyRemote, const std::vector<uint8>& vMessage, std::vector<uint8>& vCiphertext) override;

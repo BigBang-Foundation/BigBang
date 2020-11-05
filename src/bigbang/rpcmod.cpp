@@ -125,7 +125,7 @@ static CTransactionData TxToJSON(const uint256& txid, const CTransaction& tx,
 
     return ret;
 }
-
+/*
 static CWalletTxData WalletTxToJSON(const CWalletTx& wtx)
 {
     CWalletTxData data;
@@ -148,7 +148,7 @@ static CWalletTxData WalletTxToJSON(const CWalletTx& wtx)
     data.nLockuntil = (boost::int64_t)wtx.nLockUntil;
     return data;
 }
-
+*/
 static CUnspentData UnspentToJSON(const CTxUnspent& unspent)
 {
     CUnspentData data;
@@ -245,17 +245,11 @@ CRPCMod::CRPCMod()
         //
         ("validateaddress", &CRPCMod::RPCValidateAddress)
         //
-        ("resyncwallet", &CRPCMod::RPCResyncWallet)
-        //
         ("getbalance", &CRPCMod::RPCGetBalance)
-        //
-        ("getbalancewallet", &CRPCMod::RPCGetBalanceWallet)
         //
         ("listtransaction", &CRPCMod::RPCListTransaction)
         //
         ("sendfrom", &CRPCMod::RPCSendFrom)
-        //
-        ("sendfromwallet", &CRPCMod::RPCSendFromWallet)
         //
         ("createtransaction", &CRPCMod::RPCCreateTransaction)
         //
@@ -1322,10 +1316,6 @@ CRPCResultPtr CRPCMod::RPCImportPrivKey(CRPCParamPtr param)
         {
             throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to add key: ") + *strErr);
         }
-        if (spParam->fSynctx && !pService->SynchronizeWalletTx(CDestination(key.GetPubKey())))
-        {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to sync wallet tx");
-        }
     }
 
     return MakeCImportPrivKeyResultPtr(key.GetPubKey().GetHex());
@@ -1361,10 +1351,6 @@ CRPCResultPtr CRPCMod::RPCImportPubKey(CRPCParamPtr param)
         {
             throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to add key: ") + *strErr);
         }
-        if (spParam->fSynctx && !pService->SynchronizeWalletTx(CDestination(key.GetPubKey())))
-        {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to sync wallet tx");
-        }
     }
 
     CDestination dest(pubkey);
@@ -1392,10 +1378,6 @@ CRPCResultPtr CRPCMod::RPCImportKey(CRPCParamPtr param)
         if (strErr)
         {
             throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to add key: ") + *strErr);
-        }
-        if (spParam->fSynctx && !pService->SynchronizeWalletTx(CDestination(key.GetPubKey())))
-        {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to sync wallet tx");
         }
     }
 
@@ -1436,10 +1418,6 @@ CRPCResultPtr CRPCMod::RPCAddNewTemplate(CRPCParamPtr param)
         {
             throw CRPCException(RPC_WALLET_ERROR, "Failed to add template");
         }
-        if (spParam->data.fSynctx && !pService->SynchronizeWalletTx(CDestination(ptr->GetTemplateId())))
-        {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to sync wallet tx");
-        }
     }
 
     return MakeCAddNewTemplateResultPtr(CAddress(ptr->GetTemplateId()).ToString());
@@ -1459,10 +1437,6 @@ CRPCResultPtr CRPCMod::RPCImportTemplate(CRPCParamPtr param)
         if (!pService->AddTemplate(ptr))
         {
             throw CRPCException(RPC_WALLET_ERROR, "Failed to add template");
-        }
-        if (spParam->fSynctx && !pService->SynchronizeWalletTx(CDestination(ptr->GetTemplateId())))
-        {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to sync wallet tx");
         }
     }
 
@@ -1536,31 +1510,6 @@ CRPCResultPtr CRPCMod::RPCValidateAddress(CRPCParamPtr param)
         }
     }
     return spResult;
-}
-
-CRPCResultPtr CRPCMod::RPCResyncWallet(CRPCParamPtr param)
-{
-    auto spParam = CastParamPtr<CResyncWalletParam>(param);
-    if (spParam->strAddress.IsValid())
-    {
-        CAddress address(spParam->strAddress);
-        if (address.IsNull())
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address");
-        }
-        if (!pService->SynchronizeWalletTx(static_cast<CDestination&>(address)))
-        {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to resync wallet tx");
-        }
-    }
-    else
-    {
-        if (!pService->ResynchronizeWalletTx())
-        {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to resync wallet tx");
-        }
-    }
-    return MakeCResyncWalletResultPtr("Resync wallet successfully.");
 }
 
 CRPCResultPtr CRPCMod::RPCGetDeFiRelation(rpc::CRPCParamPtr param)
@@ -1661,93 +1610,9 @@ CRPCResultPtr CRPCMod::RPCGetBalance(CRPCParamPtr param)
     return spResult;
 }
 
-CRPCResultPtr CRPCMod::RPCGetBalanceWallet(CRPCParamPtr param)
-{
-    auto spParam = CastParamPtr<CGetBalanceWalletParam>(param);
-
-    //getbalancewallet (-f="fork") (-a="address")
-    uint256 hashFork;
-    if (!GetForkHashOfDef(spParam->strFork, hashFork))
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
-    }
-
-    if (!pService->HaveFork(hashFork))
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
-    }
-
-    vector<CDestination> vDest;
-    if (spParam->strAddress.IsValid())
-    {
-        CAddress address(spParam->strAddress);
-        if (address.IsNull())
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address");
-        }
-        vDest.push_back(static_cast<CDestination&>(address));
-    }
-    else
-    {
-        ListDestination(vDest);
-    }
-
-    auto spResult = MakeCGetBalanceWalletResultPtr();
-    for (const CDestination& dest : vDest)
-    {
-        CWalletBalance balance;
-        if (pService->GetBalanceByWallet(dest, hashFork, balance))
-        {
-            CGetBalanceWalletResult::CBalance b;
-            b.strAddress = CAddress(dest).ToString();
-            b.dAvail = ValueFromAmount(balance.nAvailable);
-            b.dLocked = ValueFromAmount(balance.nLocked);
-            b.dUnconfirmed = ValueFromAmount(balance.nUnconfirmed);
-            spResult->vecBalance.push_back(b);
-        }
-    }
-
-    return spResult;
-}
-
 CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
 {
-    auto spParam = CastParamPtr<CListTransactionParam>(param);
-
-    const CRPCString& strFork = spParam->strFork;
-    const CRPCString& strAddress = spParam->strAddress;
-
-    CAddress address(strAddress);
-    uint256 fork;
-    if (!strFork.empty() && !GetForkHashOfDef(strFork, fork))
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
-    }
-
-    if (!strAddress.empty() && !address.ParseString(strAddress))
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address");
-    }
-
-    int nCount = GetUint(spParam->nCount, 10);
-    int nOffset = GetInt(spParam->nOffset, 0);
-    if (nCount <= 0)
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Negative, zero or out of range count");
-    }
-
-    vector<CWalletTx> vWalletTx;
-    if (!pService->ListWalletTx(fork, address, nOffset, nCount, vWalletTx))
-    {
-        throw CRPCException(RPC_WALLET_ERROR, "Failed to list transactions");
-    }
-
-    auto spResult = MakeCListTransactionResultPtr();
-    for (const CWalletTx& wtx : vWalletTx)
-    {
-        spResult->vecTransaction.push_back(WalletTxToJSON(wtx));
-    }
-    return spResult;
+    throw CRPCException(RPC_REQUEST_FUNC_OBSOLETE, "Requested function is obsolete");
 }
 
 CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
@@ -1953,183 +1818,6 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
 
     StdDebug("[SendFrom][DEBUG]", "txNew hash:%s; input:%s", txNew.GetHash().GetHex().c_str(), ss.str().c_str());
     return MakeCSendFromResultPtr(txNew.GetHash().GetHex());
-}
-
-CRPCResultPtr CRPCMod::RPCSendFromWallet(CRPCParamPtr param)
-{
-    //sendfromwallet <"from"> <"to"> <$amount$> ($txfee$) (-f="fork") (-d="data")
-    auto spParam = CastParamPtr<CSendFromWalletParam>(param);
-    CAddress from(spParam->strFrom);
-    if (from.IsNull())
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid from address");
-    }
-
-    CAddress to(spParam->strTo);
-    if (to.IsNull())
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid to address");
-    }
-
-    uint16 nType = (uint16)spParam->nType;
-    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION)
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid tx type");
-    }
-
-    int64 nAmount = AmountFromValue(spParam->dAmount);
-
-    uint256 hashFork;
-    if (!GetForkHashOfDef(spParam->strFork, hashFork))
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
-    }
-    if (!pService->HaveFork(hashFork))
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
-    }
-
-    vector<unsigned char> vchData;
-    if (spParam->strData.IsValid())
-    {
-        auto strDataTmp = spParam->strData;
-        if (((std::string)strDataTmp).substr(0, 4) == "msg:")
-        {
-            auto hex = xengine::ToHexString((const unsigned char*)strDataTmp.c_str(), strlen(strDataTmp.c_str()));
-            vchData = ParseHexString(hex);
-        }
-        else
-        {
-            vchData = ParseHexString(strDataTmp);
-        }
-    }
-
-    int64 nTxFee = CalcMinTxFee(vchData.size(), NEW_MIN_TX_FEE);
-    if (spParam->dTxfee.IsValid())
-    {
-        int64 nUserTxFee = AmountFromValue(spParam->dTxfee);
-        if (nUserTxFee > nTxFee)
-        {
-            nTxFee = nUserTxFee;
-        }
-        StdTrace("[SendFrom]", "txudatasize : %d ; mintxfee : %d", vchData.size(), nTxFee);
-    }
-
-    CWalletBalance balance;
-    if (!pService->GetBalanceByWallet(from, hashFork, balance))
-    {
-        throw CRPCException(RPC_WALLET_ERROR, "GetBalanceByWallet failed");
-    }
-    if (nAmount == -1)
-    {
-        if (balance.nAvailable <= nTxFee)
-        {
-            throw CRPCException(RPC_WALLET_ERROR, "Your amount not enough for txfee");
-        }
-        nAmount = balance.nAvailable - nTxFee;
-    }
-
-    if (from.IsTemplate() && from.GetTemplateId().GetType() == TEMPLATE_PAYMENT)
-    {
-        nAmount -= nTxFee;
-    }
-
-    CTemplateId tid;
-    if (to.GetTemplateId(tid) && tid.GetType() == TEMPLATE_FORK && nAmount < CTemplateFork::CreatedCoin())
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "sendfrom nAmount must be at least " + std::to_string(CTemplateFork::CreatedCoin() / COIN) + " for creating fork");
-    }
-
-    CTransaction txNew;
-    auto strErr = pService->CreateTransactionByWallet(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
-    if (strErr)
-    {
-        boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
-        throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to create transaction: ") + *strErr + fmt.str());
-    }
-
-    vector<uint8> vchSignExtraData;
-    bool fCompleted = false;
-    if (spParam->strSign_M.IsValid() && spParam->strSign_S.IsValid())
-    {
-        if (from.IsNull() || from.IsPubKey())
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid from address,must be a template address");
-        }
-        else if (from.IsTemplate())
-        {
-            CTemplateId tid = from.GetTemplateId();
-            uint16 nType = tid.GetType();
-            if (nType != TEMPLATE_EXCHANGE && nType != TEMPLATE_DEXMATCH)
-            {
-                throw CRPCException(RPC_INVALID_PARAMETER, "Invalid from address,must be a template address");
-            }
-            if (spParam->strSign_M == "" || spParam->strSign_S == "")
-            {
-                throw CRPCException(RPC_INVALID_PARAMETER, "Both SS and SM parameter cannot be null");
-            }
-            vector<unsigned char> vsm = ParseHexString(spParam->strSign_M);
-            vector<unsigned char> vss = ParseHexString(spParam->strSign_S);
-            if (nType == TEMPLATE_EXCHANGE)
-            {
-                txNew.vchSig.clear();
-                CODataStream ds(txNew.vchSig);
-                ds << vsm << vss << hashFork << pService->GetForkHeight(hashFork);
-            }
-            else
-            {
-                CODataStream ds(vchSignExtraData);
-                ds << vsm << vss;
-            }
-        }
-        else
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid from address");
-        }
-    }
-
-    if (from.IsTemplate() && from.GetTemplateId().GetType() == TEMPLATE_PAYMENT)
-    {
-        txNew.vchSig.clear();
-        CODataStream ds(txNew.vchSig);
-        ds << pService->GetForkHeight(hashFork) << (txNew.nTxFee + txNew.nAmount);
-    }
-
-    vector<uint8> vchFromData;
-    if (from.IsTemplate() && spParam->strFromdata.IsValid())
-    {
-        vchFromData = ParseHexString(spParam->strFromdata);
-    }
-
-    vector<uint8> vchSendToData;
-    if (to.IsTemplate() && spParam->strSendtodata.IsValid())
-    {
-        vchSendToData = ParseHexString(spParam->strSendtodata);
-    }
-
-    if (!pService->SignTransaction(txNew, vchFromData, vchSendToData, vchSignExtraData, fCompleted))
-    {
-        throw CRPCException(RPC_WALLET_ERROR, "Failed to sign transaction");
-    }
-    if (!fCompleted)
-    {
-        throw CRPCException(RPC_WALLET_ERROR, "The signature is not completed");
-    }
-
-    Errno err = pService->SendTransaction(txNew);
-    if (err != OK)
-    {
-        throw CRPCException(RPC_TRANSACTION_REJECTED, string("Tx rejected : ")
-                                                          + ErrorString(err));
-    }
-    std::stringstream ss;
-    for (auto& obj : txNew.vInput)
-    {
-        ss << (int)obj.prevout.n << ":" << obj.prevout.hash.GetHex().c_str() << ";";
-    }
-
-    StdDebug("[SendFromWallet][DEBUG]", "txNew hash:%s; input:%s", txNew.GetHash().GetHex().c_str(), ss.str().c_str());
-    return MakeCSendFromWalletResultPtr(txNew.GetHash().GetHex());
 }
 
 CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
@@ -2585,10 +2273,6 @@ CRPCResultPtr CRPCMod::RPCImportWallet(CRPCParamPtr param)
             {
                 throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to add key: ") + *strErr);
             }
-            if (!pService->SynchronizeWalletTx(CDestination(key.GetPubKey())))
-            {
-                throw CRPCException(RPC_WALLET_ERROR, "Failed to sync wallet tx");
-            }
             aAddr.push_back(key.GetPubKey().GetHex());
             ++nKey;
         }
@@ -2609,10 +2293,6 @@ CRPCResultPtr CRPCMod::RPCImportWallet(CRPCParamPtr param)
             if (!pService->AddTemplate(ptr))
             {
                 throw CRPCException(RPC_WALLET_ERROR, "Failed to add template");
-            }
-            if (!pService->SynchronizeWalletTx(CDestination(ptr->GetTemplateId())))
-            {
-                throw CRPCException(RPC_WALLET_ERROR, "Failed to sync wallet tx");
             }
             aAddr.push_back(CAddress(ptr->GetTemplateId()).ToString());
             ++nTemp;

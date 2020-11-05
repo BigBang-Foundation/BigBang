@@ -20,7 +20,6 @@
 #include "txpooldata.h"
 #include "unspentdb.h"
 #include "util.h"
-#include "walletdb.h"
 
 using namespace xengine;
 using namespace bigbang::storage;
@@ -116,130 +115,6 @@ public:
 
 public:
     map<uint256, CCheckForkStatus> mapForkStatus;
-};
-
-/////////////////////////////////////////////////////////////////////////
-// CCheckWalletTxWalker
-
-class CCheckWalletTx : public CWalletTx
-{
-public:
-    uint64 nSequenceNumber;
-    uint64 nNextSequenceNumber;
-
-public:
-    CCheckWalletTx()
-      : nSequenceNumber(0), nNextSequenceNumber(0) {}
-    CCheckWalletTx(const CWalletTx& wtx, uint64 nSeq)
-      : CWalletTx(wtx), nSequenceNumber(nSeq), nNextSequenceNumber(0) {}
-};
-
-class CWalletTxLink
-{
-public:
-    CWalletTxLink()
-      : nSequenceNumber(0), ptx(nullptr) {}
-    CWalletTxLink(CCheckWalletTx* ptxin)
-      : ptx(ptxin)
-    {
-        hashTX = ptx->txid;
-        nSequenceNumber = ptx->nSequenceNumber;
-    }
-
-public:
-    uint256 hashTX;
-    uint64 nSequenceNumber;
-    CCheckWalletTx* ptx;
-};
-
-typedef boost::multi_index_container<
-    CWalletTxLink,
-    boost::multi_index::indexed_by<
-        boost::multi_index::ordered_unique<boost::multi_index::member<CWalletTxLink, uint256, &CWalletTxLink::hashTX>>,
-        boost::multi_index::ordered_non_unique<boost::multi_index::member<CWalletTxLink, uint64, &CWalletTxLink::nSequenceNumber>>>>
-    CWalletTxLinkSet;
-typedef CWalletTxLinkSet::nth_index<0>::type CWalletTxLinkSetByTxHash;
-typedef CWalletTxLinkSet::nth_index<1>::type CWalletTxLinkSetBySequenceNumber;
-
-class CCheckWalletForkUnspent
-{
-public:
-    CCheckWalletForkUnspent(const uint256& hashForkIn)
-      : nSeqCreate(0), hashFork(hashForkIn) {}
-
-    bool LocalTxExist(const uint256& txid);
-    CCheckWalletTx* GetLocalWalletTx(const uint256& txid);
-    bool AddTx(const CWalletTx& wtx);
-    void RemoveTx(const uint256& txid);
-
-    bool UpdateUnspent();
-    bool AddWalletSpent(const CTxOutPoint& txPoint, const uint256& txidSpent, const CDestination& sendTo);
-    bool AddWalletUnspent(const CTxOutPoint& txPoint, const CTxOut& txOut);
-
-    int GetTxAtBlockHeight(const uint256& txid);
-    bool CheckWalletUnspent(const CTxOutPoint& point, const CCheckTxOut& out);
-
-protected:
-    uint256 hashFork;
-    uint64 nSeqCreate;
-    CWalletTxLinkSet setWalletTxLink;
-
-public:
-    map<uint256, CCheckWalletTx> mapWalletTx;
-    map<CTxOutPoint, CCheckTxOut> mapWalletUnspent;
-};
-
-class CCheckWalletTxWalker : public CWalletDBTxWalker
-{
-public:
-    CCheckWalletTxWalker()
-      : nWalletTxCount(0), pForkManager(nullptr) {}
-
-    void SetForkManager(CCheckForkManager* pFork)
-    {
-        pForkManager = pFork;
-    }
-
-    bool Walk(const CWalletTx& wtx) override;
-
-    bool Exist(const uint256& hashFork, const uint256& txid);
-    CCheckWalletTx* GetWalletTx(const uint256& hashFork, const uint256& txid);
-    bool AddWalletTx(const CWalletTx& wtx);
-    void RemoveWalletTx(const uint256& hashFork, int nHeight, const uint256& txid);
-    bool UpdateUnspent();
-    int GetTxAtBlockHeight(const uint256& hashFork, const uint256& txid);
-    bool CheckWalletUnspent(const uint256& hashFork, const CTxOutPoint& point, const CCheckTxOut& out);
-
-protected:
-    CCheckForkManager* pForkManager;
-
-public:
-    int64 nWalletTxCount;
-    map<uint256, CCheckWalletForkUnspent> mapWalletFork;
-};
-
-/////////////////////////////////////////////////////////////////////////
-// CCheckDBAddrWalker
-
-class CCheckDBAddrWalker : public storage::CWalletDBAddrWalker
-{
-public:
-    CCheckDBAddrWalker() {}
-    bool WalkPubkey(const crypto::CPubKey& pubkey, int version, const crypto::CCryptoCipher& cipher) override
-    {
-        return setAddress.insert(CDestination(pubkey)).second;
-    }
-    bool WalkTemplate(const CTemplateId& tid, const std::vector<unsigned char>& vchData) override
-    {
-        return setAddress.insert(CDestination(tid)).second;
-    }
-    bool CheckAddress(const CDestination& dest)
-    {
-        return (setAddress.find(dest) != setAddress.end());
-    }
-
-public:
-    set<CDestination> setAddress;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -436,8 +311,6 @@ protected:
     bool FetchBlockData();
     bool FetchUnspent();
     bool FetchTxPool();
-    bool FetchWalletAddress();
-    bool FetchWalletTx();
     bool FetchAddress();
     bool FetchAddressUnspent();
 
@@ -445,13 +318,10 @@ protected:
     bool CheckBlockUnspent();
     bool CheckBlockAddress();
     bool CheckBlockAddressUnspent();
-    bool CheckWalletTx(vector<CWalletTx>& vAddTx, vector<uint256>& vRemoveTx);
     bool CheckTxIndex();
 
     bool RemoveTxPoolFile();
     bool RepairUnspent();
-    bool RepairWalletTx(const vector<CWalletTx>& vAddTx, const vector<uint256>& vRemoveTx);
-    bool RestructureWalletTx();
 
 public:
     bool CheckRepairData();
@@ -466,8 +336,6 @@ protected:
     map<uint256, CCheckForkUnspentWalker> mapForkUnspentWalker;
     map<uint256, CListAddressWalker> mapForkAddressWalker;
     map<uint256, CGetAddressUnspentWalker> mapForkAddressUnspentWalker;
-    CCheckDBAddrWalker objWalletAddressWalker;
-    CCheckWalletTxWalker objWalletTxWalker;
     CCheckTxPoolData objTxPoolData;
 };
 
