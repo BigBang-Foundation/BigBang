@@ -762,6 +762,11 @@ Errno CService::SelectCoinsByUnspent(const CDestination& dest, const uint256& ha
     pair<int64, CTxUnspent> coinLowestLarger;
     coinLowestLarger.first = std::numeric_limits<int64>::max();
     int64 nTotalLower = 0;
+    uint16 nDestTemplateType = 0;
+    if (dest.IsTemplate())
+    {
+        nDestTemplateType = dest.GetTemplateId().GetType();
+    }
 
     multimap<int64, CTxUnspent> mapValue;
 
@@ -770,6 +775,10 @@ Errno CService::SelectCoinsByUnspent(const CDestination& dest, const uint256& ha
         const CUnspentOut& out = vd.second;
         if (out.IsLocked(nForkHeight) || out.GetTxTime() > nTxTime
             || (out.nTxType == CTransaction::TX_CERT && vd.first.n == 0))
+        {
+            continue;
+        }
+        if (out.nTxType == CTransaction::TX_DEFI_REWARD && nDestTemplateType == TEMPLATE_DEXMATCH)
         {
             continue;
         }

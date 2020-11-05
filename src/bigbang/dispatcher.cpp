@@ -201,12 +201,12 @@ Errno CDispatcher::AddNewBlock(const CBlock& block, uint64 nNonce)
         vector<uint256> vActive, vDeactive;
         pForkManager->ForkUpdate(updateBlockChain, vActive, vDeactive);
 
-        for (const uint256 hashFork : vActive)
+        for (const uint256& hashFork : vActive)
         {
             ActivateFork(hashFork, nNonce);
         }
 
-        for (const uint256 hashFork : vDeactive)
+        for (const uint256& hashFork : vDeactive)
         {
             pNetChannel->UnsubscribeFork(hashFork);
         }
@@ -459,11 +459,11 @@ void CDispatcher::CheckSubForkLastBlock(const uint256& hashFork)
 
         vector<uint256> vActive, vDeactive;
         pForkManager->ForkUpdate(updateBlockChain, vActive, vDeactive);
-        for (const uint256 hashFork : vActive)
+        for (const uint256& hashFork : vActive)
         {
             ActivateFork(hashFork, 0);
         }
-        for (const uint256 hashFork : vDeactive)
+        for (const uint256& hashFork : vDeactive)
         {
             pNetChannel->UnsubscribeFork(hashFork);
         }

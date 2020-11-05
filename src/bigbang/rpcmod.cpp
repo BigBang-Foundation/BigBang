@@ -359,7 +359,7 @@ bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
         // or passphrass from log content
 
         //log for debug mode
-        boost::regex ptnSec(R"raw(("privkey"|"passphrase"|"oldpassphrase")(\s*:\s*)(".*?"))raw", boost::regex::perl);
+        boost::regex ptnSec(R"raw(("privkey"|"passphrase"|"oldpassphrase"|"signsecret")(\s*:\s*)(".*?"))raw", boost::regex::perl);
         return boost::regex_replace(data, ptnSec, string(R"raw($1$2"***")raw"));
     };
 
@@ -587,7 +587,7 @@ CRPCResultPtr CRPCMod::RPCHelp(CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CHelpParam>(param);
     string command = spParam->strCommand;
-    return MakeCHelpResultPtr(RPCHelpInfo(EModeType::CONSOLE, command));
+    return MakeCHelpResultPtr(RPCHelpInfo(EModeType::MODE_CONSOLE, command));
 }
 
 CRPCResultPtr CRPCMod::RPCStop(CRPCParamPtr param)
