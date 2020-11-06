@@ -1075,9 +1075,10 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
 
     for (const auto& vd : vArrangeTxRemove)
     {
-        txView.Remove(vd.first);
-        txView.InvalidateSpent(CTxOutPoint(vd.first, 0), viewInvolvedTx);
-        txView.InvalidateSpent(CTxOutPoint(vd.first, 1), viewInvolvedTx);
+        for(const auto& txin : vd.second)
+        {
+            txView.InvalidateSpent(txin.prevout, viewInvolvedTx);    
+        }
     }
 
     const CPooledTxLinkSetBySequenceNumber& idxInvolvedTx = viewInvolvedTx.setTxLinkIndex.get<1>();
@@ -1096,7 +1097,6 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
         }
     }
     change.vTxRemove.insert(change.vTxRemove.end(), vTxRemove.rbegin(), vTxRemove.rend());
-    change.vTxRemove.insert(change.vTxRemove.end(), vArrangeTxRemove.rbegin(), vArrangeTxRemove.rend());
     return true;
 }
 
