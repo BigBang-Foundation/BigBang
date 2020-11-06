@@ -46,7 +46,8 @@ inline int64 CalcMinTxFee(const uint32 nVchData, const uint32 nMinFee)
 class CBlockStatus
 {
 public:
-    CBlockStatus() {}
+    CBlockStatus()
+      : nBlockTime(0), nBlockHeight(-1), nMoneySupply(0), nMintType(-1) {}
 
 public:
     uint256 hashPrevBlock;
