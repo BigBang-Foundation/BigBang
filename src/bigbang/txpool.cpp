@@ -1037,28 +1037,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             vTxRemove.push_back(make_pair(txidMint, block.txMint.vInput));
         }
     }
-    /*
-    const CPooledTxLinkSetBySequenceNumber& idxInvolvedTx = viewInvolvedTx.setTxLinkIndex.get<1>();
-    change.vTxRemove.reserve(idxInvolvedTx.size() + vTxRemove.size());
-    for (const auto& txseq : boost::adaptors::reverse(idxInvolvedTx))
-    {
-        map<uint256, CPooledTx>::iterator it = mapTx.find(txseq.hashTX);
-        if (it != mapTx.end())
-        {
-            change.vTxRemove.push_back(make_pair(txseq.hashTX, (*it).second.vInput));
-            if (it->second.nType == CTransaction::TX_CERT)
-            {
-                certTxDest.RemoveCertTx(it->second.sendTo, txseq.hashTX);
-            }
-            if (it->second.IsDeFiRelation())
-            {
-                txView.relation.RemoveRelation(it->second.sendTo);
-            }
-            mapTx.erase(it);
-        }
-    }
-    change.vTxRemove.insert(change.vTxRemove.end(), vTxRemove.rbegin(), vTxRemove.rend());
-*/
+  
     if (mapTxCache.find(update.hashFork) == mapTxCache.end())
     {
         mapTxCache.insert(std::make_pair(update.hashFork, CTxCache(CACHE_HEIGHT_INTERVAL)));
@@ -1092,6 +1071,10 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             if (it->second.nType == CTransaction::TX_CERT)
             {
                 certTxDest.RemoveCertTx(it->second.sendTo, txseq.hashTX);
+            }
+            if (it->second.IsDeFiRelation())
+            {
+                txView.relation.RemoveRelation(it->second.sendTo);
             }
             mapTx.erase(it);
         }
