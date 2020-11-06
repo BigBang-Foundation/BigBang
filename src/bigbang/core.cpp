@@ -887,7 +887,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     }
 
     if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_DEXMATCH
-        && nForkHeight == MATCH_VERIFY_ERROR_HEIGHT)
+        && nForkHeight < MATCH_VERIFY_ERROR_HEIGHT)
     {
         nForkHeight -= 1;
     }
