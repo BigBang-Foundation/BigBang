@@ -31,8 +31,9 @@ public:
     bool GetBlockLocation(const uint256& hashBlock, uint256& hashFork, int& nHeight, uint256& hashNext) override;
     bool GetBlockHash(const uint256& hashFork, int nHeight, uint256& hashBlock) override;
     bool GetBlockHash(const uint256& hashFork, int nHeight, std::vector<uint256>& vBlockHash) override;
+    bool GetBlockStatus(const uint256& hashBlock, CBlockStatus& status) override;
     bool GetLastBlockOfHeight(const uint256& hashFork, const int nHeight, uint256& hashBlock, int64& nTime) override;
-    bool GetLastBlock(const uint256& hashFork, uint256& hashBlock, int& nHeight, int64& nTime, uint16& nMintType) override;
+    bool GetLastBlockStatus(const uint256& hashFork, CBlockStatus& status) override;
     bool GetLastBlockTime(const uint256& hashFork, int nDepth, std::vector<int64>& vTime) override;
     bool GetBlock(const uint256& hashBlock, CBlock& block) override;
     bool GetBlockEx(const uint256& hashBlock, CBlockEx& block) override;
@@ -55,6 +56,7 @@ public:
     bool GetBlockLocator(const uint256& hashFork, CBlockLocator& locator, uint256& hashDepth, int nIncStep) override;
     bool GetBlockInv(const uint256& hashFork, const CBlockLocator& locator, std::vector<uint256>& vBlockHash, std::size_t nMaxCount) override;
     bool GetBlockDelegateEnrolled(const uint256& hashBlock, CDelegateEnrolled& enrolled) override;
+    bool GetBlockDelegateAgreement(const uint256& hashBlock, CDelegateAgreement& agreement) override;
     bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent) override;
     bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent) override;
     bool GetVotes(const CDestination& destDelegate, int64& nVotes) override;
@@ -104,7 +106,6 @@ protected:
                          std::vector<CBlockEx>& vBlockAddNew, std::vector<CBlockEx>& vBlockRemove);
     bool GetBlockDelegateAgreement(const uint256& hashBlock, const CBlock& block, const CBlockIndex* pIndexPrev,
                                    CDelegateAgreement& agreement, std::size_t& nEnrollTrust);
-    bool GetBlockDelegateAgreement(const uint256& hashBlock, CDelegateAgreement& agreement);
     Errno VerifyBlock(const uint256& hashBlock, const CBlock& block, CBlockIndex* pIndexPrev,
                       int64& nReward, CDelegateAgreement& agreement, std::size_t& nEnrollTrust, CBlockIndex** ppIndexRef);
     bool VerifyBlockCertTx(const CBlock& block);

@@ -1898,7 +1898,7 @@ bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& v
     std::vector<CTxUnspent> vAddNew;
     std::vector<CTxOutPoint> vRemove;
     view.GetUnspentChanges(vAddNew, vRemove);
-    
+
     CListAddressUnspentWalker walker(vRemove);
     if (!dbBlock.WalkThroughUnspent(hashFork, walker))
     {

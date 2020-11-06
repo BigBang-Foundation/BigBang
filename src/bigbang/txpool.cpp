@@ -605,10 +605,8 @@ Errno CTxPool::Push(const CTransaction& tx, uint256& hashFork, CDestination& des
         return ERR_TRANSACTION_INVALID;
     }
 
-    uint256 hashLast;
-    int64 nTime;
-    uint16 nMintType;
-    if (!pBlockChain->GetLastBlock(hashFork, hashLast, nHeight, nTime, nMintType))
+    CBlockStatus status;
+    if (!pBlockChain->GetLastBlockStatus(hashFork, status))
     {
         StdError("CTxPool", "Push: GetLastBlock fail, txid: %s, hashFork: %s",
                  txid.GetHex().c_str(), hashFork.GetHex().c_str());
@@ -1086,18 +1084,15 @@ bool CTxPool::LoadData()
         auto it = mapForkHeight.find(hashFork);
         if (it == mapForkHeight.end())
         {
-            uint256 hashLast;
-            int64 nTime;
-            uint16 nMintType;
-            int nHeight;
-            if (!pBlockChain->GetLastBlock(hashFork, hashLast, nHeight, nTime, nMintType))
+            CBlockStatus status;
+            if (!pBlockChain->GetLastBlockStatus(hashFork, status))
             {
                 Error("LoadData: GetLastBlock fail, txid: %s, hashFork: %s",
                       txid.GetHex().c_str(), hashFork.GetHex().c_str());
                 continue;
             }
 
-            it = mapForkHeight.insert(make_pair(hashFork, nHeight)).first;
+            it = mapForkHeight.insert(make_pair(hashFork, status.nBlockHeight)).first;
         }
 
         if (AddNew(mapPoolView[hashFork], txid, mi->second, hashFork, it->second) != OK)
@@ -1120,21 +1115,18 @@ bool CTxPool::LoadData()
         const uint256& hashFork = kv.first;
         mapTxCache.insert(make_pair(hashFork, CTxCache(CACHE_HEIGHT_INTERVAL)));
 
-        uint256 hashBlock;
-        int nHeight = 0;
-        int64 nTime = 0;
-        uint16 nMintType = 0;
-        if (!pBlockChain->GetLastBlock(hashFork, hashBlock, nHeight, nTime, nMintType))
+        CBlockStatus status;
+        if (!pBlockChain->GetLastBlockStatus(hashFork, status))
         {
             return false;
         }
 
         std::vector<CTransaction> vtx;
         int64 nTotalFee = 0;
-        ArrangeBlockTx(hashFork, nTime, hashBlock, MAX_BLOCK_SIZE, vtx, nTotalFee, nHeight + 1);
-        mapTxCache[hashFork].AddNew(hashBlock, vtx);
+        ArrangeBlockTx(hashFork, status.nBlockTime, status.hashBlock, MAX_BLOCK_SIZE, vtx, nTotalFee, status.nBlockHeight + 1);
+        mapTxCache[hashFork].AddNew(status.hashBlock, vtx);
 
-        mapPoolView[hashFork].SetLastBlock(hashBlock, nTime);
+        mapPoolView[hashFork].SetLastBlock(status.hashBlock, status.nBlockTime);
     }
     return true;
 }
