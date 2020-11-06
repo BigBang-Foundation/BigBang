@@ -280,25 +280,18 @@ void CTemplateDexMatch::BuildTemplateData()
 bool CTemplateDexMatch::VerifyTxSignature(const uint256& hash, const uint16 nType, const uint256& hashAnchor, const CDestination& destTo,
                                           const vector<uint8>& vchSig, const int32 nForkHeight, bool& fCompleted) const
 {
+    vector<unsigned char> vsm;
+    vector<unsigned char> vss;
     vector<uint8> vchSigSub;
-    if (vchSig.size() <= 64)
+    xengine::CIDataStream ds(vchSig);
+    try
     {
-        vchSigSub = vchSig;
+        ds >> vsm >> vss >> vchSigSub;
     }
-    else
+    catch (const std::exception& e)
     {
-        xengine::CIDataStream ds(vchSig);
-        try
-        {
-            vector<unsigned char> vsm;
-            vector<unsigned char> vss;
-            ds >> vsm >> vss >> vchSigSub;
-        }
-        catch (const std::exception& e)
-        {
-            StdError(__PRETTY_FUNCTION__, e.what());
-            return false;
-        }
+        StdError(__PRETTY_FUNCTION__, e.what());
+        return false;
     }
     if (nForkHeight <= nSellerValidHeight)
     {
