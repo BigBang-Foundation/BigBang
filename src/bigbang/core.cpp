@@ -66,12 +66,6 @@ static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
 static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 490566;
 #endif
 
-// #ifdef BIGBANG_TESTNET
-// static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
-// #else
-// static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 490566;
-// #endif
-
 #ifdef BIGBANG_TESTNET
 static const int64 BBCP_TOKEN_INIT = 300000000;
 static const int64 BBCP_BASE_REWARD_TOKEN = 20;
