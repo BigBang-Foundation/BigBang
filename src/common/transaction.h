@@ -144,23 +144,27 @@ public:
     {
         return (nType == TX_DEFI_RELATION);
     }
-    std::string GetTypeString() const
+    static std::string GetTypeStringStatic(uint16 nTxType)
     {
-        if (nType == TX_TOKEN)
+        if (nTxType == TX_TOKEN)
             return std::string("token");
-        else if (nType == TX_CERT)
+        else if (nTxType == TX_CERT)
             return std::string("certification");
-        else if (nType == TX_GENESIS)
+        else if (nTxType == TX_GENESIS)
             return std::string("genesis");
-        else if (nType == TX_STAKE)
+        else if (nTxType == TX_STAKE)
             return std::string("stake");
-        else if (nType == TX_WORK)
+        else if (nTxType == TX_WORK)
             return std::string("work");
-        else if (nType == TX_DEFI_REWARD)
+        else if (nTxType == TX_DEFI_REWARD)
             return std::string("defi-reward");
-        else if (nType == TX_DEFI_RELATION)
+        else if (nTxType == TX_DEFI_RELATION)
             return std::string("defi-relation");
         return std::string("undefined");
+    }
+    std::string GetTypeString() const
+    {
+        return GetTypeStringStatic(nType);
     }
     int64 GetTxTime() const
     {
