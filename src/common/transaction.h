@@ -569,4 +569,25 @@ public:
     }
 };
 
+class CTxInfo
+{
+public:
+    CTxInfo() {}
+    CTxInfo(const uint256& txidIn, const int nTxTypeIn, const uint32 nTimeStampIn,
+            const CDestination& destFromIn, const CDestination& destToIn,
+            const int64 nAoumtIn, const int64 nTxFeeIn, const uint64 nSizeIn)
+      : txid(txidIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn),
+        destFrom(destFromIn), destTo(destToIn), nAmount(nAoumtIn), nTxFee(nTxFeeIn), nSize(nSizeIn) {}
+
+public:
+    uint256 txid;
+    int nTxType;
+    uint32 nTimeStamp;
+    CDestination destFrom;
+    CDestination destTo;
+    int64 nAmount;
+    int64 nTxFee;
+    uint64 nSize;
+};
+
 #endif //COMMON_TRANSACTION_H
