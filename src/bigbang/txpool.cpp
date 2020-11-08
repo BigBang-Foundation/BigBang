@@ -758,6 +758,34 @@ void CTxPool::ListTx(const uint256& hashFork, vector<uint256>& vTxPool)
     }
 }
 
+void CTxPool::ListTx(const uint256& hashFork, const CDestination& dest, vector<CTxInfo>& vTxPool, const int64 nGetOffset, const int64 nGetCount)
+{
+    boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
+    map<uint256, CTxPoolView>::const_iterator it = mapPoolView.find(hashFork);
+    if (it != mapPoolView.end())
+    {
+        int64 nPos = 0;
+        const CPooledTxLinkSetBySequenceNumber& idxTx = (*it).second.setTxLinkIndex.get<1>();
+        for (CPooledTxLinkSetBySequenceNumber::iterator mi = idxTx.begin(); mi != idxTx.end(); ++mi)
+        {
+            if (dest.IsNull() || dest == mi->ptx->destIn || dest == mi->ptx->sendTo)
+            {
+                if (nPos >= nGetOffset)
+                {
+                    vTxPool.push_back(CTxInfo(mi->hashTX, mi->ptx->nType, mi->ptx->nTimeStamp,
+                                              mi->ptx->destIn, mi->ptx->sendTo, mi->ptx->nAmount,
+                                              mi->ptx->nTxFee, mi->ptx->nSerializeSize));
+                    if (nGetCount > 0 && vTxPool.size() >= nGetCount)
+                    {
+                        break;
+                    }
+                }
+                nPos++;
+            }
+        }
+    }
+}
+
 bool CTxPool::ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, const std::vector<CTxUnspent>& vUnspentOnChain, std::vector<CTxUnspent>& vUnspent)
 {
     boost::shared_lock<boost::shared_mutex> rlock(rwAccess);

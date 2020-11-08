@@ -341,6 +341,12 @@ void CService::GetTxPool(const uint256& hashFork, vector<pair<uint256, size_t>>&
     pTxPool->ListTx(hashFork, vTxPool);
 }
 
+void CService::ListTxPool(const uint256& hashFork, const CDestination& dest, vector<CTxInfo>& vTxPool, const int64 nGetOffset, const int64 nGetCount)
+{
+    vTxPool.clear();
+    pTxPool->ListTx(hashFork, dest, vTxPool, nGetOffset, nGetCount);
+}
+
 bool CService::GetTransaction(const uint256& txid, CTransaction& tx, uint256& hashFork, int& nHeight, uint256& hashBlock, CDestination& destIn)
 {
     CAssembledTx txTemp;
