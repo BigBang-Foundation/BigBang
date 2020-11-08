@@ -985,7 +985,7 @@ CRPCResultPtr CRPCMod::RPCGetTxPool(CRPCParamPtr param)
 
         for (const CTxInfo& txinfo : vTxPool)
         {
-            spResult->vecList.push_back({ txinfo.txid.GetHex(), txinfo.nTxType, CAddress(txinfo.destFrom).ToString(),
+            spResult->vecList.push_back({ txinfo.txid.GetHex(), CTransaction::GetTypeStringStatic(txinfo.nTxType), CAddress(txinfo.destFrom).ToString(),
                                           CAddress(txinfo.destTo).ToString(), ValueFromAmount(txinfo.nAmount),
                                           ValueFromAmount(txinfo.nTxFee), txinfo.nSize });
         }
