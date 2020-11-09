@@ -220,7 +220,8 @@ CDeFiRewardSet CDeFiForkReward::ComputeStakeReward(const int64 nMin, const int64
 CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
                                                        const map<CDestination, int64>& mapAddressAmount,
                                                        const std::map<int64, uint32>& mapPromotionTokenTimes,
-                                                       CForest<CDestination, CDeFiRelationRewardNode>& relation)
+                                                       CDeFiRelationGraph& relation,
+                                                       const std::set<CDestination>& setBlackList)
 {
     typedef typename CForest<CDestination, CDeFiRelationRewardNode>::NodePtr NodePtr;
 
@@ -235,6 +236,14 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
     multimap<uint64, tuple<CDestination, int64, int64>> mapPower;
     uint64 nTotal = 0;
     relation.PostorderTraversal([&](NodePtr pNode) {
+        // blacklist
+        if (setBlackList.count(pNode->key))
+        {
+            pNode->data.nPower = 0;
+            pNode->data.nAmount = 0;
+            return true;
+        }
+
         // amount
         auto it = mapAddressAmount.find(pNode->key);
         int64 nAmount = (it == mapAddressAmount.end()) ? 0 : (it->second / COIN);

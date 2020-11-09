@@ -1,3 +1,19 @@
+# Version 2.2.3 (2020-11-04)
+
+### Fixs
+
+- Remove valid addreess from DeFi black list
+- Fix macOS compile issue and bug of black list on testnet
+
+# Version 2.2.2 (2020-11-02)
+
+### Fixs
+
+- Add black list for invalid relation node
+- DeFi Reward do not send to template address
+- Modify dexmatch dest verify
+
+
 # Version 2.2.1 (2020-10-29)
 
 ### Fixs
