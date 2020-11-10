@@ -316,11 +316,12 @@ protected:
     void SetPeerSyncStatus(uint64 nNonce, const uint256& hashFork, bool fSync);
     void PushTxTimerFunc(uint32 nTimerId);
     bool PushTxInv(const uint256& hashFork);
+    void ForkUpdateTimerFunc(uint32 nTimerId);
+    void UpdateValidFork(const std::set<uint256>& setValidFork);
     const string GetPeerAddressInfo(uint64 nNonce);
     bool CheckPrevBlock(const uint256& hash, CSchedule& sched, uint256& hashFirst, uint256& hashPrev);
     void InnerBroadcastBlockInv(const uint256& hashFork, const uint256& hashBlock);
     void InnerSubmitCachePowBlock();
-    void GetNextRefBlock(const uint256& hashRefBlock, std::vector<std::pair<uint256, uint256>>& vNext);
 
     const CBasicConfig* Config()
     {
@@ -335,6 +336,7 @@ protected:
     IDispatcher* pDispatcher;
     IService* pService;
     IConsensus* pConsensus;
+    IForkManager* pForkManager;
 
     mutable boost::recursive_mutex mtxSched;
     std::map<uint256, CSchedule> mapSched;
@@ -345,6 +347,7 @@ protected:
 
     mutable boost::mutex mtxPushTx;
     uint32 nTimerPushTx;
+    uint32 nTimerForkUpdate;
     bool fStartIdlePushTxTimer;
     std::set<uint256> setPushTxFork;
 };

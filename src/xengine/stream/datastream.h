@@ -8,7 +8,6 @@
 #include <boost/type_traits.hpp>
 #include <cstring>
 #include <exception>
-#include <list>
 #include <map>
 #include <vector>
 
@@ -149,18 +148,12 @@ public:
         }
         else
         {
-            std::list<T> l;
+            data.resize(size);
             for (decltype(size) i = 0; i < size; i++)
             {
-                T t;
-                *this >> t;
-                l.push_back(std::move(t));
+                *this >> data[i];
             }
-
-            data.reserve(size);
-            data.insert(data.end(), std::make_move_iterator(l.begin()), std::make_move_iterator(l.end()));
         }
-
         return (*this);
     }
 

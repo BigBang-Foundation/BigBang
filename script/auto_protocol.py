@@ -872,6 +872,9 @@ def Help_cpp(config, w, scope):
             cond_statement = '(if ' + condstr + ')\n'
             container.append((indent + cond_statement, None))
 
+        if type == 'array':
+            return
+
         key_fmt = quote(key) + ': '
         if is_pod(type):
             if place_holder == None:
@@ -902,18 +905,18 @@ def Help_cpp(config, w, scope):
                 arr_type = decode_nested_array(cpp_type)
                 sub_params(container, 'array', arr_type, p, subclass, next_indent)
             else:
+                one_param(container, p.sub_key, p.sub_type, p.sub_desc, True, next_indent, has_dot=False)
                 if not is_pod(p.sub_type):
                     sub_params(container, 'object', cpp_type, p, subclass, next_indent)
-                else:
-                    one_param(container, p.sub_key, p.sub_type, p.sub_desc, True, next_indent, has_dot=False)
 
             container.append((indent + ']\n', None))
 
         elif not is_pod(type):
             container.append((indent + '{\n', None))
             for p in subclass.params:
-                one_param(container, p.key, p.type, p.desc, p.required, next_indent,
-                          p.default, p.condstr, p != subclass.params[-1])
+                if p.type != 'array':
+                    one_param(container, p.key, p.type, p.desc, p.required, next_indent,
+                              p.default, p.condstr, p != subclass.params[-1])
                 if not is_pod(p):
                     sub_params(container, p.type, p.cpp_type, p, find_subclass(p, subclass.subclass), next_indent)
 
