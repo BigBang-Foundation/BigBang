@@ -46,11 +46,13 @@ static CCryptoSodiumInitializer _CCryptoSodiumInitializer;
 // Secure memory
 void* CryptoAlloc(const size_t size)
 {
+    //std::cout << "CSH::CryptoAlloc addr " << std::hex << (uint64)t  << std::dec << " size " << size << std::endl;
     return sodium_malloc(size);
 }
 
 void CryptoFree(void* ptr)
 {
+    //std::cout << "CSH::CryptoFree addr " << std::hex << (uint64)ptr << std::dec <<  std::endl;
     sodium_free(ptr);
 }
 
