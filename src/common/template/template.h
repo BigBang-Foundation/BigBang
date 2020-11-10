@@ -17,41 +17,16 @@
 #include "util.h"
 #include "xengine.h"
 
+#define PRICE_PRECISION (10000000000L)
+#define MAX_STRING_ADDRESS_LEN 128
+#define MAX_STRING_AMOUNT_LEN 64
+
 class CSpendableTemplate
 {
 };
 
 class CSendToRecordedTemplate
 {
-public:
-    static void RecordDest(const CDestination& sendToDelegate, const CDestination& sendToOwner,
-                           const std::vector<uint8>& vchPreSigIn, std::vector<uint8>& vchSigOut)
-    {
-        vchSigOut.clear();
-        xengine::CODataStream ods(vchSigOut, CDestination::DESTINATION_SIZE * 2 + vchPreSigIn.size());
-        ods << sendToDelegate << sendToOwner;
-        ods.Push(&vchPreSigIn[0], vchPreSigIn.size());
-    }
-
-    static bool ParseDest(const std::vector<uint8>& vchSigIn,
-                          CDestination& sendToDelegateOut, CDestination& sendToOwnerOut,
-                          std::vector<uint8>& vchSubSigOut)
-    {
-        xengine::CIDataStream is(vchSigIn);
-        try
-        {
-            is >> sendToDelegateOut >> sendToOwnerOut;
-            vchSubSigOut.assign(vchSigIn.begin() + (CDestination::DESTINATION_SIZE * 2), vchSigIn.end());
-        }
-        catch (std::exception& e)
-        {
-            xengine::StdError(__PRETTY_FUNCTION__, e.what());
-            return false;
-        }
-        return true;
-    }
-
-    virtual bool GetDelegateOwnerDestination(CDestination& destDelegateOut, CDestination& destOwnerOut) const = 0;
 };
 
 class CLockedCoinTemplate
@@ -61,19 +36,44 @@ public:
     virtual void GetForkParam(CDestination& destRedeemOut, uint256& hashForkOut) = 0;
 };
 
+enum TNS_PARAM
+{
+    TNS_DEX_MIN_TX_FEE = 10000,
+    TNS_DEX_MIN_MATCH_AMOUNT = 10000,
+    TNS_DEX_MAX_MATCH_TOKEN = 1844674407
+};
+
 enum TemplateType
 {
-    TEMPLATE_MIN,
-    TEMPLATE_WEIGHTED,
-    TEMPLATE_MULTISIG,
-    TEMPLATE_FORK,
-    TEMPLATE_PROOF,
-    TEMPLATE_DELEGATE,
-    TEMPLATE_EXCHANGE,
-    TEMPLATE_VOTE,
-    TEMPLATE_PAYMENT,
+    TEMPLATE_MIN = 0,
+    TEMPLATE_WEIGHTED = 1,
+    TEMPLATE_MULTISIG = 2,
+    TEMPLATE_FORK = 3,
+    TEMPLATE_PROOF = 4,
+    TEMPLATE_DELEGATE = 5,
+    TEMPLATE_EXCHANGE = 6,
+    TEMPLATE_VOTE = 7,
+    TEMPLATE_PAYMENT = 8,
+    TEMPLATE_DEXORDER = 9,
+    TEMPLATE_DEXMATCH = 10,
     TEMPLATE_MAX
 };
+
+#define FEE_PRECISION 10000
+
+inline int64 FeeInt64FromDouble(const double dAmount)
+{
+    if (xengine::IsDoubleNonPositiveNumber(dAmount))
+    {
+        return -1;
+    }
+    return (int64)(dAmount * FEE_PRECISION + 0.5);
+}
+
+inline double FeeDoubleFromInt64(int64 amount)
+{
+    return ((double)amount / (double)FEE_PRECISION);
+}
 
 class CTemplate;
 typedef boost::shared_ptr<CTemplate> CTemplatePtr;
@@ -129,11 +129,10 @@ public:
     // Return dest is destIn recorded or not.
     static bool IsDestInRecorded(const CDestination& dest);
 
-    // Return delegate address.
-    static bool ParseDelegateDest(const CDestination& destIn, const CDestination& sendTo, const std::vector<uint8>& vchSigIn, CDestination& destInDelegateOut, CDestination& sendToDelegateOut);
-
     // Return dest limits coin on transaction or not.
     static bool IsLockedCoin(const CDestination& dest);
+
+    static bool VerifyDestRecorded(const CTransaction& tx, std::vector<uint8>& vchSigOut);
 
 public:
     // Deconstructor
@@ -159,7 +158,7 @@ public:
                           const std::vector<uint8>& vchPreSig, std::vector<uint8>& vchSig, bool& fCompleted) const;
 
     // Build transaction signature by concrete template.
-    virtual bool GetSignDestination(const CTransaction& tx, const std::vector<uint8>& vchSig,
+    virtual bool GetSignDestination(const CTransaction& tx, const uint256& hashFork, int nHeight, const std::vector<uint8>& vchSig,
                                     std::set<CDestination>& setSubDest, std::vector<uint8>& vchSubSig) const;
 
     // Convert params of template to json object

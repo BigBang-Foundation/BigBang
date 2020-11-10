@@ -261,7 +261,7 @@ protected:
         MAX_GETBLOCKS_COUNT = 128,
         GET_BLOCKS_INTERVAL_DEF_TIME = 120,
         GET_BLOCKS_INTERVAL_EQUAL_TIME = 600,
-        MAX_TXINV_INTERVAL_TIME = 180
+        MAX_TXINV_INTERVAL_TIME = 7200
     };
     enum
     {
@@ -322,6 +322,7 @@ protected:
     bool CheckPrevBlock(const uint256& hash, CSchedule& sched, uint256& hashFirst, uint256& hashPrev);
     void InnerBroadcastBlockInv(const uint256& hashFork, const uint256& hashBlock);
     void InnerSubmitCachePowBlock();
+    void GetNextRefBlock(const uint256& hashRefBlock, std::vector<std::pair<uint256, uint256>>& vNext);
 
     const CBasicConfig* Config()
     {

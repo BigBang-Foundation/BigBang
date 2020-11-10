@@ -4,6 +4,7 @@
 
 #include "checkrepair.h"
 
+#include "../common/template/vote.h"
 #include "param.h"
 
 using namespace std;
@@ -41,27 +42,18 @@ bool CCheckForkUnspentWalker::CheckForkUnspent(map<CTxOutPoint, CCheckTxOut>& ma
         map<CTxOutPoint, CCheckTxOut>::iterator it = mapBlockForkUnspent.begin();
         for (; it != mapBlockForkUnspent.end(); ++it)
         {
-            if (!it->second.IsSpent())
+            map<CTxOutPoint, CCheckTxOut>::iterator mt = mapForkUnspent.find(it->first);
+            if (mt == mapForkUnspent.end())
             {
-                map<CTxOutPoint, CCheckTxOut>::iterator mt = mapForkUnspent.find(it->first);
-                if (mt == mapForkUnspent.end())
-                {
-                    StdLog("check", "Check block unspent: find utxo fail, utxo: [%d] %s.", it->first.n, it->first.hash.GetHex().c_str());
-                    mapForkUnspent.insert(*it);
-                    vAddUpdate.push_back(CTxUnspent(it->first, static_cast<const CTxOut&>(it->second)));
-                }
-                else if (mt->second.IsSpent())
-                {
-                    StdLog("check", "Check block unspent: is spent, utxo: [%d] %s.", it->first.n, it->first.hash.GetHex().c_str());
-                    mt->second = it->second;
-                    vAddUpdate.push_back(CTxUnspent(it->first, static_cast<const CTxOut&>(it->second)));
-                }
-                else if (it->second != mt->second)
-                {
-                    StdLog("check", "Check block unspent: txout error, utxo: [%d] %s.", it->first.n, it->first.hash.GetHex().c_str());
-                    mt->second = it->second;
-                    vAddUpdate.push_back(CTxUnspent(it->first, static_cast<const CTxOut&>(it->second)));
-                }
+                StdLog("check", "Check block unspent: find utxo fail, utxo: [%d] %s.", it->first.n, it->first.hash.GetHex().c_str());
+                mapForkUnspent.insert(*it);
+                vAddUpdate.push_back(CTxUnspent(it->first, static_cast<const CTxOut&>(it->second)));
+            }
+            else if (it->second != mt->second)
+            {
+                StdLog("check", "Check block unspent: txout error, utxo: [%d] %s.", it->first.n, it->first.hash.GetHex().c_str());
+                mt->second = it->second;
+                vAddUpdate.push_back(CTxUnspent(it->first, static_cast<const CTxOut&>(it->second)));
             }
         }
     }
@@ -70,29 +62,19 @@ bool CCheckForkUnspentWalker::CheckForkUnspent(map<CTxOutPoint, CCheckTxOut>& ma
         map<CTxOutPoint, CCheckTxOut>::iterator it = mapForkUnspent.begin();
         for (; it != mapForkUnspent.end();)
         {
-            if (!it->second.IsSpent())
+            map<CTxOutPoint, CCheckTxOut>::iterator mt = mapBlockForkUnspent.find(it->first);
+            if (mt == mapBlockForkUnspent.end())
             {
-                map<CTxOutPoint, CCheckTxOut>::iterator mt = mapBlockForkUnspent.find(it->first);
-                if (mt == mapBlockForkUnspent.end())
-                {
-                    StdLog("check", "Check db unspent: find utxo fail, utxo: [%d] %s.", it->first.n, it->first.hash.GetHex().c_str());
-                    vRemove.push_back(it->first);
-                    mapForkUnspent.erase(it++);
-                    continue;
-                }
-                else if (mt->second.IsSpent())
-                {
-                    StdLog("check", "Check db unspent: is spent, utxo: [%d] %s.", it->first.n, it->first.hash.GetHex().c_str());
-                    vRemove.push_back(it->first);
-                    mapForkUnspent.erase(it++);
-                    continue;
-                }
-                else if (it->second != mt->second)
-                {
-                    StdLog("check", "Check db unspent: txout error, utxo: [%d] %s.", it->first.n, it->first.hash.GetHex().c_str());
-                    it->second = mt->second;
-                    vAddUpdate.push_back(CTxUnspent(it->first, static_cast<const CTxOut&>(it->second)));
-                }
+                StdLog("check", "Check db unspent: find utxo fail, utxo: [%d] %s.", it->first.n, it->first.hash.GetHex().c_str());
+                vRemove.push_back(it->first);
+                mapForkUnspent.erase(it++);
+                continue;
+            }
+            else if (it->second != mt->second)
+            {
+                StdLog("check", "Check db unspent: txout error, utxo: [%d] %s.", it->first.n, it->first.hash.GetHex().c_str());
+                it->second = mt->second;
+                vAddUpdate.push_back(CTxUnspent(it->first, static_cast<const CTxOut&>(it->second)));
             }
             ++it;
         }
@@ -479,19 +461,10 @@ bool CCheckForkManager::GetTxForkRedeemParam(const CTransaction& tx, const CDest
         return false;
     }
     vector<uint8> vchSig;
-    if (CTemplate::IsDestInRecorded(tx.sendTo))
+    if (!CTemplate::VerifyDestRecorded(tx, vchSig))
     {
-        CDestination sendToDelegateTemplate;
-        CDestination sendToOwner;
-        if (!CSendToRecordedTemplate::ParseDest(tx.vchSig, sendToDelegateTemplate, sendToOwner, vchSig))
-        {
-            StdError("check", "Get fork redeem param: ParseDest fail, tx: %s", tx.GetHash().GetHex().c_str());
-            return false;
-        }
-    }
-    else
-    {
-        vchSig = tx.vchSig;
+        StdError("check", "Get fork redeem param: VerifyDestRecorded fail, tx: %s", tx.GetHash().GetHex().c_str());
+        return false;
     }
     auto templatePtr = CTemplate::CreateTemplatePtr(TEMPLATE_FORK, vchSig);
     if (templatePtr == nullptr || templatePtr->GetTemplateId() != destIn.GetTemplateId())
@@ -857,12 +830,7 @@ bool CCheckWalletForkUnspent::AddWalletSpent(const CTxOutPoint& txPoint, const u
         StdError("check", "AddWalletSpent find fail, utxo: [%d] %s.", txPoint.n, txPoint.hash.GetHex().c_str());
         return false;
     }
-    if (it->second.IsSpent())
-    {
-        StdError("check", "AddWalletSpent spent, utxo: [%d] %s.", txPoint.n, txPoint.hash.GetHex().c_str());
-        return false;
-    }
-    it->second.SetSpent(txidSpent, sendTo);
+    mapWalletUnspent.erase(it);
     return true;
 }
 
@@ -895,11 +863,6 @@ bool CCheckWalletForkUnspent::CheckWalletUnspent(const CTxOutPoint& point, const
     if (mt == mapWalletUnspent.end())
     {
         StdLog("check", "CheckWalletUnspent: find unspent fail, utxo: [%d] %s.", point.n, point.hash.GetHex().c_str());
-        return false;
-    }
-    if (mt->second.IsSpent())
-    {
-        StdLog("check", "CheckWalletUnspent: spented, utxo: [%d] %s.", point.n, point.hash.GetHex().c_str());
         return false;
     }
     if (mt->second != out)
@@ -960,7 +923,7 @@ bool CCheckDelegateDB::UpdateDelegate(const uint256& hashBlock, CBlockEx& block,
         CDestination destInDelegateTemplate;
         CDestination sendToDelegateTemplate;
         CTxContxt& txContxt = block.vTxContxt[i];
-        if (!CTemplate::ParseDelegateDest(txContxt.destIn, tx.sendTo, tx.vchSig, destInDelegateTemplate, sendToDelegateTemplate))
+        if (!CTemplateVote::ParseDelegateDest(txContxt.destIn, tx.sendTo, tx.vchSig, destInDelegateTemplate, sendToDelegateTemplate))
         {
             StdLog("check", "Update delegate vote: parse delegate dest fail, destIn: %s, sendTo: %s, block: %s, txid: %s",
                    CAddress(txContxt.destIn).ToString().c_str(), CAddress(tx.sendTo).ToString().c_str(), hashBlock.GetHex().c_str(), tx.GetHash().GetHex().c_str());
@@ -1182,7 +1145,7 @@ bool CCheckForkTxPool::AddTx(const uint256& txid, const CAssembledTx& tx)
         StdError("check", "TxPool AddTx: Add unspent 0 fail, txid: %s.", txid.GetHex().c_str());
         return false;
     }
-    if (!tx.IsMintTx())
+    if (!tx.IsMintTx() && tx.nType != CTransaction::TX_DEFI_REWARD)
     {
         if (!Unspent(CTxOutPoint(txid, 1), tx.GetOutput(1)))
         {
@@ -1201,12 +1164,7 @@ bool CCheckForkTxPool::Spent(const CTxOutPoint& point, const uint256& txidSpent,
         StdError("check", "TxPool Spent: find fail, utxo: [%d] %s", point.n, point.hash.GetHex().c_str());
         return false;
     }
-    if (it->second.IsSpent())
-    {
-        StdError("check", "TxPool Spent: spented, utxo: [%d] %s", point.n, point.hash.GetHex().c_str());
-        return false;
-    }
-    it->second.SetSpent(txidSpent, sendTo);
+    mapTxPoolUnspent.erase(it);
     return true;
 }
 
@@ -1234,11 +1192,6 @@ bool CCheckForkTxPool::CheckTxPoolUnspent(const CTxOutPoint& point, const CCheck
     if (it == mapTxPoolUnspent.end())
     {
         StdLog("check", "TxPool CheckTxPoolUnspent: find fail, utxo: [%d] %s", point.n, point.hash.GetHex().c_str());
-        return false;
-    }
-    if (it->second.IsSpent())
-    {
-        StdLog("check", "TxPool CheckTxPoolUnspent: spented, utxo: [%d] %s", point.n, point.hash.GetHex().c_str());
         return false;
     }
     if (it->second != out)
@@ -1385,12 +1338,20 @@ bool CCheckBlockFork::AddBlockTx(const CTransaction& txIn, const CTxContxt& cont
         StdLog("check", "AddBlockTx: add block unspent 0 fail, txid: %s.", txid.GetHex().c_str());
         return false;
     }
-    if (!txIn.IsMintTx())
+    if (!txIn.IsMintTx() && txIn.nType != CTransaction::TX_DEFI_REWARD)
     {
         if (!AddBlockUnspent(CTxOutPoint(txid, 1), CTxOut(txIn, contxtIn.destIn, contxtIn.GetValueIn())))
         {
             StdLog("check", "AddBlockTx: add block unspent 1 fail, txid: %s.", txid.GetHex().c_str());
             return false;
+        }
+    }
+
+    if (txIn.IsDeFiRelation() && txIn.sendTo != contxtIn.destIn)
+    {
+        if (mapBlockAddress.find(txIn.sendTo) == mapBlockAddress.end())
+        {
+            mapBlockAddress.insert(make_pair(txIn.sendTo, CAddrInfo(CDestination(), contxtIn.destIn)));
         }
     }
     return true;
@@ -1404,12 +1365,7 @@ bool CCheckBlockFork::AddBlockSpent(const CTxOutPoint& txPoint, const uint256& t
         StdLog("check", "AddBlockSpent: utxo find fail, utxo: [%d] %s.", txPoint.n, txPoint.hash.GetHex().c_str());
         return false;
     }
-    if (it->second.IsSpent())
-    {
-        StdLog("check", "AddBlockSpent: utxo spented, utxo: [%d] %s.", txPoint.n, txPoint.hash.GetHex().c_str());
-        return false;
-    }
-    it->second.SetSpent(txidSpent, sendTo);
+    mapBlockUnspent.erase(it);
     return true;
 }
 
@@ -2604,6 +2560,36 @@ bool CCheckRepairData::FetchWalletTx()
     return true;
 }
 
+bool CCheckRepairData::FetchAddress()
+{
+    CAddressDB dbAddress;
+    if (!dbAddress.Initialize(path(strDataPath)))
+    {
+        StdError("check", "FetchAddress: dbAddress Initialize fail");
+        return false;
+    }
+
+    map<uint256, CCheckBlockFork>::iterator it = objBlockWalker.mapCheckFork.begin();
+    for (; it != objBlockWalker.mapCheckFork.end(); ++it)
+    {
+        if (!dbAddress.AddNewFork(it->first))
+        {
+            StdError("check", "FetchAddress: dbAddress AddNewFork fail.");
+            dbAddress.Deinitialize();
+            return false;
+        }
+        if (!dbAddress.WalkThrough(it->first, mapForkAddressWalker[it->first]))
+        {
+            StdError("check", "FetchAddress: dbAddress WalkThrough fail.");
+            dbAddress.Deinitialize();
+            return false;
+        }
+    }
+
+    dbAddress.Deinitialize();
+    return true;
+}
+
 bool CCheckRepairData::CheckBlockUnspent()
 {
     bool fCheckResult = true;
@@ -2615,6 +2601,87 @@ bool CCheckRepairData::CheckBlockUnspent()
             fCheckResult = false;
         }
     }
+    return fCheckResult;
+}
+
+bool CCheckRepairData::CheckBlockAddress()
+{
+    CAddressDB dbAddress;
+    if (!dbAddress.Initialize(path(strDataPath)))
+    {
+        StdError("check", "CheckBlockAddress: dbAddress Initialize fail");
+        return false;
+    }
+
+    bool fCheckResult = true;
+    map<uint256, CCheckBlockFork>::iterator mt = objBlockWalker.mapCheckFork.begin();
+    for (; mt != objBlockWalker.mapCheckFork.end(); ++mt)
+    {
+        const uint256& hashFork = mt->first;
+        vector<pair<CDestination, CAddrInfo>> vUpdateAddress;
+        vector<CDestination> vRemoveAddress;
+        {
+            CListAddressWalker& addrWalker = mapForkAddressWalker[hashFork];
+            for (auto it = addrWalker.mapAddress.begin(); it != addrWalker.mapAddress.end();)
+            {
+                if (mt->second.mapBlockAddress.find(it->first) == mt->second.mapBlockAddress.end())
+                {
+                    vRemoveAddress.push_back(it->first);
+                    addrWalker.mapAddress.erase(it++);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+        }
+        {
+            CListAddressWalker& addrWalker = mapForkAddressWalker[hashFork];
+            for (const auto& vd : mt->second.mapBlockAddress)
+            {
+                auto nt = addrWalker.mapAddress.find(vd.first);
+                if (nt == addrWalker.mapAddress.end()
+                    || nt->second.destParent != vd.second.destParent)
+                {
+                    if (nt != addrWalker.mapAddress.end())
+                    {
+                        vRemoveAddress.push_back(vd.first); // Re add and construct root
+                    }
+                    vUpdateAddress.push_back(make_pair(vd.first, vd.second));
+                    addrWalker.mapAddress[vd.first] = vd.second;
+                }
+            }
+        }
+        if (!vUpdateAddress.empty() || !vRemoveAddress.empty())
+        {
+            StdLog("check", "CheckBlockAddress: Check fail, update: %lu, remove: %lu, fork: %s",
+                   vUpdateAddress.size(), vRemoveAddress.size(), hashFork.GetHex().c_str());
+            if (fOnlyCheck)
+            {
+                fCheckResult = false;
+            }
+            else
+            {
+                if (!dbAddress.AddNewFork(hashFork))
+                {
+                    StdLog("check", "CheckBlockAddress: dbAddress AddNewFork fail.");
+                    dbAddress.Deinitialize();
+                    return false;
+                }
+                if (!dbAddress.RepairAddress(hashFork, vUpdateAddress, vRemoveAddress))
+                {
+                    StdError("check", "CheckBlockAddress: RepairAddress fail, update: %lu, remove: %lu, fork: %s",
+                             vUpdateAddress.size(), vRemoveAddress.size(), hashFork.GetHex().c_str());
+                    dbAddress.Deinitialize();
+                    return false;
+                }
+                StdLog("check", "CheckBlockAddress: Repair address success, update: %lu, remove: %lu, fork: %s",
+                       vUpdateAddress.size(), vRemoveAddress.size(), hashFork.GetHex().c_str());
+            }
+        }
+    }
+
+    dbAddress.Deinitialize();
     return fCheckResult;
 }
 
@@ -2768,7 +2835,7 @@ bool CCheckRepairData::CheckWalletTx(vector<CWalletTx>& vAddTx, vector<uint256>&
             map<CTxOutPoint, CCheckTxOut>::iterator it = fork.mapWalletUnspent.begin();
             for (; it != fork.mapWalletUnspent.end(); ++it)
             {
-                if (!it->second.IsSpent() && !objTxPoolData.CheckTxPoolUnspent(hashFork, it->first, it->second))
+                if (!objTxPoolData.CheckTxPoolUnspent(hashFork, it->first, it->second))
                 {
                     StdLog("check", "Check wallet unspent 1: spent fail, height: %d, utxo: [%d] %s.",
                            objWalletTxWalker.GetTxAtBlockHeight(hashFork, it->first.hash), it->first.n, it->first.hash.GetHex().c_str());
@@ -2786,7 +2853,7 @@ bool CCheckRepairData::CheckWalletTx(vector<CWalletTx>& vAddTx, vector<uint256>&
             map<CTxOutPoint, CCheckTxOut>::iterator it = fork.mapTxPoolUnspent.begin();
             for (; it != fork.mapTxPoolUnspent.end(); ++it)
             {
-                if (!it->second.IsSpent() && objWalletAddressWalker.CheckAddress(it->second.destTo))
+                if (objWalletAddressWalker.CheckAddress(it->second.destTo))
                 {
                     if (!objWalletTxWalker.CheckWalletUnspent(hashFork, it->first, it->second))
                     {
@@ -3047,6 +3114,13 @@ bool CCheckRepairData::CheckRepairData()
     }
     StdLog("check", "Fetch unspent success");
 
+    if (!FetchAddress())
+    {
+        StdLog("check", "Fetch address fail");
+        return false;
+    }
+    StdLog("check", "Fetch address success");
+
     if (!FetchTxPool())
     {
         StdLog("check", "Fetch txpool data fail");
@@ -3092,6 +3166,16 @@ bool CCheckRepairData::CheckRepairData()
     else
     {
         StdLog("check", "Check block unspent success");
+    }
+
+    StdLog("check", "Check block address starting");
+    if (!CheckBlockAddress())
+    {
+        StdLog("check", "Check block address fail");
+    }
+    else
+    {
+        StdLog("check", "Check block address success");
     }
 
     StdLog("check", "Check wallet tx starting");

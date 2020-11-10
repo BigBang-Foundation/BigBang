@@ -7,6 +7,7 @@
 
 #include "../common/template/fork.h"
 #include "address.h"
+#include "addressdb.h"
 #include "block.h"
 #include "blockindexdb.h"
 #include "core.h"
@@ -41,7 +42,7 @@ public:
     }
 
 public:
-    CTransaction tx;
+    const CTransaction& tx;
     CTxContxt txContxt;
     CTxIndex txIndex;
     uint256 hashAtFork;
@@ -49,10 +50,6 @@ public:
 
 class CCheckTxOut : public CTxOut
 {
-public:
-    uint256 txidSpent;
-    CDestination destSpent;
-
 public:
     CCheckTxOut() {}
     CCheckTxOut(const CDestination destToIn, int64 nAmountIn, uint32 nTxTimeIn, uint32 nLockUntilIn)
@@ -64,37 +61,13 @@ public:
     CCheckTxOut(const CTxOut& txOut)
       : CTxOut(txOut) {}
 
-    bool IsSpent()
-    {
-        return (txidSpent != 0);
-    }
-    void SetUnspent()
-    {
-        txidSpent = 0;
-        destSpent.SetNull();
-    }
-    void SetSpent(const uint256& txidSpentIn, const CDestination& destSpentIn)
-    {
-        txidSpent = txidSpentIn;
-        destSpent = destSpentIn;
-    }
-
     friend bool operator==(const CCheckTxOut& a, const CCheckTxOut& b)
     {
-        return (a.txidSpent == b.txidSpent && a.destSpent == b.destSpent && a.destTo == b.destTo && a.nAmount == b.nAmount && a.nTxTime == b.nTxTime && a.nLockUntil == b.nLockUntil);
+        return (a.destTo == b.destTo && a.nAmount == b.nAmount && a.nTxTime == b.nTxTime && a.nLockUntil == b.nLockUntil);
     }
     friend bool operator!=(const CCheckTxOut& a, const CCheckTxOut& b)
     {
-        return !(a.txidSpent == b.txidSpent && a.destSpent == b.destSpent && a.destTo == b.destTo && a.nAmount == b.nAmount && a.nTxTime == b.nTxTime && a.nLockUntil == b.nLockUntil);
-    }
-
-protected:
-    template <typename O>
-    void Serialize(xengine::CStream& s, O& opt)
-    {
-        CTxOut::Serialize(s, opt);
-        s.Serialize(txidSpent, opt);
-        s.Serialize(destSpent, opt);
+        return !(a == b);
     }
 };
 
@@ -485,6 +458,7 @@ public:
     CBlockIndex* pLast;
     map<uint256, CCheckBlockTx> mapBlockTx;
     map<CTxOutPoint, CCheckTxOut> mapBlockUnspent;
+    map<CDestination, CAddrInfo> mapBlockAddress;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -553,8 +527,10 @@ protected:
     bool FetchTxPool();
     bool FetchWalletAddress();
     bool FetchWalletTx();
+    bool FetchAddress();
 
     bool CheckBlockUnspent();
+    bool CheckBlockAddress();
     bool CheckWalletTx(vector<CWalletTx>& vAddTx, vector<uint256>& vRemoveTx);
     bool CheckTxIndex();
 
@@ -575,6 +551,7 @@ protected:
     CCheckForkManager objForkManager;
     CCheckBlockWalker objBlockWalker;
     map<uint256, CCheckForkUnspentWalker> mapForkUnspentWalker;
+    map<uint256, CListAddressWalker> mapForkAddressWalker;
     CCheckDBAddrWalker objWalletAddressWalker;
     CCheckWalletTxWalker objWalletTxWalker;
     CCheckTxPoolData objTxPoolData;

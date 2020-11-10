@@ -26,10 +26,10 @@ CTemplateVote* CTemplateVote::clone() const
     return new CTemplateVote(*this);
 }
 
-bool CTemplateVote::GetSignDestination(const CTransaction& tx, const std::vector<uint8>& vchSig,
+bool CTemplateVote::GetSignDestination(const CTransaction& tx, const uint256& hashFork, int nHeight, const std::vector<uint8>& vchSig,
                                        std::set<CDestination>& setSubDest, std::vector<uint8>& vchSubSig) const
 {
-    if (!CTemplate::GetSignDestination(tx, vchSig, setSubDest, vchSubSig))
+    if (!CTemplate::GetSignDestination(tx, hashFork, nHeight, vchSig, setSubDest, vchSubSig))
     {
         return false;
     }
@@ -48,6 +48,65 @@ bool CTemplateVote::GetDelegateOwnerDestination(CDestination& destDelegateOut, C
 {
     destDelegateOut = destDelegate;
     destOwnerOut = destOwner;
+    return true;
+}
+
+bool CTemplateVote::ParseDelegateDest(const CDestination& destIn, const CDestination& sendTo, const std::vector<uint8>& vchSigIn,
+                                      CDestination& destInDelegateOut, CDestination& sendToDelegateOut)
+{
+    std::vector<uint8> vchSubSigOut;
+    bool fSendToVoteTemplate = false;
+    CTemplateId tid;
+    if (sendTo.GetTemplateId(tid))
+    {
+        if (tid.GetType() == TEMPLATE_DELEGATE)
+        {
+            sendToDelegateOut = sendTo;
+        }
+        else if (tid.GetType() == TEMPLATE_VOTE)
+        {
+            auto ptr = CTemplate::CreateTemplatePtr(TEMPLATE_VOTE, vchSigIn);
+            if (ptr == nullptr)
+            {
+                return false;
+            }
+            auto vote = boost::dynamic_pointer_cast<CTemplateVote>(ptr);
+
+            CDestination destOwnerTemp;
+            vote->GetDelegateOwnerDestination(sendToDelegateOut, destOwnerTemp);
+
+            CTransaction tx;
+            std::set<CDestination> setSubDest;
+            if (!vote->GetSignDestination(tx, uint256(), 0, vchSigIn, setSubDest, vchSubSigOut))
+            {
+                return false;
+            }
+
+            fSendToVoteTemplate = true;
+        }
+    }
+
+    if (destIn.GetTemplateId(tid))
+    {
+        if (tid.GetType() == TEMPLATE_DELEGATE)
+        {
+            destInDelegateOut = destIn;
+        }
+        else if (tid.GetType() == TEMPLATE_VOTE)
+        {
+            if (!fSendToVoteTemplate)
+            {
+                vchSubSigOut = vchSigIn;
+            }
+            auto ptr = CTemplate::CreateTemplatePtr(TEMPLATE_VOTE, vchSubSigOut);
+            if (ptr == nullptr)
+            {
+                return false;
+            }
+            CDestination destOwnerTemp;
+            boost::dynamic_pointer_cast<CTemplateVote>(ptr)->GetDelegateOwnerDestination(destInDelegateOut, destOwnerTemp);
+        }
+    }
     return true;
 }
 

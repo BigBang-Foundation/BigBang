@@ -10,9 +10,12 @@
 #include <boost/multi_index_container.hpp>
 
 #include "delegate.h"
+#include "dexmatch.h"
+#include "dexorder.h"
 #include "exchange.h"
 #include "fork.h"
 #include "multisig.h"
+#include "payment.h"
 #include "proof.h"
 #include "rpc/auto_protocol.h"
 #include "stream/datastream.h"
@@ -20,13 +23,15 @@
 #include "templateid.h"
 #include "transaction.h"
 #include "vote.h"
-#include "payment.h"
 #include "weighted.h"
 
 using namespace std;
 using namespace xengine;
 using namespace bigbang::crypto;
 using namespace bigbang::rpc;
+
+//////////////////////////////
+// CTypeInfo
 
 struct CTypeInfo
 {
@@ -50,6 +55,8 @@ static const CTypeInfoSet setTypeInfo = {
     { TEMPLATE_EXCHANGE, new CTemplateExchange, "exchange" },
     { TEMPLATE_VOTE, new CTemplateVote, "vote" },
     { TEMPLATE_PAYMENT, new CTemplatePayment, "payment" },
+    { TEMPLATE_DEXORDER, new CTemplateDexOrder, "dexorder" },
+    { TEMPLATE_DEXMATCH, new CTemplateDexMatch, "dexmatch" },
 };
 
 static const CTypeInfo* GetTypeInfoByType(uint16 nTypeIn)
@@ -68,6 +75,7 @@ const CTypeInfo* GetTypeInfoByName(std::string strNameIn)
 
 //////////////////////////////
 // CTemplate
+
 const CTemplatePtr CTemplate::CreateTemplatePtr(CTemplate* ptr)
 {
     if (ptr)
@@ -210,52 +218,6 @@ bool CTemplate::IsDestInRecorded(const CDestination& dest)
     return false;
 }
 
-bool CTemplate::ParseDelegateDest(const CDestination& destIn, const CDestination& sendTo, const std::vector<uint8>& vchSigIn, CDestination& destInDelegateOut, CDestination& sendToDelegateOut)
-{
-    std::vector<uint8> vchSubSigOut;
-    bool fSendToVoteTemplate = false;
-    CTemplateId tid;
-    if (sendTo.GetTemplateId(tid))
-    {
-        if (tid.GetType() == TEMPLATE_DELEGATE)
-        {
-            sendToDelegateOut = sendTo;
-        }
-        else if (tid.GetType() == TEMPLATE_VOTE)
-        {
-            CDestination destOwnerTemp;
-            if (!CSendToRecordedTemplate::ParseDest(vchSigIn, sendToDelegateOut, destOwnerTemp, vchSubSigOut))
-            {
-                return false;
-            }
-            fSendToVoteTemplate = true;
-        }
-    }
-    if (!fSendToVoteTemplate)
-    {
-        vchSubSigOut = std::move(vchSigIn);
-    }
-
-    if (destIn.GetTemplateId(tid))
-    {
-        if (tid.GetType() == TEMPLATE_DELEGATE)
-        {
-            destInDelegateOut = destIn;
-        }
-        else if (tid.GetType() == TEMPLATE_VOTE)
-        {
-            CTemplatePtr ptr = CTemplate::CreateTemplatePtr(destIn, vchSubSigOut);
-            if (ptr == nullptr)
-            {
-                return false;
-            }
-            CDestination destOwnerTemp;
-            boost::dynamic_pointer_cast<CSendToRecordedTemplate>(ptr)->GetDelegateOwnerDestination(destInDelegateOut, destOwnerTemp);
-        }
-    }
-    return true;
-}
-
 bool CTemplate::IsLockedCoin(const CDestination& dest)
 {
     if (dest.IsTemplate())
@@ -268,6 +230,35 @@ bool CTemplate::IsLockedCoin(const CDestination& dest)
         }
     }
     return false;
+}
+
+bool CTemplate::VerifyDestRecorded(const CTransaction& tx, vector<uint8>& vchSigOut)
+{
+    if (!tx.vchSig.empty())
+    {
+        if (tx.sendTo.IsTemplate() && CTemplate::IsDestInRecorded(tx.sendTo))
+        {
+            CTemplatePtr ptr = CTemplate::CreateTemplatePtr(tx.sendTo.GetTemplateId().GetType(), tx.vchSig);
+            if (!ptr)
+            {
+                return false;
+            }
+            if (ptr->GetTemplateId() != tx.sendTo.GetTemplateId())
+            {
+                return false;
+            }
+            set<CDestination> setSubDest;
+            if (!ptr->GetSignDestination(tx, uint256(), 0, tx.vchSig, setSubDest, vchSigOut))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            vchSigOut = tx.vchSig;
+        }
+    }
+    return true;
 }
 
 const uint16& CTemplate::GetTemplateType() const
@@ -300,7 +291,7 @@ vector<uint8> CTemplate::Export() const
     return vchTemplate;
 }
 
-bool CTemplate::GetSignDestination(const CTransaction& tx, const vector<uint8>& vchSig,
+bool CTemplate::GetSignDestination(const CTransaction& tx, const uint256& hashFork, int nHeight, const vector<uint8>& vchSig,
                                    set<CDestination>& setSubDest, vector<uint8>& vchSubSig) const
 {
     if (!vchSig.empty())

@@ -169,17 +169,17 @@ bool CTemplateExchange::VerifyTxSignature(const uint256& hash, const uint16 nTyp
     return true;
 }
 
-bool CTemplateExchange::GetSignDestination(const CTransaction& tx, const std::vector<uint8>& vchSig,
+bool CTemplateExchange::GetSignDestination(const CTransaction& tx, const uint256& hashFork, int nHeight, const std::vector<uint8>& vchSig,
                                            std::set<CDestination>& setSubDest, std::vector<uint8>& vchSubSig) const
 {
     vector<unsigned char> vsm;
     vector<unsigned char> vss;
-    uint256 hashFork;
+    uint256 forkid;
     int height;
     xengine::CIDataStream ds(tx.vchSig);
     try
     {
-        ds >> vsm >> vss >> hashFork >> height;
+        ds >> vsm >> vss >> forkid >> height;
     }
     catch (const std::exception& e)
     {
@@ -193,7 +193,7 @@ bool CTemplateExchange::GetSignDestination(const CTransaction& tx, const std::ve
         return false;
     }
 
-    if (hashFork == fork_m)
+    if (forkid == fork_m)
     {
         if (height > height_m)
         {
@@ -205,7 +205,7 @@ bool CTemplateExchange::GetSignDestination(const CTransaction& tx, const std::ve
         }
     }
 
-    if (hashFork == fork_s)
+    if (forkid == fork_s)
     {
         if (height > height_s)
         {

@@ -1,3 +1,39 @@
+# Version 2.2.3 (2020-11-04)
+
+### Fixs
+
+- Remove valid addreess from DeFi black list
+- Fix macOS compile issue and bug of black list on testnet
+
+# Version 2.2.2 (2020-11-02)
+
+### Fixs
+
+- Add black list for invalid relation node
+- DeFi Reward do not send to template address
+- Modify dexmatch dest verify
+
+
+# Version 2.2.1 (2020-10-29)
+
+### Fixs
+
+- Reduce memory usage of DeFi function
+- Fix memory leak of CForest of DeFi relation
+- Comparative study on avoiding the wrong matchmaking
+- modify match verify height
+
+# Version 2.2.0 (2020-10-21)
+
+### Features
+* Fix some DeFi bugs
+* Add Decentral exchange(DEX) function
+
+# Version 2.1.0 (2020-09-26)
+
+### Features
+* Add DeFi Function
+
 # Version 2.0.5 (2020-08-04)
 
 ### Fixs
