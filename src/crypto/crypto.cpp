@@ -56,6 +56,16 @@ void CryptoFree(void* ptr)
     sodium_free(ptr);
 }
 
+void* NormalAlloc(const std::size_t size)
+{
+    return malloc(size);
+}
+
+void NormalFree(void* ptr)
+{
+    free(ptr);
+}
+
 //////////////////////////////
 // Heap memory lock
 

@@ -30,6 +30,12 @@ public:
         PUBLIC_KEY,
     };
 
+    enum
+    {
+        NORMAL_ALLOC,
+        CRYPTO_ALLOC,
+    };
+
 public:
     CKey();
     CKey(const CKey& key);
@@ -40,6 +46,8 @@ public:
     bool IsLocked() const;
     bool IsPrivKey() const;
     bool IsPubKey() const;
+    bool IsCryptoAlloc() const;
+    bool IsNormalAlloc() const;
     bool Renew();
     void Load(const CPubKey& pubkeyIn, const uint32 nVersionIn, const CCryptoCipher& cipherIn);
     bool Load(const std::vector<unsigned char>& vchKey);
@@ -59,12 +67,11 @@ public:
                  const CCryptoString& strCurrentPassphrase = "");
     void Lock();
     bool Unlock(const CCryptoString& strPassphrase = "");
-
 protected:
     bool UpdateCipher(uint32 nVersionIn = INIT, const CCryptoString& strPassphrase = "");
-
 protected:
     uint32 nVersion;
+    uint32 nAllocType;
     CCryptoKey* pCryptoKey;
     CCryptoCipher cipher;
 };
