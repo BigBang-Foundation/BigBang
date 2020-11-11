@@ -46,8 +46,6 @@ public:
     bool IsLocked() const;
     bool IsPrivKey() const;
     bool IsPubKey() const;
-    bool IsCryptoAlloc() const;
-    bool IsNormalAlloc() const;
     bool Renew();
     void Load(const CPubKey& pubkeyIn, const uint32 nVersionIn, const CCryptoCipher& cipherIn);
     bool Load(const std::vector<unsigned char>& vchKey);
@@ -71,7 +69,6 @@ protected:
     bool UpdateCipher(uint32 nVersionIn = INIT, const CCryptoString& strPassphrase = "");
 protected:
     uint32 nVersion;
-    uint32 nAllocType;
     CCryptoKey* pCryptoKey;
     CCryptoCipher cipher;
 };

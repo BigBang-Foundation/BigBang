@@ -36,8 +36,7 @@ bool CPubKey::Verify(const uint256& hash, const std::vector<uint8>& vchSig) cons
 CKey::CKey()
 {
     nVersion = INIT;
-    nAllocType = NORMAL_ALLOC;
-    pCryptoKey = NormalAlloc<CCryptoKey>();
+    pCryptoKey = CryptoAlloc<CCryptoKey>();
     if (!pCryptoKey)
     {
         throw CCryptoError("CKey : Failed to alloc memory");
@@ -48,8 +47,7 @@ CKey::CKey()
 
 CKey::CKey(const CKey& key)
 {
-    nAllocType = NORMAL_ALLOC;
-    pCryptoKey = NormalAlloc<CCryptoKey>();
+    pCryptoKey = CryptoAlloc<CCryptoKey>();
     if (!pCryptoKey)
     {
         throw CCryptoError("CKey : Failed to alloc memory");
@@ -69,14 +67,7 @@ CKey& CKey::operator=(const CKey& key)
 
 CKey::~CKey()
 {
-    if(IsNormalAlloc())
-    {
-        NormalFree(pCryptoKey);
-    }
-    else
-    {
-        CryptoFree(pCryptoKey);   
-    }
+    CryptoFree(pCryptoKey);
 }
 
 uint32 CKey::GetVersion() const
@@ -102,16 +93,6 @@ bool CKey::IsPrivKey() const
 bool CKey::IsPubKey() const
 {
     return nVersion == PUBLIC_KEY;
-}
-
-bool CKey::IsCryptoAlloc() const
-{
-   return nAllocType == CRYPTO_ALLOC; 
-}
-
-bool CKey::IsNormalAlloc() const
-{
-    return nAllocType == NORMAL_ALLOC;
 }
 
 bool CKey::Renew()
@@ -283,40 +264,13 @@ bool CKey::Encrypt(const CCryptoString& strPassphrase,
 
 void CKey::Lock()
 {
-    if(IsCryptoAlloc())
-    {
-        auto pTempCryptoKey = NormalAlloc<CCryptoKey>();
-        if(!pTempCryptoKey)
-        {
-            StdError("CKey::Lock", "Key Alloc failed.");
-            return;
-        }
-        
-        *pTempCryptoKey = *pCryptoKey;
-        pTempCryptoKey->secret = 0;
-        CryptoFree(pCryptoKey);
-        pCryptoKey = pTempCryptoKey;
-    }
     pCryptoKey->secret = 0;
 }
 
 bool CKey::Unlock(const CCryptoString& strPassphrase)
 {
     try
-    {
-        if(IsNormalAlloc())
-        {
-            auto pTempCryptoKey = CryptoAlloc<CCryptoKey>();
-            if(!pTempCryptoKey)
-            {
-                StdError("CKey::Unlock", "Key Alloc failed.");
-                return false;
-            }
-            *pTempCryptoKey = *pCryptoKey;
-            NormalFree(pCryptoKey);
-            pCryptoKey = pTempCryptoKey;
-        }
-        
+    {   
         return CryptoDecryptSecret(nVersion, strPassphrase, cipher, *pCryptoKey);
     }
     catch (std::exception& e)
