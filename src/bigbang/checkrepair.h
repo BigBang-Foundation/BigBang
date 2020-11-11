@@ -191,6 +191,7 @@ public:
     bool UpdateDbForkLast(const uint256& hashFork, const uint256& hashLastBlock);
 
     bool GetValidForkContext(const uint256& hashPrimaryLastBlock, const uint256& hashFork, CForkContext& ctxt);
+    bool CheckRepairForkContext(const uint256& hashPrimaryLastBlock);
 
 public:
     string strDataPath;

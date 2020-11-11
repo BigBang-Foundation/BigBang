@@ -31,6 +31,7 @@ public:
     uint32 nHalveCycle;
     int nJointHeight;
     CDestination destOwner;
+
 public:
     enum
     {
@@ -43,7 +44,7 @@ public:
         SetNull();
     }
     COldForkContext(const uint256& hashForkIn, const uint256& hashJointIn, const uint256& txidEmbeddedIn,
-                 const CProfile& profile)
+                    const CProfile& profile)
     {
         hashFork = hashForkIn;
         hashJoint = hashJointIn;
@@ -123,7 +124,7 @@ public:
         profile.nHalveCycle = nHalveCycle;
         profile.destOwner = destOwner;
         profile.nJointHeight = nJointHeight;
-       
+
         return profile;
     }
 
@@ -148,7 +149,6 @@ protected:
     }
 };
 
-
 class CForkContext : public COldForkContext
 {
     friend class xengine::CStream;
@@ -156,6 +156,7 @@ class CForkContext : public COldForkContext
 public:
     int nForkType;
     std::vector<unsigned char> vchDeFi;
+
 public:
     enum
     {
@@ -168,10 +169,11 @@ public:
         SetNull();
     }
     CForkContext(const uint256& hashForkIn, const uint256& hashJointIn, const uint256& txidEmbeddedIn,
-                 const CProfile& profile) : COldForkContext(hashForkIn, hashJointIn, txidEmbeddedIn, profile)
+                 const CProfile& profile)
+      : COldForkContext(hashForkIn, hashJointIn, txidEmbeddedIn, profile)
     {
         nForkType = profile.nForkType;
-        if(nForkType == FORK_TYPE_DEFI)
+        if (nForkType == FORK_TYPE_DEFI)
         {
             profile.defi.Save(vchDeFi);
         }
@@ -229,14 +231,38 @@ public:
         profile.destOwner = destOwner;
         profile.nJointHeight = nJointHeight;
         profile.nForkType = nForkType;
-        if(profile.nForkType == FORK_TYPE_DEFI)
+        if (profile.nForkType == FORK_TYPE_DEFI)
         {
             CDeFiProfile defi;
             defi.Load(vchDeFi);
             profile.defi = defi;
         }
-       
+
         return profile;
+    }
+
+    friend bool operator==(const CForkContext& a, const CForkContext& b)
+    {
+        return (a.strName == b.strName
+                && a.strSymbol == b.strSymbol
+                && a.hashFork == b.hashFork
+                && a.hashParent == b.hashParent
+                && a.hashJoint == b.hashJoint
+                && a.txidEmbedded == b.txidEmbedded
+                && a.nVersion == b.nVersion
+                && a.nFlag == b.nFlag
+                && a.nAmount == b.nAmount
+                && a.nMintReward == b.nMintReward
+                && a.nMinTxFee == b.nMinTxFee
+                && a.nHalveCycle == b.nHalveCycle
+                && a.nJointHeight == b.nJointHeight
+                && a.destOwner == b.destOwner
+                && a.nForkType == b.nForkType
+                && a.vchDeFi == b.vchDeFi);
+    }
+    friend bool operator!=(const CForkContext& a, const CForkContext& b)
+    {
+        return !(a == b);
     }
 
 protected:
@@ -257,15 +283,14 @@ protected:
         s.Serialize(nHalveCycle, opt);
         s.Serialize(nJointHeight, opt);
         s.Serialize(destOwner, opt);
-        if(s.GetSize() > 0)
+        if (s.GetSize() > 0)
         {
             s.Serialize(nForkType, opt);
-            if(nForkType == FORK_TYPE_DEFI)
+            if (nForkType == FORK_TYPE_DEFI)
             {
                 s.Serialize(vchDeFi, opt);
             }
         }
-        
     }
 };
 

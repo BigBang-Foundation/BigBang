@@ -592,7 +592,7 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
             }
         }
 
-        if ((tx.nType != CTransaction::TX_DEFI_REWARD))
+        if (tx.nType != CTransaction::TX_DEFI_REWARD)
         {
             err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, nForkHeight, forkid, profile.nForkType);
             if (err != OK)
@@ -1972,7 +1972,7 @@ void CBlockChain::InitCheckPoints()
         vecGenesisCheckPoints.push_back(CCheckPoint(0, pCoreProtocol->GetGenesisBlockHash()));
         InitCheckPoints(pCoreProtocol->GetGenesisBlockHash(), vecGenesisCheckPoints);
 #else
-        for (const auto& vd : vCheckPoints)
+        for (const auto& vd : vPrimaryChainCheckPoints)
         {
             vecGenesisCheckPoints.push_back(CCheckPoint(vd.first, vd.second));
         }
@@ -1985,6 +1985,7 @@ void CBlockChain::InitCheckPoints()
                          { 450000, uint256("0006ddd04452bce958ba78a1e044108fb4e9eac31751151b01b236cd2041b9eb") } });
         vecBBCC.assign({ { 430001, uint256("00068fb1bad4194126b0d1c1fb46b9860d4e899730825bd9511de4b14277d136") },
                          { 450000, uint256("0006ddd011ca1049c434d5b6976b1534aef6c49883460afa05f5ac541aefbb0c") } });
+
         InitCheckPoints(uint256("00000000b0a9be545f022309e148894d1e1c853ccac3ef04cb6f5e5c70f41a70"), vecGenesisCheckPoints);
         InitCheckPoints(uint256("000493e02a0f6ef977ebd5f844014badb412b6db85847b120f162b8d913b9028"), vecBBCN);
         InitCheckPoints(uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"), vecBTCA);
@@ -2007,7 +2008,7 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
             {
                 if (!VerifyBlockForkTx(blockex.hashPrev, tx, vForkCtxt))
                 {
-                    StdLog("CBlockChain", "AddBlockForkContext: VerifyBlockForkTx fail, block: %s", hashBlock.ToString().c_str());
+                    StdLog("CBlockChain", "Add block fork context: VerifyBlockForkTx fail, block: %s", hashBlock.ToString().c_str());
                     return false;
                 }
             }
@@ -2017,7 +2018,7 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
                 uint256 hashFork;
                 if (!pCoreProtocol->GetTxForkRedeemParam(tx, txContxt.destIn, destRedeem, hashFork))
                 {
-                    StdLog("CBlockChain", "AddBlockForkContext: Get redeem param fail, block: %s, dest: %s",
+                    StdLog("CBlockChain", "Add block fork context: Get redeem param fail, block: %s, dest: %s",
                            hashBlock.ToString().c_str(), CAddress(txContxt.destIn).ToString().c_str());
                     return false;
                 }
@@ -2026,7 +2027,7 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
                 {
                     if (it->hashFork == hashFork)
                     {
-                        StdLog("CBlockChain", "AddBlockForkContext: cancel fork, block: %s, fork: %s, dest: %s",
+                        StdLog("CBlockChain", "Add block fork context: cancel fork, block: %s, fork: %s, dest: %s",
                                hashBlock.ToString().c_str(), it->hashFork.ToString().c_str(),
                                CAddress(txContxt.destIn).ToString().c_str());
                         vForkCtxt.erase(it++);
@@ -2044,7 +2045,7 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
     {
         if (!cntrBlock.AddNewForkContext(ctxt))
         {
-            StdLog("CBlockChain", "AddBlockForkContext: AddNewForkContext fail, block: %s", hashBlock.ToString().c_str());
+            StdLog("CBlockChain", "Add block fork context: AddNewForkContext fail, block: %s", hashBlock.ToString().c_str());
             return false;
         }
     }
@@ -2064,13 +2065,13 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
     map<uint256, int> mapValidFork;
     if (!pForkManager->AddValidForkContext(blockex.hashPrev, hashBlock, vForkCtxt, fCheckPointBlock, hashRefFdBlock, mapValidFork))
     {
-        StdLog("CBlockChain", "AddBlockForkContext: AddValidForkContext fail, block: %s", hashBlock.ToString().c_str());
+        StdLog("CBlockChain", "Add block fork context: AddValidForkContext fail, block: %s", hashBlock.ToString().c_str());
         return false;
     }
 
     if (!cntrBlock.AddValidForkHash(hashBlock, hashRefFdBlock, mapValidFork))
     {
-        StdLog("CBlockChain", "AddBlockForkContext: AddValidForkHash fail, block: %s", hashBlock.ToString().c_str());
+        StdLog("CBlockChain", "Add block fork context: AddValidForkHash fail, block: %s", hashBlock.ToString().c_str());
         pForkManager->RemoveValidForkContext(hashBlock);
         return false;
     }

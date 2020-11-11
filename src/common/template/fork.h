@@ -19,7 +19,7 @@ public:
     virtual bool GetSignDestination(const CTransaction& tx, const uint256& hashFork, int nHeight, const std::vector<uint8>& vchSig,
                                     std::set<CDestination>& setSubDest, std::vector<uint8>& vchSubSig) const;
     virtual void GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CDestination&& destInstance) const;
-    virtual int64 LockedCoin(const CDestination& destTo, const int32 nForkHeight) const;
+    //virtual int64 LockedCoin(const CDestination& destTo, const int32 nForkHeight) const;
     virtual void GetForkParam(CDestination& destRedeemOut, uint256& hashForkOut);
 
 protected:
