@@ -283,7 +283,8 @@ void CTxPoolView::GetAllPrevTxLink(const CPooledTxLink& link, vector<CPooledTxLi
 
 bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFee, const int64 nBlockTime, const size_t nMaxSize, size_t& nTotalSize,
                                     const uint256& hashFork, const int nHeight, map<CDestination, int>& mapVoteCert, set<uint256>& setUnTx, CPooledTx* ptx,
-                                    const map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight, vector<pair<uint256, vector<CTxIn>>>& vTxRemove)
+                                    const map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight,
+                                    vector<pair<uint256, vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock)
 {
     if (ptx->GetTxTime() <= nBlockTime)
     {
@@ -335,16 +336,37 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
             }
         }
         CTemplateId tid;
-        if (ptx->destIn.GetTemplateId(tid) && tid.GetType() == TEMPLATE_DEXMATCH)
+        if (ptx->destIn.GetTemplateId(tid))
         {
-            vector<uint8> vchSig;
-            if (!CTemplate::VerifyDestRecorded(*static_cast<CTransaction*>(ptx), vchSig)
-                || !ptx->destIn.VerifyTxSignature(ptx->GetSignatureHash(), ptx->nType, ptx->hashAnchor,
-                                                  ptx->sendTo, vchSig, nHeight, hashFork))
+            switch (tid.GetType())
             {
-                setUnTx.insert(ptx->GetHash());
-                vTxRemove.push_back(make_pair(ptx->GetHash(), ptx->vInput));
-                return true;
+            case TEMPLATE_DEXMATCH:
+            {
+                vector<uint8> vchSig;
+                if (!CTemplate::VerifyDestRecorded(*static_cast<CTransaction*>(ptx), vchSig)
+                    || !ptx->destIn.VerifyTxSignature(ptx->GetSignatureHash(), ptx->nType, ptx->hashAnchor,
+                                                      ptx->sendTo, vchSig, nHeight, hashFork))
+                {
+                    setUnTx.insert(ptx->GetHash());
+                    vTxRemove.push_back(make_pair(ptx->GetHash(), ptx->vInput));
+                    return true;
+                }
+                break;
+            }
+            case TEMPLATE_FORK:
+            {
+                vector<uint8> vchSig;
+                if (!CTemplate::VerifyDestRecorded(*static_cast<CTransaction*>(ptx), vchSig)
+                    || pCorePro->VerifyForkRedeem(*static_cast<CTransaction*>(ptx), ptx->destIn, hashFork,
+                                                  hashLastBlock, vchSig, ptx->nValueIn)
+                           != OK)
+                {
+                    setUnTx.insert(ptx->GetHash());
+                    vTxRemove.push_back(make_pair(ptx->GetHash(), ptx->vInput));
+                    return true;
+                }
+                break;
+            }
             }
         }
         if (nTotalSize + ptx->nSerializeSize > nMaxSize)
@@ -381,7 +403,7 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
 
 void CTxPoolView::GetBlockTxList(vector<CTransaction>& vtx, int64& nTotalTxFee, const int64 nBlockTime, const size_t nMaxSize, const uint256& hashFork, const int nHeight,
                                  map<CDestination, int>& mapVoteCert, const map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight,
-                                 vector<pair<uint256, vector<CTxIn>>>& vTxRemove)
+                                 vector<pair<uint256, vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock)
 {
     size_t nTotalSize = 0;
     set<uint256> setUnTx;
@@ -408,7 +430,8 @@ void CTxPoolView::GetBlockTxList(vector<CTransaction>& vtx, int64& nTotalTxFee, 
         if (i.ptx)
         {
             if (!AddArrangeBlockTx(vtx, nTotalTxFee, nBlockTime, nMaxSize, nTotalSize, hashFork, nHeight,
-                                   mapVoteCert, setUnTx, i.ptx, mapVote, nMinEnrollAmount, fIsDposHeight, vTxRemove))
+                                   mapVoteCert, setUnTx, i.ptx, mapVote, nMinEnrollAmount, fIsDposHeight,
+                                   vTxRemove, pCorePro, hashLastBlock))
             {
                 return;
             }
@@ -427,7 +450,8 @@ void CTxPoolView::GetBlockTxList(vector<CTransaction>& vtx, int64& nTotalTxFee, 
         if (i.ptx)
         {
             if (!AddArrangeBlockTx(vtx, nTotalTxFee, nBlockTime, nMaxSize, nTotalSize, hashFork, nHeight,
-                                   mapVoteCert, setUnTx, i.ptx, mapVote, nMinEnrollAmount, fIsDposHeight, vTxRemove))
+                                   mapVoteCert, setUnTx, i.ptx, mapVote, nMinEnrollAmount, fIsDposHeight,
+                                   vTxRemove, pCorePro, hashLastBlock))
             {
                 return;
             }
@@ -848,7 +872,7 @@ bool CTxPool::FetchArrangeBlockTx(const uint256& hashFork, const uint256& hashPr
     return true;
 }
 
-void CTxPool::CacheArrangeBlockTx(const uint256& hashFork, int64 nBlockTime, const uint256& hashBlock, size_t nMaxSize,
+void CTxPool::CacheArrangeBlockTx(const uint256& hashFork, int64 nBlockTime, const uint256& hashLastBlock, size_t nMaxSize,
                                   vector<CTransaction>& vtx, int64& nTotalTxFee, int nHeight, vector<pair<uint256, vector<CTxIn>>>& vTxRemove)
 {
     map<CDestination, int> mapVoteCert;
@@ -856,19 +880,19 @@ void CTxPool::CacheArrangeBlockTx(const uint256& hashFork, int64 nBlockTime, con
     int64 nMinEnrollAmount = 0;
     if (hashFork == pCoreProtocol->GetGenesisBlockHash())
     {
-        if (!pBlockChain->GetDelegateCertTxCount(hashBlock, mapVoteCert))
+        if (!pBlockChain->GetDelegateCertTxCount(hashLastBlock, mapVoteCert))
         {
             StdError("CTxPool", "Cache arrange block tx: GetDelegateCertTxCount fail");
             return;
         }
 
-        if (!pBlockChain->GetBlockDelegateVote(hashBlock, mapVote))
+        if (!pBlockChain->GetBlockDelegateVote(hashLastBlock, mapVote))
         {
             StdError("CTxPool", "Cache arrange block tx: GetBlockDelegateVote fail");
             return;
         }
 
-        nMinEnrollAmount = pBlockChain->GetDelegateMinEnrollAmount(hashBlock);
+        nMinEnrollAmount = pBlockChain->GetDelegateMinEnrollAmount(hashLastBlock);
         if (nMinEnrollAmount < 0)
         {
             StdError("CTxPool", "Cache arrange block tx: GetDelegateMinEnrollAmount fail");
@@ -877,7 +901,8 @@ void CTxPool::CacheArrangeBlockTx(const uint256& hashFork, int64 nBlockTime, con
     }
 
     mapPoolView[hashFork].GetBlockTxList(vtx, nTotalTxFee, nBlockTime, nMaxSize, hashFork, nHeight, mapVoteCert,
-                                         mapVote, nMinEnrollAmount, pCoreProtocol->IsDposHeight(nHeight), vTxRemove);
+                                         mapVote, nMinEnrollAmount, pCoreProtocol->IsDposHeight(nHeight), vTxRemove,
+                                         pCoreProtocol, hashLastBlock);
 }
 
 bool CTxPool::FetchInputs(const uint256& hashFork, const CTransaction& tx, vector<CTxOut>& vUnspent)
@@ -1037,7 +1062,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             vTxRemove.push_back(make_pair(txidMint, block.txMint.vInput));
         }
     }
-  
+
     if (mapTxCache.find(update.hashFork) == mapTxCache.end())
     {
         mapTxCache.insert(std::make_pair(update.hashFork, CTxCache(CACHE_HEIGHT_INTERVAL)));
@@ -1054,9 +1079,9 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
 
     for (const auto& vd : vArrangeTxRemove)
     {
-        for(const auto& txin : vd.second)
+        for (const auto& txin : vd.second)
         {
-            txView.InvalidateSpent(txin.prevout, viewInvolvedTx);    
+            txView.InvalidateSpent(txin.prevout, viewInvolvedTx);
         }
     }
 

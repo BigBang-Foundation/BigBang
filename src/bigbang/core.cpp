@@ -507,6 +507,38 @@ Errno CCoreProtocol::VerifyForkTx(const CTransaction& tx)
     return OK;
 }
 
+Errno CCoreProtocol::VerifyForkRedeem(const CTransaction& tx, const CDestination& destIn, const uint256& hashFork,
+                                      const uint256& hashPrevBlock, const vector<uint8>& vchSubSig, const int64 nValueIn)
+{
+    if (hashFork != GetGenesisBlockHash())
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid fork");
+    }
+    if (tx.sendTo != destIn)
+    {
+        CTemplatePtr ptr = CTemplate::CreateTemplatePtr(destIn.GetTemplateId().GetType(), vchSubSig);
+        if (!ptr)
+        {
+            return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid locked coin template destination");
+        }
+        CDestination destRedeemLocked;
+        uint256 hashForkLocked;
+        boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
+        int64 nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashPrevBlock);
+        if (nLockedCoin < 0)
+        {
+            nLockedCoin = 0;
+        }
+        // locked coin template: nValueIn >= tx.nAmount + tx.nTxFee + nLockedCoin
+        if (nValueIn < tx.nAmount + tx.nTxFee + nLockedCoin)
+        {
+            return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "valuein is not enough to locked coin (%ld : %ld)",
+                         nValueIn, tx.nAmount + tx.nTxFee + nLockedCoin);
+        }
+    }
+    return OK;
+}
+
 Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile)
 {
     if (!forkProfile.Load(block.vchProof))
@@ -790,6 +822,7 @@ Errno CCoreProtocol::VerifyBlock(const CBlock& block, CBlockIndex* pIndexPrev)
 Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev,
                                    int nForkHeight, const uint256& fork, int nForkType)
 {
+    Errno err = OK;
     const CDestination& destIn = txContxt.destIn;
     int64 nValueIn = 0;
     for (const CTxInContxt& inctxt : txContxt.vin)
@@ -868,23 +901,19 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     switch (nDestInTemplateType)
     {
     case TEMPLATE_DEXORDER:
-    {
-        Errno err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight);
+        err = VerifyDexOrderTx(tx, destIn, nValueIn, nForkHeight);
         if (err != OK)
         {
             return DEBUG(err, "invalid dex order tx");
         }
         break;
-    }
     case TEMPLATE_DEXMATCH:
-    {
-        Errno err = VerifyDexMatchTx(tx, nValueIn, nForkHeight);
+        err = VerifyDexMatchTx(tx, nValueIn, nForkHeight);
         if (err != OK)
         {
             return DEBUG(err, "invalid dex match tx");
         }
         break;
-    }
     }
 
     if (nSendToTemplateType == TEMPLATE_DEXMATCH && nDestInTemplateType != TEMPLATE_DEXORDER)
@@ -898,7 +927,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid recoreded destination");
     }
 
-    if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_PAYMENT)
+    if (nDestInTemplateType == TEMPLATE_PAYMENT)
     {
         auto templatePtr = CTemplate::CreateTemplatePtr(TEMPLATE_PAYMENT, vchSig);
         if (templatePtr == nullptr)
@@ -926,36 +955,16 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         }
     }
 
-    // locked coin template: nValueIn >= tx.nAmount + tx.nTxFee + nLockedCoin
-    if (destIn.GetTemplateId().GetType() == TEMPLATE_FORK)
+    if (nDestInTemplateType == TEMPLATE_FORK)
     {
-        if (fork != GetGenesisBlockHash())
+        err = VerifyForkRedeem(tx, destIn, fork, pIndexPrev->GetBlockHash(), vchSig, nValueIn);
+        if (err != OK)
         {
-            return DEBUG(ERR_TRANSACTION_INVALID, "invalid fork");
-        }
-        if (tx.sendTo != destIn)
-        {
-            CTemplatePtr ptr = CTemplate::CreateTemplatePtr(destIn.GetTemplateId(), vchSig);
-            if (!ptr)
-            {
-                return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid locked coin template destination");
-            }
-            CDestination destRedeemLocked;
-            uint256 hashForkLocked;
-            boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
-            int64 nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, pIndexPrev->GetBlockHash());
-            if (nLockedCoin < 0)
-            {
-                nLockedCoin = 0;
-            }
-            if (nValueIn < tx.nAmount + tx.nTxFee + nLockedCoin)
-            {
-                return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "valuein is not enough to locked coin (%ld : %ld)", nValueIn, tx.nAmount + tx.nTxFee + nLockedCoin);
-            }
+            return DEBUG(err, "Verify fork redeem fail");
         }
     }
 
-    if (tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
+    if (nSendToTemplateType == TEMPLATE_FORK)
     {
         if (fork != GetGenesisBlockHash())
         {
@@ -974,8 +983,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         }
     }
 
-    if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_DEXMATCH
-        && nForkHeight < (int)MATCH_VERIFY_ERROR_HEIGHT)
+    if (nDestInTemplateType == TEMPLATE_DEXMATCH && nForkHeight < (int)MATCH_VERIFY_ERROR_HEIGHT)
     {
         nForkHeight -= 1;
     }
@@ -1108,7 +1116,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid signature");
     }
 
-    if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_PAYMENT)
+    if (nDestInTemplateType == TEMPLATE_PAYMENT)
     {
         auto templatePtr = CTemplate::CreateTemplatePtr(TEMPLATE_PAYMENT, vchSig);
         if (templatePtr == nullptr)
@@ -1137,7 +1145,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     }
 
     // locked coin template: nValueIn >= tx.nAmount + tx.nTxFee + nLockedCoin
-    if (destIn.GetTemplateId().GetType() == TEMPLATE_FORK)
+    if (nDestInTemplateType == TEMPLATE_FORK)
     {
         if (fork != GetGenesisBlockHash())
         {
@@ -1188,7 +1196,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         }
     }
 
-    if (tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
+    if (nSendToTemplateType == TEMPLATE_FORK)
     {
         if (fork != GetGenesisBlockHash())
         {
