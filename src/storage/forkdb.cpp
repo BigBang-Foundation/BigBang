@@ -89,19 +89,16 @@ bool CForkDB::RetrieveForkContext(const uint256& hashFork, CForkContext& ctxt)
 
 bool CForkDB::ListForkContext(vector<CForkContext>& vForkCtxt, map<uint256, pair<uint256, map<uint256, int>>>& mapValidForkId)
 {
-    multimap<int, CForkContext> mapCtxt;
-
-    if (!WalkThrough(boost::bind(&CForkDB::LoadCtxtWalker, this, _1, _2, boost::ref(mapCtxt), boost::ref(mapValidForkId))))
+    if (!WalkThrough(boost::bind(&CForkDB::LoadCtxtWalker, this, _1, _2, boost::ref(vForkCtxt)), string("ctxt"), true))
     {
+        StdError("CForkDB", "ListForkContext: Walk through ctxt fail");
         return false;
     }
-
-    vForkCtxt.reserve(mapCtxt.size());
-    for (multimap<int, CForkContext>::iterator it = mapCtxt.begin(); it != mapCtxt.end(); ++it)
+    if (!WalkThrough(boost::bind(&CForkDB::LoadValidForkWalker, this, _1, _2, boost::ref(mapValidForkId)), string("valid"), true))
     {
-        vForkCtxt.push_back((*it).second);
+        StdError("CForkDB", "ListForkContext: Walk through valid fail");
+        return false;
     }
-
     return true;
 }
 
@@ -122,12 +119,10 @@ bool CForkDB::RetrieveFork(const uint256& hashFork, uint256& hashLastBlock)
 
 bool CForkDB::ListFork(vector<pair<uint256, uint256>>& vFork)
 {
-    multimap<int, uint256> mapJoint;
-    map<uint256, uint256> mapFork;
-
     uint256 hashGenesisBlock;
     if (!GetGenesisBlockHash(hashGenesisBlock))
     {
+        StdError("CForkDB", "ListFork: GetGenesisBlockHash fail");
         return false;
     }
 
@@ -163,16 +158,26 @@ bool CForkDB::ListFork(vector<pair<uint256, uint256>>& vFork)
         }
     }
 
-    if (!WalkThrough(boost::bind(&CForkDB::LoadForkWalker, this, _1, _2, boost::ref(mapJoint), boost::ref(mapFork))))
+    vector<CForkContext> vForkCtxt;
+    map<uint256, uint256> mapActiveFork;
+
+    if (!WalkThrough(boost::bind(&CForkDB::LoadCtxtWalker, this, _1, _2, boost::ref(vForkCtxt)), string("ctxt"), true))
     {
+        StdError("CForkDB", "ListFork: Walk through ctxt fail");
         return false;
     }
 
-    vFork.reserve(mapFork.size());
-    for (multimap<int, uint256>::iterator it = mapJoint.begin(); it != mapJoint.end(); ++it)
+    if (!WalkThrough(boost::bind(&CForkDB::LoadActiveForkWalker, this, _1, _2, boost::ref(mapActiveFork)), string("active"), true))
     {
-        map<uint256, uint256>::iterator mi = mapFork.find((*it).second);
-        if (mi != mapFork.end() && mapValidFork.find(it->second) != mapValidFork.end())
+        StdError("CForkDB", "ListFork: Walk through active fail");
+        return false;
+    }
+
+    vFork.reserve(vForkCtxt.size());
+    for (auto ctxt : vForkCtxt)
+    {
+        map<uint256, uint256>::iterator mi = mapActiveFork.find(ctxt.hashFork);
+        if (mi != mapActiveFork.end() && mapValidFork.count(ctxt.hashFork))
         {
             vFork.push_back(*mi);
         }
@@ -190,6 +195,7 @@ bool CForkDB::RetrieveValidForkHash(const uint256& hashBlock, uint256& hashRefFd
     CValidForkId validForkId;
     if (!Read(make_pair(string("valid"), hashBlock), validForkId))
     {
+        StdError("CForkDB", "RetrieveValidForkHash: Read fail");
         return false;
     }
     hashRefFdBlock = validForkId.hashRefFdBlock;
@@ -203,8 +209,7 @@ void CForkDB::Clear()
     RemoveAll();
 }
 
-bool CForkDB::LoadCtxtWalker(CBufStream& ssKey, CBufStream& ssValue, multimap<int, CForkContext>& mapCtxt,
-                             map<uint256, pair<uint256, map<uint256, int>>>& mapBlockForkId)
+bool CForkDB::LoadCtxtWalker(CBufStream& ssKey, CBufStream& ssValue, vector<CForkContext>& vForkCtxt)
 {
     string strPrefix;
     uint256 hashFork;
@@ -214,37 +219,45 @@ bool CForkDB::LoadCtxtWalker(CBufStream& ssKey, CBufStream& ssValue, multimap<in
     {
         CForkContext ctxt;
         ssValue >> ctxt;
-        mapCtxt.insert(make_pair(ctxt.nJointHeight, ctxt));
+        vForkCtxt.push_back(ctxt);
+        return true;
     }
-    else if (strPrefix == "valid")
-    {
-        CValidForkId validForkId;
-        ssValue >> validForkId;
-        validForkId.GetForkId(mapBlockForkId[hashFork]);
-    }
-    return true;
+    StdError("CForkDB", "LoadCtxtWalker: strPrefix error, strPrefix: %s", strPrefix.c_str());
+    return false;
 }
 
-bool CForkDB::LoadForkWalker(CBufStream& ssKey, CBufStream& ssValue,
-                             multimap<int, uint256>& mapJoint, map<uint256, uint256>& mapFork)
+bool CForkDB::LoadActiveForkWalker(CBufStream& ssKey, CBufStream& ssValue, map<uint256, uint256>& mapFork)
 {
     string strPrefix;
     uint256 hashFork;
     ssKey >> strPrefix >> hashFork;
 
-    if (strPrefix == "ctxt")
-    {
-        CForkContext ctxt;
-        ssValue >> ctxt;
-        mapJoint.insert(make_pair(ctxt.nJointHeight, hashFork));
-    }
-    else if (strPrefix == "active")
+    if (strPrefix == "active")
     {
         uint256 hashLastBlock;
         ssValue >> hashLastBlock;
         mapFork.insert(make_pair(hashFork, hashLastBlock));
+        return true;
     }
-    return true;
+    StdError("CForkDB", "LoadActiveForkWalker: strPrefix error, strPrefix: %s", strPrefix.c_str());
+    return false;
+}
+
+bool CForkDB::LoadValidForkWalker(CBufStream& ssKey, CBufStream& ssValue, map<uint256, pair<uint256, map<uint256, int>>>& mapBlockForkId)
+{
+    string strPrefix;
+    uint256 hashFork;
+    ssKey >> strPrefix >> hashFork;
+
+    if (strPrefix == "valid")
+    {
+        CValidForkId validForkId;
+        ssValue >> validForkId;
+        validForkId.GetForkId(mapBlockForkId[hashFork]);
+        return true;
+    }
+    StdError("CForkDB", "LoadValidForkWalker: strPrefix error, strPrefix: %s", strPrefix.c_str());
+    return false;
 }
 
 } // namespace storage

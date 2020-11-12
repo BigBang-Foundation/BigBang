@@ -37,10 +37,9 @@ public:
     void Clear();
 
 protected:
-    bool LoadCtxtWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue,
-                        std::multimap<int, CForkContext>& mapCtxt, std::map<uint256, std::pair<uint256, std::map<uint256, int>>>& mapBlockForkId);
-    bool LoadForkWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue,
-                        std::multimap<int, uint256>& mapJoint, std::map<uint256, uint256>& mapFork);
+    bool LoadCtxtWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::vector<CForkContext>& vForkCtxt);
+    bool LoadActiveForkWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::map<uint256, uint256>& mapFork);
+    bool LoadValidForkWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::map<uint256, std::pair<uint256, std::map<uint256, int>>>& mapBlockForkId);
 };
 
 } // namespace storage

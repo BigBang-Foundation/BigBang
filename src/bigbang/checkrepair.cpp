@@ -180,12 +180,6 @@ bool CCheckForkManager::FetchForkStatus()
     {
         StdLog("check", "Fetch fork status: fork: %s", fork.first.GetHex().c_str());
         const uint256& hashFork = fork.first;
-        if (mapForkStatus.count(hashFork))
-        {
-            StdError("check", "Fetch fork status: fork repeat, forkid: %s", hashFork.GetHex().c_str());
-            continue;
-        }
-
         CForkContext ctxt;
         if (!dbFork.RetrieveForkContext(hashFork, ctxt))
         {
@@ -2041,7 +2035,7 @@ bool CCheckBlockWalker::CheckRepairFork()
             StdLog("check", "Check Repair Fork: pLast is null, fork: %s", hashFork.GetHex().c_str());
             return false;
         }
-        uint256 hashLastBlock = checkFork.pLast->GetBlockHash();
+        const uint256& hashLastBlock = checkFork.pLast->GetBlockHash();
 
         auto mt = pCheckForkManager->mapForkStatus.find(hashFork);
         if (mt == pCheckForkManager->mapForkStatus.end())
