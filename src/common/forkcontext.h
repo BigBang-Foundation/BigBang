@@ -208,16 +208,25 @@ public:
         mapForkId.clear();
         mapForkId.insert(mapForkIdIn.begin(), mapForkIdIn.end());
     }
-    void GetForkId(std::pair<uint256, std::map<uint256, int>>& outForkId)
+    void Clear()
     {
-        outForkId.first = hashRefFdBlock;
-        outForkId.second.clear();
-        outForkId.second.insert(mapForkId.begin(), mapForkId.end());
+        hashRefFdBlock = 0;
+        mapForkId.clear();
+    }
+    int GetCreatedHeight(const uint256& hashFork)
+    {
+        const auto it = mapForkId.find(hashFork);
+        if (it != mapForkId.end())
+        {
+            return it->second;
+        }
+        return -1;
     }
 
 public:
     uint256 hashRefFdBlock;
     std::map<uint256, int> mapForkId; // key: forkid, value: fork created height
+                                      // When hashRefFdBlock == 0, it is the total quantity, otherwise it is the increment
 
 protected:
     template <typename O>

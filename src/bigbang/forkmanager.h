@@ -60,31 +60,6 @@ public:
     std::multimap<uint256, uint256> mapJoint;
 };
 
-class CValidFdForkId
-{
-public:
-    CValidFdForkId() {}
-    CValidFdForkId(const uint256& hashRefFdBlockIn, const std::map<uint256, int>& mapForkIdIn)
-    {
-        hashRefFdBlock = hashRefFdBlockIn;
-        mapForkId.clear();
-        mapForkId.insert(mapForkIdIn.begin(), mapForkIdIn.end());
-    }
-    int GetCreatedHeight(const uint256& hashFork)
-    {
-        const auto it = mapForkId.find(hashFork);
-        if (it != mapForkId.end())
-        {
-            return it->second;
-        }
-        return -1;
-    }
-
-public:
-    uint256 hashRefFdBlock;
-    std::map<uint256, int> mapForkId; // When hashRefFdBlock == 0, it is the total quantity, otherwise it is the increment
-};
-
 class CForkManager : public IForkManager
 {
 public:
@@ -93,7 +68,7 @@ public:
     bool IsAllowed(const uint256& hashFork) const override;
     bool GetJoint(const uint256& hashFork, uint256& hashParent, uint256& hashJoint, int& nHeight) const override;
     bool LoadForkContext(const uint256& hashPrimaryLastBlockIn, const std::vector<CForkContext>& vForkCtxt,
-                         const std::map<uint256, std::pair<uint256, std::map<uint256, int>>>& mapValidForkId, std::vector<uint256>& vActive) override;
+                         const std::map<uint256, CValidForkId>& mapValidForkId, std::vector<uint256>& vActive) override;
     void SetPrimaryLastBlock(const uint256& hashPrimaryLastBlockIn) override;
     bool VerifyFork(const uint256& hashPrevBlock, const uint256& hashFork, const std::string& strForkName) override;
     bool AddValidForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<CForkContext>& vForkCtxt,
@@ -125,7 +100,7 @@ protected:
     std::set<uint256> setForkAllowed;
     std::set<uint256> setGroupAllowed;
     std::map<uint256, CForkSchedule> mapForkSched;
-    std::map<uint256, CValidFdForkId> mapBlockValidFork;
+    std::map<uint256, CValidForkId> mapBlockValidFork;
     std::set<uint256> setCurValidFork;
 };
 

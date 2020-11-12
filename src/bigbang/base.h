@@ -133,7 +133,7 @@ public:
     virtual bool ExistsTx(const uint256& txid) = 0;
     virtual bool FilterTx(const uint256& hashFork, CTxFilter& filter) = 0;
     virtual bool FilterTx(const uint256& hashFork, int nDepth, CTxFilter& filter) = 0;
-    virtual bool ListForkContext(std::vector<CForkContext>& vForkCtxt, std::map<uint256, std::pair<uint256, std::map<uint256, int>>>& mapValidForkId) = 0;
+    virtual bool ListForkContext(std::vector<CForkContext>& vForkCtxt, std::map<uint256, CValidForkId>& mapValidForkId) = 0;
     virtual Errno AddNewBlock(const CBlock& block, CBlockChainUpdate& update) = 0;
     virtual Errno AddNewOrigin(const CBlock& block, CBlockChainUpdate& update) = 0;
     virtual bool GetProofOfWorkTarget(const uint256& hashPrev, int nAlgo, int& nBits, int64& nReward) = 0;
@@ -224,7 +224,7 @@ public:
     virtual bool IsAllowed(const uint256& hashFork) const = 0;
     virtual bool GetJoint(const uint256& hashFork, uint256& hashParent, uint256& hashJoint, int& nHeight) const = 0;
     virtual bool LoadForkContext(const uint256& hashPrimaryLastBlockIn, const std::vector<CForkContext>& vForkCtxt,
-                                 const std::map<uint256, std::pair<uint256, std::map<uint256, int>>>& mapValidForkId, std::vector<uint256>& vActive)
+                                 const std::map<uint256, CValidForkId>& mapValidForkId, std::vector<uint256>& vActive)
         = 0;
     virtual void SetPrimaryLastBlock(const uint256& hashPrimaryLastBlockIn) = 0;
     virtual bool VerifyFork(const uint256& hashPrevBlock, const uint256& hashFork, const std::string& strForkName) = 0;

@@ -430,7 +430,7 @@ bool CBlockChain::FilterTx(const uint256& hashFork, int nDepth, CTxFilter& filte
     return cntrBlock.FilterTx(hashFork, nDepth, filter);
 }
 
-bool CBlockChain::ListForkContext(vector<CForkContext>& vForkCtxt, map<uint256, pair<uint256, map<uint256, int>>>& mapValidForkId)
+bool CBlockChain::ListForkContext(vector<CForkContext>& vForkCtxt, map<uint256, CValidForkId>& mapValidForkId)
 {
     return cntrBlock.ListForkContext(vForkCtxt, mapValidForkId);
 }

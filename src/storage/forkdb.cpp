@@ -74,7 +74,7 @@ bool CForkDB::RetrieveForkContext(const uint256& hashFork, CForkContext& ctxt)
     return true;
 }
 
-bool CForkDB::ListForkContext(vector<CForkContext>& vForkCtxt, map<uint256, pair<uint256, map<uint256, int>>>& mapValidForkId)
+bool CForkDB::ListForkContext(vector<CForkContext>& vForkCtxt, map<uint256, CValidForkId>& mapValidForkId)
 {
     if (!WalkThrough(boost::bind(&CForkDB::LoadCtxtWalker, this, _1, _2, boost::ref(vForkCtxt)), string("ctxt"), true))
     {
@@ -230,17 +230,17 @@ bool CForkDB::LoadActiveForkWalker(CBufStream& ssKey, CBufStream& ssValue, map<u
     return false;
 }
 
-bool CForkDB::LoadValidForkWalker(CBufStream& ssKey, CBufStream& ssValue, map<uint256, pair<uint256, map<uint256, int>>>& mapBlockForkId)
+bool CForkDB::LoadValidForkWalker(CBufStream& ssKey, CBufStream& ssValue, map<uint256, CValidForkId>& mapBlockForkId)
 {
     string strPrefix;
-    uint256 hashFork;
-    ssKey >> strPrefix >> hashFork;
+    uint256 hashBlock;
+    ssKey >> strPrefix >> hashBlock;
 
     if (strPrefix == "valid")
     {
-        CValidForkId validForkId;
+        CValidForkId& validForkId = mapBlockForkId[hashBlock];
+        validForkId.Clear();
         ssValue >> validForkId;
-        validForkId.GetForkId(mapBlockForkId[hashFork]);
         return true;
     }
     StdError("CForkDB", "LoadValidForkWalker: strPrefix error, strPrefix: %s", strPrefix.c_str());

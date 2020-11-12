@@ -27,7 +27,7 @@ public:
     bool AddNewForkContext(const CForkContext& ctxt);
     bool RemoveForkContext(const uint256& hashFork);
     bool RetrieveForkContext(const uint256& hashFork, CForkContext& ctxt);
-    bool ListForkContext(std::vector<CForkContext>& vForkCtxt, std::map<uint256, std::pair<uint256, std::map<uint256, int>>>& mapValidForkId);
+    bool ListForkContext(std::vector<CForkContext>& vForkCtxt, std::map<uint256, CValidForkId>& mapValidForkId);
     bool UpdateFork(const uint256& hashFork, const uint256& hashLastBlock = uint256());
     bool RemoveFork(const uint256& hashFork);
     bool RetrieveFork(const uint256& hashFork, uint256& hashLastBlock);
@@ -39,7 +39,7 @@ public:
 protected:
     bool LoadCtxtWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::vector<CForkContext>& vForkCtxt);
     bool LoadActiveForkWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::map<uint256, uint256>& mapFork);
-    bool LoadValidForkWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::map<uint256, std::pair<uint256, std::map<uint256, int>>>& mapBlockForkId);
+    bool LoadValidForkWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::map<uint256, CValidForkId>& mapBlockForkId);
 };
 
 } // namespace storage

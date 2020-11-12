@@ -1375,7 +1375,7 @@ bool CBlockBase::FilterTx(const uint256& hashFork, int nDepth, CTxFilter& filter
     return true;
 }
 
-bool CBlockBase::ListForkContext(std::vector<CForkContext>& vForkCtxt, map<uint256, pair<uint256, map<uint256, int>>>& mapValidForkId)
+bool CBlockBase::ListForkContext(std::vector<CForkContext>& vForkCtxt, map<uint256, CValidForkId>& mapValidForkId)
 {
     return dbBlock.ListForkContext(vForkCtxt, mapValidForkId);
 }

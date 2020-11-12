@@ -137,7 +137,7 @@ bool CDispatcher::HandleInvoke()
     }
 
     vector<CForkContext> vForkCtxt;
-    map<uint256, pair<uint256, map<uint256, int>>> mapValidForkId;
+    map<uint256, CValidForkId> mapValidForkId;
     if (!pBlockChain->ListForkContext(vForkCtxt, mapValidForkId))
     {
         Error("Failed to list fork context");

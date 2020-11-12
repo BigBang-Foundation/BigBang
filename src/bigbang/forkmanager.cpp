@@ -112,16 +112,13 @@ bool CForkManager::GetJoint(const uint256& hashFork, uint256& hashParent, uint25
 }
 
 bool CForkManager::LoadForkContext(const uint256& hashPrimaryLastBlockIn, const vector<CForkContext>& vForkCtxt,
-                                   const map<uint256, pair<uint256, map<uint256, int>>>& mapValidForkId, vector<uint256>& vActive)
+                                   const map<uint256, CValidForkId>& mapValidForkId, vector<uint256>& vActive)
 {
     boost::unique_lock<boost::shared_mutex> wlock(rwAccess);
 
     hashPrimaryLastBlock = hashPrimaryLastBlockIn;
-
-    for (const auto& vd : mapValidForkId)
-    {
-        mapBlockValidFork.insert(make_pair(vd.first, CValidFdForkId(vd.second.first, vd.second.second)));
-    }
+    mapBlockValidFork.clear();
+    mapBlockValidFork.insert(mapValidForkId.begin(), mapValidForkId.end());
 
     for (const CForkContext& ctxt : vForkCtxt)
     {
@@ -170,7 +167,7 @@ bool CForkManager::VerifyFork(const uint256& hashPrevBlock, const uint256& hashF
 bool CForkManager::AddValidForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<CForkContext>& vForkCtxt,
                                        bool fCheckPointBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork)
 {
-    CValidFdForkId& fd = mapBlockValidFork[hashNewBlock];
+    CValidForkId& fd = mapBlockValidFork[hashNewBlock];
     if (fCheckPointBlock)
     {
         fd.mapForkId.clear();
@@ -194,7 +191,7 @@ bool CForkManager::AddValidForkContext(const uint256& hashPrevBlock, const uint2
             mapBlockValidFork.erase(hashNewBlock);
             return false;
         }
-        const CValidFdForkId& prevfd = it->second;
+        const CValidForkId& prevfd = it->second;
         fd.mapForkId.clear();
         if (prevfd.hashRefFdBlock == 0)
         {
