@@ -69,19 +69,6 @@ bool CForkDB::RetrieveForkContext(const uint256& hashFork, CForkContext& ctxt)
     {
         StdLog("CForkDB", "Read ctxt fail, forkid: %s", hashFork.GetHex().c_str());
         return false;
-        /*COldForkContext oldCtxt;
-        if (!Read(make_pair(string("ctxt"), hashFork), oldCtxt))
-        {
-            StdError("CForkDB", "Read old ctxt fail, forkid: %s", hashFork.GetHex().c_str());
-            return false;
-        }
-
-        CForkContext writeNewCtxt(oldCtxt.hashFork, oldCtxt.hashJoint, oldCtxt.txidEmbedded, oldCtxt.GetProfile());
-        if (!Write(make_pair(string("ctxt"), hashFork), writeNewCtxt))
-        {
-            StdError("CForkDB", "Write new ctxt fail, forkid: %s", hashFork.GetHex().c_str());
-            return false;
-        }*/
     }
 
     return true;
