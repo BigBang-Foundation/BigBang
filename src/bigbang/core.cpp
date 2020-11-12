@@ -61,11 +61,11 @@ static const uint32 REF_VACANT_HEIGHT = 20;
 static const uint32 REF_VACANT_HEIGHT = 368638;
 #endif
 
-//#ifdef BIGBANG_TESTNET
-//static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
-//#else
-//static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 493149;
-//#endif
+#ifdef BIGBANG_TESTNET
+static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
+#else
+static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 550000;
+#endif
 
 #ifdef BIGBANG_TESTNET
 static const uint32 VALID_FORK_VERIFY_HEIGHT = 0;
@@ -975,7 +975,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     }
 
     if (destIn.IsTemplate() && destIn.GetTemplateId().GetType() == TEMPLATE_DEXMATCH
-        /*&& nForkHeight < MATCH_VERIFY_ERROR_HEIGHT*/)
+        && nForkHeight < (int)MATCH_VERIFY_ERROR_HEIGHT)
     {
         nForkHeight -= 1;
     }

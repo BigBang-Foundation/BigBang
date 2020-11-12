@@ -1326,6 +1326,7 @@ bool CWallet::ClearTx()
 {
     mapWalletUnspent.clear();
     mapWalletTx.clear();
+    setWalletTxOut.clear();
     return dbWallet.ClearTx();
 }
 
