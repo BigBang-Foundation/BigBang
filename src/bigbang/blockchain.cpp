@@ -14,7 +14,6 @@ using namespace xengine;
 #define AGREEMENT_CACHE_COUNT (16)
 #define NO_DEFI_TEMPLATE_ADDRESS_HEIGHT (500824)
 
-
 namespace bigbang
 {
 
@@ -1884,8 +1883,33 @@ void CBlockChain::InitCheckPoints()
         std::vector<CCheckPoint> vecGenesisCheckPoints, vecBBCN, vecBTCA, vecBBCC;
 #ifdef BIGBANG_TESTNET
         vecGenesisCheckPoints.push_back(CCheckPoint(0, pCoreProtocol->GetGenesisBlockHash()));
+        vecGenesisCheckPoints.push_back(CCheckPoint(56496, uint256("0000dcb0c5b56c12fc06ecc15ed8322e560402f04b417482a2fef9157db759b4")));
+
         InitCheckPoints(pCoreProtocol->GetGenesisBlockHash(), vecGenesisCheckPoints);
 
+        {
+            std::vector<CCheckPoint> vecCheckPoints;
+            vecCheckPoints.assign(
+                { { 56496, uint256("0000dcb00e0c099c80d7090b216d161bbab152bf1f277cc1df9490700874dbff") } });
+
+            InitCheckPoints(uint256("0000001f9a046730bf5102283f43fe51bd1c1b913b3b931c1566d9c5e1463a7e"), vecCheckPoints);
+        }
+
+        {
+            std::vector<CCheckPoint> vecCheckPoints;
+            vecCheckPoints.assign(
+                { { 56496, uint256("0000dcb027555dafd8743c7e5426c77a206a88947e5069c6f56e738b9b6457d0") } });
+
+            InitCheckPoints(uint256("00001195d2d0771094ec8459f0b375bab1e0dd75f179cf6f93e678ac86e8bd32"), vecCheckPoints);
+        }
+
+        {
+            std::vector<CCheckPoint> vecCheckPoints;
+            vecCheckPoints.assign(
+                { { 56496, uint256("0000dcb0412bc768b7f2ea1bfc4870590ba8f5adec26183857c6bc1f5d2b095c") } });
+
+            InitCheckPoints(uint256("000038731942c3096b32df1c39e1dae1c163a392158d666582a7abf751cca2d0"), vecCheckPoints);
+        }
 #else
         vecGenesisCheckPoints.assign(
             { { 0, uint256("00000000b0a9be545f022309e148894d1e1c853ccac3ef04cb6f5e5c70f41a70") },
@@ -2241,23 +2265,23 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
         return s;
     }
 
-    if(CBlock::GetBlockHeightByHash(hash) > NO_DEFI_TEMPLATE_ADDRESS_HEIGHT)
+    if (CBlock::GetBlockHeightByHash(hash) > NO_DEFI_TEMPLATE_ADDRESS_HEIGHT)
     {
         auto iter = mapAddressAmount.begin();
-        for(; iter != mapAddressAmount.end(); )
+        for (; iter != mapAddressAmount.end();)
         {
             const CDestination& destTo = iter->first;
-            if (!CTemplate::IsTxSpendable(destTo)) 
+            if (!CTemplate::IsTxSpendable(destTo))
             {
                 mapAddressAmount.erase(iter++);
-            } 
-            else 
+            }
+            else
             {
                 ++iter;
             }
         }
     }
-  
+
     // blacklist
     const set<CDestination>& setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, CBlock::GetBlockHeightByHash(hash));
     for (auto& dest : setBlacklist)
