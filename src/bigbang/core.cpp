@@ -63,7 +63,7 @@ static const uint32 REF_VACANT_HEIGHT = 368638;
 #ifdef BIGBANG_TESTNET
 static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
 #else
-static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 490566;
+static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 550000;
 #endif
 
 #ifdef BIGBANG_TESTNET
