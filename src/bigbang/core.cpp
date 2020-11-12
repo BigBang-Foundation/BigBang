@@ -4,17 +4,17 @@
 
 #include "core.h"
 
-#include "../common/template/delegate.h"
-#include "../common/template/dexmatch.h"
-#include "../common/template/dexorder.h"
-#include "../common/template/exchange.h"
-#include "../common/template/fork.h"
-#include "../common/template/mint.h"
-#include "../common/template/payment.h"
-#include "../common/template/vote.h"
 #include "address.h"
 #include "crypto.h"
 #include "param.h"
+#include "template/delegate.h"
+#include "template/dexmatch.h"
+#include "template/dexorder.h"
+#include "template/exchange.h"
+#include "template/fork.h"
+#include "template/mint.h"
+#include "template/payment.h"
+#include "template/vote.h"
 #include "wallet.h"
 
 using namespace std;

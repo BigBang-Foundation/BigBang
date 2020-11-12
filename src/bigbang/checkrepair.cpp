@@ -4,8 +4,8 @@
 
 #include "checkrepair.h"
 
-#include "../common/template/vote.h"
 #include "param.h"
+#include "template/vote.h"
 
 using namespace std;
 using namespace xengine;

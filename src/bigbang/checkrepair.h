@@ -5,7 +5,6 @@
 #ifndef STORAGE_CHECKREPAIR_H
 #define STORAGE_CHECKREPAIR_H
 
-#include "../common/template/fork.h"
 #include "address.h"
 #include "addressdb.h"
 #include "block.h"
@@ -15,6 +14,7 @@
 #include "delegateverify.h"
 #include "param.h"
 #include "struct.h"
+#include "template/fork.h"
 #include "timeseries.h"
 #include "txindexdb.h"
 #include "txpooldata.h"

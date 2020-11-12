@@ -4,14 +4,13 @@
 
 #include "wallet.h"
 
-#include "../common/template/exchange.h"
-#include "../common/template/fork.h"
 #include "address.h"
 #include "defs.h"
 #include "param.h"
 #include "template/delegate.h"
 #include "template/dexmatch.h"
 #include "template/exchange.h"
+#include "template/fork.h"
 #include "template/mint.h"
 #include "template/payment.h"
 #include "template/vote.h"

@@ -4,9 +4,9 @@
 
 #include "blockchain.h"
 
-#include "../common/template/fork.h"
 #include "delegatecomm.h"
 #include "delegateverify.h"
+#include "template/fork.h"
 
 using namespace std;
 using namespace xengine;
