@@ -303,7 +303,6 @@ bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
                 if (!VerifyBlockForkTx(blockex.hashPrev, tx, vForkCtxt))
                 {
                     StdLog("check", "Add block fork context: VerifyBlockForkTx fail, block: %s", hashBlock.ToString().c_str());
-                    return false;
                 }
             }
             if (txContxt.destIn.GetTemplateId().GetType() == TEMPLATE_FORK)
@@ -764,17 +763,32 @@ bool CCheckForkManager::CheckRepairForkContext(const uint256& hashPrimaryLastBlo
     auto ht = mapForkStatus.begin();
     while (ht != mapForkStatus.end())
     {
-        if (ht->second.ctxt.hashParent != 0)
+        const uint256& hashFork = ht->first;
+        if (mapForkSched.count(hashFork) == 0 || GetValidForkCreatedHeight(hashPrimaryLastBlock, hashFork) < 0)
         {
-            auto mt = mapForkStatus.find(ht->second.ctxt.hashParent);
-            if (mt == mapForkStatus.end())
+            StdLog("check", "Check repair fork context: Fork surplus, fork: %s", hashFork.GetHex().c_str());
+            if (fOnlyCheck)
             {
-                StdLog("check", "Check repair fork context: Find parent fork fail, parent fork: %s", ht->second.ctxt.hashParent.GetHex().c_str());
                 return false;
             }
-            mt->second.InsertSubline(ht->second.ctxt.nJointHeight, ht->first);
+            dbFork.RemoveForkContext(hashFork);
+            dbFork.RemoveFork(hashFork);
+            mapForkStatus.erase(ht++);
         }
-        ++ht;
+        else
+        {
+            if (ht->second.ctxt.hashParent != 0)
+            {
+                auto mt = mapForkStatus.find(ht->second.ctxt.hashParent);
+                if (mt == mapForkStatus.end())
+                {
+                    StdLog("check", "Check repair fork context: Find parent fork fail, parent fork: %s", ht->second.ctxt.hashParent.GetHex().c_str());
+                    return false;
+                }
+                mt->second.InsertSubline(ht->second.ctxt.nJointHeight, hashFork);
+            }
+            ++ht;
+        }
     }
     return true;
 }

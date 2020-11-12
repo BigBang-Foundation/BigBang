@@ -2009,7 +2009,6 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
                 if (!VerifyBlockForkTx(blockex.hashPrev, tx, vForkCtxt))
                 {
                     StdLog("CBlockChain", "Add block fork context: VerifyBlockForkTx fail, block: %s", hashBlock.ToString().c_str());
-                    return false;
                 }
             }
             if (txContxt.destIn.GetTemplateId().GetType() == TEMPLATE_FORK)

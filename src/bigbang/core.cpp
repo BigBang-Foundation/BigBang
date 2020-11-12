@@ -68,6 +68,12 @@ static const uint32 REF_VACANT_HEIGHT = 368638;
 //#endif
 
 #ifdef BIGBANG_TESTNET
+static const uint32 VALID_FORK_VERIFY_HEIGHT = 0;
+#else
+static const uint32 VALID_FORK_VERIFY_HEIGHT = 550000;
+#endif
+
+#ifdef BIGBANG_TESTNET
 static const int64 BBCP_TOKEN_INIT = 300000000;
 static const int64 BBCP_BASE_REWARD_TOKEN = 20;
 static const int64 BBCP_INIT_REWARD_TOKEN = 20;
@@ -960,7 +966,10 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
             Errno err = VerifyForkTx(tx);
             if (err != OK)
             {
-                return err;
+                if (nForkHeight >= VALID_FORK_VERIFY_HEIGHT)
+                {
+                    return err;
+                }
             }
         }
     }
