@@ -36,7 +36,7 @@ bool CPubKey::Verify(const uint256& hash, const std::vector<uint8>& vchSig) cons
 CKey::CKey()
 {
     nVersion = INIT;
-    pCryptoKey = CryptoAlloc<CCryptoKey>();
+    pCryptoKey = NormalAlloc<CCryptoKey>();
     if (!pCryptoKey)
     {
         throw CCryptoError("CKey : Failed to alloc memory");
@@ -47,11 +47,12 @@ CKey::CKey()
 
 CKey::CKey(const CKey& key)
 {
-    pCryptoKey = CryptoAlloc<CCryptoKey>();
+    pCryptoKey =  key.IsLocked() ? NormalAlloc<CCryptoKey>() : CryptoAlloc<CCryptoKey>();
     if (!pCryptoKey)
     {
         throw CCryptoError("CKey : Failed to alloc memory");
     }
+
     nVersion = key.nVersion;
     *pCryptoKey = *key.pCryptoKey;
     cipher = key.cipher;
@@ -60,14 +61,29 @@ CKey::CKey(const CKey& key)
 CKey& CKey::operator=(const CKey& key)
 {
     nVersion = key.nVersion;
-    *pCryptoKey = *key.pCryptoKey;
     cipher = key.cipher;
+    if(key.IsLocked())
+    {
+        pCryptoKey->secret = 0;
+        pCryptoKey->pubkey = key.pCryptoKey->pubkey;
+    }
+    else
+    {
+        *pCryptoKey = *key.pCryptoKey;
+    }
     return *this;
 }
 
 CKey::~CKey()
 {
-    CryptoFree(pCryptoKey);
+    if(IsLocked())
+    {
+        NormalFree(pCryptoKey);
+    }
+    else
+    {
+        CryptoFree(pCryptoKey);
+    }
 }
 
 uint32 CKey::GetVersion() const
@@ -97,6 +113,13 @@ bool CKey::IsPubKey() const
 
 bool CKey::Renew()
 {
+    if(IsLocked())
+    {
+        NormalFree(pCryptoKey);
+        pCryptoKey = CryptoAlloc<CCryptoKey>();
+
+    }
+  
     return (CryptoMakeNewKey(*pCryptoKey) != 0 && UpdateCipher());
 }
 
@@ -264,11 +287,27 @@ bool CKey::Encrypt(const CCryptoString& strPassphrase,
 
 void CKey::Lock()
 {
+    if(!IsLocked())
+    {
+        auto pTempCryptoKey = NormalAlloc<CCryptoKey>();
+        pTempCryptoKey->pubkey = pCryptoKey->pubkey;
+        CryptoFree(pCryptoKey);
+        pCryptoKey = pTempCryptoKey;
+    }
     pCryptoKey->secret = 0;
 }
 
 bool CKey::Unlock(const CCryptoString& strPassphrase)
 {
+    if(IsLocked())
+    {
+        auto pTempCryptoKey = CryptoAlloc<CCryptoKey>();
+        pTempCryptoKey->secret = 0;
+        pTempCryptoKey->pubkey = pCryptoKey->pubkey;
+        NormalFree(pCryptoKey);
+        pCryptoKey = pTempCryptoKey;
+    }
+    
     try
     {   
         return CryptoDecryptSecret(nVersion, strPassphrase, cipher, *pCryptoKey);
