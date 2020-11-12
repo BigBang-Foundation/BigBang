@@ -29,13 +29,6 @@ public:
         PRIVATE_KEY,
         PUBLIC_KEY,
     };
-
-    enum
-    {
-        NORMAL_ALLOC,
-        CRYPTO_ALLOC,
-    };
-
 public:
     CKey();
     CKey(const CKey& key);
