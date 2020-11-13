@@ -29,6 +29,7 @@ public:
         PRIVATE_KEY,
         PUBLIC_KEY,
     };
+
 public:
     CKey();
     CKey(const CKey& key);
@@ -58,8 +59,10 @@ public:
                  const CCryptoString& strCurrentPassphrase = "");
     void Lock();
     bool Unlock(const CCryptoString& strPassphrase = "");
+
 protected:
     bool UpdateCipher(uint32 nVersionIn = INIT, const CCryptoString& strPassphrase = "");
+
 protected:
     uint32 nVersion;
     CCryptoKey* pCryptoKey;

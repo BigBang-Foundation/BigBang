@@ -47,7 +47,7 @@ CKey::CKey()
 
 CKey::CKey(const CKey& key)
 {
-    pCryptoKey =  key.IsLocked() ? NormalAlloc<CCryptoKey>() : CryptoAlloc<CCryptoKey>();
+    pCryptoKey = key.IsLocked() ? NormalAlloc<CCryptoKey>() : CryptoAlloc<CCryptoKey>();
     if (!pCryptoKey)
     {
         throw CCryptoError("CKey : Failed to alloc memory");
@@ -62,7 +62,7 @@ CKey& CKey::operator=(const CKey& key)
 {
     nVersion = key.nVersion;
     cipher = key.cipher;
-    if(key.IsLocked())
+    if (key.IsLocked())
     {
         pCryptoKey->secret = 0;
         pCryptoKey->pubkey = key.pCryptoKey->pubkey;
@@ -76,7 +76,7 @@ CKey& CKey::operator=(const CKey& key)
 
 CKey::~CKey()
 {
-    if(IsLocked())
+    if (IsLocked())
     {
         NormalFree(pCryptoKey);
     }
@@ -113,13 +113,12 @@ bool CKey::IsPubKey() const
 
 bool CKey::Renew()
 {
-    if(IsLocked())
+    if (IsLocked())
     {
         NormalFree(pCryptoKey);
         pCryptoKey = CryptoAlloc<CCryptoKey>();
-
     }
-  
+
     return (CryptoMakeNewKey(*pCryptoKey) != 0 && UpdateCipher());
 }
 
@@ -287,7 +286,7 @@ bool CKey::Encrypt(const CCryptoString& strPassphrase,
 
 void CKey::Lock()
 {
-    if(!IsLocked())
+    if (!IsLocked())
     {
         auto pTempCryptoKey = NormalAlloc<CCryptoKey>();
         pTempCryptoKey->pubkey = pCryptoKey->pubkey;
@@ -299,7 +298,7 @@ void CKey::Lock()
 
 bool CKey::Unlock(const CCryptoString& strPassphrase)
 {
-    if(IsLocked())
+    if (IsLocked())
     {
         auto pTempCryptoKey = CryptoAlloc<CCryptoKey>();
         pTempCryptoKey->secret = 0;
@@ -307,9 +306,9 @@ bool CKey::Unlock(const CCryptoString& strPassphrase)
         NormalFree(pCryptoKey);
         pCryptoKey = pTempCryptoKey;
     }
-    
+
     try
-    {   
+    {
         return CryptoDecryptSecret(nVersion, strPassphrase, cipher, *pCryptoKey);
     }
     catch (std::exception& e)
