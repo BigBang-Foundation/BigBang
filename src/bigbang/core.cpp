@@ -125,6 +125,7 @@ static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 0;
 static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 340935;
 #endif
 
+// DeFi fork blacklist
 #ifdef BIGBANG_TESTNET
 static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {};
 #else
@@ -152,6 +153,13 @@ static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
         },
     },
 };
+#endif
+
+// Change DPoS & PoW mint rate
+#ifdef BIGBANG_TESTNET
+static const int32 CHANGE_MINT_RATE_HEIGHT = 0;
+#else
+static const int32 CHANGE_MINT_RATE_HEIGHT = 520000;
 #endif
 
 namespace bigbang
@@ -1319,8 +1327,14 @@ void CCoreProtocol::GetDelegatedBallot(const uint256& nAgreement, size_t nWeight
 
     size_t nWeightWork = ((nMaxWeight - nEnrollWeight) * (nMaxWeight - nEnrollWeight) * (nMaxWeight - nEnrollWeight))
                          / (nMaxWeight * nMaxWeight);
+    // new DPoS & PoW mint rate
+    if (nBlockHeight >= CHANGE_MINT_RATE_HEIGHT)
+    {
+        nWeight /= 10;
+    }
     StdTrace("Core", "Get delegated ballot: weight height: %d, nRandomDelegate: %llu, nRandomWork: %llu, nWeightDelegate: %llu, nWeightWork: %llu",
              nBlockHeight, nSelected, (nWeightWork * 256 / (nWeightWork + nEnrollWeight)), nEnrollWeight, nWeightWork);
+
     if (nSelected >= nWeightWork * 256 / (nWeightWork + nEnrollWeight))
     {
         size_t total = nEnrollWeight;
