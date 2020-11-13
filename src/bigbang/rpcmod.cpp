@@ -1142,7 +1142,7 @@ CRPCResultPtr CRPCMod::RPCGetNewKey(CRPCParamPtr param)
     }
 
     crypto::CCryptoString strPassphrase = spParam->strPassphrase.c_str();
-    crypto::CPubKey pubkey;   
+    crypto::CPubKey pubkey;
     auto strErr = pService->MakeNewKey(strPassphrase, pubkey);
     if (strErr)
     {
