@@ -600,7 +600,7 @@ bool CWallet::GetBalance(const CDestination& dest, const uint256& hashFork, int 
     }
 
     // locked coin template
-    if (dest.GetTemplateId().GetType() == TEMPLATE_FORK && hashFork == pCoreProtocol->GetGenesisBlockHash())
+    if (dest.IsTemplate() && dest.GetTemplateId().GetType() == TEMPLATE_FORK && hashFork == pCoreProtocol->GetGenesisBlockHash())
     {
         CTemplatePtr ptr = GetTemplate(dest.GetTemplateId());
         if (!ptr)
@@ -748,11 +748,12 @@ bool CWallet::ArrangeInputs(const CDestination& destIn, const uint256& hashFork,
     int64 nTargetValue = tx.nAmount + tx.nTxFee;
 
     // locked coin template
-    if (destIn.GetTemplateId().GetType() == TEMPLATE_FORK
+    CTemplateId tid;
+    if (destIn.GetTemplateId(tid) && tid.GetType() == TEMPLATE_FORK
         && hashFork == pCoreProtocol->GetGenesisBlockHash()
         && tx.sendTo != destIn)
     {
-        CTemplatePtr ptr = GetTemplate(destIn.GetTemplateId());
+        CTemplatePtr ptr = GetTemplate(tid);
         if (!ptr)
         {
             StdError("CWallet", "ArrangeInputs: GetTemplate fail, destIn: %s", destIn.ToString().c_str());

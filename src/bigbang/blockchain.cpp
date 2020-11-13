@@ -2004,14 +2004,14 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
         const CTxContxt& txContxt = blockex.vTxContxt[i];
         if (tx.sendTo != txContxt.destIn)
         {
-            if (tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
+            if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
             {
                 if (!VerifyBlockForkTx(blockex.hashPrev, tx, vForkCtxt))
                 {
                     StdLog("CBlockChain", "Add block fork context: VerifyBlockForkTx fail, block: %s", hashBlock.ToString().c_str());
                 }
             }
-            if (txContxt.destIn.GetTemplateId().GetType() == TEMPLATE_FORK)
+            if (txContxt.destIn.IsTemplate() && txContxt.destIn.GetTemplateId().GetType() == TEMPLATE_FORK)
             {
                 CDestination destRedeem;
                 uint256 hashFork;

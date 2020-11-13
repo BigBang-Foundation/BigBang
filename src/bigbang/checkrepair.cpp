@@ -298,14 +298,14 @@ bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
         const CTxContxt& txContxt = blockex.vTxContxt[i];
         if (tx.sendTo != txContxt.destIn)
         {
-            if (tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
+            if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
             {
                 if (!VerifyBlockForkTx(blockex.hashPrev, tx, vForkCtxt))
                 {
                     StdLog("check", "Add block fork context: VerifyBlockForkTx fail, block: %s", hashBlock.ToString().c_str());
                 }
             }
-            if (txContxt.destIn.GetTemplateId().GetType() == TEMPLATE_FORK)
+            if (txContxt.destIn.IsTemplate() && txContxt.destIn.GetTemplateId().GetType() == TEMPLATE_FORK)
             {
                 CDestination destRedeem;
                 uint256 hashFork;
@@ -455,7 +455,7 @@ bool CCheckForkManager::VerifyBlockForkTx(const uint256& hashPrev, const CTransa
 
 bool CCheckForkManager::GetTxForkRedeemParam(const CTransaction& tx, const CDestination& destIn, CDestination& destRedeem, uint256& hashFork)
 {
-    if (destIn.GetTemplateId().GetType() != TEMPLATE_FORK)
+    if (!destIn.IsTemplate() || destIn.GetTemplateId().GetType() != TEMPLATE_FORK)
     {
         StdError("check", "Get fork redeem param: Template type error, type: %d, tx: %s",
                  destIn.GetTemplateId().GetType(), tx.GetHash().GetHex().c_str());

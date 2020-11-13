@@ -264,9 +264,12 @@ void CForkManager::ForkUpdate(const CBlockChainUpdate& update, vector<uint256>& 
         for (const CBlockEx& block : boost::adaptors::reverse(update.vBlockAddNew))
         {
             uint256 hashBlock = block.GetHash();
-            for (const CTransaction& tx : block.vtx)
+            for (size_t i = 0; i < block.vtx.size(); i++)
             {
-                if (tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK && !tx.vchData.empty())
+                const CTransaction& tx = block.vtx[i];
+                const CTxContxt& txctxt = block.vTxContxt[i];
+                if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK
+                    && !tx.vchData.empty() && tx.sendTo != txctxt.destIn)
                 {
                     uint256 hashNewFork;
                     try

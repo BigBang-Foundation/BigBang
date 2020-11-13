@@ -610,7 +610,9 @@ bool CService::SignTransaction(CTransaction& tx, const vector<uint8>& vchSendToD
         StdError("CService", "SignTransaction: GetForkLastBlock fail, txid: %s", tx.GetHash().GetHex().c_str());
         return false;
     }
-    if (hashFork == pCoreProtocol->GetGenesisBlockHash() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK && tx.sendTo != destIn)
+    if (hashFork == pCoreProtocol->GetGenesisBlockHash()
+        && tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK
+        && tx.sendTo != destIn)
     {
         vector<CForkContext> vForkCtxt;
         if (!pBlockChain->VerifyBlockForkTx(hashLastBlock, tx, vForkCtxt) || vForkCtxt.empty())
@@ -774,7 +776,9 @@ Errno CService::SendOfflineSignedTransaction(CTransaction& tx)
         StdError("CService", "SendOfflineSignedTransaction: GetForkLastBlock fail, txid: %s", tx.GetHash().GetHex().c_str());
         return FAILED;
     }
-    if (hashFork == pCoreProtocol->GetGenesisBlockHash() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK && tx.sendTo != destIn)
+    if (hashFork == pCoreProtocol->GetGenesisBlockHash()
+        && tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK
+        && tx.sendTo != destIn)
     {
         vector<CForkContext> vForkCtxt;
         if (!pBlockChain->VerifyBlockForkTx(hashLastBlock, tx, vForkCtxt) || vForkCtxt.empty())

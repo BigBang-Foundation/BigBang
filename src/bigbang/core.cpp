@@ -1517,7 +1517,7 @@ uint32 CCoreProtocol::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTi
 
 bool CCoreProtocol::GetTxForkRedeemParam(const CTransaction& tx, const CDestination& destIn, CDestination& destRedeem, uint256& hashFork)
 {
-    if (destIn.GetTemplateId().GetType() != TEMPLATE_FORK)
+    if (!destIn.IsTemplate() || destIn.GetTemplateId().GetType() != TEMPLATE_FORK)
     {
         return false;
     }
