@@ -19,13 +19,13 @@ public:
     virtual void GetGenesisBlock(CBlock& block) override;
     virtual Errno ValidateTransaction(const CTransaction& tx, int nHeight) override;
     virtual Errno ValidateBlock(const CBlock& block) override;
-    virtual Errno VerifyForkTx(const CTransaction& tx) override;
+    virtual Errno VerifyForkTx(const CTransaction& tx, const CDestination& destIn, const uint256& hashFork, const int nHeight) override;
     virtual Errno VerifyForkRedeem(const CTransaction& tx, const CDestination& destIn, const uint256& hashFork,
                                    const uint256& hashPrevBlock, const vector<uint8>& vchSubSig, const int64 nValueIn) override;
     virtual Errno ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile) override;
 
     virtual Errno VerifyBlock(const CBlock& block, CBlockIndex* pIndexPrev) override;
-    virtual Errno VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev, int nForkHeight, const uint256& fork, int nForkType) override;
+    virtual Errno VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev, int nBlockHeight, const uint256& fork, int nForkType) override;
     virtual Errno VerifyTransaction(const CTransaction& tx, const std::vector<CTxOut>& vPrevOutput, int nForkHeight, const uint256& fork, int nForkType) override;
 
     virtual Errno VerifyProofOfWork(const CBlock& block, const CBlockIndex* pIndexPrev) override;
@@ -43,7 +43,7 @@ public:
     virtual int64 MinEnrollAmount() override;
     virtual uint32 DPoSTimestamp(const CBlockIndex* pIndexPrev) override;
     virtual uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight) override;
-    virtual bool GetTxForkRedeemParam(const CTransaction& tx, const CDestination& destIn, CDestination& destRedeem, uint256& hashFork) override;
+    virtual bool GetTxForkRedeemParam(const CTransaction& tx, const int nHeight, const CDestination& destIn, CDestination& destRedeem, uint256& hashFork) override;
     virtual bool IsRefVacantHeight(uint32 nBlockHeight) override;
     virtual int GetRefVacantHeight() override;
     virtual const std::set<CDestination>& GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) override;

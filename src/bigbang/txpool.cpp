@@ -286,6 +286,7 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
                                     const map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight,
                                     vector<pair<uint256, vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock)
 {
+    const CTransaction& tx = *static_cast<CTransaction*>(ptx);
     if (ptx->GetTxTime() <= nBlockTime)
     {
         if (!setUnTx.empty())
@@ -343,7 +344,7 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
             case TEMPLATE_DEXMATCH:
             {
                 vector<uint8> vchSig;
-                if (!CTemplate::VerifyDestRecorded(*static_cast<CTransaction*>(ptx), vchSig)
+                if (!CTemplate::VerifyDestRecorded(tx, nHeight, vchSig)
                     || !ptx->destIn.VerifyTxSignature(ptx->GetSignatureHash(), ptx->nType, ptx->hashAnchor,
                                                       ptx->sendTo, vchSig, nHeight, hashFork))
                 {
@@ -356,10 +357,8 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
             case TEMPLATE_FORK:
             {
                 vector<uint8> vchSig;
-                if (!CTemplate::VerifyDestRecorded(*static_cast<CTransaction*>(ptx), vchSig)
-                    || pCorePro->VerifyForkRedeem(*static_cast<CTransaction*>(ptx), ptx->destIn, hashFork,
-                                                  hashLastBlock, vchSig, ptx->nValueIn)
-                           != OK)
+                if (!CTemplate::VerifyDestRecorded(tx, nHeight, vchSig)
+                    || pCorePro->VerifyForkRedeem(tx, ptx->destIn, hashFork, hashLastBlock, vchSig, ptx->nValueIn) != OK)
                 {
                     setUnTx.insert(ptx->GetHash());
                     vTxRemove.push_back(make_pair(ptx->GetHash(), ptx->vInput));
@@ -369,6 +368,18 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
             }
             }
         }
+        if (ptx->sendTo.GetTemplateId(tid))
+        {
+            if (tid.GetType() == TEMPLATE_FORK)
+            {
+                if (pCorePro->VerifyForkTx(tx, ptx->destIn, hashFork, nHeight) != OK)
+                {
+                    setUnTx.insert(ptx->GetHash());
+                    vTxRemove.push_back(make_pair(ptx->GetHash(), ptx->vInput));
+                    return true;
+                }
+            }
+        }
         if (nTotalSize + ptx->nSerializeSize > nMaxSize)
         {
             return false;
@@ -376,7 +387,7 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
 
         if (!fIsDposHeight)
         {
-            vtx.push_back(*static_cast<CTransaction*>(ptx));
+            vtx.push_back(tx);
             nTotalSize += ptx->nSerializeSize;
             nTotalTxFee += ptx->nTxFee;
         }
@@ -384,7 +395,7 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
         {
             if (ptx->nType == CTransaction::TX_CERT || ptx->nTxFee >= CalcMinTxFee(ptx->vchData.size(), NEW_MIN_TX_FEE))
             {
-                vtx.push_back(*static_cast<CTransaction*>(ptx));
+                vtx.push_back(tx);
                 nTotalSize += ptx->nSerializeSize;
                 nTotalTxFee += ptx->nTxFee;
             }
@@ -824,37 +835,35 @@ bool CTxPool::FilterTx(const uint256& hashFork, CTxFilter& filter)
     return true;
 }
 
-bool CTxPool::FetchArrangeBlockTx(const uint256& hashFork, const uint256& hashPrev, int64 nBlockTime, size_t nMaxSize,
-                                  vector<CTransaction>& vtx, int64& nTotalTxFee)
+bool CTxPool::FetchArrangeBlockTx(const uint256& hashFork, const uint256& hashPrev, int nNewBlockHeight, int64 nBlockTime,
+                                  size_t nMaxSize, vector<CTransaction>& vtx, int64& nTotalTxFee)
 {
     boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
-
-    auto it = mapTxCache.find(hashFork);
-    if (it == mapTxCache.end())
-    {
-        StdError("CTxPool", "Fetch arrange block tx: find hashFork failed");
-        return false;
-    }
-    CTxCache& cache = it->second;
-
-    std::vector<CTransaction> vCacheTx;
-    if (!cache.Retrieve(hashPrev, vCacheTx))
-    {
-        StdError("CTxPool", "Fetch arrange block tx: find hashPrev in cache failed");
-        return false;
-    }
 
     const CTxPoolView& viewTx = mapPoolView[hashFork];
     if (hashPrev == viewTx.hashLastBlock)
     {
         vector<pair<uint256, vector<CTxIn>>> vTxRemove;
-        CacheArrangeBlockTx(hashFork, nBlockTime, viewTx.hashLastBlock, nMaxSize, vtx,
-                            nTotalTxFee, CBlock::GetBlockHeightByHash(viewTx.hashLastBlock) + 1, vTxRemove);
-        StdDebug("CTxPool", "Fetch arrange block tx: hashPrev is last block, target height: %d, new vtx size: %ld, old vtx size: %ld, view tx count: %ld",
-                 CBlock::GetBlockHeightByHash(viewTx.hashLastBlock) + 1, vtx.size(), vCacheTx.size(), viewTx.Count());
+        CacheArrangeBlockTx(hashFork, nBlockTime, hashPrev, nMaxSize, vtx, nTotalTxFee, nNewBlockHeight, vTxRemove);
+        StdDebug("CTxPool", "Fetch arrange block tx: hashPrev is last block, target height: %d, new vtx size: %ld, view tx count: %ld",
+                 nNewBlockHeight, vtx.size(), viewTx.Count());
     }
-    else
+    else if (nNewBlockHeight == CBlock::GetBlockHeightByHash(hashPrev) + 1)
     {
+        auto it = mapTxCache.find(hashFork);
+        if (it == mapTxCache.end())
+        {
+            StdError("CTxPool", "Fetch arrange block tx: find hashFork failed");
+            return false;
+        }
+
+        std::vector<CTransaction> vCacheTx;
+        if (!it->second.Retrieve(hashPrev, vCacheTx))
+        {
+            StdError("CTxPool", "Fetch arrange block tx: find hashPrev in cache failed");
+            return false;
+        }
+
         size_t currentSize = 0;
         for (const auto& tx : vCacheTx)
         {
@@ -1068,7 +1077,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
         mapTxCache.insert(std::make_pair(update.hashFork, CTxCache(CACHE_HEIGHT_INTERVAL)));
     }
 
-    std::vector<CTransaction> vtx;
+    vector<CTransaction> vtx;
     vector<pair<uint256, vector<CTxIn>>> vArrangeTxRemove;
     int64 nTotalFee = 0;
     CacheArrangeBlockTx(update.hashFork, update.nLastBlockTime, update.hashLastBlock,

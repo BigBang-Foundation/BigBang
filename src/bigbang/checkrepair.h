@@ -176,7 +176,7 @@ public:
 
     bool AddBlockForkContext(const CBlockEx& blockex);
     bool VerifyBlockForkTx(const uint256& hashPrev, const CTransaction& tx, vector<CForkContext>& vForkCtxt);
-    bool GetTxForkRedeemParam(const CTransaction& tx, const CDestination& destIn, CDestination& destRedeem, uint256& hashFork);
+    bool GetTxForkRedeemParam(const CTransaction& tx, const int nHeight, const CDestination& destIn, CDestination& destRedeem, uint256& hashFork);
     bool AddForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<CForkContext>& vForkCtxt,
                         bool fCheckPointBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork);
     bool GetForkContext(const uint256& hashFork, CForkContext& ctxt);

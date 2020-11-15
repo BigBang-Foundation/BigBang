@@ -521,16 +521,6 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
         vTxContxt.reserve(block.vtx.size());
     }
 
-    int nForkHeight;
-    if (block.nType == block.BLOCK_EXTENDED)
-    {
-        nForkHeight = pIndexPrev->nHeight;
-    }
-    else
-    {
-        nForkHeight = pIndexPrev->nHeight + 1;
-    }
-
     // defi
     list<CDeFiReward> listDeFiReward;
     bool fDeFiFork = defiReward.ExistFork(forkid);
@@ -594,7 +584,7 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
 
         if (tx.nType != CTransaction::TX_DEFI_REWARD)
         {
-            err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, nForkHeight, forkid, profile.nForkType);
+            err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, block.GetBlockHeight(), forkid, profile.nForkType);
             if (err != OK)
             {
                 Log("AddNewBlock Verify BlockTx Error(%s) : %s ", ErrorString(err), txid.ToString().c_str());
@@ -1195,16 +1185,6 @@ Errno CBlockChain::VerifyPowBlock(const CBlock& block, bool& fLongChain)
         vTxContxt.reserve(block.vtx.size());
     }
 
-    int nForkHeight;
-    if (block.nType == block.BLOCK_EXTENDED)
-    {
-        nForkHeight = pIndexPrev->nHeight;
-    }
-    else
-    {
-        nForkHeight = pIndexPrev->nHeight + 1;
-    }
-
     // get fork context
     CProfile profile;
     uint256 forkid = pIndexPrev->GetOriginHash();
@@ -1224,7 +1204,7 @@ Errno CBlockChain::VerifyPowBlock(const CBlock& block, bool& fLongChain)
             Log("VerifyPowBlock Get txContxt Error([%d] %s) : %s ", err, ErrorString(err), txid.ToString().c_str());
             return err;
         }
-        err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, nForkHeight, pIndexPrev->GetOriginHash(), profile.nForkType);
+        err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, block.GetBlockHeight(), pIndexPrev->GetOriginHash(), profile.nForkType);
         if (err != OK)
         {
             Log("VerifyPowBlock Verify BlockTx Error(%s) : %s ", ErrorString(err), txid.ToString().c_str());
@@ -1998,7 +1978,7 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
 {
     uint256 hashBlock = blockex.GetHash();
     vector<CForkContext> vForkCtxt;
-    for (int i = 0; i < blockex.vtx.size(); i++)
+    for (size_t i = 0; i < blockex.vtx.size(); i++)
     {
         const CTransaction& tx = blockex.vtx[i];
         const CTxContxt& txContxt = blockex.vTxContxt[i];
@@ -2015,7 +1995,7 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
             {
                 CDestination destRedeem;
                 uint256 hashFork;
-                if (!pCoreProtocol->GetTxForkRedeemParam(tx, txContxt.destIn, destRedeem, hashFork))
+                if (!pCoreProtocol->GetTxForkRedeemParam(tx, blockex.GetBlockHeight(), txContxt.destIn, destRedeem, hashFork))
                 {
                     StdLog("CBlockChain", "Add block fork context: Get redeem param fail, block: %s, dest: %s",
                            hashBlock.ToString().c_str(), CAddress(txContxt.destIn).ToString().c_str());

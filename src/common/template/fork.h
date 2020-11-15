@@ -7,7 +7,7 @@
 
 #include "template.h"
 
-class CTemplateFork : virtual public CTemplate, virtual public CLockedCoinTemplate
+class CTemplateFork : virtual public CTemplate, virtual public CLockedCoinTemplate, virtual public CSendToRecordedTemplate
 {
 public:
     static int64 CreatedCoin();

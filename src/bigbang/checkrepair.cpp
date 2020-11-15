@@ -292,7 +292,7 @@ bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
     }
 
     vector<CForkContext> vForkCtxt;
-    for (int i = 0; i < blockex.vtx.size(); i++)
+    for (size_t i = 0; i < blockex.vtx.size(); i++)
     {
         const CTransaction& tx = blockex.vtx[i];
         const CTxContxt& txContxt = blockex.vTxContxt[i];
@@ -309,7 +309,7 @@ bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
             {
                 CDestination destRedeem;
                 uint256 hashFork;
-                if (!GetTxForkRedeemParam(tx, txContxt.destIn, destRedeem, hashFork))
+                if (!GetTxForkRedeemParam(tx, blockex.GetBlockHeight(), txContxt.destIn, destRedeem, hashFork))
                 {
                     StdLog("check", "Add block fork context: Get redeem param fail, block: %s, dest: %s",
                            hashBlock.ToString().c_str(), CAddress(txContxt.destIn).ToString().c_str());
@@ -453,7 +453,7 @@ bool CCheckForkManager::VerifyBlockForkTx(const uint256& hashPrev, const CTransa
     return true;
 }
 
-bool CCheckForkManager::GetTxForkRedeemParam(const CTransaction& tx, const CDestination& destIn, CDestination& destRedeem, uint256& hashFork)
+bool CCheckForkManager::GetTxForkRedeemParam(const CTransaction& tx, const int nHeight, const CDestination& destIn, CDestination& destRedeem, uint256& hashFork)
 {
     if (!destIn.IsTemplate() || destIn.GetTemplateId().GetType() != TEMPLATE_FORK)
     {
@@ -462,9 +462,9 @@ bool CCheckForkManager::GetTxForkRedeemParam(const CTransaction& tx, const CDest
         return false;
     }
     vector<uint8> vchSig;
-    if (!CTemplate::VerifyDestRecorded(tx, vchSig))
+    if (!CTemplate::VerifyDestRecorded(tx, nHeight, vchSig))
     {
-        StdError("check", "Get fork redeem param: VerifyDestRecorded fail, tx: %s", tx.GetHash().GetHex().c_str());
+        StdError("check", "Get fork redeem param: Verify Dest Recorded fail, tx: %s", tx.GetHash().GetHex().c_str());
         return false;
     }
     auto templatePtr = CTemplate::CreateTemplatePtr(TEMPLATE_FORK, vchSig);

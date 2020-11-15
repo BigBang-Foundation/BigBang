@@ -205,7 +205,7 @@ protected:
     void RemoveWalletTx(std::shared_ptr<CWalletTx>& spWalletTx, const uint256& hashFork);
     bool SyncWalletTx(CTxFilter& txFilter);
     bool InspectWalletTx(int nCheckDepth);
-    bool GetSendToDestRecorded(const CTransaction& tx, const std::vector<uint8>& vchSendToData, std::vector<uint8>& vchDestData);
+    bool GetSendToDestRecorded(const CTransaction& tx, const int nHeight, const std::vector<uint8>& vchSendToData, std::vector<uint8>& vchDestData);
 
 protected:
     storage::CWalletDB dbWallet;

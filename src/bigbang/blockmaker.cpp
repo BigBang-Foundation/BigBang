@@ -376,7 +376,7 @@ void CBlockMaker::ArrangeBlockTx(CBlock& block, const uint256& hashFork, const C
 
     size_t nMaxTxSize = nRestOfSize - rewardTxSize;
     int64 nTotalTxFee = nRewardTxTotalFee;
-    if (!pTxPool->FetchArrangeBlockTx(hashFork, block.hashPrev, block.GetBlockTime(), nMaxTxSize, block.vtx, nTotalTxFee))
+    if (!pTxPool->FetchArrangeBlockTx(hashFork, block.hashPrev, block.GetBlockHeight(), block.GetBlockTime(), nMaxTxSize, block.vtx, nTotalTxFee))
     {
         Error("Fetch arrange block tx error, block: %s", block.GetHash().ToString().c_str());
     }
