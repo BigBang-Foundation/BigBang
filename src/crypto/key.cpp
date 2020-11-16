@@ -65,18 +65,11 @@ CKey& CKey::operator=(const CKey& key)
     
     if(IsLocked())
     {
-        if(key.IsLocked())
-        {
-            pCryptoKey->secret = 0;
-            pCryptoKey->pubkey = key.pCryptoKey->pubkey;
-        }
-        else
+        if(!key.IsLocked())
         {
             NormalFree(pCryptoKey);
             pCryptoKey =  CryptoAlloc<CCryptoKey>();
-            *pCryptoKey = *key.pCryptoKey;
-        }
-        
+        } 
     }
     else
     {
@@ -84,14 +77,10 @@ CKey& CKey::operator=(const CKey& key)
         {
             CryptoFree(pCryptoKey);
             pCryptoKey = NormalAlloc<CCryptoKey>();
-            pCryptoKey->secret = 0;
-            pCryptoKey->pubkey = key.pCryptoKey->pubkey;
-        }
-        else
-        {
-            *pCryptoKey = *key.pCryptoKey;
         }
     }
+
+    *pCryptoKey = *key.pCryptoKey;
     
     return *this;
 }
