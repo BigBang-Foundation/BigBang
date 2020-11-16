@@ -461,79 +461,79 @@ Errno CCoreProtocol::VerifyForkTx(const CTransaction& tx, const CDestination& de
     {
         return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid fork");
     }
-
-    if (tx.sendTo != destIn)
+    if (tx.sendTo == destIn)
     {
-        if (tx.vchData.empty())
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "invalid vchData");
-        }
-        if (tx.nAmount < CTemplateFork::CreatedCoin())
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "invalid nAmount");
-        }
+        return DEBUG(ERR_TRANSACTION_INVALID, "It is not allowed to change from self to self");
+    }
+    if (tx.vchData.empty())
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid vchData");
+    }
+    if (tx.nAmount < CTemplateFork::CreatedCoin())
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid nAmount");
+    }
 
-        CBlock block;
-        CProfile profile;
-        try
-        {
-            CBufStream ss;
-            ss.Write((const char*)&tx.vchData[0], tx.vchData.size());
-            ss >> block;
-            if (!block.IsOrigin() || block.IsPrimary())
-            {
-                return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid block");
-            }
-            if (!profile.Load(block.vchProof))
-            {
-                return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid profile");
-            }
-        }
-        catch (...)
-        {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid fork vchData");
-        }
-
-        if (profile.IsNull())
-        {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid profile");
-        }
-        if (!MoneyRange(profile.nAmount))
-        {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid fork amount");
-        }
-        if (!RewardRange(profile.nMintReward))
-        {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid fork reward");
-        }
-        if (block.txMint.sendTo != profile.destOwner)
-        {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid fork sendTo");
-        }
-
-        if (ValidateBlock(block) != OK)
+    CBlock block;
+    CProfile profile;
+    try
+    {
+        CBufStream ss;
+        ss.Write((const char*)&tx.vchData[0], tx.vchData.size());
+        ss >> block;
+        if (!block.IsOrigin() || block.IsPrimary())
         {
             return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid block");
         }
-
-        if (nHeight >= FORK_TEMPLATE_SIGDATA_HEIGHT)
+        if (!profile.Load(block.vchProof))
         {
-            CTemplatePtr ptr = CTemplate::CreateTemplatePtr(TEMPLATE_FORK, tx.vchSig);
-            if (!ptr)
-            {
-                return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid vchSig");
-            }
-            if (ptr->GetTemplateId() != tx.sendTo.GetTemplateId())
-            {
-                return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid template id");
-            }
-            CDestination destRedeem;
-            uint256 hashFork;
-            boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeem, hashFork);
-            if (hashFork != block.GetHash())
-            {
-                return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid forkid");
-            }
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid profile");
+        }
+    }
+    catch (...)
+    {
+        return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid fork vchData");
+    }
+
+    if (profile.IsNull())
+    {
+        return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid profile");
+    }
+    if (!MoneyRange(profile.nAmount))
+    {
+        return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid fork amount");
+    }
+    if (!RewardRange(profile.nMintReward))
+    {
+        return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid fork reward");
+    }
+    if (block.txMint.sendTo != profile.destOwner)
+    {
+        return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid fork sendTo");
+    }
+
+    if (ValidateBlock(block) != OK)
+    {
+        return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid block");
+    }
+
+    if (nHeight >= FORK_TEMPLATE_SIGDATA_HEIGHT)
+    {
+        CTemplatePtr ptr = CTemplate::CreateTemplatePtr(TEMPLATE_FORK, tx.vchSig);
+        if (!ptr)
+        {
+            return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid vchSig");
+        }
+        if (ptr->GetTemplateId() != tx.sendTo.GetTemplateId())
+        {
+            return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid template id");
+        }
+        CDestination destRedeem;
+        uint256 hashFork;
+        boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeem, hashFork);
+        if (hashFork != block.GetHash())
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "invalid forkid");
         }
     }
     return OK;
@@ -546,27 +546,28 @@ Errno CCoreProtocol::VerifyForkRedeem(const CTransaction& tx, const CDestination
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "invalid fork");
     }
-    if (tx.sendTo != destIn)
+    if (tx.sendTo == destIn)
     {
-        CTemplatePtr ptr = CTemplate::CreateTemplatePtr(destIn.GetTemplateId().GetType(), vchSubSig);
-        if (!ptr)
-        {
-            return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid locked coin template destination");
-        }
-        CDestination destRedeemLocked;
-        uint256 hashForkLocked;
-        boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
-        int64 nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashPrevBlock);
-        if (nLockedCoin < 0)
-        {
-            nLockedCoin = 0;
-        }
-        // locked coin template: nValueIn >= tx.nAmount + tx.nTxFee + nLockedCoin
-        if (nValueIn < tx.nAmount + tx.nTxFee + nLockedCoin)
-        {
-            return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "valuein is not enough to locked coin (%ld : %ld)",
-                         nValueIn, tx.nAmount + tx.nTxFee + nLockedCoin);
-        }
+        return DEBUG(ERR_TRANSACTION_INVALID, "It is not allowed to change from self to self");
+    }
+    CTemplatePtr ptr = CTemplate::CreateTemplatePtr(destIn.GetTemplateId().GetType(), vchSubSig);
+    if (!ptr)
+    {
+        return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid locked coin template destination");
+    }
+    CDestination destRedeemLocked;
+    uint256 hashForkLocked;
+    boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
+    int64 nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashPrevBlock);
+    if (nLockedCoin < 0)
+    {
+        nLockedCoin = 0;
+    }
+    // locked coin template: nValueIn >= tx.nAmount + tx.nTxFee + nLockedCoin
+    if (nValueIn < tx.nAmount + tx.nTxFee + nLockedCoin)
+    {
+        return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "valuein is not enough to locked coin (%ld : %ld)",
+                     nValueIn, tx.nAmount + tx.nTxFee + nLockedCoin);
     }
     return OK;
 }
@@ -1173,48 +1174,49 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "invalid fork");
         }
-        if (tx.sendTo != destIn)
+        if (tx.sendTo == destIn)
         {
-            uint256 hashPrimaryLastBlock;
-            int nTempHeight;
-            int64 nTempTime;
-            uint16 nTempMintType;
-            if (!pBlockChain->GetLastBlock(GetGenesisBlockHash(), hashPrimaryLastBlock, nTempHeight, nTempTime, nTempMintType))
+            return DEBUG(ERR_TRANSACTION_INVALID, "It is not allowed to change from self to self");
+        }
+        uint256 hashPrimaryLastBlock;
+        int nTempHeight;
+        int64 nTempTime;
+        uint16 nTempMintType;
+        if (!pBlockChain->GetLastBlock(GetGenesisBlockHash(), hashPrimaryLastBlock, nTempHeight, nTempTime, nTempMintType))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "Failed to get last block");
+        }
+        CTemplatePtr ptr = CTemplate::CreateTemplatePtr(destIn.GetTemplateId(), vchSig);
+        if (!ptr)
+        {
+            return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid locked coin template destination");
+        }
+        CDestination destRedeemLocked;
+        uint256 hashForkLocked;
+        boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
+        int64 nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashPrimaryLastBlock);
+        if (nLockedCoin < 0)
+        {
+            bool fTxAtTxPool = false;
+            for (int i = 0; i < tx.vInput.size(); i++)
             {
-                return DEBUG(ERR_TRANSACTION_INVALID, "Failed to get last block");
-            }
-            CTemplatePtr ptr = CTemplate::CreateTemplatePtr(destIn.GetTemplateId(), vchSig);
-            if (!ptr)
-            {
-                return DEBUG(ERR_TRANSACTION_SIGNATURE_INVALID, "invalid locked coin template destination");
-            }
-            CDestination destRedeemLocked;
-            uint256 hashForkLocked;
-            boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
-            int64 nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashPrimaryLastBlock);
-            if (nLockedCoin < 0)
-            {
-                bool fTxAtTxPool = false;
-                for (int i = 0; i < tx.vInput.size(); i++)
+                uint256 hashFork;
+                int nHeight;
+                if (!pBlockChain->GetTxLocation(tx.vInput[i].prevout.hash, hashFork, nHeight))
                 {
-                    uint256 hashFork;
-                    int nHeight;
-                    if (!pBlockChain->GetTxLocation(tx.vInput[i].prevout.hash, hashFork, nHeight))
-                    {
-                        fTxAtTxPool = true;
-                        break;
-                    }
-                }
-                nLockedCoin = CTemplateFork::CreatedCoin();
-                if (!fTxAtTxPool)
-                {
-                    nLockedCoin = 0;
+                    fTxAtTxPool = true;
+                    break;
                 }
             }
-            if (nValueIn < tx.nAmount + tx.nTxFee + nLockedCoin)
+            nLockedCoin = CTemplateFork::CreatedCoin();
+            if (!fTxAtTxPool)
             {
-                return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "valuein is not enough to locked coin (%ld : %ld)", nValueIn, tx.nAmount + tx.nTxFee + nLockedCoin);
+                nLockedCoin = 0;
             }
+        }
+        if (nValueIn < tx.nAmount + tx.nTxFee + nLockedCoin)
+        {
+            return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "valuein is not enough to locked coin (%ld : %ld)", nValueIn, tx.nAmount + tx.nTxFee + nLockedCoin);
         }
     }
 

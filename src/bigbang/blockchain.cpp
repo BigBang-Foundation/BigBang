@@ -159,7 +159,22 @@ void CBlockChain::GetForkStatus(map<uint256, CForkStatus>& mapForkStatus)
 
         if (hashParent != 0)
         {
-            mapForkStatus[hashParent].mapSubline.insert(make_pair(nForkHeight, hashFork));
+            bool fHave = false;
+            multimap<int, uint256>& mapSubline = mapForkStatus[hashParent].mapSubline;
+            auto mt = mapSubline.lower_bound(nForkHeight);
+            while (mt != mapSubline.upper_bound(nForkHeight))
+            {
+                if (mt->second == hashFork)
+                {
+                    fHave = true;
+                    break;
+                }
+                ++mt;
+            }
+            if (!fHave)
+            {
+                mapSubline.insert(make_pair(nForkHeight, hashFork));
+            }
         }
 
         map<uint256, CForkStatus>::iterator mi = mapForkStatus.find(hashFork);
@@ -168,11 +183,6 @@ void CBlockChain::GetForkStatus(map<uint256, CForkStatus>& mapForkStatus)
             CProfile profile;
             GetForkProfile(hashFork, profile);
             mi = mapForkStatus.insert(make_pair(hashFork, CForkStatus(hashFork, hashParent, nForkHeight, profile.nForkType))).first;
-            if (mi == mapForkStatus.end())
-            {
-                StdError("BlockChain", "Get fork status: insert fail, fork: %s", hashFork.ToString().c_str());
-                continue;
-            }
         }
         CForkStatus& status = (*mi).second;
         status.hashLastBlock = pIndex->GetBlockHash();
@@ -1982,39 +1992,36 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
     {
         const CTransaction& tx = blockex.vtx[i];
         const CTxContxt& txContxt = blockex.vTxContxt[i];
-        if (tx.sendTo != txContxt.destIn)
+        if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
         {
-            if (tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
+            if (!VerifyBlockForkTx(blockex.hashPrev, tx, vForkCtxt))
             {
-                if (!VerifyBlockForkTx(blockex.hashPrev, tx, vForkCtxt))
-                {
-                    StdLog("CBlockChain", "Add block fork context: VerifyBlockForkTx fail, block: %s", hashBlock.ToString().c_str());
-                }
+                StdLog("CBlockChain", "Add block fork context: Verify block fork tx fail, block: %s", hashBlock.ToString().c_str());
             }
-            if (txContxt.destIn.IsTemplate() && txContxt.destIn.GetTemplateId().GetType() == TEMPLATE_FORK)
+        }
+        if (txContxt.destIn.IsTemplate() && txContxt.destIn.GetTemplateId().GetType() == TEMPLATE_FORK)
+        {
+            CDestination destRedeem;
+            uint256 hashFork;
+            if (!pCoreProtocol->GetTxForkRedeemParam(tx, blockex.GetBlockHeight(), txContxt.destIn, destRedeem, hashFork))
             {
-                CDestination destRedeem;
-                uint256 hashFork;
-                if (!pCoreProtocol->GetTxForkRedeemParam(tx, blockex.GetBlockHeight(), txContxt.destIn, destRedeem, hashFork))
+                StdLog("CBlockChain", "Add block fork context: Get redeem param fail, block: %s, dest: %s",
+                       hashBlock.ToString().c_str(), CAddress(txContxt.destIn).ToString().c_str());
+                return false;
+            }
+            auto it = vForkCtxt.begin();
+            while (it != vForkCtxt.end())
+            {
+                if (it->hashFork == hashFork)
                 {
-                    StdLog("CBlockChain", "Add block fork context: Get redeem param fail, block: %s, dest: %s",
-                           hashBlock.ToString().c_str(), CAddress(txContxt.destIn).ToString().c_str());
-                    return false;
+                    StdLog("CBlockChain", "Add block fork context: cancel fork, block: %s, fork: %s, dest: %s",
+                           hashBlock.ToString().c_str(), it->hashFork.ToString().c_str(),
+                           CAddress(txContxt.destIn).ToString().c_str());
+                    vForkCtxt.erase(it++);
                 }
-                auto it = vForkCtxt.begin();
-                while (it != vForkCtxt.end())
+                else
                 {
-                    if (it->hashFork == hashFork)
-                    {
-                        StdLog("CBlockChain", "Add block fork context: cancel fork, block: %s, fork: %s, dest: %s",
-                               hashBlock.ToString().c_str(), it->hashFork.ToString().c_str(),
-                               CAddress(txContxt.destIn).ToString().c_str());
-                        vForkCtxt.erase(it++);
-                    }
-                    else
-                    {
-                        ++it;
-                    }
+                    ++it;
                 }
             }
         }

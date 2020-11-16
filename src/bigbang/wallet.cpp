@@ -750,8 +750,7 @@ bool CWallet::ArrangeInputs(const CDestination& destIn, const uint256& hashFork,
     // locked coin template
     CTemplateId tid;
     if (destIn.GetTemplateId(tid) && tid.GetType() == TEMPLATE_FORK
-        && hashFork == pCoreProtocol->GetGenesisBlockHash()
-        && tx.sendTo != destIn)
+        && hashFork == pCoreProtocol->GetGenesisBlockHash())
     {
         CTemplatePtr ptr = GetTemplate(tid);
         if (!ptr)
