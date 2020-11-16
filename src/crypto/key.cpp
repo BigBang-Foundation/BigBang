@@ -201,6 +201,13 @@ bool CKey::SetSecret(const CCryptoKeyData& vchSecret)
     {
         return false;
     }
+
+    if (IsLocked())
+    {
+        NormalFree(pCryptoKey);
+        pCryptoKey = CryptoAlloc<CCryptoKey>();
+    }
+
     return (CryptoImportKey(*pCryptoKey, *((uint256*)&vchSecret[0])) != 0
             && UpdateCipher());
 }
