@@ -299,9 +299,26 @@ CRPCMod::CRPCMod()
         //
         ("submitwork", &CRPCMod::RPCSubmitWork)
         /* tool */
-        ("querystat", &CRPCMod::RPCQueryStat);
+        ("querystat", &CRPCMod::RPCQueryStat)
+        // 
+        ("getdestination", &CRPCMod::PRCGetDestination);
     mapRPCFunc = temp_map;
     fWriteRPCLog = true;
+}
+
+CRPCResultPtr CRPCMod::PRCGetDestination(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CgetdestinationParam>(param);
+    CAddress to(spParam->strAddress);
+    CDestination obj(to);
+    if (obj.IsTemplate())
+    {
+        return MakeCgetdestinationResultPtr(obj.GetTemplateId().GetHex() + "02");
+    }
+    else
+    {
+        return MakeCgetdestinationResultPtr(obj.GetPubKey().GetHex() + "01");
+    }
 }
 
 CRPCMod::~CRPCMod()

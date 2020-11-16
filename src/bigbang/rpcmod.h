@@ -139,6 +139,7 @@ private:
     rpc::CRPCResultPtr RPCSubmitWork(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCQueryStat(rpc::CRPCParamPtr param);
 
+    rpc::CRPCResultPtr PRCGetDestination(rpc::CRPCParamPtr param);
 protected:
     xengine::IIOProc* pHttpServer;
     ICoreProtocol* pCoreProtocol;
