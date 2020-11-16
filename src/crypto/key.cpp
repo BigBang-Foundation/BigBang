@@ -62,15 +62,37 @@ CKey& CKey::operator=(const CKey& key)
 {
     nVersion = key.nVersion;
     cipher = key.cipher;
-    if (key.IsLocked())
+    
+    if(IsLocked())
     {
-        pCryptoKey->secret = 0;
-        pCryptoKey->pubkey = key.pCryptoKey->pubkey;
+        if(key.IsLocked())
+        {
+            pCryptoKey->secret = 0;
+            pCryptoKey->pubkey = key.pCryptoKey->pubkey;
+        }
+        else
+        {
+            NormalFree(pCryptoKey);
+            pCryptoKey =  CryptoAlloc<CCryptoKey>();
+            *pCryptoKey = *key.pCryptoKey;
+        }
+        
     }
     else
     {
-        *pCryptoKey = *key.pCryptoKey;
+        if(key.IsLocked())
+        {
+            CryptoFree(pCryptoKey);
+            pCryptoKey = NormalAlloc<CCryptoKey>();
+            pCryptoKey->secret = 0;
+            pCryptoKey->pubkey = key.pCryptoKey->pubkey;
+        }
+        else
+        {
+            *pCryptoKey = *key.pCryptoKey;
+        }
     }
+    
     return *this;
 }
 
