@@ -43,7 +43,6 @@ public:
     virtual int64 MinEnrollAmount() override;
     virtual uint32 DPoSTimestamp(const CBlockIndex* pIndexPrev) override;
     virtual uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight) override;
-    virtual bool GetTxForkRedeemParam(const CTransaction& tx, const int nHeight, const CDestination& destIn, CDestination& destRedeem, uint256& hashFork) override;
     virtual bool IsRefVacantHeight(uint32 nBlockHeight) override;
     virtual int GetRefVacantHeight() override;
     virtual const std::set<CDestination>& GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) override;

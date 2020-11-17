@@ -67,7 +67,6 @@ public:
     virtual int64 MinEnrollAmount() = 0;
     virtual uint32 DPoSTimestamp(const CBlockIndex* pIndexPrev) = 0;
     virtual uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight) = 0;
-    virtual bool GetTxForkRedeemParam(const CTransaction& tx, const int nHeight, const CDestination& destIn, CDestination& destRedeem, uint256& hashFork) = 0;
     virtual bool IsRefVacantHeight(uint32 nBlockHeight) = 0;
     virtual int GetRefVacantHeight() = 0;
     virtual const std::set<CDestination>& GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) = 0;
@@ -171,7 +170,7 @@ public:
     virtual bool ListDelegatePayment(uint32 height, CBlock& block, std::multimap<int64, CDestination>& mapVotes) = 0;
     virtual uint32 DPoSTimestamp(const uint256& hashPrev) = 0;
     virtual Errno VerifyPowBlock(const CBlock& block, bool& fLongChain) = 0;
-    virtual bool VerifyBlockForkTx(const uint256& hashPrev, const CTransaction& tx, std::vector<CForkContext>& vForkCtxt) = 0;
+    virtual bool VerifyBlockForkTx(const uint256& hashPrev, const CTransaction& tx, std::vector<std::pair<CDestination, CForkContext>>& vForkCtxt) = 0;
     virtual bool CheckForkValidLast(const uint256& hashFork, CBlockChainUpdate& update) = 0;
     virtual bool VerifyForkRefLongChain(const uint256& hashFork, const uint256& hashForkBlock, const uint256& hashPrimaryBlock) = 0;
     virtual bool GetPrimaryHeightBlockTime(const uint256& hashLastBlock, int nHeight, uint256& hashBlock, int64& nTime) = 0;
@@ -231,7 +230,7 @@ public:
         = 0;
     virtual void SetPrimaryLastBlock(const uint256& hashPrimaryLastBlockIn) = 0;
     virtual bool VerifyFork(const uint256& hashPrevBlock, const uint256& hashFork, const std::string& strForkName) = 0;
-    virtual bool AddValidForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<CForkContext>& vForkCtxt,
+    virtual bool AddValidForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const std::vector<std::pair<CDestination, CForkContext>>& vForkCtxt,
                                      bool fCheckPointBlock, uint256& hashRefFdBlock, std::map<uint256, int>& mapValidFork)
         = 0;
     virtual void RemoveValidForkContext(const uint256& hashBlock) = 0;

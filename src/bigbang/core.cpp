@@ -1546,26 +1546,6 @@ uint32 CCoreProtocol::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTi
     return nPrevTimeStamp + BLOCK_TARGET_SPACING;
 }
 
-bool CCoreProtocol::GetTxForkRedeemParam(const CTransaction& tx, const int nHeight, const CDestination& destIn, CDestination& destRedeem, uint256& hashFork)
-{
-    if (!destIn.IsTemplate() || destIn.GetTemplateId().GetType() != TEMPLATE_FORK)
-    {
-        return false;
-    }
-    vector<uint8> vchSig;
-    if (!CTemplate::VerifyDestRecorded(tx, nHeight, vchSig))
-    {
-        return false;
-    }
-    auto templatePtr = CTemplate::CreateTemplatePtr(TEMPLATE_FORK, vchSig);
-    if (templatePtr == nullptr || templatePtr->GetTemplateId() != destIn.GetTemplateId())
-    {
-        return false;
-    }
-    boost::dynamic_pointer_cast<CTemplateFork>(templatePtr)->GetForkParam(destRedeem, hashFork);
-    return true;
-}
-
 bool CCoreProtocol::IsRefVacantHeight(uint32 nBlockHeight)
 {
     if (nBlockHeight < REF_VACANT_HEIGHT)

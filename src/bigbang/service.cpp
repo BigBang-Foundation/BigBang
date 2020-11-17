@@ -613,7 +613,7 @@ bool CService::SignTransaction(CTransaction& tx, const vector<uint8>& vchSendToD
     if (hashFork == pCoreProtocol->GetGenesisBlockHash()
         && tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
     {
-        vector<CForkContext> vForkCtxt;
+        vector<pair<CDestination, CForkContext>> vForkCtxt;
         if (!pBlockChain->VerifyBlockForkTx(hashLastBlock, tx, vForkCtxt) || vForkCtxt.empty())
         {
             StdError("CService", "SignTransaction: Verify block fork tx fail, txid: %s", tx.GetHash().GetHex().c_str());
@@ -778,7 +778,7 @@ Errno CService::SendOfflineSignedTransaction(CTransaction& tx)
     if (hashFork == pCoreProtocol->GetGenesisBlockHash()
         && tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
     {
-        vector<CForkContext> vForkCtxt;
+        vector<pair<CDestination, CForkContext>> vForkCtxt;
         if (!pBlockChain->VerifyBlockForkTx(hashLastBlock, tx, vForkCtxt) || vForkCtxt.empty())
         {
             StdError("CService", "SendOfflineSignedTransaction: Verify block fork tx fail, txid: %s", tx.GetHash().GetHex().c_str());

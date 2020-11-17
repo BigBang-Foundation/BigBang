@@ -1270,7 +1270,7 @@ Errno CBlockChain::VerifyPowBlock(const CBlock& block, bool& fLongChain)
     return OK;
 }
 
-bool CBlockChain::VerifyBlockForkTx(const uint256& hashPrev, const CTransaction& tx, vector<CForkContext>& vForkCtxt)
+bool CBlockChain::VerifyBlockForkTx(const uint256& hashPrev, const CTransaction& tx, vector<pair<CDestination, CForkContext>>& vForkCtxt)
 {
     if (tx.vchData.empty())
     {
@@ -1311,9 +1311,9 @@ bool CBlockChain::VerifyBlockForkTx(const uint256& hashPrev, const CTransaction&
             bool fFindParent = false;
             for (const auto& vd : vForkCtxt)
             {
-                if (vd.hashFork == profile.hashParent)
+                if (vd.second.hashFork == profile.hashParent)
                 {
-                    ctxtParent = vd;
+                    ctxtParent = vd.second;
                     fFindParent = true;
                     break;
                 }
@@ -1341,10 +1341,10 @@ bool CBlockChain::VerifyBlockForkTx(const uint256& hashPrev, const CTransaction&
         bool fCheckRet = true;
         for (const auto& vd : vForkCtxt)
         {
-            if (vd.hashFork == hashNewFork || vd.strName == profile.strName)
+            if (vd.second.hashFork == hashNewFork || vd.second.strName == profile.strName)
             {
                 Log("Verify block fork tx: fork existed or name repeated, tx: %s, new fork: %s, name: %s",
-                    tx.GetHash().ToString().c_str(), hashNewFork.GetHex().c_str(), vd.strName.c_str());
+                    tx.GetHash().ToString().c_str(), hashNewFork.GetHex().c_str(), vd.second.strName.c_str());
                 fCheckRet = false;
                 break;
             }
@@ -1354,7 +1354,7 @@ bool CBlockChain::VerifyBlockForkTx(const uint256& hashPrev, const CTransaction&
             break;
         }
 
-        vForkCtxt.push_back(CForkContext(block.GetHash(), block.hashPrev, tx.GetHash(), profile));
+        vForkCtxt.push_back(make_pair(tx.sendTo, CForkContext(block.GetHash(), block.hashPrev, tx.GetHash(), profile)));
         Log("Verify block fork tx success: valid fork: %s, tx: %s", hashNewFork.GetHex().c_str(), tx.GetHash().ToString().c_str());
     } while (0);
 
@@ -1987,7 +1987,7 @@ void CBlockChain::InitCheckPoints()
 bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
 {
     uint256 hashBlock = blockex.GetHash();
-    vector<CForkContext> vForkCtxt;
+    vector<pair<CDestination, CForkContext>> vForkCtxt;
     for (size_t i = 0; i < blockex.vtx.size(); i++)
     {
         const CTransaction& tx = blockex.vtx[i];
@@ -2001,21 +2001,13 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
         }
         if (txContxt.destIn.IsTemplate() && txContxt.destIn.GetTemplateId().GetType() == TEMPLATE_FORK)
         {
-            CDestination destRedeem;
-            uint256 hashFork;
-            if (!pCoreProtocol->GetTxForkRedeemParam(tx, blockex.GetBlockHeight(), txContxt.destIn, destRedeem, hashFork))
-            {
-                StdLog("CBlockChain", "Add block fork context: Get redeem param fail, block: %s, dest: %s",
-                       hashBlock.ToString().c_str(), CAddress(txContxt.destIn).ToString().c_str());
-                return false;
-            }
             auto it = vForkCtxt.begin();
             while (it != vForkCtxt.end())
             {
-                if (it->hashFork == hashFork)
+                if (it->first == txContxt.destIn)
                 {
                     StdLog("CBlockChain", "Add block fork context: cancel fork, block: %s, fork: %s, dest: %s",
-                           hashBlock.ToString().c_str(), it->hashFork.ToString().c_str(),
+                           hashBlock.ToString().c_str(), it->second.hashFork.ToString().c_str(),
                            CAddress(txContxt.destIn).ToString().c_str());
                     vForkCtxt.erase(it++);
                 }
@@ -2027,9 +2019,9 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
         }
     }
 
-    for (const CForkContext& ctxt : vForkCtxt)
+    for (const auto& vd : vForkCtxt)
     {
-        if (!cntrBlock.AddNewForkContext(ctxt))
+        if (!cntrBlock.AddNewForkContext(vd.second))
         {
             StdLog("CBlockChain", "Add block fork context: AddNewForkContext fail, block: %s", hashBlock.ToString().c_str());
             return false;
@@ -2051,7 +2043,7 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
     map<uint256, int> mapValidFork;
     if (!pForkManager->AddValidForkContext(blockex.hashPrev, hashBlock, vForkCtxt, fCheckPointBlock, hashRefFdBlock, mapValidFork))
     {
-        StdLog("CBlockChain", "Add block fork context: AddValidForkContext fail, block: %s", hashBlock.ToString().c_str());
+        StdLog("CBlockChain", "Add block fork context: Add valid fork context fail, block: %s", hashBlock.ToString().c_str());
         return false;
     }
 

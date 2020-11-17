@@ -67,7 +67,7 @@ public:
     bool ListDelegatePayment(uint32 height, CBlock& block, std::multimap<int64, CDestination>& mapVotes) override;
     uint32 DPoSTimestamp(const uint256& hashPrev) override;
     Errno VerifyPowBlock(const CBlock& block, bool& fLongChain) override;
-    bool VerifyBlockForkTx(const uint256& hashPrev, const CTransaction& tx, std::vector<CForkContext>& vForkCtxt) override;
+    bool VerifyBlockForkTx(const uint256& hashPrev, const CTransaction& tx, std::vector<std::pair<CDestination, CForkContext>>& vForkCtxt) override;
     bool CheckForkValidLast(const uint256& hashFork, CBlockChainUpdate& update) override;
     bool VerifyForkRefLongChain(const uint256& hashFork, const uint256& hashForkBlock, const uint256& hashPrimaryBlock) override;
     bool GetPrimaryHeightBlockTime(const uint256& hashLastBlock, int nHeight, uint256& hashBlock, int64& nTime) override;
