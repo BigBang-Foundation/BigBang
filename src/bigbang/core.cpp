@@ -64,13 +64,13 @@ static const uint32 REF_VACANT_HEIGHT = 368638;
 #ifdef BIGBANG_TESTNET
 static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 0;
 #else
-static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 550000;
+static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 523610;
 #endif
 
 #ifdef BIGBANG_TESTNET
 static const uint32 VALID_FORK_VERIFY_HEIGHT = 0;
 #else
-static const uint32 VALID_FORK_VERIFY_HEIGHT = 550000;
+static const uint32 VALID_FORK_VERIFY_HEIGHT = 523610;
 #endif
 
 #ifdef BIGBANG_TESTNET
@@ -166,7 +166,7 @@ static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
 #ifdef BIGBANG_TESTNET
 static const int32 CHANGE_MINT_RATE_HEIGHT = 0;
 #else
-static const int32 CHANGE_MINT_RATE_HEIGHT = 520000;
+static const int32 CHANGE_MINT_RATE_HEIGHT = 523610;
 #endif
 
 namespace bigbang

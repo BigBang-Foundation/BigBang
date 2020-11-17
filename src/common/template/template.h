@@ -64,7 +64,7 @@ enum TemplateType
 #ifdef BIGBANG_TESTNET
 static const int FORK_TEMPLATE_SIGDATA_HEIGHT = 0;
 #else
-static const int FORK_TEMPLATE_SIGDATA_HEIGHT = 550000;
+static const int FORK_TEMPLATE_SIGDATA_HEIGHT = 523610;
 #endif
 
 inline int64 FeeInt64FromDouble(const double dAmount)
