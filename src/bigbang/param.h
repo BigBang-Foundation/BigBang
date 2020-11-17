@@ -79,7 +79,8 @@ static std::vector<std::pair<int, uint256>> vPrimaryChainCheckPoints = { { 0, ui
                                                                          { 285060, uint256("00045984ae81f672b42525e0465dd05239c742fe0b6723a15c4fd03215362eae") },
                                                                          { 366692, uint256("00059864d72f76565cb8aa190c1e73ab4eb449d6641d73f7eba4e6a849589453") },
                                                                          { 400000, uint256("00061a8020ce3ddf579e34bfa38ff95c9667bf50fce8005069d8dcfeb695f0d9") },
-                                                                         { 450000, uint256("0006ddd0a514053cc0e11c1c04218a5cc40c8e01e9ad7010665cc3ce196c06b0") } };
+                                                                         { 450000, uint256("0006ddd0a514053cc0e11c1c04218a5cc40c8e01e9ad7010665cc3ce196c06b0") },
+                                                                         { 521000, uint256("0007f3287379c169e8a2a771667c0cbc95f04c8a88536c8cfb58da2df6aa0c7b") } };
 #endif
 
 #endif //BIGBANG_PARAM_H
