@@ -47,6 +47,19 @@ public:
     uint256 hashAtFork;
 };
 
+class CCheckTxIndex : public CTxIndex
+{
+public:
+    CCheckTxIndex() {}
+    CCheckTxIndex(const int nTxTypeIn, const CTxIndex& txIndexIn)
+      : nTxType(nTxTypeIn), CTxIndex(txIndexIn) {}
+    CCheckTxIndex(const int nTxTypeIn, const int nBlockHeightIn, const uint32 nFileIn, const uint32 nOffsetIn)
+      : nTxType(nTxTypeIn), CTxIndex(nBlockHeightIn, nFileIn, nOffsetIn) {}
+
+public:
+    int nTxType;
+};
+
 class CCheckTxOut : public CTxOut
 {
 public:
@@ -238,7 +251,8 @@ public:
 
     void UpdateMaxTrust(CBlockIndex* pBlockIndex);
     bool AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, int nHeight, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn);
-    bool AddBlockSpent(const CTxOutPoint& txPoint, const uint256& txidSpent, const CDestination& sendTo);
+    bool RemoveBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, int nHeight, const uint256& hashAtForkIn);
+    bool AddBlockSpent(const CTxOutPoint& txPoint);
     bool AddBlockUnspent(const CTxOutPoint& txPoint, const CTxOut& txOut, int nTxType, int nHeight);
     bool CheckTxExist(const uint256& txid, int& nHeight);
 
@@ -246,6 +260,7 @@ public:
     CBlockIndex* pOrigin;
     CBlockIndex* pLast;
     map<uint256, CCheckBlockTx> mapBlockTx;
+    map<uint256, CCheckTxIndex> mapBlockTxIndex;
     map<CTxOutPoint, CCheckTxOut> mapBlockUnspent;
     map<CDestination, CAddrInfo> mapBlockAddress;
 };
@@ -255,8 +270,9 @@ public:
 class CCheckBlockWalker : public CTSWalker<CBlockEx>
 {
 public:
-    CCheckBlockWalker(bool fTestnetIn, bool fOnlyCheckIn)
-      : nBlockCount(0), nMainChainHeight(0), nMainChainTxCount(0), objProofParam(fTestnetIn), fOnlyCheck(fOnlyCheckIn) {}
+    CCheckBlockWalker(bool fTestnetIn, bool fOnlyCheckIn, CCheckForkManager& objForkManagerIn)
+      : nBlockCount(0), nMainChainHeight(0), nMainChainTxCount(0), objProofParam(fTestnetIn),
+        fOnlyCheck(fOnlyCheckIn), objForkManager(objForkManagerIn) {}
     ~CCheckBlockWalker();
 
     bool Initialize(const string& strPath);
@@ -273,6 +289,7 @@ public:
 
     bool UpdateBlockNext();
     bool UpdateBlockTx(CCheckForkManager& objForkMn);
+    bool AddBlockData(const CBlockEx& block, const CBlockIndex* pBlockIndex, uint32 nFileNoIn, uint32 nOffsetIn);
     bool AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, int nHeight, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn, const vector<uint256>& vFork);
     CBlockIndex* AddNewIndex(const uint256& hash, const CBlock& block, uint32 nFile, uint32 nOffset, uint256 nChainTrust);
     CBlockIndex* AddNewIndex(const uint256& hash, const CBlockOutline& objBlockOutline);
@@ -289,6 +306,7 @@ public:
     int64 nMainChainTxCount;
     uint256 hashGenesis;
     CProofOfWorkParam objProofParam;
+    CCheckForkManager& objForkManager;
     map<uint256, CCheckBlockFork> mapCheckFork;
     map<uint256, CBlockEx> mapBlock;
     map<uint256, CBlockIndex*> mapBlockIndex;
@@ -305,7 +323,7 @@ class CCheckRepairData
 {
 public:
     CCheckRepairData(const string& strPath, bool fTestnetIn, bool fOnlyCheckIn)
-      : strDataPath(strPath), fTestnet(fTestnetIn), fOnlyCheck(fOnlyCheckIn), objBlockWalker(fTestnetIn, fOnlyCheckIn) {}
+      : strDataPath(strPath), fTestnet(fTestnetIn), fOnlyCheck(fOnlyCheckIn), objBlockWalker(fTestnetIn, fOnlyCheckIn, objForkManager) {}
 
 protected:
     bool FetchBlockData();
