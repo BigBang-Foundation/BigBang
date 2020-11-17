@@ -403,10 +403,10 @@ int CForkManager::GetValidForkCreatedHeight(const uint256& hashBlock, const uint
     const auto it = mapBlockValidFork.find(hashBlock);
     if (it != mapBlockValidFork.end())
     {
-        int nCreaatedHeight = it->second.GetCreatedHeight(hashFork);
-        if (nCreaatedHeight >= 0)
+        int nCreatedHeight = it->second.GetCreatedHeight(hashFork);
+        if (nCreatedHeight >= 0)
         {
-            return nCreaatedHeight;
+            return nCreatedHeight;
         }
         if (it->second.hashRefFdBlock != 0)
         {
