@@ -1957,7 +1957,7 @@ void CBlockChain::InitCheckPoints()
 {
     if (Config()->nMagicNum == MAINNET_MAGICNUM)
     {
-        std::vector<CCheckPoint> vecGenesisCheckPoints, vecBBCN, vecBTCA, vecBBCC;
+        std::vector<CCheckPoint> vecGenesisCheckPoints, vecBBCN, vecBTCA, vecBBCC, vecUSDTTRC20, vecUSDTERC20, vecMKF;
 #ifdef BIGBANG_TESTNET
         vecGenesisCheckPoints.push_back(CCheckPoint(0, pCoreProtocol->GetGenesisBlockHash()));
         InitCheckPoints(pCoreProtocol->GetGenesisBlockHash(), vecGenesisCheckPoints);
@@ -1979,10 +1979,26 @@ void CBlockChain::InitCheckPoints()
                          { 450000, uint256("0006ddd011ca1049c434d5b6976b1534aef6c49883460afa05f5ac541aefbb0c") },
                          { 521000, uint256("0007f3280d924ff50c948bd28a79d7a0e379b042e015d2e1008daf619bccd81e") } });
 
+        vecUSDTTRC20.assign({
+                { 511112, uint256("0007cc887adb54ff1b81c42d69922dea155375d1543f1e96bb8aabbe323689b3") },
+                { 521000, uint256("0007f3284830c6de411c4e4eea0fb8b6802c8dba2be96777f44f09adc2a8416c") }
+        });
+        vecUSDTERC20.assign({
+                { 511112, uint256("0007cc88c585d8f44ca70403073869b179a2465df93bec6b18e34d370bf40a5e") },
+                { 521000, uint256("0007f3281ff974cfe29259acadc6ca034e2b1109c58cc46b6bc9368eaa9ac1d4") }
+        });
+        vecMKF.assign({
+                { 511112, uint256("0007cc880a19fc5f621d01fd583378bd6a2207568a730ac07f6f87f99a468cf3") },
+                { 521000, uint256("0007f328300eebaca221eb428ab2d1608d33513fb27c4597abad91bb2efc9b66") }
+        })
+
         InitCheckPoints(uint256("00000000b0a9be545f022309e148894d1e1c853ccac3ef04cb6f5e5c70f41a70"), vecGenesisCheckPoints);
         InitCheckPoints(uint256("000493e02a0f6ef977ebd5f844014badb412b6db85847b120f162b8d913b9028"), vecBBCN);
         InitCheckPoints(uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"), vecBTCA);
         InitCheckPoints(uint256("00068fb1bad4194126b0d1c1fb46b9860d4e899730825bd9511de4b14277d136"), vecBBCC);
+        InitCheckPoints(uint256("0007cc887adb54ff1b81c42d69922dea155375d1543f1e96bb8aabbe323689b3"), vecUSDTTRC20);
+        InitCheckPoints(uint256("0007cc88c585d8f44ca70403073869b179a2465df93bec6b18e34d370bf40a5e"), vecUSDTERC20);
+        InitCheckPoints(uint256("0007cc880a19fc5f621d01fd583378bd6a2207568a730ac07f6f87f99a468cf3"), vecMKF);
 #endif
     }
 }
