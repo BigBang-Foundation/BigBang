@@ -280,13 +280,14 @@ public:
     void InvalidateSpent(const CTxOutPoint& out, CTxPoolView& viewInvolvedTx);
     void GetBlockTxList(std::vector<CTransaction>& vtx, int64& nTotalTxFee, const int64 nBlockTime, const std::size_t nMaxSize, const uint256& hashFork, const int nHeight,
                         std::map<CDestination, int>& mapVoteCert, const std::map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight,
-                        std::vector<std::pair<uint256, std::vector<CTxIn>>>& vTxRemove);
+                        std::vector<std::pair<uint256, std::vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock);
 
 private:
     void GetAllPrevTxLink(const CPooledTxLink& link, std::vector<CPooledTxLink>& prevLinks, CPooledCertTxLinkSet& setCertTxLink);
     bool AddArrangeBlockTx(std::vector<CTransaction>& vtx, int64& nTotalTxFee, const int64 nBlockTime, const std::size_t nMaxSize, std::size_t& nTotalSize,
                            const uint256& hashFork, const int nHeight, std::map<CDestination, int>& mapVoteCert, std::set<uint256>& setUnTx, CPooledTx* ptx,
-                           const std::map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight, std::vector<std::pair<uint256, std::vector<CTxIn>>>& vTxRemove);
+                           const std::map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight,
+                           std::vector<std::pair<uint256, std::vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock);
 
 public:
     CPooledTxLinkSet setTxLinkIndex;
@@ -404,8 +405,8 @@ public:
     bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, const std::vector<CTxUnspent>& vUnspentOnChain, std::vector<CTxUnspent>& vUnspent) override;
     bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, const std::map<CDestination, std::vector<CTxUnspent>>& mapUnspentOnChain, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent) override;
     bool FilterTx(const uint256& hashFork, CTxFilter& filter) override;
-    bool FetchArrangeBlockTx(const uint256& hashFork, const uint256& hashPrev, int64 nBlockTime, std::size_t nMaxSize,
-                             std::vector<CTransaction>& vtx, int64& nTotalTxFee) override;
+    bool FetchArrangeBlockTx(const uint256& hashFork, const uint256& hashPrev, int nNewBlockHeight, int64 nBlockTime,
+                             std::size_t nMaxSize, std::vector<CTransaction>& vtx, int64& nTotalTxFee) override;
     bool FetchInputs(const uint256& hashFork, const CTransaction& tx, std::vector<CTxOut>& vUnspent) override;
     bool SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChange& change) override;
     void AddDestDelegate(const CDestination& destDeleage) override;
