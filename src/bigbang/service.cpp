@@ -555,6 +555,11 @@ boost::optional<std::string> CService::AddKey(const crypto::CKey& key)
     return pWallet->AddKey(key);
 }
 
+boost::optional<std::string> CService::RemoveKey(const crypto::CPubKey& pubkey)
+{
+    return pWallet->RemoveKey(pubkey);
+}
+
 bool CService::ImportKey(const vector<unsigned char>& vchKey, crypto::CPubKey& pubkey)
 {
     return pWallet->Import(vchKey, pubkey);

@@ -58,6 +58,7 @@ public:
     bool GetKeyStatus(const crypto::CPubKey& pubkey, int& nVersion, bool& fLocked, int64& nAutoLockTime, bool& fPublic) override;
     boost::optional<std::string> MakeNewKey(const crypto::CCryptoString& strPassphrase, crypto::CPubKey& pubkey) override;
     boost::optional<std::string> AddKey(const crypto::CKey& key) override;
+    boost::optional<std::string> RemoveKey(const crypto::CPubKey& pubkey) override;
     bool ImportKey(const std::vector<unsigned char>& vchKey, crypto::CPubKey& pubkey) override;
     bool ExportKey(const crypto::CPubKey& pubkey, std::vector<unsigned char>& vchKey) override;
     bool EncryptKey(const crypto::CPubKey& pubkey, const crypto::CCryptoString& strPassphrase,

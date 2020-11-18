@@ -261,6 +261,11 @@ boost::optional<std::string> CWallet::AddKey(const crypto::CKey& key)
     return boost::optional<std::string>{};
 }
 
+boost::optional<std::string> CWallet::RemoveKey(const crypto::CPubKey& pubkey)
+{
+    return boost::optional<std::string>{};
+}
+
 bool CWallet::LoadKey(const crypto::CKey& key)
 {
     if (!InsertKey(key))
