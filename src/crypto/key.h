@@ -62,7 +62,8 @@ public:
 
 protected:
     bool UpdateCipher(uint32 nVersionIn = INIT, const CCryptoString& strPassphrase = "");
-
+    void NormalToCryptoAlloc();
+    void CryptoToNormalAlloc();
 protected:
     uint32 nVersion;
     CCryptoKey* pCryptoKey;

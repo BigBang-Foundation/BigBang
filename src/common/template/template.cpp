@@ -232,18 +232,24 @@ bool CTemplate::IsLockedCoin(const CDestination& dest)
     return false;
 }
 
-bool CTemplate::VerifyDestRecorded(const CTransaction& tx, vector<uint8>& vchSigOut)
+bool CTemplate::VerifyDestRecorded(const CTransaction& tx, const int nHeight, vector<uint8>& vchSigOut)
 {
     if (!tx.vchSig.empty())
     {
-        if (tx.sendTo.IsTemplate() && CTemplate::IsDestInRecorded(tx.sendTo))
+        CTemplateId tid;
+        if (tx.sendTo.GetTemplateId(tid) && CTemplate::IsDestInRecorded(tx.sendTo))
         {
-            CTemplatePtr ptr = CTemplate::CreateTemplatePtr(tx.sendTo.GetTemplateId().GetType(), tx.vchSig);
+            if (tid.GetType() == TEMPLATE_FORK && nHeight < FORK_TEMPLATE_SIGDATA_HEIGHT)
+            {
+                vchSigOut = tx.vchSig;
+                return true;
+            }
+            CTemplatePtr ptr = CTemplate::CreateTemplatePtr(tid.GetType(), tx.vchSig);
             if (!ptr)
             {
                 return false;
             }
-            if (ptr->GetTemplateId() != tx.sendTo.GetTemplateId())
+            if (ptr->GetTemplateId() != tid)
             {
                 return false;
             }
