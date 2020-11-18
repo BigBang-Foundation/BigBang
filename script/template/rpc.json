@@ -1586,12 +1586,32 @@
                     "required": false,
                     "opt": "f"
                 },
+                "address": {
+                    "type": "string",
+                    "desc": "address",
+                    "required": false,
+                    "opt": "a"
+                },
                 "detail": {
                     "type": "bool",
                     "desc": "get detail or not",
                     "default": false,
                     "required": false,
                     "opt": "d"
+                },
+                "getoffset": {
+                    "type": "int",
+                    "desc": "get offset, If not set, from 0",
+                    "default": 0,
+                    "required": false,
+                    "opt": "o"
+                },
+                "getcount": {
+                    "type": "int",
+                    "desc": "get count, 0 is all",
+                    "default": 20,
+                    "required": false,
+                    "opt": "n"
                 }
             }
         },
@@ -1621,9 +1641,29 @@
                             "type": "object",
                             "desc": "pool struct",
                             "content": {
-                                "hex": {
+                                "txid": {
                                     "type": "string",
-                                    "desc": "tx pool hex"
+                                    "desc": "txid"
+                                },
+                                "txtype": {
+                                    "type": "string",
+                                    "desc": "tx type"
+                                },
+                                "from": {
+                                    "type": "string",
+                                    "desc": "from address"
+                                },
+                                "to": {
+                                    "type": "string",
+                                    "desc": "to address"
+                                },
+                                "amount": {
+                                    "type": "double",
+                                    "desc": "amount"
+                                },
+                                "txfee": {
+                                    "type": "double",
+                                    "desc": "tx fee"
                                 },
                                 "size": {
                                     "type": "uint",

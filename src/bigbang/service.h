@@ -32,6 +32,7 @@ public:
     int GetForkCount() override;
     bool HaveFork(const uint256& hashFork) override;
     int GetForkHeight(const uint256& hashFork) override;
+    bool GetForkLastBlock(const uint256& hashFork, int& nLastHeight, uint256& hashLastBlock) override;
     int GetForkType(const uint256& hashFork) override;
     void ListFork(std::vector<std::pair<uint256, CProfile>>& vFork, bool fAll = false) override;
     bool GetForkGenealogy(const uint256& hashFork, std::vector<std::pair<uint256, int>>& vAncestry,
@@ -44,6 +45,7 @@ public:
     bool GetBlockEx(const uint256& hashBlock, CBlockEx& block, uint256& hashFork, int& nHeight) override;
     bool GetLastBlockOfHeight(const uint256& hashFork, const int nHeight, uint256& hashBlock, int64& nTime) override;
     void GetTxPool(const uint256& hashFork, std::vector<std::pair<uint256, std::size_t>>& vTxPool) override;
+    void ListTxPool(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const int64 nGetOffset = 0, const int64 nGetCount = 0) override;
     bool GetTransaction(const uint256& txid, CTransaction& tx, uint256& hashFork, int& nHeight, uint256& hashBlock, CDestination& destIn) override;
     Errno SendTransaction(CTransaction& tx) override;
     bool RemovePendingTx(const uint256& txid) override;

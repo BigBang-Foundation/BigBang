@@ -932,7 +932,6 @@ CRPCResultPtr CRPCMod::RPCGetTxPool(CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CGetTxPoolParam>(param);
 
-    //gettxpool (-f="fork") (-d|-nod*detail*)
     uint256 hashFork;
     if (!GetForkHashOfDef(spParam->strFork, hashFork))
     {
@@ -944,14 +943,25 @@ CRPCResultPtr CRPCMod::RPCGetTxPool(CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
+    CAddress address;
+    if (spParam->strAddress.IsValid())
+    {
+        address = CAddress(spParam->strAddress);
+        if (address.IsNull())
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address");
+        }
+    }
     bool fDetail = spParam->fDetail.IsValid() ? bool(spParam->fDetail) : false;
-
-    vector<pair<uint256, size_t>> vTxPool;
-    pService->GetTxPool(hashFork, vTxPool);
+    int64 nGetOffset = spParam->nGetoffset.IsValid() ? int64(spParam->nGetoffset) : 0;
+    int64 nGetCount = spParam->nGetcount.IsValid() ? int64(spParam->nGetcount) : 20;
 
     auto spResult = MakeCGetTxPoolResultPtr();
     if (!fDetail)
     {
+        vector<pair<uint256, size_t>> vTxPool;
+        pService->GetTxPool(hashFork, vTxPool);
+
         size_t nTotalSize = 0;
         for (std::size_t i = 0; i < vTxPool.size(); i++)
         {
@@ -962,9 +972,14 @@ CRPCResultPtr CRPCMod::RPCGetTxPool(CRPCParamPtr param)
     }
     else
     {
-        for (std::size_t i = 0; i < vTxPool.size(); i++)
+        vector<CTxInfo> vTxPool;
+        pService->ListTxPool(hashFork, address, vTxPool, nGetOffset, nGetCount);
+
+        for (const CTxInfo& txinfo : vTxPool)
         {
-            spResult->vecList.push_back({ vTxPool[i].first.GetHex(), vTxPool[i].second });
+            spResult->vecList.push_back({ txinfo.txid.GetHex(), CTransaction::GetTypeStringStatic(txinfo.nTxType), CAddress(txinfo.destFrom).ToString(),
+                                          CAddress(txinfo.destTo).ToString(), ValueFromAmount(txinfo.nAmount),
+                                          ValueFromAmount(txinfo.nTxFee), txinfo.nSize });
         }
     }
 
@@ -1694,12 +1709,6 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         nAmount -= nTxFee;
     }
 
-    CTemplateId tid;
-    if (to.GetTemplateId(tid) && tid.GetType() == TEMPLATE_FORK && nAmount < CTemplateFork::CreatedCoin())
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "SendFromWallet nAmount must be at least " + std::to_string(CTemplateFork::CreatedCoin() / COIN) + " for creating fork");
-    }
-
     CTransaction txNew;
     auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
     if (strErr)
@@ -2346,11 +2355,11 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
     int nForkHeight = pService->GetForkHeight(hashParent);
     if (nForkHeight < nJointHeight + MIN_CREATE_FORK_INTERVAL_HEIGHT)
     {
-        throw CRPCException(RPC_INVALID_PARAMETER, "The minimum confirmed height of the previous block is 30");
+        throw CRPCException(RPC_INVALID_PARAMETER, string("The minimum confirmed height of the previous block is ") + to_string(MIN_CREATE_FORK_INTERVAL_HEIGHT));
     }
     if ((int64)nForkHeight > (int64)nJointHeight + MAX_JOINT_FORK_INTERVAL_HEIGHT)
     {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Maximum fork spacing height is 1440");
+        throw CRPCException(RPC_INVALID_PARAMETER, string("Maximum fork spacing height is ") + to_string(MAX_JOINT_FORK_INTERVAL_HEIGHT));
     }
 
     uint256 hashBlockRef;
