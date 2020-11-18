@@ -32,10 +32,19 @@ public:
 void* CryptoAlloc(const std::size_t size);
 void CryptoFree(void* ptr);
 
+void* NormalAlloc(const std::size_t size);
+void NormalFree(void* ptr);
+
 template <typename T>
 T* CryptoAlloc()
 {
     return static_cast<T*>(CryptoAlloc(sizeof(T)));
+}
+
+template <typename T>
+T* NormalAlloc()
+{
+    return static_cast<T*>(NormalAlloc(sizeof(T)));
 }
 
 template <typename T>
