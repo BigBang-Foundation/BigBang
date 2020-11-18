@@ -175,7 +175,7 @@ protected:
                          std::vector<uint8>& vchSig, const vector<uint8>& vchSignExtraData, const uint256& hashFork, const int32 nForkHeight,
                          std::set<crypto::CPubKey>& setSignedKey, bool& fCompleted);
     void UpdateAutoLock(const std::set<crypto::CPubKey>& setSignedKey);
-    bool GetSendToDestRecorded(const CTransaction& tx, const std::vector<uint8>& vchSendToData, std::vector<uint8>& vchDestData);
+    bool GetSendToDestRecorded(const CTransaction& tx, const int nHeight, const std::vector<uint8>& vchSendToData, std::vector<uint8>& vchDestData);
 
 protected:
     storage::CWalletDB dbWallet;

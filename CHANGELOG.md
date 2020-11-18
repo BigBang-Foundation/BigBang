@@ -1,3 +1,16 @@
+# Version 2.2.4 (2020-11-18)
+
+### Fixs
+
+- Remove invalid tx for Dex
+- Fix resyncwallet bug: no balance
+- Update Dockerfile and add build & run docker image bash script
+- Change DPoS & PoW mint rate
+- Reduce secure memory in Wallet Key
+- Optimize the functions of fork management, mortgage redemption and fork repair
+
+
+
 # Version 2.2.3 (2020-11-04)
 
 ### Fixs

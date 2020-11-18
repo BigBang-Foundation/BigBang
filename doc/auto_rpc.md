@@ -250,9 +250,29 @@ If [**type**](#type) value is `array` or `object`, needs to set **content** to d
 
             // because "pool"-"type" = "object", so needs "content"
             "content": {
-                "hex": {
+                "txid": {
                     "type": "string",
-                    "desc": "tx pool hex"
+                    "desc": "txid"
+                },
+                "txtype": {
+                    "type": "int",
+                    "desc": "tx type"
+                },
+                "from": {
+                    "type": "string",
+                    "desc": "from address"
+                },
+                "to": {
+                    "type": "string",
+                    "desc": "to address"
+                },
+                "amount": {
+                    "type": "double",
+                    "desc": "amount"
+                },
+                "txfee": {
+                    "type": "double",
+                    "desc": "tx fee"
                 },
                 "size": {
                     "type": "uint",

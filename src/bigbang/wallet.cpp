@@ -6,9 +6,11 @@
 
 #include "address.h"
 #include "defs.h"
+#include "param.h"
 #include "template/delegate.h"
 #include "template/dexmatch.h"
 #include "template/exchange.h"
+#include "template/fork.h"
 #include "template/mint.h"
 #include "template/payment.h"
 #include "template/vote.h"
@@ -69,7 +71,6 @@ bool CWallet::HandleInitialize()
         Error("Failed to request blockchain");
         return false;
     }
-
     return true;
 }
 
@@ -486,7 +487,7 @@ bool CWallet::SignTransaction(const CDestination& destIn, CTransaction& tx, cons
         }
     }
 
-    if (!CTemplate::VerifyDestRecorded(tx, vchSig))
+    if (!CTemplate::VerifyDestRecorded(tx, nForkHeight + 1, vchSig))
     {
         Error("Sign Transaction: Parse dest fail, txid: %s", tx.GetHash().GetHex().c_str());
         return false;
@@ -495,7 +496,7 @@ bool CWallet::SignTransaction(const CDestination& destIn, CTransaction& tx, cons
     set<crypto::CPubKey> setSignedKey;
     {
         boost::shared_lock<boost::shared_mutex> rlock(rwKeyStore);
-        if (!SignDestination(destIn, tx, vchDestInData, tx.GetSignatureHash(), vchSig, vchSignExtraData, hashFork, nForkHeight, setSignedKey, fCompleted))
+        if (!SignDestination(destIn, tx, vchDestInData, tx.GetSignatureHash(), vchSig, vchSignExtraData, hashFork, nForkHeight + 1, setSignedKey, fCompleted))
         {
             Error("Sign transaction: Sign destination fail, destIn: %s, txid: %s",
                   destIn.ToString().c_str(), tx.GetHash().GetHex().c_str());
@@ -506,7 +507,7 @@ bool CWallet::SignTransaction(const CDestination& destIn, CTransaction& tx, cons
     UpdateAutoLock(setSignedKey);
 
     vector<uint8> vchDestData;
-    if (!GetSendToDestRecorded(tx, vchSendToData, vchDestData))
+    if (!GetSendToDestRecorded(tx, nForkHeight + 1, vchSendToData, vchDestData))
     {
         Error("Sign transaction: Get SendTo DestRecorded fail, destIn: %s, txid: %s",
               destIn.ToString().c_str(), tx.GetHash().GetHex().c_str());
@@ -544,11 +545,15 @@ void CWallet::RemoveMemKey(const crypto::CPubKey& pubkey)
     mapMemSignKey.erase(pubkey);
 }
 
-bool CWallet::GetSendToDestRecorded(const CTransaction& tx, const vector<uint8>& vchSendToData, vector<uint8>& vchDestData)
+bool CWallet::GetSendToDestRecorded(const CTransaction& tx, const int nHeight, const vector<uint8>& vchSendToData, vector<uint8>& vchDestData)
 {
-    if (tx.sendTo.IsTemplate() && CTemplate::IsDestInRecorded(tx.sendTo))
+    CTemplateId tid;
+    if (tx.sendTo.GetTemplateId(tid) && CTemplate::IsDestInRecorded(tx.sendTo))
     {
-        CTemplateId tid = tx.sendTo.GetTemplateId();
+        if (tid.GetType() == TEMPLATE_FORK && nHeight < FORK_TEMPLATE_SIGDATA_HEIGHT)
+        {
+            return true;
+        }
         if (!vchSendToData.empty())
         {
             CTemplatePtr tempPtr = CTemplate::Import(vchSendToData);
@@ -571,26 +576,22 @@ bool CWallet::GetSendToDestRecorded(const CTransaction& tx, const vector<uint8>&
 
 bool CWallet::LoadDB()
 {
-    {
-        boost::unique_lock<boost::shared_mutex> wlock(rwKeyStore);
+    boost::unique_lock<boost::shared_mutex> wlock(rwKeyStore);
 
-        CDBAddrWalker walker(this);
-        if (!dbWallet.WalkThroughAddress(walker))
-        {
-            StdLog("CWallet", "LoadDB: WalkThroughAddress fail.");
-            return false;
-        }
+    CDBAddrWalker walker(this);
+    if (!dbWallet.WalkThroughAddress(walker))
+    {
+        StdLog("CWallet", "LoadDB: WalkThroughAddress fail.");
+        return false;
     }
     return true;
 }
 
 void CWallet::Clear()
 {
-    {
-        boost::unique_lock<boost::shared_mutex> wlock(rwKeyStore);
-        mapKeyStore.clear();
-        mapTemplatePtr.clear();
-    }
+    boost::unique_lock<boost::shared_mutex> wlock(rwKeyStore);
+    mapKeyStore.clear();
+    mapTemplatePtr.clear();
 }
 
 bool CWallet::InsertKey(const crypto::CKey& key)

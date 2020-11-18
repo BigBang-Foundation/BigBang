@@ -88,6 +88,16 @@ bool CBlockDB::RemoveAll()
     return true;
 }
 
+bool CBlockDB::WriteGenesisBlockHash(const uint256& hashGenesisBlockIn)
+{
+    return dbFork.WriteGenesisBlockHash(hashGenesisBlockIn);
+}
+
+bool CBlockDB::GetGenesisBlockHash(uint256& hashGenesisBlockOut)
+{
+    return dbFork.GetGenesisBlockHash(hashGenesisBlockOut);
+}
+
 bool CBlockDB::AddNewForkContext(const CForkContext& ctxt)
 {
     return dbFork.AddNewForkContext(ctxt);
@@ -99,10 +109,20 @@ bool CBlockDB::RetrieveForkContext(const uint256& hash, CForkContext& ctxt)
     return dbFork.RetrieveForkContext(hash, ctxt);
 }
 
-bool CBlockDB::ListForkContext(vector<CForkContext>& vForkCtxt)
+bool CBlockDB::ListForkContext(vector<CForkContext>& vForkCtxt, map<uint256, CValidForkId>& mapValidForkId)
 {
     vForkCtxt.clear();
-    return dbFork.ListForkContext(vForkCtxt);
+    return dbFork.ListForkContext(vForkCtxt, mapValidForkId);
+}
+
+bool CBlockDB::AddValidForkHash(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork)
+{
+    return dbFork.AddValidForkHash(hashBlock, hashRefFdBlock, mapValidFork);
+}
+
+bool CBlockDB::RetrieveValidForkHash(const uint256& hashBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork)
+{
+    return dbFork.RetrieveValidForkHash(hashBlock, hashRefFdBlock, mapValidFork);
 }
 
 bool CBlockDB::AddNewFork(const uint256& hash)
