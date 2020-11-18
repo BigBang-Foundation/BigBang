@@ -115,12 +115,20 @@ void CService::HandleHalt()
 
 void CService::NotifyBlockChainUpdate(const CBlockChainUpdate& update)
 {
+    map<uint256, bool> mapFork;
+    pForkManager->GetValidForkList(mapFork);
+
     {
         boost::unique_lock<boost::shared_mutex> wlock(rwForkStatus);
         map<uint256, CForkStatus>::iterator it = mapForkStatus.find(update.hashFork);
         if (it == mapForkStatus.end())
         {
             it = mapForkStatus.insert(make_pair(update.hashFork, CForkStatus(update.hashFork, update.hashParent, update.nOriginHeight, update.nForkType))).first;
+            if (it == mapForkStatus.end())
+            {
+                StdError("CService", "NotifyBlockChainUpdate: Insert fork status fail, fork: %s", update.hashFork.GetHex().c_str());
+                return;
+            }
             if (update.hashParent != 0)
             {
                 mapForkStatus[update.hashParent].mapSubline.insert(make_pair(update.nOriginHeight, update.hashFork));
@@ -133,6 +141,18 @@ void CService::NotifyBlockChainUpdate(const CBlockChainUpdate& update)
         status.nLastBlockHeight = update.nLastBlockHeight;
         status.nMoneySupply = update.nMoneySupply;
         status.nMintType = update.nLastMintType;
+
+        map<uint256, CForkStatus>::iterator mt = mapForkStatus.begin();
+        while (mt != mapForkStatus.end())
+        {
+            auto nt = mapFork.find(mt->first);
+            if (nt == mapFork.end() || !nt->second)
+            {
+                mapForkStatus.erase(mt++);
+                continue;
+            }
+            ++mt;
+        }
     }
 }
 
@@ -219,6 +239,20 @@ int CService::GetForkHeight(const uint256& hashFork)
     return 0;
 }
 
+bool CService::GetForkLastBlock(const uint256& hashFork, int& nLastHeight, uint256& hashLastBlock)
+{
+    boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
+
+    map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
+    if (it != mapForkStatus.end())
+    {
+        nLastHeight = it->second.nLastBlockHeight;
+        hashLastBlock = it->second.hashLastBlock;
+        return true;
+    }
+    return false;
+}
+
 int CService::GetForkType(const uint256& hashFork)
 {
     boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
@@ -236,15 +270,15 @@ void CService::ListFork(std::vector<std::pair<uint256, CProfile>>& vFork, bool f
     boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
     if (fAll)
     {
-        vector<uint256> vForkHash;
-        pForkManager->GetForkList(vForkHash);
-        vFork.reserve(vForkHash.size());
-        for (vector<uint256>::iterator it = vForkHash.begin(); it != vForkHash.end(); ++it)
+        map<uint256, bool> mapFork;
+        pForkManager->GetValidForkList(mapFork);
+        vFork.reserve(mapFork.size());
+        for (const auto& vd : mapFork)
         {
             CForkContext ctx;
-            if (pBlockChain->GetForkContext(*it, ctx))
+            if (pBlockChain->GetForkContext(vd.first, ctx))
             {
-                vFork.push_back(make_pair(*it, ctx.GetProfile()));
+                vFork.push_back(make_pair(vd.first, ctx.GetProfile()));
             }
         }
     }
@@ -626,7 +660,23 @@ bool CService::SignTransaction(CTransaction& tx, const vector<uint8>& vchDestInD
     }
 
     const CDestination& destIn = vUnspent[0].destTo;
-    int32 nForkHeight = GetForkHeight(hashFork);
+    int32 nForkHeight;
+    uint256 hashLastBlock;
+    if (!GetForkLastBlock(hashFork, nForkHeight, hashLastBlock))
+    {
+        StdError("CService", "SignTransaction: GetForkLastBlock fail, txid: %s", tx.GetHash().GetHex().c_str());
+        return false;
+    }
+    if (hashFork == pCoreProtocol->GetGenesisBlockHash()
+        && tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
+    {
+        vector<pair<CDestination, CForkContext>> vForkCtxt;
+        if (!pBlockChain->VerifyBlockForkTx(hashLastBlock, tx, vForkCtxt) || vForkCtxt.empty())
+        {
+            StdError("CService", "SignTransaction: Verify block fork tx fail, txid: %s", tx.GetHash().GetHex().c_str());
+            return false;
+        }
+    }
     if (!pWallet->SignTransaction(destIn, tx, vchDestInData, vchSendToData, vchSignExtraData, hashFork, nForkHeight, fCompleted))
     {
         StdError("CService", "Sign ransaction: Sign Transaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), CAddress(destIn).ToString().c_str());
@@ -676,18 +726,13 @@ bool CService::GetDeFiRelation(const uint256& hashFork, const CDestination& dest
 
 bool CService::GetBalanceByWallet(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
 {
-    int nForkHeight = 0;
+    int32 nForkHeight;
+    uint256 hashLastBlock;
+    if (!GetForkLastBlock(hashFork, nForkHeight, hashLastBlock))
     {
-        boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
-        map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
-        if (it == mapForkStatus.end())
-        {
-            StdError("CService", "GetBalanceByWallet: Find fork fail, fork: %s", hashFork.GetHex().c_str());
-            return false;
-        }
-        nForkHeight = it->second.nLastBlockHeight;
+        return false;
     }
-    return pWallet->GetBalance(dest, hashFork, nForkHeight, balance);
+    return pWallet->GetBalance(dest, hashFork, nForkHeight, hashLastBlock, balance);
 }
 
 bool CService::GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
@@ -747,6 +792,7 @@ boost::optional<std::string> CService::CreateTransactionByWallet(const uint256& 
                                                                  const vector<unsigned char>& vchData, CTransaction& txNew)
 {
     int nForkHeight = 0;
+    uint256 hashLastBlock;
     txNew.SetNull();
     {
         boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
@@ -757,6 +803,7 @@ boost::optional<std::string> CService::CreateTransactionByWallet(const uint256& 
             return std::string("find fork fail, fork: ") + hashFork.GetHex();
         }
         nForkHeight = it->second.nLastBlockHeight;
+        hashLastBlock = it->second.hashLastBlock;
         txNew.hashAnchor = hashFork;
     }
     txNew.nType = nType;
@@ -767,7 +814,7 @@ boost::optional<std::string> CService::CreateTransactionByWallet(const uint256& 
     txNew.nTxFee = nTxFee;
     txNew.vchData = vchData;
 
-    return pWallet->ArrangeInputs(destFrom, hashFork, nForkHeight, txNew) ? boost::optional<std::string>{} : std::string("CWallet::ArrangeInputs failed");
+    return pWallet->ArrangeInputs(destFrom, hashFork, nForkHeight, hashLastBlock, txNew) ? boost::optional<std::string>{} : std::string("CWallet::ArrangeInputs failed.");
 }
 
 boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
@@ -963,6 +1010,7 @@ Errno CService::SendOfflineSignedTransaction(CTransaction& tx)
                  tx.GetHash().GetHex().c_str(), tx.hashAnchor.GetHex().c_str());
         return FAILED;
     }
+
     vector<CTxOut> vUnspent;
     if (!pTxPool->FetchInputs(hashFork, tx, vUnspent) || vUnspent.empty())
     {
@@ -972,8 +1020,27 @@ Errno CService::SendOfflineSignedTransaction(CTransaction& tx)
         return FAILED;
     }
 
-    int32 nForkHeight = GetForkHeight(hashFork);
     const CDestination& destIn = vUnspent[0].destTo;
+    int32 nForkHeight;
+    uint256 hashLastBlock;
+    if (!GetForkLastBlock(hashFork, nForkHeight, hashLastBlock))
+    {
+        StdError("CService", "SendOfflineSignedTransaction: GetForkLastBlock fail, txid: %s", tx.GetHash().GetHex().c_str());
+        return FAILED;
+    }
+    if (hashFork == pCoreProtocol->GetGenesisBlockHash()
+        && tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
+    {
+        vector<pair<CDestination, CForkContext>> vForkCtxt;
+        if (!pBlockChain->VerifyBlockForkTx(hashLastBlock, tx, vForkCtxt) || vForkCtxt.empty())
+        {
+            StdError("CService", "SendOfflineSignedTransaction: Verify block fork tx fail, txid: %s", tx.GetHash().GetHex().c_str());
+            return FAILED;
+        }
+    }
+
+    //int32 nForkHeight = GetForkHeight(hashFork);
+    //const CDestination& destIn = vUnspent[0].destTo;
     int nForkType = GetForkType(hashFork);
     if (OK != pCoreProtocol->VerifyTransaction(tx, vUnspent, nForkHeight, hashFork, nForkType))
     {
@@ -1115,9 +1182,9 @@ Errno CService::SubmitWork(const vector<unsigned char>& vchWorkData,
     size_t nSigSize = templMint->GetTemplateData().size() + 64 + 2;
     size_t nMaxTxSize = MAX_BLOCK_SIZE - GetSerializeSize(block) - nSigSize;
     int64 nTotalTxFee = 0;
-    if (!pTxPool->ArrangeBlockTx(pCoreProtocol->GetGenesisBlockHash(), block.hashPrev, block.nTimeStamp, nMaxTxSize, block.vtx, nTotalTxFee))
+    if (!pTxPool->FetchArrangeBlockTx(pCoreProtocol->GetGenesisBlockHash(), block.hashPrev, block.GetBlockHeight(), block.nTimeStamp, nMaxTxSize, block.vtx, nTotalTxFee))
     {
-        StdError("CService", "SubmitWork: ArrangeBlockTx fail");
+        StdError("CService", "SubmitWork: Fetch arrange block tx fail");
         return FAILED;
     }
     block.hashMerkle = block.CalcMerkleTreeRoot();

@@ -159,9 +159,9 @@ public:
     /* Wallet Tx */
     std::size_t GetTxCount() override;
     bool ListTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) override;
-    bool GetBalance(const CDestination& dest, const uint256& hashFork, int nForkHeight, CWalletBalance& balance) override;
+    bool GetBalance(const CDestination& dest, const uint256& hashFork, int nForkHeight, const uint256& hashLastBlock, CWalletBalance& balance) override;
     bool SignTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, const uint256& hashFork, const int32 nForkHeight, bool& fCompleted) override;
-    bool ArrangeInputs(const CDestination& destIn, const uint256& hashFork, int nForkHeight, CTransaction& tx) override;
+    bool ArrangeInputs(const CDestination& destIn, const uint256& hashFork, int nForkHeight, const uint256& hashLastBlock, CTransaction& tx) override;
     bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent) override;
     /* Update */
     bool SynchronizeTxSet(const CTxSetChange& change) override;
@@ -189,6 +189,7 @@ protected:
     bool InsertKey(const crypto::CKey& key);
     int64 SelectCoins(const CDestination& dest, const uint256& hashFork, int nForkHeight, int64 nTxTime,
                       int64 nTargetValue, std::size_t nMaxInput, std::vector<CTxOutPoint>& vCoins);
+    bool IsAtTxPool(const CDestination& dest, const uint256& hashFork);
 
     std::shared_ptr<CWalletTx> LoadWalletTx(const uint256& txid);
     std::shared_ptr<CWalletTx> InsertWalletTx(const uint256& txid, const CAssembledTx& tx, const uint256& hashFork, bool fIsMine, bool fFromMe);
@@ -208,13 +209,14 @@ protected:
     void RemoveWalletTx(std::shared_ptr<CWalletTx>& spWalletTx, const uint256& hashFork);
     bool SyncWalletTx(CTxFilter& txFilter);
     bool InspectWalletTx(int nCheckDepth);
-    bool GetSendToDestRecorded(const CTransaction& tx, const std::vector<uint8>& vchSendToData, std::vector<uint8>& vchDestData);
+    bool GetSendToDestRecorded(const CTransaction& tx, const int nHeight, const std::vector<uint8>& vchSendToData, std::vector<uint8>& vchDestData);
 
 protected:
     storage::CWalletDB dbWallet;
     ICoreProtocol* pCoreProtocol;
     IBlockChain* pBlockChain;
     ITxPool* pTxPool;
+    IForkManager* pForkManager;
     mutable boost::shared_mutex rwKeyStore;
     mutable boost::shared_mutex rwWalletTx;
     std::map<crypto::CPubKey, CWalletKeyStore> mapKeyStore;
@@ -318,7 +320,7 @@ public:
         return true;
     }
     virtual bool GetBalance(const CDestination& dest, const uint256& hashFork,
-                            int nForkHeight, CWalletBalance& balance) override
+                            int nForkHeight, const uint256& hashLastBlock, CWalletBalance& balance) override
     {
         return false;
     }
@@ -329,7 +331,7 @@ public:
     }
     virtual bool ArrangeInputs(const CDestination& destIn,
                                const uint256& hashFork, int nForkHeight,
-                               CTransaction& tx) override
+                               const uint256& hashLastBlock, CTransaction& tx) override
     {
         return false;
     }

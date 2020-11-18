@@ -19,10 +19,13 @@ public:
     virtual void GetGenesisBlock(CBlock& block) override;
     virtual Errno ValidateTransaction(const CTransaction& tx, int nHeight) override;
     virtual Errno ValidateBlock(const CBlock& block) override;
+    virtual Errno VerifyForkTx(const CTransaction& tx, const CDestination& destIn, const uint256& hashFork, const int nHeight) override;
+    virtual Errno VerifyForkRedeem(const CTransaction& tx, const CDestination& destIn, const uint256& hashFork,
+                                   const uint256& hashPrevBlock, const vector<uint8>& vchSubSig, const int64 nValueIn) override;
     virtual Errno ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile) override;
 
     virtual Errno VerifyBlock(const CBlock& block, CBlockIndex* pIndexPrev) override;
-    virtual Errno VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev, int nForkHeight, const uint256& fork, int nForkType) override;
+    virtual Errno VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev, int nBlockHeight, const uint256& fork, int nForkType) override;
     virtual Errno VerifyTransaction(const CTransaction& tx, const std::vector<CTxOut>& vPrevOutput, int nForkHeight, const uint256& fork, int nForkType) override;
 
     virtual Errno VerifyProofOfWork(const CBlock& block, const CBlockIndex* pIndexPrev) override;
@@ -64,6 +67,7 @@ protected:
     int64 nProofOfWorkUpperTargetOfDpos;
     int64 nProofOfWorkLowerTargetOfDpos;
     IBlockChain* pBlockChain;
+    IForkManager* pForkManager;
 };
 
 class CTestNetCoreProtocol : public CCoreProtocol
@@ -90,6 +94,7 @@ public:
     int64 nDelegateProofOfStakeEnrollMinimumAmount;
     int64 nDelegateProofOfStakeEnrollMaximumAmount;
     uint32 nDelegateProofOfStakeHeight;
+    uint256 hashGenesisBlock;
 
 public:
     bool IsDposHeight(int height);
