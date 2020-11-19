@@ -1282,6 +1282,12 @@ CRPCResultPtr CRPCMod::RPCUnlockKey(CRPCParamPtr param)
     return MakeCUnlockKeyResultPtr(string("Unlock key successfully: ") + spParam->strPubkey);
 }
 
+CRPCResultPtr CRPCMod::RPCRemoveKey(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CRemoveKeyParam>(param);
+    return MakeCRemoveKeyResultPtr(string("Remove key successfully: ") + spParam->strPubkey);
+}
+
 CRPCResultPtr CRPCMod::RPCImportPrivKey(CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CImportPrivKeyParam>(param);
