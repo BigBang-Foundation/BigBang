@@ -46,6 +46,7 @@ public:
     bool Initialize(const boost::filesystem::path& pathWallet);
     void Deinitialize();
     bool UpdateKey(const crypto::CPubKey& pubkey, int version, const crypto::CCryptoCipher& cipher);
+    bool RemoveKey(const crypto::CPubKey& pubkey);
     bool UpdateTemplate(const CTemplateId& tid, const std::vector<unsigned char>& vchData);
     bool EraseAddress(const CDestination& dest);
     bool WalkThroughAddress(CWalletDBAddrWalker& walker);
@@ -202,6 +203,7 @@ public:
     bool Initialize(const boost::filesystem::path& pathWallet);
     void Deinitialize();
     bool UpdateKey(const crypto::CPubKey& pubkey, int version, const crypto::CCryptoCipher& cipher);
+    bool RemoveKey(const crypto::CPubKey& pubkey);
     bool UpdateTemplate(const CTemplateId& tid, const std::vector<unsigned char>& vchData);
     bool WalkThroughAddress(CWalletDBAddrWalker& walker);
 

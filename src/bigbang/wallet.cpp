@@ -263,6 +263,23 @@ boost::optional<std::string> CWallet::AddKey(const crypto::CKey& key)
 
 boost::optional<std::string> CWallet::RemoveKey(const crypto::CPubKey& pubkey)
 {
+    boost::unique_lock<boost::shared_mutex> wlock(rwKeyStore);
+    map<crypto::CPubKey, CWalletKeyStore>::const_iterator it = mapKeyStore.find(pubkey);
+    if (it == mapKeyStore.end())
+    {
+        Warn("RemoveKey: failed to find key");
+        return std::string("RemoveKey: failed to find key");
+    }
+
+    const crypto::CKey& key = it->second.key;
+    if (!dbWallet.RemoveKey(key.GetPubKey()))
+    {
+        Warn("RemoveKey: failed to remove key from dbWallet");
+        return std::string("RemoveKey: failed to remove key from dbWallet");
+    }
+
+    mapKeyStore.erase(key.GetPubKey());
+
     return boost::optional<std::string>{};
 }
 

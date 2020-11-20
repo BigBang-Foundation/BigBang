@@ -55,6 +55,11 @@ bool CWalletAddrDB::UpdateKey(const crypto::CPubKey& pubkey, int version, const 
     return Write(CDestination(pubkey), vch);
 }
 
+bool CWalletAddrDB::RemoveKey(const crypto::CPubKey& pubkey)
+{
+    return false;
+}
+
 bool CWalletAddrDB::UpdateTemplate(const CTemplateId& tid, const vector<unsigned char>& vchData)
 {
     return Write(CDestination(tid), vchData);
@@ -478,6 +483,11 @@ void CWalletDB::Deinitialize()
 bool CWalletDB::UpdateKey(const crypto::CPubKey& pubkey, int version, const crypto::CCryptoCipher& cipher)
 {
     return dbAddr.UpdateKey(pubkey, version, cipher);
+}
+
+bool CWalletDB::RemoveKey(const crypto::CPubKey& pubkey)
+{
+    return dbAddr.RemoveKey(pubkey);
 }
 
 bool CWalletDB::UpdateTemplate(const CTemplateId& tid, const vector<unsigned char>& vchData)
