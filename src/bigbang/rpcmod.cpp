@@ -1301,6 +1301,30 @@ CRPCResultPtr CRPCMod::RPCRemoveKey(rpc::CRPCParamPtr param)
         pubkey.SetHex(spParam->strPubkey);
     }
 
+    int nVersion;
+    bool fLocked, fPublic;
+    int64 nAutoLockTime;
+    if (!pService->GetKeyStatus(pubkey, nVersion, fLocked, nAutoLockTime, fPublic))
+    {
+        throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Unknown key");
+    }
+    if (fPublic && !spParam->strPassphrase.empty())
+    {
+        throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Can't remove public key with non-empty passphrase");
+    }
+
+    crypto::CCryptoString strPassphrase = spParam->strPassphrase.c_str();
+    if (!pService->Unlock(pubkey, strPassphrase, UNLOCKKEY_RELEASE_DEFAULT_TIME))
+    {
+        throw CRPCException(RPC_WALLET_PASSPHRASE_INCORRECT, "Can't remove key with incorrect passphrase");
+    }
+
+    auto strErr = pService->RemoveKey(pubkey);
+    if (strErr)
+    {
+        throw CRPCException(RPC_WALLET_REMOVE_KEY_ERROR, *strErr);
+    }
+
     return MakeCRemoveKeyResultPtr(string("Remove key successfully: ") + spParam->strPubkey);
 }
 
