@@ -1285,6 +1285,22 @@ CRPCResultPtr CRPCMod::RPCUnlockKey(CRPCParamPtr param)
 CRPCResultPtr CRPCMod::RPCRemoveKey(rpc::CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CRemoveKeyParam>(param);
+    CAddress address(spParam->strPubkey);
+    if (address.IsTemplate())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "This method only accepts pubkey or pubkey address as parameter rather than template address you supplied.");
+    }
+
+    crypto::CPubKey pubkey;
+    if (address.IsPubKey())
+    {
+        address.GetPubKey(pubkey);
+    }
+    else
+    {
+        pubkey.SetHex(spParam->strPubkey);
+    }
+
     return MakeCRemoveKeyResultPtr(string("Remove key successfully: ") + spParam->strPubkey);
 }
 
