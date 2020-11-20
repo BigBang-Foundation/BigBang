@@ -57,7 +57,7 @@ bool CWalletAddrDB::UpdateKey(const crypto::CPubKey& pubkey, int version, const 
 
 bool CWalletAddrDB::RemoveKey(const crypto::CPubKey& pubkey)
 {
-    return false;
+    return Erase(CDestination(pubkey));
 }
 
 bool CWalletAddrDB::UpdateTemplate(const CTemplateId& tid, const vector<unsigned char>& vchData)
