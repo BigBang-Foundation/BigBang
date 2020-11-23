@@ -126,8 +126,26 @@ void CDispatcher::HandleDeinitialize()
 
 bool CDispatcher::HandleInvoke()
 {
+    uint256 hashPrimaryLastBlock;
+    int nTempHeight;
+    int64 nTempTime;
+    uint16 nTempMintType;
+    if (!pBlockChain->GetLastBlock(pCoreProtocol->GetGenesisBlockHash(), hashPrimaryLastBlock, nTempHeight, nTempTime, nTempMintType))
+    {
+        Error("Failed to get last block");
+        return false;
+    }
+
+    vector<CForkContext> vForkCtxt;
+    map<uint256, CValidForkId> mapValidForkId;
+    if (!pBlockChain->ListForkContext(vForkCtxt, mapValidForkId))
+    {
+        Error("Failed to list fork context");
+        return false;
+    }
+
     vector<uint256> vActive;
-    if (!pForkManager->LoadForkContext(vActive))
+    if (!pForkManager->LoadForkContext(hashPrimaryLastBlock, vForkCtxt, mapValidForkId, vActive))
     {
         Error("Failed to load for context");
         return false;
@@ -217,7 +235,10 @@ Errno CDispatcher::AddNewBlock(const CBlock& block, uint64 nNonce)
         pDataStat->AddP2pSynSendStatData(updateBlockChain.hashFork, 1, block.vtx.size());
     }
 
-    pService->NotifyBlockChainUpdate(updateBlockChain);
+    if (block.IsPrimary() && updateBlockChain.hashLastBlock != 0)
+    {
+        pForkManager->SetPrimaryLastBlock(updateBlockChain.hashLastBlock);
+    }
 
     if (!block.IsVacant())
     {
@@ -234,6 +255,8 @@ Errno CDispatcher::AddNewBlock(const CBlock& block, uint64 nNonce)
             pNetChannel->UnsubscribeFork(hashFork);
         }
     }
+
+    pService->NotifyBlockChainUpdate(updateBlockChain);
 
     if (block.IsPrimary())
     {
@@ -416,6 +439,19 @@ void CDispatcher::ActivateFork(const uint256& hashFork, const uint64& nNonce)
             return;
         }
 
+        if (ctxt.hashParent != 0)
+        {
+            uint256 hashJointBlock;
+            int64 nJointTime;
+            if (!pBlockChain->GetLastBlockOfHeight(ctxt.hashParent,
+                                                   CBlock::GetBlockHeightByHash(ctxt.hashJoint),
+                                                   hashJointBlock, nJointTime)
+                || hashJointBlock != ctxt.hashJoint)
+            {
+                return;
+            }
+        }
+
         CTransaction txFork;
         if (!pBlockChain->GetTransaction(ctxt.txidEmbedded, txFork))
         {
@@ -506,12 +542,12 @@ void CDispatcher::CheckSubForkLastBlock(const uint256& hashFork)
 void CDispatcher::SyncForkHeight(int nPrimaryHeight)
 {
     map<uint256, CForkStatus> mapForkStatus;
-    pBlockChain->GetForkStatus(mapForkStatus);
+    pBlockChain->GetValidForkStatus(mapForkStatus);
     for (map<uint256, CForkStatus>::iterator it = mapForkStatus.begin(); it != mapForkStatus.end(); ++it)
     {
         const uint256& hashFork = (*it).first;
         CForkStatus& status = (*it).second;
-        if (!pForkManager->IsAllowed(hashFork) || !pNetChannel->IsForkSynchronized(hashFork))
+        if (!pNetChannel->IsForkSynchronized(hashFork))
         {
             continue;
         }

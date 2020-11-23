@@ -36,7 +36,7 @@ bool CPubKey::Verify(const uint256& hash, const std::vector<uint8>& vchSig) cons
 CKey::CKey()
 {
     nVersion = INIT;
-    pCryptoKey = CryptoAlloc<CCryptoKey>();
+    pCryptoKey = NormalAlloc<CCryptoKey>();
     if (!pCryptoKey)
     {
         throw CCryptoError("CKey : Failed to alloc memory");
@@ -47,11 +47,12 @@ CKey::CKey()
 
 CKey::CKey(const CKey& key)
 {
-    pCryptoKey = CryptoAlloc<CCryptoKey>();
+    pCryptoKey = key.IsLocked() ? NormalAlloc<CCryptoKey>() : CryptoAlloc<CCryptoKey>();
     if (!pCryptoKey)
     {
         throw CCryptoError("CKey : Failed to alloc memory");
     }
+
     nVersion = key.nVersion;
     *pCryptoKey = *key.pCryptoKey;
     cipher = key.cipher;
@@ -60,14 +61,40 @@ CKey::CKey(const CKey& key)
 CKey& CKey::operator=(const CKey& key)
 {
     nVersion = key.nVersion;
-    *pCryptoKey = *key.pCryptoKey;
     cipher = key.cipher;
+    
+    if(IsLocked())
+    {
+        if(!key.IsLocked())
+        {
+            NormalFree(pCryptoKey);
+            pCryptoKey =  CryptoAlloc<CCryptoKey>();
+        } 
+    }
+    else
+    {
+        if(key.IsLocked())
+        {
+            CryptoFree(pCryptoKey);
+            pCryptoKey = NormalAlloc<CCryptoKey>();
+        }
+    }
+
+    *pCryptoKey = *key.pCryptoKey;
+    
     return *this;
 }
 
 CKey::~CKey()
 {
-    CryptoFree(pCryptoKey);
+    if (IsLocked())
+    {
+        NormalFree(pCryptoKey);
+    }
+    else
+    {
+        CryptoFree(pCryptoKey);
+    }
 }
 
 uint32 CKey::GetVersion() const
@@ -97,6 +124,12 @@ bool CKey::IsPubKey() const
 
 bool CKey::Renew()
 {
+    if (IsLocked())
+    {
+        NormalFree(pCryptoKey);
+        pCryptoKey = CryptoAlloc<CCryptoKey>();
+    }
+
     return (CryptoMakeNewKey(*pCryptoKey) != 0 && UpdateCipher());
 }
 
@@ -168,6 +201,13 @@ bool CKey::SetSecret(const CCryptoKeyData& vchSecret)
     {
         return false;
     }
+
+    if (IsLocked())
+    {
+        NormalFree(pCryptoKey);
+        pCryptoKey = CryptoAlloc<CCryptoKey>();
+    }
+
     return (CryptoImportKey(*pCryptoKey, *((uint256*)&vchSecret[0])) != 0
             && UpdateCipher());
 }
@@ -264,17 +304,39 @@ bool CKey::Encrypt(const CCryptoString& strPassphrase,
 
 void CKey::Lock()
 {
+    if (!IsLocked())
+    {
+        CryptoToNormalAlloc();
+    }
     pCryptoKey->secret = 0;
 }
 
 bool CKey::Unlock(const CCryptoString& strPassphrase)
 {
+    if (IsLocked())
+    {
+        NormalToCryptoAlloc();
+    }
+
     try
     {
-        return CryptoDecryptSecret(nVersion, strPassphrase, cipher, *pCryptoKey);
+        bool isSuccess = CryptoDecryptSecret(nVersion, strPassphrase, cipher, *pCryptoKey); 
+        if(!isSuccess)
+        {
+            // Restore origin state
+            if(IsLocked())
+            {
+               CryptoToNormalAlloc();
+            }
+        }
+        return isSuccess;
     }
     catch (std::exception& e)
     {
+        if(IsLocked())
+        {
+            CryptoToNormalAlloc();
+        }
         StdError(__PRETTY_FUNCTION__, e.what());
     }
     return false;
@@ -297,6 +359,22 @@ bool CKey::UpdateCipher(uint32 nVersionIn, const CCryptoString& strPassphrase)
         StdError(__PRETTY_FUNCTION__, e.what());
     }
     return false;
+}
+
+void CKey::NormalToCryptoAlloc()
+{
+    auto pTempCryptoKey = CryptoAlloc<CCryptoKey>();
+    *pTempCryptoKey = *pCryptoKey;
+    NormalFree(pCryptoKey);
+    pCryptoKey = pTempCryptoKey;
+}
+
+void CKey::CryptoToNormalAlloc()
+{
+    auto pTempCryptoKey = NormalAlloc<CCryptoKey>();
+    *pTempCryptoKey = *pCryptoKey;
+    CryptoFree(pCryptoKey);
+    pCryptoKey = pTempCryptoKey;
 }
 
 } // namespace crypto

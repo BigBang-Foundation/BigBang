@@ -287,7 +287,7 @@ protected:
     }
 
     template <typename K>
-    bool WalkThrough(WalkerFunc fnWalker, const K& keyBegin)
+    bool WalkThrough(WalkerFunc fnWalker, const K& keyBegin, bool fPrefix = false)
     {
         try
         {
@@ -307,6 +307,15 @@ protected:
                 CBufStream ssKey, ssValue;
                 if (!dbEngine->MoveNext(ssKey, ssValue))
                     break;
+
+                if (fPrefix)
+                {
+                    if (ssKey.GetSize() < ssKeyBegin.GetSize())
+                        break;
+
+                    if (memcmp(ssKey.GetData(), ssKeyBegin.GetData(), ssKeyBegin.GetSize()) > 0)
+                        break;
+                }
 
                 if (!fnWalker(ssKey, ssValue))
                     break;

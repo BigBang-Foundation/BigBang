@@ -376,7 +376,7 @@ void CBlockMaker::ArrangeBlockTx(CBlock& block, const uint256& hashFork, const C
 
     size_t nMaxTxSize = nRestOfSize - rewardTxSize;
     int64 nTotalTxFee = nRewardTxTotalFee;
-    if (!pTxPool->FetchArrangeBlockTx(hashFork, block.hashPrev, block.GetBlockTime(), nMaxTxSize, block.vtx, nTotalTxFee))
+    if (!pTxPool->FetchArrangeBlockTx(hashFork, block.hashPrev, block.GetBlockHeight(), block.GetBlockTime(), nMaxTxSize, block.vtx, nTotalTxFee))
     {
         Error("Fetch arrange block tx error, block: %s", block.GetHash().ToString().c_str());
     }
@@ -459,7 +459,7 @@ void CBlockMaker::ProcessSubFork(const CBlockMakerProfile& profile, const CDeleg
                                  const uint256& hashRefBlock, int64 nRefBlockTime, const int32 nPrevHeight, const uint16 nPrevMintType)
 {
     map<uint256, CForkStatus> mapForkStatus;
-    pBlockChain->GetForkStatus(mapForkStatus);
+    pBlockChain->GetValidForkStatus(mapForkStatus);
 
     // create subsidiary task
     multimap<int64, pair<uint256, CBlock>> mapBlocks;
