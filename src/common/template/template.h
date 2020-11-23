@@ -62,7 +62,7 @@ enum TemplateType
 #define FEE_PRECISION 10000
 
 #ifdef BIGBANG_TESTNET
-static const int FORK_TEMPLATE_SIGDATA_HEIGHT = 0;
+static const int FORK_TEMPLATE_SIGDATA_HEIGHT = 242240;
 #else
 static const int FORK_TEMPLATE_SIGDATA_HEIGHT = 525230;
 #endif
