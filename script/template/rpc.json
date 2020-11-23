@@ -1943,6 +1943,13 @@
                 "passphrase": {
                     "type": "string",
                     "desc": "passphrase"
+                },
+                "synctx": {
+                    "type": "bool",
+                    "desc": "sync tx or not",
+                    "default": true,
+                    "required": false,
+                    "opt": "s"
                 }
             }
         },

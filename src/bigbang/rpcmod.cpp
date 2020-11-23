@@ -1325,6 +1325,11 @@ CRPCResultPtr CRPCMod::RPCRemoveKey(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_WALLET_REMOVE_KEY_ERROR, *strErr);
     }
 
+    if (spParam->fSynctx && !pService->ResynchronizeWalletTx())
+    {
+        throw CRPCException(RPC_WALLET_ERROR, "Failed to resync wallet tx");
+    }
+
     return MakeCRemoveKeyResultPtr(string("Remove key successfully: ") + spParam->strPubkey);
 }
 
