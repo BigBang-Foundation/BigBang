@@ -1942,7 +1942,8 @@
                 },
                 "passphrase": {
                     "type": "string",
-                    "desc": "passphrase"
+                    "desc": "passphrase",
+                    "required": false
                 },
                 "synctx": {
                     "type": "bool",
