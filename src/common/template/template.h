@@ -32,7 +32,8 @@ class CSendToRecordedTemplate
 class CLockedCoinTemplate
 {
 public:
-    virtual int64 LockedCoin(const CDestination& destTo, const int32 nForkHeight) const = 0;
+    //virtual int64 LockedCoin(const CDestination& destTo, const int32 nForkHeight) const = 0;
+    virtual void GetForkParam(CDestination& destRedeemOut, uint256& hashForkOut) = 0;
 };
 
 enum TNS_PARAM
@@ -59,6 +60,12 @@ enum TemplateType
 };
 
 #define FEE_PRECISION 10000
+
+#ifdef BIGBANG_TESTNET
+static const int FORK_TEMPLATE_SIGDATA_HEIGHT = 0;
+#else
+static const int FORK_TEMPLATE_SIGDATA_HEIGHT = 525230;
+#endif
 
 inline int64 FeeInt64FromDouble(const double dAmount)
 {
@@ -131,7 +138,7 @@ public:
     // Return dest limits coin on transaction or not.
     static bool IsLockedCoin(const CDestination& dest);
 
-    static bool VerifyDestRecorded(const CTransaction& tx, std::vector<uint8>& vchSigOut);
+    static bool VerifyDestRecorded(const CTransaction& tx, const int nHeight, std::vector<uint8>& vchSigOut);
 
 public:
     // Deconstructor
