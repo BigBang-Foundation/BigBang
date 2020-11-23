@@ -141,6 +141,7 @@ void CService::NotifyBlockChainUpdate(const CBlockChainUpdate& update)
         }
 
         CForkStatus& status = (*it).second;
+        status.hashPrevBlock = update.hashPrevBlock;
         status.hashLastBlock = update.hashLastBlock;
         status.nLastBlockTime = update.nLastBlockTime;
         status.nLastBlockHeight = update.nLastBlockHeight;

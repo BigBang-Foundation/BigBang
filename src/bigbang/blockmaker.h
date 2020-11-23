@@ -106,7 +106,7 @@ protected:
     boost::condition_variable condExit;
     boost::condition_variable condBlock;
     std::atomic<bool> fExit;
-    CForkStatus lastStatus;
+    CBlockStatus lastStatus;
     std::map<int, CBlockMakerHashAlgo*> mapHashAlgo;
     std::map<int, CBlockMakerProfile> mapWorkProfile;
     std::map<CDestination, CBlockMakerProfile> mapDelegatedProfile;

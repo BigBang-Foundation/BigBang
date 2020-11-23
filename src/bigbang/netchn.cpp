@@ -262,13 +262,10 @@ void CNetChannel::HandleHalt()
 
 int CNetChannel::GetPrimaryChainHeight()
 {
-    uint256 hashBlock = uint64(0);
-    int nHeight = 0;
-    int64 nTime = 0;
-    uint16 nMintType = 0;
-    if (pBlockChain->GetLastBlock(pCoreProtocol->GetGenesisBlockHash(), hashBlock, nHeight, nTime, nMintType))
+    CBlockStatus status;
+    if (pBlockChain->GetLastBlockStatus(pCoreProtocol->GetGenesisBlockHash(), status))
     {
-        return nHeight;
+        return status.nBlockHeight;
     }
     return 0;
 }
@@ -735,12 +732,9 @@ bool CNetChannel::HandleEvent(network::CEventPeerInv& eventInv)
             vector<uint256> vTxHash;
             int64 nBlockInvAddCount = 0;
             int64 nBlockInvExistCount = 0;
-            uint256 hashLastBlock;
-            int nLastBlockHeight = -1;
-            int64 nLastTime = 0;
-            uint16 nLastMintType = 0;
+            CBlockStatus status;
 
-            if (!pBlockChain->GetLastBlock(hashFork, hashLastBlock, nLastBlockHeight, nLastTime, nLastMintType))
+            if (!pBlockChain->GetLastBlockStatus(hashFork, status))
             {
                 StdError("NetChannel", "CEventPeerInv: peer: %s, GetLastBlock fail, fork: %s",
                          GetPeerAddressInfo(nNonce).c_str(), hashFork.GetHex().c_str());
@@ -754,11 +748,11 @@ bool CNetChannel::HandleEvent(network::CEventPeerInv& eventInv)
                     vTxHash.push_back(inv.nHash);
                     do
                     {
-                        if (nLastBlockHeight != 0 && CTxId(inv.nHash).GetTxTime() >= nLastTime + MAX_TXINV_INTERVAL_TIME)
+                        if (status.nBlockHeight != 0 && CTxId(inv.nHash).GetTxTime() >= status.nBlockTime + MAX_TXINV_INTERVAL_TIME)
                         {
                             StdTrace("NetChannel", "CEventPeerInv: peer: %s, received txinv: tx time error, tx time: %d, last time: %d, last height: %d, txid: %s",
                                      GetPeerAddressInfo(nNonce).c_str(), CTxId(inv.nHash).GetTxTime(),
-                                     nLastTime + MAX_TXINV_INTERVAL_TIME, nLastBlockHeight, inv.nHash.GetHex().c_str());
+                                     status.nBlockTime + MAX_TXINV_INTERVAL_TIME, status.nBlockHeight, inv.nHash.GetHex().c_str());
                             break;
                         }
                         if (pTxPool->Exists(inv.nHash))
@@ -810,10 +804,10 @@ bool CNetChannel::HandleEvent(network::CEventPeerInv& eventInv)
                             break;
                         }
 
-                        if (nBlockHeight > (nLastBlockHeight + CSchedule::MAX_PEER_BLOCK_INV_COUNT / 2))
+                        if (nBlockHeight > (status.nBlockHeight + CSchedule::MAX_PEER_BLOCK_INV_COUNT / 2))
                         {
                             StdTrace("NetChannel", "CEventPeerInv: peer: %s, block height too high, last height: %d, block height: %d, block hash: %s ",
-                                     GetPeerAddressInfo(nNonce).c_str(), nLastBlockHeight, nBlockHeight, inv.nHash.GetHex().c_str());
+                                     GetPeerAddressInfo(nNonce).c_str(), status.nBlockHeight, nBlockHeight, inv.nHash.GetHex().c_str());
                             break;
                         }
 
@@ -982,15 +976,12 @@ bool CNetChannel::HandleEvent(network::CEventPeerGetBlocks& eventGetBlocks)
         eventMsgRsp.data.nReqMsgSubType = MSGRSP_SUBTYPE_NON;
         eventMsgRsp.data.nRspResult = MSGRSP_RESULT_GETBLOCKS_EMPTY;
 
-        uint256 hashLastBlock;
-        int nLastHeight = 0;
-        int64 nLastTime = 0;
-        uint16 nMintType = 0;
-        if (pBlockChain->GetLastBlock(hashFork, hashLastBlock, nLastHeight, nLastTime, nMintType))
+        CBlockStatus status;
+        if (pBlockChain->GetLastBlockStatus(hashFork, status))
         {
             for (const uint256& hash : eventGetBlocks.data.vBlockHash)
             {
-                if (hash == hashLastBlock)
+                if (hash == status.hashBlock)
                 {
                     eventMsgRsp.data.nRspResult = MSGRSP_RESULT_GETBLOCKS_EQUAL;
                     break;
@@ -1487,11 +1478,8 @@ bool CNetChannel::CheckPrevTx(const CTransaction& tx, uint64 nNonce, const uint2
         StdTrace("NetChannel", "CheckPrevTx: missing prev tx, peer: %s, txid: %s",
                  GetPeerAddressInfo(nNonce).c_str(), txid.GetHex().c_str());
 
-        uint256 hashLastBlock;
-        int nLastBlockHeight = -1;
-        int64 nLastTime = 0;
-        uint16 nLastMintType = 0;
-        if (!pBlockChain->GetLastBlock(hashFork, hashLastBlock, nLastBlockHeight, nLastTime, nLastMintType))
+        CBlockStatus status;
+        if (!pBlockChain->GetLastBlockStatus(hashFork, status))
         {
             StdError("NetChannel", "CheckPrevTx: peer: %s, GetLastBlock fail, fork: %s",
                      GetPeerAddressInfo(nNonce).c_str(), hashFork.GetHex().c_str());
@@ -1501,7 +1489,7 @@ bool CNetChannel::CheckPrevTx(const CTransaction& tx, uint64 nNonce, const uint2
         for (const uint256& prev : setMissingPrevTx)
         {
             sched.AddOrphanTxPrev(txid, prev);
-            if (CTxId(prev).GetTxTime() >= nLastTime + MAX_TXINV_INTERVAL_TIME)
+            if (CTxId(prev).GetTxTime() >= status.nBlockTime + MAX_TXINV_INTERVAL_TIME)
             {
                 continue;
             }
@@ -1603,11 +1591,8 @@ void CNetChannel::AddNewBlock(const uint256& hashFork, const uint256& hash, CSch
 
                     if (fLongChain)
                     {
-                        uint256 hashLastBlock;
-                        int nLastHeight;
-                        int64 nLastTime;
-                        uint16 nLastMintType;
-                        if (!pBlockChain->GetLastBlock(pCoreProtocol->GetGenesisBlockHash(), hashLastBlock, nLastHeight, nLastTime, nLastMintType))
+                        CBlockStatus status;
+                        if (!pBlockChain->GetLastBlockStatus(pCoreProtocol->GetGenesisBlockHash(), status))
                         {
                             StdLog("NetChannel", "AddNewBlock GetLastBlock fail, peer: %s, height: %d, block: %s",
                                    GetPeerAddressInfo(nNonceSender).c_str(), CBlock::GetBlockHeightByHash(hashBlock), hashBlock.GetHex().c_str());

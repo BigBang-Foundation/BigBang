@@ -1186,11 +1186,8 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "It is not allowed to change from self to self");
         }
-        uint256 hashPrimaryLastBlock;
-        int nTempHeight;
-        int64 nTempTime;
-        uint16 nTempMintType;
-        if (!pBlockChain->GetLastBlock(GetGenesisBlockHash(), hashPrimaryLastBlock, nTempHeight, nTempTime, nTempMintType))
+        CBlockStatus status;
+        if (!pBlockChain->GetLastBlockStatus(GetGenesisBlockHash(), status))
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "Failed to get last block");
         }
@@ -1202,7 +1199,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         CDestination destRedeemLocked;
         uint256 hashForkLocked;
         boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
-        int64 nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashPrimaryLastBlock);
+        int64 nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, status.hashBlock);
         if (nLockedCoin < 0)
         {
             bool fTxAtTxPool = false;
