@@ -68,7 +68,7 @@ static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 525230;
 #endif
 
 #ifdef BIGBANG_TESTNET
-static const uint32 VALID_FORK_VERIFY_HEIGHT = 0;
+static const uint32 VALID_FORK_VERIFY_HEIGHT = 242240;
 #else
 static const uint32 VALID_FORK_VERIFY_HEIGHT = 525230;
 #endif
