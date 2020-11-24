@@ -8,6 +8,7 @@
 #include "event.h"
 #include "template/delegate.h"
 #include "template/exchange.h"
+#include "template/fork.h"
 #include "template/payment.h"
 #include "template/vote.h"
 
@@ -732,16 +733,12 @@ bool CService::GetBalanceByWallet(const CDestination& dest, const uint256& hashF
 
 bool CService::GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
 {
-    int nForkHeight = 0;
+    int32 nForkHeight;
+    uint256 hashLastBlock;
+    if (!GetForkLastBlock(hashFork, nForkHeight, hashLastBlock))
     {
-        boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
-        map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
-        if (it == mapForkStatus.end())
-        {
-            StdError("CService", "GetBalanceByUnspent: Find fork fail, fork: %s", hashFork.GetHex().c_str());
-            return false;
-        }
-        nForkHeight = it->second.nLastBlockHeight;
+        StdError("CService", "GetBalanceByUnspent: GetForkLastBlock fail, fork: %s", hashFork.GetHex().c_str());
+        return false;
     }
 
     map<CTxOutPoint, CUnspentOut> mapUnspent;
@@ -765,6 +762,48 @@ bool CService::GetBalanceByUnspent(const CDestination& dest, const uint256& hash
             balance.nUnconfirmed += vd.second.nAmount;
         }
     }
+
+    // locked coin template
+    if (dest.IsTemplate() && dest.GetTemplateId().GetType() == TEMPLATE_FORK && hashFork == pCoreProtocol->GetGenesisBlockHash())
+    {
+        int64 nLockedCoin = 0;
+        CTemplatePtr ptr = GetTemplate(dest.GetTemplateId());
+        if (!ptr)
+        {
+            StdLog("CService", "GetBalanceByUnspent: GetTemplate fail, destIn: %s", dest.ToString().c_str());
+            nLockedCoin = CTemplateFork::CreatedCoin();
+        }
+        else
+        {
+            CDestination destRedeemLocked;
+            uint256 hashForkLocked;
+            boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
+            nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashLastBlock);
+            if (nLockedCoin < 0)
+            {
+                bool fAtTxPool = false;
+                for (const auto& vd : mapUnspent)
+                {
+                    if (vd.second.nHeight < 0)
+                    {
+                        fAtTxPool = true;
+                        break;
+                    }
+                }
+                nLockedCoin = CTemplateFork::CreatedCoin();
+                if (!fAtTxPool)
+                {
+                    nLockedCoin = 0;
+                }
+            }
+        }
+        balance.nLocked += nLockedCoin;
+        if (balance.nLocked > nTotalValue)
+        {
+            balance.nLocked = nTotalValue;
+        }
+    }
+
     balance.nAvailable = nTotalValue - balance.nLocked;
     return true;
 }
