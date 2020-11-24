@@ -182,12 +182,22 @@ bool CForkDB::RetrieveValidForkHash(const uint256& hashBlock, uint256& hashRefFd
     CValidForkId validForkId;
     if (!Read(make_pair(string("valid"), hashBlock), validForkId))
     {
-        StdError("CForkDB", "RetrieveValidForkHash: Read fail");
+        //StdError("CForkDB", "RetrieveValidForkHash: Read fail");
         return false;
     }
     hashRefFdBlock = validForkId.hashRefFdBlock;
     mapValidFork.clear();
     mapValidFork.insert(validForkId.mapForkId.begin(), validForkId.mapForkId.end());
+    return true;
+}
+
+bool CForkDB::ListActiveFork(map<uint256, uint256>& mapActiveFork)
+{
+    if (!WalkThrough(boost::bind(&CForkDB::LoadActiveForkWalker, this, _1, _2, boost::ref(mapActiveFork)), string("active"), true))
+    {
+        StdError("CForkDB", "ListActiveFork: Walk through active fail");
+        return false;
+    }
     return true;
 }
 
