@@ -103,7 +103,7 @@ protected:
     bool HandleInvoke() override;
     void HandleHalt() override;
 
-    Errno SelectCoinsByUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight,
+    Errno SelectCoinsByUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight, const uint256& hashLastBlock,
                                int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxUnspent>& vCoins, std::string& strErr);
 
 protected:

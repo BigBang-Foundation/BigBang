@@ -502,6 +502,7 @@ Errno CService::ListForkAddressUnspent(const uint256& hashFork, const CDestinati
     }
 
     int nForkHeight = 0;
+    uint256 hashLastBlock;
     {
         boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
         map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
@@ -510,6 +511,7 @@ Errno CService::ListForkAddressUnspent(const uint256& hashFork, const CDestinati
             return ERR_BLOCK_INVALID_FORK;
         }
         nForkHeight = it->second.nLastBlockHeight;
+        hashLastBlock = it->second.hashLastBlock;
     }
 
     int64 nTxTime = GetNetTime();
@@ -524,7 +526,7 @@ Errno CService::ListForkAddressUnspent(const uint256& hashFork, const CDestinati
         nMaxTxCount = nMax;
     }
 
-    return SelectCoinsByUnspent(dest, hashFork, nForkHeight, nTxTime, nTargetValue, nMaxTxCount, vUnspent, strErr);
+    return SelectCoinsByUnspent(dest, hashFork, nForkHeight, hashLastBlock, nTxTime, nTargetValue, nMaxTxCount, vUnspent, strErr);
 }
 
 bool CService::GetVotes(const CDestination& destDelegate, int64& nVotes, string& strFailCause)
@@ -763,8 +765,9 @@ bool CService::GetBalanceByUnspent(const CDestination& dest, const uint256& hash
         }
     }
 
-    // locked coin template
-    if (dest.IsTemplate() && dest.GetTemplateId().GetType() == TEMPLATE_FORK && hashFork == pCoreProtocol->GetGenesisBlockHash())
+    // locked fork template
+    if (dest.IsTemplate() && dest.GetTemplateId().GetType() == TEMPLATE_FORK
+        && hashFork == pCoreProtocol->GetGenesisBlockHash())
     {
         int64 nLockedCoin = 0;
         CTemplatePtr ptr = GetTemplate(dest.GetTemplateId());
@@ -781,19 +784,14 @@ bool CService::GetBalanceByUnspent(const CDestination& dest, const uint256& hash
             nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashLastBlock);
             if (nLockedCoin < 0)
             {
-                bool fAtTxPool = false;
+                nLockedCoin = 0;
                 for (const auto& vd : mapUnspent)
                 {
                     if (vd.second.nHeight < 0)
                     {
-                        fAtTxPool = true;
+                        nLockedCoin = CTemplateFork::CreatedCoin();
                         break;
                     }
-                }
-                nLockedCoin = CTemplateFork::CreatedCoin();
-                if (!fAtTxPool)
-                {
-                    nLockedCoin = 0;
                 }
             }
         }
@@ -856,6 +854,7 @@ boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256&
                                                                   const vector<unsigned char>& vchData, CTransaction& txNew)
 {
     int nForkHeight = 0;
+    uint256 hashLastBlock;
     txNew.SetNull();
     {
         boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
@@ -866,6 +865,7 @@ boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256&
             return std::string("find fork fail, fork: ") + hashFork.GetHex();
         }
         nForkHeight = it->second.nLastBlockHeight;
+        hashLastBlock = it->second.hashLastBlock;
         txNew.hashAnchor = hashFork;
     }
     txNew.nType = nType;
@@ -878,7 +878,7 @@ boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256&
 
     string strErr;
     vector<CTxUnspent> vCoins;
-    Errno err = SelectCoinsByUnspent(destFrom, hashFork, nForkHeight, txNew.GetTxTime(), txNew.nAmount + txNew.nTxFee, MAX_TX_INPUT_COUNT, vCoins, strErr);
+    Errno err = SelectCoinsByUnspent(destFrom, hashFork, nForkHeight, hashLastBlock, txNew.GetTxTime(), txNew.nAmount + txNew.nTxFee, MAX_TX_INPUT_COUNT, vCoins, strErr);
     if (err != OK)
     {
         StdError("CService", "CreateTransactionByUnspent: Select coin not enough, destIn: %s", CAddress(destFrom).ToString().c_str());
@@ -895,7 +895,7 @@ boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256&
     return boost::optional<std::string>{};
 }
 
-Errno CService::SelectCoinsByUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight,
+Errno CService::SelectCoinsByUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight, const uint256& hashLastBlock,
                                      int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxUnspent>& vCoins, string& strErr)
 {
     map<CTxOutPoint, CUnspentOut> mapUnspent;
@@ -904,6 +904,40 @@ Errno CService::SelectCoinsByUnspent(const CDestination& dest, const uint256& ha
         StdError("CService", "SelectCoinsByUnspent: Fetch address unspent fail, dest: %s", CAddress(dest).ToString().c_str());
         strErr = "Fetch address unspent fail";
         return ERR_WALLET_NOT_FOUND;
+    }
+
+    // locked fork template
+    CTemplateId tid;
+    if (dest.GetTemplateId(tid) && tid.GetType() == TEMPLATE_FORK
+        && hashFork == pCoreProtocol->GetGenesisBlockHash())
+    {
+        int64 nLockedCoin = 0;
+        CTemplatePtr ptr = GetTemplate(tid);
+        if (!ptr)
+        {
+            StdLog("CService", "SelectCoinsByUnspent: GetTemplate fail, dest: %s", CAddress(dest).ToString().c_str());
+            nLockedCoin = CTemplateFork::CreatedCoin();
+        }
+        else
+        {
+            CDestination destRedeemLocked;
+            uint256 hashForkLocked;
+            boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
+            nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashLastBlock);
+            if (nLockedCoin < 0)
+            {
+                nLockedCoin = 0;
+                for (const auto& vd : mapUnspent)
+                {
+                    if (vd.second.nHeight < 0)
+                    {
+                        nLockedCoin = CTemplateFork::CreatedCoin();
+                        break;
+                    }
+                }
+            }
+        }
+        nTargetValue += nLockedCoin;
     }
 
     vCoins.clear();
