@@ -24,7 +24,7 @@ CTxIndexDB::CTxIndexDB()
     fStopFlush = true;
 }
 
-bool CTxIndexDB::Initialize(const boost::filesystem::path& pathData)
+bool CTxIndexDB::Initialize(const boost::filesystem::path& pathData, const bool fFlush)
 {
     pathTxIndex = pathData / "txindex";
 
@@ -38,14 +38,16 @@ bool CTxIndexDB::Initialize(const boost::filesystem::path& pathData)
         return false;
     }
 
-    fStopFlush = false;
-    pThreadFlush = new boost::thread(boost::bind(&CTxIndexDB::FlushProc, this));
-    if (pThreadFlush == nullptr)
+    if (fFlush)
     {
-        fStopFlush = true;
-        return false;
+        fStopFlush = false;
+        pThreadFlush = new boost::thread(boost::bind(&CTxIndexDB::FlushProc, this));
+        if (pThreadFlush == nullptr)
+        {
+            fStopFlush = true;
+            return false;
+        }
     }
-
     return true;
 }
 
@@ -66,13 +68,16 @@ void CTxIndexDB::Deinitialize()
     {
         CWriteLock wlock(rwAccess);
 
-        for (map<uint256, std::shared_ptr<CForkTxDB>>::iterator it = mapTxDB.begin();
-             it != mapTxDB.end(); ++it)
+        if (pThreadFlush)
         {
-            std::shared_ptr<CForkTxDB> spTxDB = (*it).second;
+            for (map<uint256, std::shared_ptr<CForkTxDB>>::iterator it = mapTxDB.begin();
+                 it != mapTxDB.end(); ++it)
+            {
+                std::shared_ptr<CForkTxDB> spTxDB = (*it).second;
 
-            spTxDB->Flush();
-            spTxDB->Deinitialize();
+                spTxDB->Flush();
+                spTxDB->Deinitialize();
+            }
         }
         mapTxDB.clear();
     }
@@ -124,7 +129,7 @@ bool CTxIndexDB::Update(const uint256& hashFork, const vector<pair<uint256, CTxI
     return true;
 }
 
-bool CTxIndexDB::Retrieve(const uint256& hashFork, const uint256& txidIn, CTxIndex& txIndex)
+bool CTxIndexDB::Retrieve(const uint256& hashFork, const uint256& txidIn, CTxIndex& txIndex, const bool fSaveLoad)
 {
     CReadLock rlock(rwAccess);
 
@@ -138,7 +143,7 @@ bool CTxIndexDB::Retrieve(const uint256& hashFork, const uint256& txidIn, CTxInd
 
     CTxId txid(txidIn);
 
-    return spTxDB->Retrieve(txid.GetTxTime(), txid.GetTxHash(), txIndex);
+    return spTxDB->Retrieve(txid.GetTxTime(), txid.GetTxHash(), txIndex, fSaveLoad);
 }
 
 bool CTxIndexDB::Retrieve(const uint256& txidIn, CTxIndex& txIndex, uint256& hashFork)

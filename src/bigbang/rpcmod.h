@@ -108,12 +108,9 @@ private:
     rpc::CRPCResultPtr RPCImportTemplate(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCExportTemplate(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCValidateAddress(rpc::CRPCParamPtr param);
-    rpc::CRPCResultPtr RPCResyncWallet(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetBalance(rpc::CRPCParamPtr param);
-    rpc::CRPCResultPtr RPCGetBalanceWallet(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListTransaction(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSendFrom(rpc::CRPCParamPtr param);
-    rpc::CRPCResultPtr RPCSendFromWallet(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCCreateTransaction(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSignTransaction(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSignMessage(rpc::CRPCParamPtr param);
