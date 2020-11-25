@@ -493,13 +493,10 @@ void CAddressDB::Deinitialize()
         pThreadFlush->join();
         delete pThreadFlush;
         pThreadFlush = nullptr;
-    }
 
-    {
-        CWriteLock wlock(rwAccess);
-
-        if (pThreadFlush)
         {
+            CWriteLock wlock(rwAccess);
+
             for (map<uint256, std::shared_ptr<CForkAddressDB>>::iterator it = mapAddressDB.begin();
                  it != mapAddressDB.end(); ++it)
             {
@@ -508,7 +505,12 @@ void CAddressDB::Deinitialize()
                 spAddress->Flush();
                 spAddress->Flush();
             }
+            mapAddressDB.clear();
         }
+    }
+    else
+    {
+        CWriteLock wlock(rwAccess);
         mapAddressDB.clear();
     }
 }
