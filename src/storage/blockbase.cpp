@@ -194,13 +194,21 @@ void CBlockView::RemoveTx(const uint256& txid, const CTransaction& tx, int nHeig
 {
     mapTx[txid].SetNull();
     vTxRemove.push_back(txid);
-    if (txContxt.destIn == tx.sendTo)
+
+    if (tx.IsMintTx() || tx.nType == CTransaction::TX_DEFI_REWARD)
+    {
+        vAddrTxRemove.push_back(CAddrTxIndex(tx.sendTo, txid));
+    }
+    else if (txContxt.destIn == tx.sendTo)
     {
         vAddrTxRemove.push_back(CAddrTxIndex(txContxt.destIn, txid));
     }
     else
     {
-        vAddrTxRemove.push_back(CAddrTxIndex(txContxt.destIn, txid));
+        if (!txContxt.destIn.IsNull())
+        {
+            vAddrTxRemove.push_back(CAddrTxIndex(txContxt.destIn, txid));
+        }
         vAddrTxRemove.push_back(CAddrTxIndex(tx.sendTo, txid));
     }
 
@@ -2884,17 +2892,24 @@ bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<
             CTxIndex txIndex(nHeight, pIndex->nFile, nOffset);
             vTxNew.push_back(make_pair(txid, txIndex));
 
-            if (tx.sendTo == txContxt.destIn)
+            if (tx.nType == CTransaction::TX_DEFI_REWARD)
+            {
+                CAddrTxInfo txToInfo(CAddrTxInfo::TXI_DIRECTION_TO, CDestination(), tx, nHeight, pIndex->nFile, nOffset);
+                vAddrTxNew.push_back(make_pair(CAddrTxIndex(tx.sendTo, txid), txToInfo));
+            }
+            else if (tx.sendTo == txContxt.destIn)
             {
                 CAddrTxInfo txInfo(CAddrTxInfo::TXI_DIRECTION_TWO, tx.sendTo, tx, nHeight, pIndex->nFile, nOffset);
                 vAddrTxNew.push_back(make_pair(CAddrTxIndex(txContxt.destIn, txid), txInfo));
             }
             else
             {
-                CAddrTxInfo txFromInfo(CAddrTxInfo::TXI_DIRECTION_FROM, tx.sendTo, tx, nHeight, pIndex->nFile, nOffset);
+                if (!txContxt.destIn.IsNull())
+                {
+                    CAddrTxInfo txFromInfo(CAddrTxInfo::TXI_DIRECTION_FROM, tx.sendTo, tx, nHeight, pIndex->nFile, nOffset);
+                    vAddrTxNew.push_back(make_pair(CAddrTxIndex(txContxt.destIn, txid), txFromInfo));
+                }
                 CAddrTxInfo txToInfo(CAddrTxInfo::TXI_DIRECTION_TO, txContxt.destIn, tx, nHeight, pIndex->nFile, nOffset);
-
-                vAddrTxNew.push_back(make_pair(CAddrTxIndex(txContxt.destIn, txid), txFromInfo));
                 vAddrTxNew.push_back(make_pair(CAddrTxIndex(tx.sendTo, txid), txToInfo));
             }
 

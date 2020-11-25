@@ -655,9 +655,10 @@ public:
 
     enum
     {
-        TXI_DIRECTION_FROM = 0,
-        TXI_DIRECTION_TO = 1,
-        TXI_DIRECTION_TWO = 2
+        TXI_DIRECTION_NULL = 0,
+        TXI_DIRECTION_FROM = 1,
+        TXI_DIRECTION_TO = 2,
+        TXI_DIRECTION_TWO = 3
     };
 
 public:
@@ -680,7 +681,7 @@ public:
 
     void SetNull()
     {
-        nDirection = 0;
+        nDirection = TXI_DIRECTION_NULL;
         destPeer.SetNull();
         nTxType = 0;
         nTimeStamp = 0;
@@ -693,7 +694,7 @@ public:
     }
     bool IsNull() const
     {
-        return (destPeer.IsNull() || nFile == 0);
+        return (nDirection == TXI_DIRECTION_NULL);
     };
 
 protected:

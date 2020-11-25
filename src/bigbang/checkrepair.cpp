@@ -1074,10 +1074,8 @@ bool CCheckBlockFork::AddBlockData(const CBlockEx& block, const CBlockIndex* pBl
         const uint256& hashFork = pBlockIndex->GetOriginHash();
 
         CBufStream ss;
-        CTxContxt txContxt;
-        txContxt.destIn = block.txMint.sendTo;
         uint32 nTxOffset = pBlockIndex->nOffset + block.GetTxSerializedOffset();
-        if (!AddBlockTx(block.txMint, txContxt, block.GetBlockHeight(), hashFork, pBlockIndex->nFile, nTxOffset))
+        if (!AddBlockTx(block.txMint, CTxContxt(), block.GetBlockHeight(), hashFork, pBlockIndex->nFile, nTxOffset))
         {
             StdError("check", "Add block data: Add mint tx fail, txid: %s, block: %s",
                      block.txMint.GetHash().GetHex().c_str(), pBlockIndex->GetBlockHash().GetHex().c_str());
@@ -1115,9 +1113,7 @@ bool CCheckBlockFork::RemoveBlockData(const CBlockEx& block, const CBlockIndex* 
         }
         if (!block.txMint.sendTo.IsNull())
         {
-            CTxContxt txContxt;
-            txContxt.destIn = block.txMint.sendTo;
-            if (!RemoveBlockTx(block.txMint, txContxt))
+            if (!RemoveBlockTx(block.txMint, CTxContxt()))
             {
                 StdLog("check", "Remove block data: Remove block mint tx fail, txid: %s.", block.txMint.GetHash().GetHex().c_str());
                 return false;
@@ -2462,13 +2458,16 @@ bool CCheckRepairData::CheckAddressTxIndex(uint64& nTxIndexCount)
             const uint256& txid = nt->first;
             const CCheckTxInfo& checkTxInfo = nt->second;
 
+            if (!checkTxInfo.destFrom.IsNull())
             {
                 bool fCheckRet = true;
                 CAddrTxInfo addrTxInfo;
                 if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, CAddrTxIndex(checkTxInfo.destFrom, txid), addrTxInfo))
                 {
-                    StdLog("check", "Check address tx index: Retrieve address tx index fail, height: %d, tx: %s.",
-                           nt->second.nBlockHeight, txid.GetHex().c_str());
+                    StdLog("check", "Check address tx index: Retrieve address tx index fail 1, height: %d, tx: %s, destFrom: %s, destTo: %s.",
+                           nt->second.nBlockHeight, txid.GetHex().c_str(),
+                           CAddress(checkTxInfo.destFrom).ToString().c_str(),
+                           CAddress(checkTxInfo.destTo).ToString().c_str());
                     fCheckRet = false;
                 }
                 if (!fCheckRet)
@@ -2484,14 +2483,16 @@ bool CCheckRepairData::CheckAddressTxIndex(uint64& nTxIndexCount)
                 }
             }
 
-            if (checkTxInfo.destFrom != checkTxInfo.destTo)
+            if (!checkTxInfo.destTo.IsNull() && checkTxInfo.destFrom != checkTxInfo.destTo)
             {
                 bool fCheckRet = true;
                 CAddrTxInfo addrTxInfo;
                 if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, CAddrTxIndex(checkTxInfo.destTo, txid), addrTxInfo))
                 {
-                    StdLog("check", "Check address tx index: Retrieve address tx index fail, height: %d, tx: %s.",
-                           nt->second.nBlockHeight, txid.GetHex().c_str());
+                    StdLog("check", "Check address tx index: Retrieve address tx index fail 2, height: %d, tx: %s, destFrom: %s, destTo: %s.",
+                           nt->second.nBlockHeight, txid.GetHex().c_str(),
+                           CAddress(checkTxInfo.destFrom).ToString().c_str(),
+                           CAddress(checkTxInfo.destTo).ToString().c_str());
                     fCheckRet = false;
                 }
                 if (!fCheckRet)
