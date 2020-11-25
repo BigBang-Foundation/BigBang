@@ -63,13 +63,10 @@ void CTxIndexDB::Deinitialize()
         pThreadFlush->join();
         delete pThreadFlush;
         pThreadFlush = nullptr;
-    }
 
-    {
-        CWriteLock wlock(rwAccess);
-
-        if (pThreadFlush)
         {
+            CWriteLock wlock(rwAccess);
+
             for (map<uint256, std::shared_ptr<CForkTxDB>>::iterator it = mapTxDB.begin();
                  it != mapTxDB.end(); ++it)
             {
@@ -78,7 +75,12 @@ void CTxIndexDB::Deinitialize()
                 spTxDB->Flush();
                 spTxDB->Deinitialize();
             }
+            mapTxDB.clear();
         }
+    }
+    else
+    {
+        CWriteLock wlock(rwAccess);
         mapTxDB.clear();
     }
 }

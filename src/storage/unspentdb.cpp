@@ -337,13 +337,10 @@ void CUnspentDB::Deinitialize()
         pThreadFlush->join();
         delete pThreadFlush;
         pThreadFlush = nullptr;
-    }
 
-    {
-        CWriteLock wlock(rwAccess);
-
-        if (pThreadFlush)
         {
+            CWriteLock wlock(rwAccess);
+
             for (map<uint256, std::shared_ptr<CForkUnspentDB>>::iterator it = mapUnspentDB.begin();
                  it != mapUnspentDB.end(); ++it)
             {
@@ -352,7 +349,12 @@ void CUnspentDB::Deinitialize()
                 spUnspent->Flush();
                 spUnspent->Flush();
             }
+            mapUnspentDB.clear();
         }
+    }
+    else
+    {
+        CWriteLock wlock(rwAccess);
         mapUnspentDB.clear();
     }
 }
