@@ -167,7 +167,7 @@ class CAddressUnspentDB
 {
 public:
     CAddressUnspentDB();
-    bool Initialize(const boost::filesystem::path& pathData);
+    bool Initialize(const boost::filesystem::path& pathData, const bool fFlush = true);
     void Deinitialize();
     bool Exists(const uint256& hashFork)
     {

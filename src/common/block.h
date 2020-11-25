@@ -335,6 +335,10 @@ public:
     {
         return (nType & 1);
     }
+    bool IsSubsidiary() const
+    {
+        return (nType == CBlock::BLOCK_SUBSIDIARY);
+    }
     bool IsExtended() const
     {
         return (nType == CBlock::BLOCK_EXTENDED);

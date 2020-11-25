@@ -722,17 +722,6 @@ bool CService::GetDeFiRelation(const uint256& hashFork, const CDestination& dest
     return pBlockChain->GetDeFiRelation(hashFork, destIn, parent);
 }
 
-bool CService::GetBalanceByWallet(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
-{
-    int32 nForkHeight;
-    uint256 hashLastBlock;
-    if (!GetForkLastBlock(hashFork, nForkHeight, hashLastBlock))
-    {
-        return false;
-    }
-    return pWallet->GetBalance(dest, hashFork, nForkHeight, hashLastBlock, balance);
-}
-
 bool CService::GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
 {
     int32 nForkHeight;
@@ -806,19 +795,6 @@ bool CService::GetBalanceByUnspent(const CDestination& dest, const uint256& hash
     return true;
 }
 
-bool CService::ListWalletTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, vector<CWalletTx>& vWalletTx)
-{
-    if (nOffset < 0)
-    {
-        nOffset = pWallet->GetTxCount() - nCount;
-        if (nOffset < 0)
-        {
-            nOffset = 0;
-        }
-    }
-    return pWallet->ListTx(hashFork, dest, nOffset, nCount, vWalletTx);
-}
-
 bool CService::ListTransaction(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
 {
     int64 nTxPoolPos = pTxPool->ListTx(hashFork, dest, vTx, nOffset, nCount);
@@ -846,36 +822,6 @@ bool CService::ListTransaction(const uint256& hashFork, const CDestination& dest
         }
     }
     return true;
-}
-
-boost::optional<std::string> CService::CreateTransactionByWallet(const uint256& hashFork, const CDestination& destFrom,
-                                                                 const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
-                                                                 const vector<unsigned char>& vchData, CTransaction& txNew)
-{
-    int nForkHeight = 0;
-    uint256 hashLastBlock;
-    txNew.SetNull();
-    {
-        boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
-        map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
-        if (it == mapForkStatus.end())
-        {
-            StdError("CService", "CreateTransactionByWallet: find fork fail, fork: %s", hashFork.GetHex().c_str());
-            return std::string("find fork fail, fork: ") + hashFork.GetHex();
-        }
-        nForkHeight = it->second.nLastBlockHeight;
-        hashLastBlock = it->second.hashLastBlock;
-        txNew.hashAnchor = hashFork;
-    }
-    txNew.nType = nType;
-    txNew.nTimeStamp = GetNetTime();
-    txNew.nLockUntil = 0;
-    txNew.sendTo = destSendTo;
-    txNew.nAmount = nAmount;
-    txNew.nTxFee = nTxFee;
-    txNew.vchData = vchData;
-
-    return pWallet->ArrangeInputs(destFrom, hashFork, nForkHeight, hashLastBlock, txNew) ? boost::optional<std::string>{} : std::string("CWallet::ArrangeInputs failed.");
 }
 
 boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
@@ -1064,16 +1010,6 @@ Errno CService::SelectCoinsByUnspent(const CDestination& dest, const uint256& ha
     }
 
     return OK;
-}
-
-bool CService::SynchronizeWalletTx(const CDestination& destNew)
-{
-    return pWallet->SynchronizeWalletTx(destNew);
-}
-
-bool CService::ResynchronizeWalletTx()
-{
-    return pWallet->ResynchronizeWalletTx();
 }
 
 bool CService::SignOfflineTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, bool& fCompleted)
