@@ -125,30 +125,27 @@ static CTransactionData TxToJSON(const uint256& txid, const CTransaction& tx,
 
     return ret;
 }
-/*
-static CWalletTxData WalletTxToJSON(const CWalletTx& wtx)
+
+static CWalletTxData TxInfoToJSON(const CTxInfo& tx)
 {
     CWalletTxData data;
-    data.strTxid = wtx.txid.GetHex();
-    data.strFork = wtx.hashFork.GetHex();
-    if (wtx.nBlockHeight >= 0)
+    data.strTxid = tx.txid.GetHex();
+    data.strFork = tx.hashFork.GetHex();
+    data.nBlockheight = tx.nBlockHeight;
+    data.strType = CTransaction::GetTypeStringStatic(tx.nTxType);
+    data.nTime = (boost::int64_t)tx.nTimeStamp;
+    data.fSend = false; //wtx.IsFromMe();
+    if (!tx.IsMintTx() && tx.nTxType != CTransaction::TX_DEFI_REWARD)
     {
-        data.nBlockheight = wtx.nBlockHeight;
+        data.strFrom = CAddress(tx.destFrom).ToString();
     }
-    data.strType = wtx.GetTypeString();
-    data.nTime = (boost::int64_t)wtx.nTimeStamp;
-    data.fSend = wtx.IsFromMe();
-    if (!wtx.IsMintTx() && wtx.nType != CTransaction::TX_DEFI_REWARD)
-    {
-        data.strFrom = CAddress(wtx.destIn).ToString();
-    }
-    data.strTo = CAddress(wtx.sendTo).ToString();
-    data.dAmount = ValueFromAmount(wtx.nAmount);
-    data.dFee = ValueFromAmount(wtx.nTxFee);
-    data.nLockuntil = (boost::int64_t)wtx.nLockUntil;
+    data.strTo = CAddress(tx.destTo).ToString();
+    data.dAmount = ValueFromAmount(tx.nAmount);
+    data.dFee = ValueFromAmount(tx.nTxFee);
+    data.nLockuntil = (boost::int64_t)tx.nLockUntil;
     return data;
 }
-*/
+
 static CUnspentData UnspentToJSON(const CTxUnspent& unspent)
 {
     CUnspentData data;
@@ -1727,18 +1724,18 @@ CRPCResultPtr CRPCMod::RPCGetBalanceWallet(CRPCParamPtr param)
 
 CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
 {
-    /*auto spParam = CastParamPtr<CListTransactionParam>(param);
+    auto spParam = CastParamPtr<CListTransactionParam>(param);
 
     const CRPCString& strFork = spParam->strFork;
     const CRPCString& strAddress = spParam->strAddress;
 
-    CAddress address(strAddress);
     uint256 fork;
-    if (!strFork.empty() && !GetForkHashOfDef(strFork, fork))
+    if (!GetForkHashOfDef(strFork, fork))
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
     }
 
+    CAddress address;
     if (!strAddress.empty() && !address.ParseString(strAddress))
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address");
@@ -1750,23 +1747,23 @@ CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Negative, zero or out of range count");
     }
+    if (nOffset < 0)
+    {
+        nOffset = 0;
+    }
 
-    vector<CWalletTx> vWalletTx;
-    if (!pService->ListWalletTx(fork, address, nOffset, nCount, vWalletTx))
+    vector<CTxInfo> vTx;
+    if (!pService->ListTransaction(fork, address, nOffset, nCount, vTx))
     {
         throw CRPCException(RPC_WALLET_ERROR, "Failed to list transactions");
     }
 
     auto spResult = MakeCListTransactionResultPtr();
-    for (const CWalletTx& wtx : vWalletTx)
+    for (const CTxInfo& tx : vTx)
     {
-        spResult->vecTransaction.push_back(WalletTxToJSON(wtx));
-    }*/
-
-    throw CRPCException(RPC_REQUEST_FUNC_OBSOLETE, "Requested function is obsolete");
-
-    //auto spResult = MakeCListTransactionResultPtr();
-    //return spResult;
+        spResult->vecTransaction.push_back(TxInfoToJSON(tx));
+    }
+    return spResult;
 }
 
 CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)

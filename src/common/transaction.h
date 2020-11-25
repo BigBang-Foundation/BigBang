@@ -577,21 +577,140 @@ class CTxInfo
 {
 public:
     CTxInfo() {}
-    CTxInfo(const uint256& txidIn, const int nTxTypeIn, const uint32 nTimeStampIn,
-            const CDestination& destFromIn, const CDestination& destToIn,
+    CTxInfo(const uint256& txidIn, const uint256& hashForkIn, const int nTxTypeIn, const uint32 nTimeStampIn,
+            const uint32& nLockUntilIn, const int nBlockHeightIn, const CDestination& destFromIn, const CDestination& destToIn,
             const int64 nAoumtIn, const int64 nTxFeeIn, const uint64 nSizeIn)
-      : txid(txidIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn),
-        destFrom(destFromIn), destTo(destToIn), nAmount(nAoumtIn), nTxFee(nTxFeeIn), nSize(nSizeIn) {}
+      : txid(txidIn), hashFork(hashForkIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn), nLockUntil(nLockUntilIn),
+        nBlockHeight(nBlockHeightIn), destFrom(destFromIn), destTo(destToIn), nAmount(nAoumtIn), nTxFee(nTxFeeIn), nSize(nSizeIn) {}
+
+    bool IsMintTx() const
+    {
+        return (nTxType == CTransaction::TX_GENESIS || nTxType == CTransaction::TX_STAKE || nTxType == CTransaction::TX_WORK);
+    }
 
 public:
     uint256 txid;
+    uint256 hashFork;
     int nTxType;
     uint32 nTimeStamp;
+    uint32 nLockUntil;
+    int nBlockHeight;
     CDestination destFrom;
     CDestination destTo;
     int64 nAmount;
     int64 nTxFee;
     uint64 nSize;
+};
+
+class CAddrTxIndex
+{
+    friend class xengine::CStream;
+
+public:
+    CDestination dest;
+    uint256 txid;
+
+public:
+    CAddrTxIndex() {}
+    CAddrTxIndex(const CDestination& destIn, const uint256& txidIn)
+      : dest(destIn), txid(txidIn) {}
+
+    friend bool operator==(const CAddrTxIndex& a, const CAddrTxIndex& b)
+    {
+        return (a.dest == b.dest && a.txid == b.txid);
+    }
+    friend bool operator!=(const CAddrTxIndex& a, const CAddrTxIndex& b)
+    {
+        return !(a == b);
+    }
+    friend bool operator<(const CAddrTxIndex& a, const CAddrTxIndex& b)
+    {
+        return (a.dest < b.dest || (a.dest == b.dest && a.txid < b.txid));
+    }
+
+protected:
+    template <typename O>
+    void Serialize(xengine::CStream& s, O& opt)
+    {
+        s.Serialize(dest, opt);
+        s.Serialize(txid, opt);
+    }
+};
+
+class CAddrTxInfo
+{
+    friend class xengine::CStream;
+
+public:
+    int nDirection;
+    CDestination destPeer;
+    int nTxType;
+    uint32 nTimeStamp;
+    uint32 nLockUntil;
+    int64 nAmount;
+    int64 nTxFee;
+    int nBlockHeight;
+    uint32 nFile;
+    uint32 nOffset;
+
+    enum
+    {
+        TXI_DIRECTION_FROM = 0,
+        TXI_DIRECTION_TO = 1,
+        TXI_DIRECTION_TWO = 2
+    };
+
+public:
+    CAddrTxInfo()
+    {
+        SetNull();
+    }
+    CAddrTxInfo(const int nDirectionIn, const CDestination& destPeerIn, const int nTxTypeIn, const uint32 nTimeStampIn, const uint32 nLockUntilIn,
+                const int64 nAmountIn, const int64 nTxFeeIn, const int nBlockHeightIn, const uint32 nFileIn, const uint32 nOffsetIn)
+      : nDirection(nDirectionIn), destPeer(destPeerIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn), nLockUntil(nLockUntilIn),
+        nAmount(nAmountIn), nTxFee(nTxFeeIn), nBlockHeight(nBlockHeightIn), nFile(nFileIn), nOffset(nOffsetIn)
+    {
+    }
+    CAddrTxInfo(const int nDirectionIn, const CDestination& destPeerIn, const CTransaction& tx,
+                const int nBlockHeightIn, const uint32 nFileIn, const uint32 nOffsetIn)
+      : nDirection(nDirectionIn), destPeer(destPeerIn), nTxType(tx.nType), nTimeStamp(tx.nTimeStamp), nLockUntil(tx.nLockUntil),
+        nAmount(tx.nAmount), nTxFee(tx.nTxFee), nBlockHeight(nBlockHeightIn), nFile(nFileIn), nOffset(nOffsetIn)
+    {
+    }
+
+    void SetNull()
+    {
+        nDirection = 0;
+        destPeer.SetNull();
+        nTxType = 0;
+        nTimeStamp = 0;
+        nLockUntil = 0;
+        nAmount = 0;
+        nTxFee = 0;
+        nBlockHeight = 0;
+        nFile = 0;
+        nOffset = 0;
+    }
+    bool IsNull() const
+    {
+        return (destPeer.IsNull() || nFile == 0);
+    };
+
+protected:
+    template <typename O>
+    void Serialize(xengine::CStream& s, O& opt)
+    {
+        s.Serialize(nDirection, opt);
+        s.Serialize(destPeer, opt);
+        s.Serialize(nTxType, opt);
+        s.Serialize(nTimeStamp, opt);
+        s.Serialize(nLockUntil, opt);
+        s.Serialize(nAmount, opt);
+        s.Serialize(nTxFee, opt);
+        s.Serialize(nBlockHeight, opt);
+        s.Serialize(nFile, opt);
+        s.Serialize(nOffset, opt);
+    }
 };
 
 #endif //COMMON_TRANSACTION_H

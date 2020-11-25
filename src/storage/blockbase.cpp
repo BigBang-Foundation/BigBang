@@ -75,6 +75,7 @@ void CBlockView::Initialize(CBlockBase* pBlockBaseIn, boost::shared_ptr<CBlockFo
         }
     }
     vTxRemove.clear();
+    vAddrTxRemove.clear();
     vTxAddNew.clear();
 }
 
@@ -193,6 +194,16 @@ void CBlockView::RemoveTx(const uint256& txid, const CTransaction& tx, int nHeig
 {
     mapTx[txid].SetNull();
     vTxRemove.push_back(txid);
+    if (txContxt.destIn == tx.sendTo)
+    {
+        vAddrTxRemove.push_back(CAddrTxIndex(txContxt.destIn, txid));
+    }
+    else
+    {
+        vAddrTxRemove.push_back(CAddrTxIndex(txContxt.destIn, txid));
+        vAddrTxRemove.push_back(CAddrTxIndex(tx.sendTo, txid));
+    }
+
     for (int i = 0; i < tx.vInput.size(); i++)
     {
         const CTxInContxt& in = txContxt.vin[i];
@@ -300,15 +311,25 @@ void CBlockView::GetTxUpdated(set<uint256>& setUpdate)
     }
 }
 
-void CBlockView::GetTxRemoved(vector<uint256>& vRemove)
+void CBlockView::GetTxRemoved(vector<uint256>& vRemove, vector<CAddrTxIndex>& vAddrTxIndexRemove)
 {
     vRemove.reserve(vTxRemove.size());
-    for (int i = 0; i < vTxRemove.size(); i++)
+    for (size_t i = 0; i < vTxRemove.size(); i++)
     {
         const uint256& txid = vTxRemove[i];
         if (mapTx[txid].IsNull())
         {
             vRemove.push_back(txid);
+        }
+    }
+
+    vAddrTxIndexRemove.reserve(vAddrTxRemove.size());
+    for (size_t i = 0; i < vAddrTxRemove.size(); i++)
+    {
+        const CAddrTxIndex& addrTxIndex = vAddrTxRemove[i];
+        if (mapTx[addrTxIndex.txid].IsNull())
+        {
+            vAddrTxIndexRemove.push_back(addrTxIndex);
         }
     }
 }
@@ -515,7 +536,11 @@ bool CBlockBase::Initiate(const uint256& hashGenesis, const CBlock& blockGenesis
     uint256 txidMintTx = blockGenesis.txMint.GetHash();
 
     vector<pair<uint256, CTxIndex>> vTxNew;
+    vector<pair<CAddrTxIndex, CAddrTxInfo>> vAddrTxNew;
     vTxNew.push_back(make_pair(txidMintTx, CTxIndex(0, nFile, nTxOffset)));
+
+    CAddrTxInfo txInfo(CAddrTxInfo::TXI_DIRECTION_TO, CDestination(), blockGenesis.txMint, 0, nFile, nTxOffset);
+    vAddrTxNew.push_back(make_pair(CAddrTxIndex(blockGenesis.txMint.sendTo, txidMintTx), txInfo));
 
     vector<CTxUnspent> vAddNew;
     vAddNew.push_back(CTxUnspent(CTxOutPoint(txidMintTx, 0), CTxOut(blockGenesis.txMint), blockGenesis.txMint.nType, blockGenesis.GetBlockHeight()));
@@ -600,7 +625,7 @@ bool CBlockBase::Initiate(const uint256& hashGenesis, const CBlock& blockGenesis
         {
             CWriteLock wForkLock(spFork->GetRWAccess());
 
-            if (!dbBlock.UpdateFork(hashGenesis, hashGenesis, uint64(0), vTxNew, vector<uint256>(), vAddNew, vector<CTxUnspent>()))
+            if (!dbBlock.UpdateFork(hashGenesis, hashGenesis, uint64(0), vTxNew, vector<uint256>(), vAddrTxNew, vector<CAddrTxIndex>(), vAddNew, vector<CTxUnspent>()))
             {
                 StdTrace("BlockBase", "Update Fork %s failed", hashGenesis.ToString().c_str());
                 return false;
@@ -1222,14 +1247,16 @@ bool CBlockBase::CommitBlockView(CBlockView& view, CBlockIndex* pIndexNew)
     }
 
     vector<pair<uint256, CTxIndex>> vTxNew;
-    if (!GetTxNewIndex(view, pIndexNew, vTxNew))
+    vector<pair<CAddrTxIndex, CAddrTxInfo>> vAddrTxNew;
+    if (!GetTxNewIndex(view, pIndexNew, vTxNew, vAddrTxNew))
     {
-        StdTrace("BlockBase", "CommitBlockView::GetTxNewIndex view failed");
+        StdTrace("BlockBase", "CommitBlockView: Get tx new index failed");
         return false;
     }
 
     vector<uint256> vTxDel;
-    view.GetTxRemoved(vTxDel);
+    vector<CAddrTxIndex> vAddrTxDel;
+    view.GetTxRemoved(vTxDel, vAddrTxDel);
 
     vector<CTxUnspent> vAddNewUnspent;
     vector<CTxUnspent> vRemoveUnspent;
@@ -1240,7 +1267,7 @@ bool CBlockBase::CommitBlockView(CBlockView& view, CBlockIndex* pIndexNew)
         spFork->UpgradeToWrite();
     }
 
-    if (!dbBlock.UpdateFork(hashFork, pIndexNew->GetBlockHash(), view.GetForkHash(), vTxNew, vTxDel, vAddNewUnspent, vRemoveUnspent))
+    if (!dbBlock.UpdateFork(hashFork, pIndexNew->GetBlockHash(), view.GetForkHash(), vTxNew, vTxDel, vAddrTxNew, vAddrTxDel, vAddNewUnspent, vRemoveUnspent))
     {
         StdTrace("BlockBase", "CommitBlockView::Update fork %s  failed", hashFork.ToString().c_str());
         return false;
@@ -1992,6 +2019,31 @@ bool CBlockBase::ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std:
 bool CBlockBase::RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent)
 {
     return dbBlock.RetrieveAddressUnspent(hashFork, dest, mapUnspent);
+}
+
+bool CBlockBase::RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
+{
+    map<CAddrTxIndex, CAddrTxInfo> mapAddrTxIndex;
+    if (!dbBlock.RetrieveAddressTxList(hashFork, dest, nOffset, nCount, mapAddrTxIndex))
+    {
+        return false;
+    }
+    for (const auto& vd : mapAddrTxIndex)
+    {
+        if (vd.second.nDirection == CAddrTxInfo::TXI_DIRECTION_TO)
+        {
+            vTx.push_back(CTxInfo(vd.first.txid, hashFork, vd.second.nTxType, vd.second.nTimeStamp,
+                                  vd.second.nLockUntil, vd.second.nBlockHeight, vd.second.destPeer, vd.first.dest,
+                                  vd.second.nAmount, vd.second.nTxFee, 0));
+        }
+        else
+        {
+            vTx.push_back(CTxInfo(vd.first.txid, hashFork, vd.second.nTxType, vd.second.nTimeStamp,
+                                  vd.second.nLockUntil, vd.second.nBlockHeight, vd.first.dest, vd.second.destPeer,
+                                  vd.second.nAmount, vd.second.nTxFee, 0));
+        }
+    }
+    return true;
 }
 
 bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount)
@@ -2788,7 +2840,7 @@ bool CBlockBase::GetTxUnspent(const uint256 fork, const CTxOutPoint& out, CTxOut
     return dbBlock.RetrieveTxUnspent(fork, out, unspent);
 }
 
-bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<pair<uint256, CTxIndex>>& vTxNew)
+bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<pair<uint256, CTxIndex>>& vTxNew, vector<pair<CAddrTxIndex, CAddrTxInfo>>& vAddrTxNew)
 {
     vector<CBlockIndex*> vPath;
     if (view.GetFork() != nullptr && view.GetFork()->GetLast() != nullptr)
@@ -2816,6 +2868,9 @@ bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<
         {
             CTxIndex txIndex(nHeight, pIndex->nFile, nOffset);
             vTxNew.push_back(make_pair(block.txMint.GetHash(), txIndex));
+
+            CAddrTxInfo txInfo(CAddrTxInfo::TXI_DIRECTION_TO, CDestination(), block.txMint, nHeight, pIndex->nFile, nOffset);
+            vAddrTxNew.push_back(make_pair(CAddrTxIndex(block.txMint.sendTo, block.txMint.GetHash()), txInfo));
         }
         nOffset += ss.GetSerializeSize(block.txMint);
 
@@ -2824,9 +2879,25 @@ bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<
         for (int i = 0; i < block.vtx.size(); i++)
         {
             CTransaction& tx = block.vtx[i];
+            const CTxContxt& txContxt = block.vTxContxt[i];
             uint256 txid = tx.GetHash();
             CTxIndex txIndex(nHeight, pIndex->nFile, nOffset);
             vTxNew.push_back(make_pair(txid, txIndex));
+
+            if (tx.sendTo == txContxt.destIn)
+            {
+                CAddrTxInfo txInfo(CAddrTxInfo::TXI_DIRECTION_TWO, tx.sendTo, tx, nHeight, pIndex->nFile, nOffset);
+                vAddrTxNew.push_back(make_pair(CAddrTxIndex(txContxt.destIn, txid), txInfo));
+            }
+            else
+            {
+                CAddrTxInfo txFromInfo(CAddrTxInfo::TXI_DIRECTION_FROM, tx.sendTo, tx, nHeight, pIndex->nFile, nOffset);
+                CAddrTxInfo txToInfo(CAddrTxInfo::TXI_DIRECTION_TO, txContxt.destIn, tx, nHeight, pIndex->nFile, nOffset);
+
+                vAddrTxNew.push_back(make_pair(CAddrTxIndex(txContxt.destIn, txid), txFromInfo));
+                vAddrTxNew.push_back(make_pair(CAddrTxIndex(tx.sendTo, txid), txToInfo));
+            }
+
             nOffset += ss.GetSerializeSize(tx);
         }
     }

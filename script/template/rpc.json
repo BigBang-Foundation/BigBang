@@ -2733,8 +2733,7 @@
         "name": "ListTransaction",
         "introduction": "Return transactions list.",
         "desc": [
-            "If (offset) < 0,return last (count) transactions,",
-            "If (offset) >= 0,return up to (count) most recent transactions skipping the first (offset) transactions."
+            "return up to (count) most recent transactions skipping the first (offset) transactions."
         ],
         "request": {
             "type": "object",
@@ -2753,13 +2752,13 @@
                 },
                 "fork": {
                     "type": "string",
-                    "desc": "fork hash. If not set, return all local fork 10 tx",
+                    "desc": "fork hash. If not set, default is genesis",
                     "required": false,
                     "opt": "f"
                 },
                 "address": {
                     "type": "string",
-                    "desc": "from address or sendto address",
+                    "desc": "from address or sendto address. If not set, default is all address",
                     "required": false,
                     "opt": "a"
                 }

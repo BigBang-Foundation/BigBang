@@ -819,6 +819,35 @@ bool CService::ListWalletTx(const uint256& hashFork, const CDestination& dest, i
     return pWallet->ListTx(hashFork, dest, nOffset, nCount, vWalletTx);
 }
 
+bool CService::ListTransaction(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
+{
+    int64 nTxPoolPos = pTxPool->ListTx(hashFork, dest, vTx, nOffset, nCount);
+    if (vTx.size() == 0)
+    {
+        if (nTxPoolPos < 0)
+        {
+            nTxPoolPos = 0;
+        }
+        int64 nChainOffset = nOffset - nTxPoolPos;
+        if (nChainOffset < 0)
+        {
+            nChainOffset = 0;
+        }
+        if (!pBlockChain->GetAddressTxList(hashFork, dest, nChainOffset, nCount, vTx))
+        {
+            return false;
+        }
+    }
+    else if (vTx.size() < nCount)
+    {
+        if (!pBlockChain->GetAddressTxList(hashFork, dest, 0, nCount - vTx.size(), vTx))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 boost::optional<std::string> CService::CreateTransactionByWallet(const uint256& hashFork, const CDestination& destFrom,
                                                                  const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
                                                                  const vector<unsigned char>& vchData, CTransaction& txNew)

@@ -76,6 +76,7 @@ public:
     bool GetBalanceByWallet(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) override;
     bool GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) override;
     bool ListWalletTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) override;
+    bool ListTransaction(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx) override;
     boost::optional<std::string> CreateTransactionByWallet(const uint256& hashFork, const CDestination& destFrom,
                                                            const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
                                                            const std::vector<unsigned char>& vchData, CTransaction& txNew) override;

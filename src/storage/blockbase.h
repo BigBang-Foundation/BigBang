@@ -196,7 +196,7 @@ public:
     void GetUnspentChanges(std::vector<CTxUnspent>& vAddNew, std::vector<CTxOutPoint>& vRemove);
     void GetUnspentChanges(std::vector<CTxUnspent>& vAddNewUnspent, std::vector<CTxUnspent>& vRemoveUnspent);
     void GetTxUpdated(std::set<uint256>& setUpdate);
-    void GetTxRemoved(std::vector<uint256>& vRemove);
+    void GetTxRemoved(std::vector<uint256>& vRemove, std::vector<CAddrTxIndex>& vAddrTxIndexRemove);
     void GetBlockChanges(std::vector<CBlockEx>& vAdd, std::vector<CBlockEx>& vRemove) const;
 
 protected:
@@ -210,6 +210,7 @@ protected:
     std::map<uint256, CTransaction> mapTx;
     std::map<CTxOutPoint, CViewUnspent> mapUnspent;
     std::vector<uint256> vTxRemove;
+    std::vector<CAddrTxIndex> vAddrTxRemove;
     std::vector<uint256> vTxAddNew;
     std::list<std::pair<uint256, CBlockEx>> vBlockAddNew;
     std::list<std::pair<uint256, CBlockEx>> vBlockRemove;
@@ -300,6 +301,7 @@ public:
     bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent);
     bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent);
     bool RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent);
+    bool RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx);
 
     // DeFi
     template <typename D, typename Convert>
@@ -392,7 +394,7 @@ protected:
     bool VerifyDelegateVote(const uint256& hash, CBlockEx& block, int64 nMinEnrollAmount, CDelegateContext& ctxtDelegate);
     bool UpdateDelegate(const uint256& hash, CBlockEx& block, const CDiskPos& posBlock, CDelegateContext& ctxtDelegate);
     bool GetTxUnspent(const uint256 fork, const CTxOutPoint& out, CTxOut& unspent);
-    bool GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, std::vector<std::pair<uint256, CTxIndex>>& vTxNew);
+    bool GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, std::vector<std::pair<uint256, CTxIndex>>& vTxNew, std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddrTxNew);
     bool IsValidBlock(CBlockIndex* pForkLast, const uint256& hashBlock);
     bool VerifyValidBlock(CBlockIndex* pIndexGenesisLast, const CBlockIndex* pIndex);
     CBlockIndex* GetLongChainLastBlock(const uint256& hashFork, int nStartHeight, CBlockIndex* pIndexGenesisLast, const std::set<uint256>& setInvalidHash);
