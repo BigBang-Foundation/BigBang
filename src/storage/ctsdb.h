@@ -235,6 +235,16 @@ public:
             if (fSaveLoad)
             {
                 mapUpper[nTime].insert(chunk.begin(), chunk.end());
+
+                int64 nDelStartTime = nTime - 600;
+                for (auto it = mapUpper.begin(); it != mapUpper.end();)
+                {
+                    if (it->first > nDelStartTime)
+                    {
+                        break;
+                    }
+                    mapUpper.erase(it++);
+                }
             }
             return chunk.Find(key, value);
         }

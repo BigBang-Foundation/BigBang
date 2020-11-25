@@ -271,37 +271,23 @@ public:
 class CCheckBlockIndexWalker : public CBlockDBWalker
 {
 public:
+    CCheckBlockIndexWalker(const map<uint256, CBlockIndex*>& mapBlockIndexIn)
+      : mapBlockIndex(mapBlockIndexIn) {}
+
     bool Walk(CBlockOutline& outline) override
     {
-        mapBlockIndex.insert(make_pair(outline.hashBlock, outline));
-        return true;
-    }
-    bool CheckBlock(const CBlockOutline& cacheBlock)
-    {
-        map<uint256, CBlockOutline>::iterator it = mapBlockIndex.find(cacheBlock.hashBlock);
-        if (it == mapBlockIndex.end())
+        if (!mapBlockIndex.count(outline.GetBlockHash()))
         {
-            return false;
-        }
-        const CBlockOutline& outline = it->second;
-        if (!(outline.nFile == cacheBlock.nFile && outline.nOffset == cacheBlock.nOffset))
-        {
-            return false;
+            vRemove.push_back(outline.GetBlockHash());
         }
         return true;
-    }
-    CBlockOutline* GetBlockOutline(const uint256& hashBlock)
-    {
-        map<uint256, CBlockOutline>::iterator it = mapBlockIndex.find(hashBlock);
-        if (it == mapBlockIndex.end())
-        {
-            return nullptr;
-        }
-        return &(it->second);
     }
 
+protected:
+    const map<uint256, CBlockIndex*>& mapBlockIndex;
+
 public:
-    map<uint256, CBlockOutline> mapBlockIndex;
+    vector<uint256> vRemove;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -413,7 +399,6 @@ public:
     map<uint256, CBlockIndex*> mapBlockIndex;
     map<uint256, uint256> mapRefBlock;
     CBlockIndexDB dbBlockIndex;
-    CCheckBlockIndexWalker objBlockIndexWalker;
     CCheckDelegateDB objDelegateDB;
     CCheckTsBlock objTsBlock;
 };

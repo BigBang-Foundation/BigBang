@@ -51,6 +51,11 @@ bool CBlockIndexDB::RemoveBlock(const uint256& hashBlock)
     return Erase(hashBlock);
 }
 
+bool CBlockIndexDB::RetrieveBlock(const uint256& hashBlock, CBlockOutline& outline)
+{
+    return Read(hashBlock, outline);
+}
+
 bool CBlockIndexDB::WalkThroughBlock(CBlockDBWalker& walker)
 {
     return WalkThrough(boost::bind(&CBlockIndexDB::LoadBlockWalker, this, _1, _2, boost::ref(walker)));

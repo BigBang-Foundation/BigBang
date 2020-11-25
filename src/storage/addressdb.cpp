@@ -454,7 +454,7 @@ CAddressDB::CAddressDB()
     fStopFlush = true;
 }
 
-bool CAddressDB::Initialize(const boost::filesystem::path& pathData)
+bool CAddressDB::Initialize(const boost::filesystem::path& pathData, const bool fFlush)
 {
     pathAddress = pathData / "address";
 
@@ -468,14 +468,16 @@ bool CAddressDB::Initialize(const boost::filesystem::path& pathData)
         return false;
     }
 
-    fStopFlush = false;
-    pThreadFlush = new boost::thread(boost::bind(&CAddressDB::FlushProc, this));
-    if (pThreadFlush == nullptr)
+    if (fFlush)
     {
-        fStopFlush = true;
-        return false;
+        fStopFlush = false;
+        pThreadFlush = new boost::thread(boost::bind(&CAddressDB::FlushProc, this));
+        if (pThreadFlush == nullptr)
+        {
+            fStopFlush = true;
+            return false;
+        }
     }
-
     return true;
 }
 
@@ -496,13 +498,16 @@ void CAddressDB::Deinitialize()
     {
         CWriteLock wlock(rwAccess);
 
-        for (map<uint256, std::shared_ptr<CForkAddressDB>>::iterator it = mapAddressDB.begin();
-             it != mapAddressDB.end(); ++it)
+        if (pThreadFlush)
         {
-            std::shared_ptr<CForkAddressDB> spAddress = (*it).second;
+            for (map<uint256, std::shared_ptr<CForkAddressDB>>::iterator it = mapAddressDB.begin();
+                 it != mapAddressDB.end(); ++it)
+            {
+                std::shared_ptr<CForkAddressDB> spAddress = (*it).second;
 
-            spAddress->Flush();
-            spAddress->Flush();
+                spAddress->Flush();
+                spAddress->Flush();
+            }
         }
         mapAddressDB.clear();
     }

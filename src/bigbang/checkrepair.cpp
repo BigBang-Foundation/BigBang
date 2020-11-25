@@ -1255,8 +1255,6 @@ bool CCheckBlockWalker::Initialize(const string& strPath)
         StdLog("check", "dbBlockIndex Initialize fail");
         return false;
     }
-    dbBlockIndex.WalkThroughBlock(objBlockIndexWalker);
-    StdLog("check", "Fetch block index success, count: %ld", objBlockIndexWalker.mapBlockIndex.size());
     return true;
 }
 
@@ -1373,9 +1371,10 @@ CBlockIndex* CCheckBlockWalker::AddBlockIndex(const uint256& hashBlock, const CB
     }
 
     CBlockIndex* pNewBlockIndex = nullptr;
-    CBlockOutline* pBlockOutline = objBlockIndexWalker.GetBlockOutline(hashBlock);
-    if (pBlockOutline == nullptr)
+    CBlockOutline blockOutline;
+    if (!dbBlockIndex.RetrieveBlock(hashBlock, blockOutline))
     {
+        StdLog("check", "Add block index: Check db block index fail, block: %s", hashBlock.GetHex().c_str());
         uint256 nChainTrust;
         if (pIndexPrev != nullptr && !block.IsOrigin() && !block.IsNull())
         {
@@ -1436,10 +1435,19 @@ CBlockIndex* CCheckBlockWalker::AddBlockIndex(const uint256& hashBlock, const CB
             StdError("check", "Add block index: Add new block index fail 1, block: %s.", hashBlock.GetHex().c_str());
             return nullptr;
         }
+
+        if (!fOnlyCheck)
+        {
+            if (!dbBlockIndex.AddNewBlock(CBlockOutline(pNewBlockIndex)))
+            {
+                StdError("check", "Add block index: Add db block fail, block: %s.", hashBlock.GetHex().c_str());
+                return nullptr;
+            }
+        }
     }
     else
     {
-        pNewBlockIndex = AddNewIndex(hashBlock, *pBlockOutline);
+        pNewBlockIndex = AddNewIndex(hashBlock, blockOutline);
         if (pNewBlockIndex == nullptr)
         {
             StdError("check", "Add block index: Add new block index fail 2, block: %s.", hashBlock.GetHex().c_str());
@@ -1451,6 +1459,15 @@ CBlockIndex* CCheckBlockWalker::AddBlockIndex(const uint256& hashBlock, const CB
                    hashBlock.GetHex().c_str(), pNewBlockIndex->nFile, nFile, pNewBlockIndex->nOffset, nOffset);
             pNewBlockIndex->nFile = nFile;
             pNewBlockIndex->nOffset = nOffset;
+
+            if (!fOnlyCheck)
+            {
+                if (!dbBlockIndex.AddNewBlock(CBlockOutline(pNewBlockIndex)))
+                {
+                    StdError("check", "Add block index: Add db block fail, block: %s.", hashBlock.GetHex().c_str());
+                    return nullptr;
+                }
+            }
         }
     }
     return pNewBlockIndex;
@@ -1972,26 +1989,16 @@ void CCheckBlockWalker::ClearBlockIndex()
 
 bool CCheckBlockWalker::CheckBlockIndex()
 {
-    for (map<uint256, CBlockIndex*>::iterator it = mapBlockIndex.begin(); it != mapBlockIndex.end(); ++it)
+    CCheckBlockIndexWalker objBlockIndexWalker(mapBlockIndex);
+    dbBlockIndex.WalkThroughBlock(objBlockIndexWalker);
+    if (!objBlockIndexWalker.vRemove.empty())
     {
-        if (!objBlockIndexWalker.CheckBlock(CBlockOutline(it->second)))
+        StdLog("check", "CheckBlockIndex: Remove block index count: %ld", objBlockIndexWalker.vRemove.size());
+        if (!fOnlyCheck)
         {
-            StdLog("check", "CheckBlockIndex: Find block index fail, add block index, block: %s.", it->first.GetHex().c_str());
-            if (!fOnlyCheck)
+            for (const auto& hash : objBlockIndexWalker.vRemove)
             {
-                dbBlockIndex.AddNewBlock(CBlockOutline(it->second));
-            }
-        }
-    }
-    for (map<uint256, CBlockOutline>::iterator it = objBlockIndexWalker.mapBlockIndex.begin(); it != objBlockIndexWalker.mapBlockIndex.end(); ++it)
-    {
-        const CBlockOutline& blockOut = it->second;
-        if (mapBlockIndex.find(blockOut.hashBlock) == mapBlockIndex.end())
-        {
-            StdLog("check", "CheckBlockIndex: Find block hash fail, remove block index, block: %s.", blockOut.hashBlock.GetHex().c_str());
-            if (!fOnlyCheck)
-            {
-                dbBlockIndex.RemoveBlock(blockOut.hashBlock);
+                dbBlockIndex.RemoveBlock(hash);
             }
         }
     }
@@ -2177,7 +2184,7 @@ bool CCheckRepairData::FetchBlockData()
 bool CCheckRepairData::CheckRepairUnspent(uint64& nUnspentCount)
 {
     CUnspentDB dbUnspent;
-    if (!dbUnspent.Initialize(path(strDataPath)))
+    if (!dbUnspent.Initialize(path(strDataPath), false))
     {
         StdError("check", "Check repair unspent: dbUnspent Initialize fail");
         return false;
@@ -2226,7 +2233,7 @@ bool CCheckRepairData::CheckRepairUnspent(uint64& nUnspentCount)
 bool CCheckRepairData::CheckRepairAddressUnspent()
 {
     CAddressUnspentDB dbAddressUnspent;
-    if (!dbAddressUnspent.Initialize(path(strDataPath)))
+    if (!dbAddressUnspent.Initialize(path(strDataPath), false))
     {
         StdError("check", "Check address unspent: dbAddress Initialize fail");
         return false;
@@ -2274,7 +2281,7 @@ bool CCheckRepairData::CheckRepairAddressUnspent()
 bool CCheckRepairData::CheckRepairAddress(uint64& nAddressCount)
 {
     CAddressDB dbAddress;
-    if (!dbAddress.Initialize(path(strDataPath)))
+    if (!dbAddress.Initialize(path(strDataPath), false))
     {
         StdError("check", "Check address: dbAddress Initialize fail");
         return false;
