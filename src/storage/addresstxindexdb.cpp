@@ -142,6 +142,11 @@ bool CForkAddressTxIndexDB::RetrieveAddressTxIndex(const CDestination& dest, con
     return true;
 }
 
+bool CForkAddressTxIndexDB::RetrieveTxIndex(const CAddrTxIndex& addrTxIndex, CAddrTxInfo& addrTxInfo)
+{
+    return Read(addrTxIndex, addrTxInfo);
+}
+
 bool CForkAddressTxIndexDB::Copy(CForkAddressTxIndexDB& dbAddressTxIndex)
 {
     if (!dbAddressTxIndex.RemoveAll())
@@ -317,7 +322,7 @@ CAddressTxIndexDB::CAddressTxIndexDB()
     fStopFlush = true;
 }
 
-bool CAddressTxIndexDB::Initialize(const boost::filesystem::path& pathData)
+bool CAddressTxIndexDB::Initialize(const boost::filesystem::path& pathData, const bool fFlush)
 {
     pathAddress = pathData / "addresstxindex";
 
@@ -331,14 +336,16 @@ bool CAddressTxIndexDB::Initialize(const boost::filesystem::path& pathData)
         return false;
     }
 
-    fStopFlush = false;
-    pThreadFlush = new boost::thread(boost::bind(&CAddressTxIndexDB::FlushProc, this));
-    if (pThreadFlush == nullptr)
+    if (fFlush)
     {
-        fStopFlush = true;
-        return false;
+        fStopFlush = false;
+        pThreadFlush = new boost::thread(boost::bind(&CAddressTxIndexDB::FlushProc, this));
+        if (pThreadFlush == nullptr)
+        {
+            fStopFlush = true;
+            return false;
+        }
     }
-
     return true;
 }
 
@@ -354,19 +361,24 @@ void CAddressTxIndexDB::Deinitialize()
         pThreadFlush->join();
         delete pThreadFlush;
         pThreadFlush = nullptr;
-    }
 
+        {
+            CWriteLock wlock(rwAccess);
+
+            for (map<uint256, std::shared_ptr<CForkAddressTxIndexDB>>::iterator it = mapAddressDB.begin();
+                 it != mapAddressDB.end(); ++it)
+            {
+                std::shared_ptr<CForkAddressTxIndexDB> spAddress = (*it).second;
+
+                spAddress->Flush();
+                spAddress->Flush();
+            }
+            mapAddressDB.clear();
+        }
+    }
+    else
     {
         CWriteLock wlock(rwAccess);
-
-        for (map<uint256, std::shared_ptr<CForkAddressTxIndexDB>>::iterator it = mapAddressDB.begin();
-             it != mapAddressDB.end(); ++it)
-        {
-            std::shared_ptr<CForkAddressTxIndexDB> spAddress = (*it).second;
-
-            spAddress->Flush();
-            spAddress->Flush();
-        }
         mapAddressDB.clear();
     }
 }
@@ -453,6 +465,19 @@ bool CAddressTxIndexDB::RetrieveAddressTxIndex(const uint256& hashFork, const CD
         return false;
     }
     return it->second->RetrieveAddressTxIndex(dest, nOffset, nCount, mapAddrTxIndex);
+}
+
+bool CAddressTxIndexDB::RetrieveTxIndex(const uint256& hashFork, const CAddrTxIndex& addrTxIndex, CAddrTxInfo& addrTxInfo)
+{
+    CReadLock rlock(rwAccess);
+
+    map<uint256, std::shared_ptr<CForkAddressTxIndexDB>>::iterator it = mapAddressDB.find(hashFork);
+    if (it == mapAddressDB.end())
+    {
+        StdLog("CAddressTxIndexDB", "RetrieveTxIndex: find fork fail, fork: %s", hashFork.GetHex().c_str());
+        return false;
+    }
+    return it->second->RetrieveTxIndex(addrTxIndex, addrTxInfo);
 }
 
 bool CAddressTxIndexDB::Copy(const uint256& srcFork, const uint256& destFork)

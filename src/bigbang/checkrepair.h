@@ -43,6 +43,28 @@ public:
     int nTxType;
 };
 
+class CCheckTxInfo
+{
+public:
+    CCheckTxInfo() {}
+    CCheckTxInfo(const CDestination& destFromIn, const CDestination& destToIn, const int nTxTypeIn, const uint32 nTimeStampIn, const uint32 nLockUntilIn,
+                 const int64 nAmountIn, const int64 nTxFeeIn, const int nBlockHeightIn, const uint32 nFileIn, const uint32 nOffsetIn)
+      : destFrom(destFromIn), destTo(destToIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn), nLockUntil(nLockUntilIn),
+        nAmount(nAmountIn), nTxFee(nTxFeeIn), nBlockHeight(nBlockHeightIn), nFile(nFileIn), nOffset(nOffsetIn) {}
+
+public:
+    CDestination destFrom;
+    CDestination destTo;
+    int nTxType;
+    uint32 nTimeStamp;
+    uint32 nLockUntil;
+    int64 nAmount;
+    int64 nTxFee;
+    int nBlockHeight;
+    uint32 nFile;
+    uint32 nOffset;
+};
+
 class CCheckTxOut : public CTxOut
 {
 public:
@@ -117,6 +139,24 @@ protected:
 public:
     vector<pair<CDestination, CAddrInfo>> vAddUpdate;
     vector<CDestination> vRemove;
+};
+
+class CCheckAddressTxIndexWalker : public CForkAddressTxIndexDBWalker
+{
+public:
+    CCheckAddressTxIndexWalker(const map<uint256, CCheckTxIndex>& mapBlockTxIndexIn)
+      : mapBlockTxIndex(mapBlockTxIndexIn) {}
+
+    bool Walk(const CAddrTxIndex& key, const CAddrTxInfo& value) override;
+    bool CheckAddressTxIndex();
+
+protected:
+    const map<uint256, CCheckTxIndex>& mapBlockTxIndex;
+    set<CAddrTxIndex> setDbAddressTxIndex;
+
+public:
+    vector<pair<CAddrTxIndex, CAddrTxInfo>> vAddUpdate;
+    vector<CAddrTxIndex> vRemove;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -353,6 +393,7 @@ public:
     CBlockIndex* pLast;
     bool fInvalidFork;
     map<uint256, CCheckTxIndex> mapBlockTxIndex;
+    map<uint256, CCheckTxInfo> mapBlockTxInfo;
     map<CTxOutPoint, CCheckTxOut> mapBlockUnspent;
     map<CDestination, pair<uint256, CAddrInfo>> mapBlockAddress;
 };
@@ -421,6 +462,7 @@ protected:
     bool CheckRepairAddressUnspent();
     bool CheckRepairAddress(uint64& nAddressCount);
     bool CheckTxIndex(uint64& nTxIndexCount);
+    bool CheckAddressTxIndex(uint64& nTxIndexCount);
 
 public:
     bool CheckRepairData();

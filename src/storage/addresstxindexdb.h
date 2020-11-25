@@ -97,6 +97,7 @@ public:
     bool WriteAddressTxIndex(const CAddrTxIndex& key, const CAddrTxInfo& value);
     bool ReadAddressTxIndex(const CAddrTxIndex& key, CAddrTxInfo& value);
     bool RetrieveAddressTxIndex(const CDestination& dest, const int64 nOffset, const int64 nCount, std::map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex);
+    bool RetrieveTxIndex(const CAddrTxIndex& addrTxIndex, CAddrTxInfo& addrTxInfo);
     bool Copy(CForkAddressTxIndexDB& dbAddressTxIndex);
     void SetCache(const CDblMap& dblCacheIn)
     {
@@ -121,7 +122,7 @@ class CAddressTxIndexDB
 {
 public:
     CAddressTxIndexDB();
-    bool Initialize(const boost::filesystem::path& pathData);
+    bool Initialize(const boost::filesystem::path& pathData, const bool fFlush = true);
     void Deinitialize();
     bool Exists(const uint256& hashFork)
     {
@@ -133,6 +134,7 @@ public:
     bool UpdateAddressTxIndex(const uint256& hashFork, const std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddNew, const std::vector<CAddrTxIndex>& vRemove);
     bool RepairAddressTxIndex(const uint256& hashFork, const std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddUpdate, const std::vector<CAddrTxIndex>& vRemove);
     bool RetrieveAddressTxIndex(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, std::map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex);
+    bool RetrieveTxIndex(const uint256& hashFork, const CAddrTxIndex& addrTxIndex, CAddrTxInfo& addrTxInfo);
     bool Copy(const uint256& srcFork, const uint256& destFork);
     bool WalkThrough(const uint256& hashFork, CForkAddressTxIndexDBWalker& walker);
     void Flush(const uint256& hashFork);

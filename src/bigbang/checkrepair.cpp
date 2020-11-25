@@ -136,6 +136,42 @@ bool CCheckAddressWalker::CheckAddress()
 }
 
 /////////////////////////////////////////////////////////////////////////
+// CCheckAddressTxIndexWalker
+
+bool CCheckAddressTxIndexWalker::Walk(const CAddrTxIndex& key, const CAddrTxInfo& value)
+{
+    auto it = mapBlockTxIndex.find(key.txid);
+    if (it == mapBlockTxIndex.end())
+    {
+        StdLog("check", "Check db address txindex: find txid fail, address: %s, txid: %s.",
+               CAddress(key.dest).ToString().c_str(), key.txid.GetHex().c_str());
+        vRemove.push_back(key);
+    }
+    else
+    {
+        setDbAddressTxIndex.insert(key);
+    }
+    return true;
+}
+
+bool CCheckAddressTxIndexWalker::CheckAddressTxIndex()
+{
+    /*for (auto it = mapBlockTxIndex.begin(); it != mapBlockTxIndex.end(); ++it)
+    {
+        auto mt = setDbAddressTxIndex.find(it->first);
+        if (mt == setDbAddressTxIndex.end())
+        {
+            if (mt != mapDbAddress.end())
+            {
+                vRemove.push_back(it->first);
+            }
+            vAddUpdate.push_back(make_pair(it->first, it->second.second));
+        }
+    }*/
+    return !(vAddUpdate.size() > 0 || vRemove.size() > 0);
+}
+
+/////////////////////////////////////////////////////////////////////////
 // CCheckForkManager
 
 CCheckForkManager::~CCheckForkManager()
@@ -1100,6 +1136,8 @@ bool CCheckBlockFork::AddBlockTx(const CTransaction& txIn, const CTxContxt& cont
         StdLog("check", "AddBlockTx: add block tx index fail, txid: %s.", txid.GetHex().c_str());
         return false;
     }
+    mapBlockTxInfo.insert(make_pair(txid, CCheckTxInfo(contxtIn.destIn, txIn.sendTo, txIn.nType, txIn.nTimeStamp,
+                                                       txIn.nLockUntil, txIn.nAmount, txIn.nTxFee, nHeight, nFileNoIn, nOffsetIn)));
 
     for (size_t i = 0; i < txIn.vInput.size(); i++)
     {
@@ -1179,6 +1217,7 @@ bool CCheckBlockFork::RemoveBlockTx(const CTransaction& txIn, const CTxContxt& c
     }
 
     mapBlockTxIndex.erase(txid);
+    mapBlockTxInfo.erase(txid);
 
     if (txIn.IsDeFiRelation() && txIn.sendTo != contxtIn.destIn)
     {
@@ -2384,6 +2423,8 @@ bool CCheckRepairData::CheckTxIndex(uint64& nTxIndexCount)
             if (!dbTxIndex.Update(fork.first, fork.second, vector<uint256>()))
             {
                 StdLog("check", "Repair tx index update fail");
+                dbTxIndex.Deinitialize();
+                return false;
             }
             dbTxIndex.Flush(fork.first);
             nUpdateTxIndexCount += fork.second.size();
@@ -2392,6 +2433,89 @@ bool CCheckRepairData::CheckTxIndex(uint64& nTxIndexCount)
     }
 
     dbTxIndex.Deinitialize();
+    return true;
+}
+
+bool CCheckRepairData::CheckAddressTxIndex(uint64& nTxIndexCount)
+{
+    CAddressTxIndexDB dbAddressTxIndex;
+    if (!dbAddressTxIndex.Initialize(path(strDataPath), false))
+    {
+        StdLog("check", "Check address tx index: dbAddressTxIndex Initialize fail");
+        return false;
+    }
+
+    map<uint256, CCheckBlockFork>::iterator mt = objBlockWalker.mapCheckFork.begin();
+    for (; mt != objBlockWalker.mapCheckFork.end(); ++mt)
+    {
+        if (!dbAddressTxIndex.AddNewFork(mt->first))
+        {
+            StdLog("check", "Check address tx index: dbAddressTxIndex LoadFork fail");
+            dbAddressTxIndex.Deinitialize();
+            return false;
+        }
+        vector<pair<CAddrTxIndex, CAddrTxInfo>> vAddUpdate;
+        vector<CAddrTxIndex> vRemove;
+        const uint256& hashFork = mt->first;
+        for (auto nt = mt->second.mapBlockTxInfo.begin(); nt != mt->second.mapBlockTxInfo.end(); ++nt)
+        {
+            const uint256& txid = nt->first;
+            const CCheckTxInfo& checkTxInfo = nt->second;
+
+            {
+                bool fCheckRet = true;
+                CAddrTxInfo addrTxInfo;
+                if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, CAddrTxIndex(checkTxInfo.destFrom, txid), addrTxInfo))
+                {
+                    StdLog("check", "Check address tx index: Retrieve address tx index fail, height: %d, tx: %s.",
+                           nt->second.nBlockHeight, txid.GetHex().c_str());
+                    fCheckRet = false;
+                }
+                if (!fCheckRet)
+                {
+                    int nDirection = CAddrTxInfo::TXI_DIRECTION_FROM;
+                    if (checkTxInfo.destFrom == checkTxInfo.destTo)
+                    {
+                        nDirection = CAddrTxInfo::TXI_DIRECTION_TWO;
+                    }
+                    CAddrTxInfo txInfo(nDirection, checkTxInfo.destTo, checkTxInfo.nTxType, checkTxInfo.nTimeStamp, checkTxInfo.nLockUntil,
+                                       checkTxInfo.nAmount, checkTxInfo.nTxFee, checkTxInfo.nBlockHeight, checkTxInfo.nFile, checkTxInfo.nOffset);
+                    vAddUpdate.push_back(make_pair(CAddrTxIndex(checkTxInfo.destFrom, txid), txInfo));
+                }
+            }
+
+            if (checkTxInfo.destFrom != checkTxInfo.destTo)
+            {
+                bool fCheckRet = true;
+                CAddrTxInfo addrTxInfo;
+                if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, CAddrTxIndex(checkTxInfo.destTo, txid), addrTxInfo))
+                {
+                    StdLog("check", "Check address tx index: Retrieve address tx index fail, height: %d, tx: %s.",
+                           nt->second.nBlockHeight, txid.GetHex().c_str());
+                    fCheckRet = false;
+                }
+                if (!fCheckRet)
+                {
+                    CAddrTxInfo txInfo(CAddrTxInfo::TXI_DIRECTION_TO, checkTxInfo.destFrom, checkTxInfo.nTxType, checkTxInfo.nTimeStamp, checkTxInfo.nLockUntil,
+                                       checkTxInfo.nAmount, checkTxInfo.nTxFee, checkTxInfo.nBlockHeight, checkTxInfo.nFile, checkTxInfo.nOffset);
+                    vAddUpdate.push_back(make_pair(CAddrTxIndex(checkTxInfo.destTo, txid), txInfo));
+                }
+            }
+            ++nTxIndexCount;
+        }
+
+        if (!fOnlyCheck && (!vAddUpdate.empty() || !vRemove.empty()))
+        {
+            if (!dbAddressTxIndex.RepairAddressTxIndex(hashFork, vAddUpdate, vRemove))
+            {
+                StdLog("check", "Check address tx index: Repair address tx index update fail");
+                dbAddressTxIndex.Deinitialize();
+                return false;
+            }
+        }
+    }
+
+    dbAddressTxIndex.Deinitialize();
     return true;
 }
 
@@ -2473,6 +2597,15 @@ bool CCheckRepairData::CheckRepairData()
         return false;
     }
     StdLog("check", "Check tx index complete, count: %lu", nTxIndexCount);
+
+    StdLog("check", "Check address tx index starting");
+    nTxIndexCount = 0;
+    if (!CheckAddressTxIndex(nTxIndexCount))
+    {
+        StdLog("check", "Check address tx index fail");
+        return false;
+    }
+    StdLog("check", "Check address tx index complete, count: %lu", nTxIndexCount);
     return true;
 }
 
