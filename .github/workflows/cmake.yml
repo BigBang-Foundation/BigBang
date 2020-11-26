@@ -27,6 +27,11 @@ jobs:
         sudo apt-get update -qq
         sudo apt install -y build-essential libboost-all-dev cmake openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl1.0-dev  libprotobuf-dev protobuf-compiler
         sudo apt install -y cppcheck valgrind
+    
+    - name: Build libsodium1.0.18
+      shell: bash
+      working-directory: ${{runner.workspace}}/deps
+      run: |
         wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz
         tar -zxvf libsodium-1.0.18.tar.gz
         cd libsodium-1.0.18 && ./autogen && && ./configure && make -j4 && sudo make install
