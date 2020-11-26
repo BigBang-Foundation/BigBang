@@ -34,7 +34,7 @@ jobs:
       working-directory: ${{github.workspace}}
       shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
-      run: ./INSTALL release
+      run: ./INSTALL.sh release
 
     - name: Test
       working-directory: ${{github.workspace}}
