@@ -26,8 +26,7 @@ jobs:
         sudo apt-get update -qq;
         sudo apt install -y g++ libboost-all-dev cmake openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl1.0-dev
         wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz --no-check-certificate
-        tar -zxvf libsodium-1.0.18.tar.gz
-        ls
+       
         
     
     - name: Create Build Environment
