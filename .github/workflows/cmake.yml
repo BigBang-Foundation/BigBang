@@ -21,7 +21,6 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Prepare Build Dependencies
-      shell: bash
       working-directory: ${{runner.workspace}}/deps
       run: | 
         sudo apt-get update -qq;
