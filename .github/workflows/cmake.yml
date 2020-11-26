@@ -25,7 +25,7 @@ jobs:
       run: | 
         mkdir ${{runner.workspace}}/deps && cd ${{runner.workspace}}/deps 
         sudo apt-get update -qq
-        sudo apt install -y build-essential libboost-all-dev cmake openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev  libprotobuf-dev protobuf-compiler
+        sudo apt install -y build-essential libboost-all-dev cmake openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev  libprotobuf-dev protobuf-compiler libsodium-dev
         sudo apt install -y cppcheck valgrind
     
     - name: Create Build Environment
