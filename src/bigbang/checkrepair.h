@@ -148,14 +148,11 @@ public:
       : mapBlockTxIndex(mapBlockTxIndexIn) {}
 
     bool Walk(const CAddrTxIndex& key, const CAddrTxInfo& value) override;
-    bool CheckAddressTxIndex();
 
 protected:
     const map<uint256, CCheckTxIndex>& mapBlockTxIndex;
-    set<CAddrTxIndex> setDbAddressTxIndex;
 
 public:
-    vector<pair<CAddrTxIndex, CAddrTxInfo>> vAddUpdate;
     vector<CAddrTxIndex> vRemove;
 };
 
@@ -262,6 +259,7 @@ public:
     bool RemoveDbForkLast(const uint256& hashFork);
 
     bool GetValidForkContext(const uint256& hashPrimaryLastBlock, const uint256& hashFork, CForkContext& ctxt);
+    bool IsCheckPoint(const uint256& hashFork, const uint256& hashBlock);
 
 public:
     string strDataPath;
@@ -270,7 +268,7 @@ public:
     uint256 hashGenesisBlock;
     CForkDB dbFork;
     map<uint256, uint256> mapActiveFork;
-    map<int, uint256> mapCheckPoints;
+    map<uint256, map<int, uint256>> mapCheckPoints;
     std::map<uint256, CCheckForkSchedule> mapBlockForkSched;
     std::map<uint256, CCheckValidFdForkId> mapBlockValidFork;
 };
@@ -372,8 +370,10 @@ public:
 class CCheckBlockFork
 {
 public:
-    CCheckBlockFork(CCheckTsBlock& tsBlockIn)
-      : pOrigin(nullptr), pLast(nullptr), fInvalidFork(false), tsBlock(tsBlockIn) {}
+    CCheckBlockFork(const string& strPathIn, const bool fOnlyCheckIn, CCheckTsBlock& tsBlockIn,
+                    CCheckForkManager& objForkManagerIn, CAddressTxIndexDB& dbAddressTxIndexIn)
+      : pOrigin(nullptr), pLast(nullptr), fInvalidFork(false), strDataPath(strPathIn), fOnlyCheck(fOnlyCheckIn),
+        tsBlock(tsBlockIn), objForkManager(objForkManagerIn), dbAddressTxIndex(dbAddressTxIndexIn), nCacheTxInfoBlockCount(0) {}
 
     bool AddForkBlock(const CBlockEx& block, CBlockIndex* pBlockIndex);
     CBlockIndex* GetBranch(CBlockIndex* pIndexRef, CBlockIndex* pIndex, vector<CBlockIndex*>& vPath);
@@ -386,9 +386,14 @@ public:
     bool AddBlockSpent(const CTxOutPoint& txPoint);
 
     void CopyData(const CCheckBlockFork& from);
+    bool CheckForkAddressTxIndex(const uint256& hashFork, const int nCheckHeight);
 
 public:
+    string strDataPath;
+    bool fOnlyCheck;
     CCheckTsBlock& tsBlock;
+    CCheckForkManager& objForkManager;
+    CAddressTxIndexDB& dbAddressTxIndex;
     CBlockIndex* pOrigin;
     CBlockIndex* pLast;
     bool fInvalidFork;
@@ -396,6 +401,7 @@ public:
     map<uint256, CCheckTxInfo> mapBlockTxInfo;
     map<CTxOutPoint, CCheckTxOut> mapBlockUnspent;
     map<CDestination, pair<uint256, CAddrInfo>> mapBlockAddress;
+    uint64 nCacheTxInfoBlockCount;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -409,6 +415,7 @@ public:
     ~CCheckBlockWalker();
 
     bool Initialize(const string& strPath);
+    void Uninitialize();
 
     bool Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset) override;
 
@@ -428,9 +435,11 @@ public:
     void ClearBlockIndex();
     bool CheckBlockIndex();
     bool CheckRefBlock();
+    bool CheckSurplusAddressTxIndex(uint64& nTxIndexCount);
 
 public:
     bool fOnlyCheck;
+    string strDataPath;
     int64 nBlockCount;
     uint32 nMainChainHeight;
     uint256 hashGenesis;
@@ -442,6 +451,7 @@ public:
     CBlockIndexDB dbBlockIndex;
     CCheckDelegateDB objDelegateDB;
     CCheckTsBlock objTsBlock;
+    CAddressTxIndexDB dbAddressTxIndex;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -462,7 +472,6 @@ protected:
     bool CheckRepairAddressUnspent();
     bool CheckRepairAddress(uint64& nAddressCount);
     bool CheckTxIndex(uint64& nTxIndexCount);
-    bool CheckAddressTxIndex(uint64& nTxIndexCount);
 
 public:
     bool CheckRepairData();

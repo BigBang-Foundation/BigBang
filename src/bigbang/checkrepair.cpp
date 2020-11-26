@@ -147,28 +147,7 @@ bool CCheckAddressTxIndexWalker::Walk(const CAddrTxIndex& key, const CAddrTxInfo
                CAddress(key.dest).ToString().c_str(), key.txid.GetHex().c_str());
         vRemove.push_back(key);
     }
-    else
-    {
-        setDbAddressTxIndex.insert(key);
-    }
     return true;
-}
-
-bool CCheckAddressTxIndexWalker::CheckAddressTxIndex()
-{
-    /*for (auto it = mapBlockTxIndex.begin(); it != mapBlockTxIndex.end(); ++it)
-    {
-        auto mt = setDbAddressTxIndex.find(it->first);
-        if (mt == setDbAddressTxIndex.end())
-        {
-            if (mt != mapDbAddress.end())
-            {
-                vRemove.push_back(it->first);
-            }
-            vAddUpdate.push_back(make_pair(it->first, it->second.second));
-        }
-    }*/
-    return !(vAddUpdate.size() > 0 || vRemove.size() > 0);
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -187,9 +166,9 @@ bool CCheckForkManager::Initialize(const string& strDataPathIn, bool fTestnetIn,
     hashGenesisBlock = hashGenesisBlockIn;
 
 #ifdef BIGBANG_TESTNET
-    mapCheckPoints.insert(make_pair(0, hashGenesisBlockIn));
+    mapCheckPoints[hashGenesisBlockIn].insert(make_pair(0, hashGenesisBlockIn));
 #else
-    for (const auto& vd : vPrimaryChainCheckPoints)
+    for (const auto& vd : mapCheckPointsList)
     {
         mapCheckPoints.insert(make_pair(vd.first, vd.second));
     }
@@ -343,14 +322,7 @@ bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
             }
         }
 
-        bool fCheckPointBlock = false;
-        const auto it = mapCheckPoints.find(CBlock::GetBlockHeightByHash(hashBlock));
-        if (it != mapCheckPoints.end() && it->second == hashBlock)
-        {
-            fCheckPointBlock = true;
-        }
-
-        if (!AddForkContext(blockex.hashPrev, hashBlock, vForkCtxt, fCheckPointBlock, hashRefFdBlock, mapValidFork))
+        if (!AddForkContext(blockex.hashPrev, hashBlock, vForkCtxt, IsCheckPoint(hashGenesisBlock, hashBlock), hashRefFdBlock, mapValidFork))
         {
             StdLog("check", "Add block fork context: Add fork context fail, block: %s", hashBlock.ToString().c_str());
             return false;
@@ -720,6 +692,25 @@ bool CCheckForkManager::GetValidForkContext(const uint256& hashPrimaryLastBlock,
         return false;
     }
     ctxt = it->second.ctxtFork;
+    return true;
+}
+
+bool CCheckForkManager::IsCheckPoint(const uint256& hashFork, const uint256& hashBlock)
+{
+    auto it = mapCheckPoints.find(hashFork);
+    if (it == mapCheckPoints.end())
+    {
+        return false;
+    }
+    auto mt = it->second.find(CBlock::GetBlockHeightByHash(hashBlock));
+    if (mt == it->second.end())
+    {
+        return false;
+    }
+    if (mt->second != hashBlock)
+    {
+        return false;
+    }
     return true;
 }
 
@@ -1095,6 +1086,27 @@ bool CCheckBlockFork::AddBlockData(const CBlockEx& block, const CBlockIndex* pBl
             }
             nTxOffset += ss.GetSerializeSize(block.vtx[i]);
         }
+
+        if (objForkManager.IsCheckPoint(hashFork, pBlockIndex->GetBlockHash()))
+        {
+            if (!CheckForkAddressTxIndex(hashFork, pBlockIndex->GetBlockHeight()))
+            {
+                StdLog("check", "Check address tx index fail");
+                return false;
+            }
+        }
+        else
+        {
+            if (mapBlockTxInfo.size() >= 200000 || nCacheTxInfoBlockCount >= 1000)
+            {
+                if (!CheckForkAddressTxIndex(hashFork, pBlockIndex->GetBlockHeight() - 30))
+                {
+                    StdLog("check", "Check address tx index fail");
+                    return false;
+                }
+            }
+        }
+        ++nCacheTxInfoBlockCount;
     }
     return true;
 }
@@ -1119,6 +1131,7 @@ bool CCheckBlockFork::RemoveBlockData(const CBlockEx& block, const CBlockIndex* 
                 return false;
             }
         }
+        --nCacheTxInfoBlockCount;
     }
     return true;
 }
@@ -1132,8 +1145,12 @@ bool CCheckBlockFork::AddBlockTx(const CTransaction& txIn, const CTxContxt& cont
         StdLog("check", "AddBlockTx: add block tx index fail, txid: %s.", txid.GetHex().c_str());
         return false;
     }
-    mapBlockTxInfo.insert(make_pair(txid, CCheckTxInfo(contxtIn.destIn, txIn.sendTo, txIn.nType, txIn.nTimeStamp,
-                                                       txIn.nLockUntil, txIn.nAmount, txIn.nTxFee, nHeight, nFileNoIn, nOffsetIn)));
+    if (!mapBlockTxInfo.insert(make_pair(txid, CCheckTxInfo(contxtIn.destIn, txIn.sendTo, txIn.nType, txIn.nTimeStamp,
+                                                            txIn.nLockUntil, txIn.nAmount, txIn.nTxFee, nHeight, nFileNoIn, nOffsetIn)))
+             .second)
+    {
+        StdError("check", "AddBlockTx: add block tx info fail, txid: %s.", txid.GetHex().c_str());
+    }
 
     for (size_t i = 0; i < txIn.vInput.size(); i++)
     {
@@ -1213,7 +1230,16 @@ bool CCheckBlockFork::RemoveBlockTx(const CTransaction& txIn, const CTxContxt& c
     }
 
     mapBlockTxIndex.erase(txid);
-    mapBlockTxInfo.erase(txid);
+
+    auto it = mapBlockTxInfo.find(txid);
+    if (it == mapBlockTxInfo.end())
+    {
+        StdError("check", "Remove Block Tx: Find block tx info fail, txid: %s.", txid.GetHex().c_str());
+    }
+    else
+    {
+        mapBlockTxInfo.erase(it);
+    }
 
     if (txIn.IsDeFiRelation() && txIn.sendTo != contxtIn.destIn)
     {
@@ -1262,17 +1288,100 @@ void CCheckBlockFork::CopyData(const CCheckBlockFork& from)
     mapBlockAddress.insert(from.mapBlockAddress.begin(), from.mapBlockAddress.end());
 }
 
+bool CCheckBlockFork::CheckForkAddressTxIndex(const uint256& hashFork, const int nCheckHeight)
+{
+    if (!dbAddressTxIndex.AddNewFork(hashFork))
+    {
+        StdLog("check", "Check fork address tx index: dbAddressTxIndex LoadFork fail");
+        return false;
+    }
+
+    vector<pair<CAddrTxIndex, CAddrTxInfo>> vAddUpdate;
+    vector<CAddrTxIndex> vRemove;
+    for (auto nt = mapBlockTxInfo.begin(); nt != mapBlockTxInfo.end();)
+    {
+        const uint256& txid = nt->first;
+        const CCheckTxInfo& checkTxInfo = nt->second;
+
+        if (checkTxInfo.nBlockHeight > nCheckHeight)
+        {
+            //++nt;
+            //continue;
+            break;
+        }
+
+        if (!checkTxInfo.destFrom.IsNull())
+        {
+            bool fCheckRet = true;
+            CAddrTxInfo addrTxInfo;
+            if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, CAddrTxIndex(checkTxInfo.destFrom, txid), addrTxInfo))
+            {
+                StdLog("check", "Check address tx index: Retrieve address tx index fail 1, height: %d, tx: %s, destFrom: %s, destTo: %s.",
+                       nt->second.nBlockHeight, txid.GetHex().c_str(),
+                       CAddress(checkTxInfo.destFrom).ToString().c_str(),
+                       CAddress(checkTxInfo.destTo).ToString().c_str());
+                fCheckRet = false;
+            }
+            if (!fCheckRet)
+            {
+                int nDirection = CAddrTxInfo::TXI_DIRECTION_FROM;
+                if (checkTxInfo.destFrom == checkTxInfo.destTo)
+                {
+                    nDirection = CAddrTxInfo::TXI_DIRECTION_TWO;
+                }
+                CAddrTxInfo txInfo(nDirection, checkTxInfo.destTo, checkTxInfo.nTxType, checkTxInfo.nTimeStamp, checkTxInfo.nLockUntil,
+                                   checkTxInfo.nAmount, checkTxInfo.nTxFee, checkTxInfo.nBlockHeight, checkTxInfo.nFile, checkTxInfo.nOffset);
+                vAddUpdate.push_back(make_pair(CAddrTxIndex(checkTxInfo.destFrom, txid), txInfo));
+            }
+        }
+
+        if (!checkTxInfo.destTo.IsNull() && checkTxInfo.destFrom != checkTxInfo.destTo)
+        {
+            bool fCheckRet = true;
+            CAddrTxInfo addrTxInfo;
+            if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, CAddrTxIndex(checkTxInfo.destTo, txid), addrTxInfo))
+            {
+                StdLog("check", "Check address tx index: Retrieve address tx index fail 2, height: %d, tx: %s, destFrom: %s, destTo: %s.",
+                       nt->second.nBlockHeight, txid.GetHex().c_str(),
+                       CAddress(checkTxInfo.destFrom).ToString().c_str(),
+                       CAddress(checkTxInfo.destTo).ToString().c_str());
+                fCheckRet = false;
+            }
+            if (!fCheckRet)
+            {
+                CAddrTxInfo txInfo(CAddrTxInfo::TXI_DIRECTION_TO, checkTxInfo.destFrom, checkTxInfo.nTxType, checkTxInfo.nTimeStamp, checkTxInfo.nLockUntil,
+                                   checkTxInfo.nAmount, checkTxInfo.nTxFee, checkTxInfo.nBlockHeight, checkTxInfo.nFile, checkTxInfo.nOffset);
+                vAddUpdate.push_back(make_pair(CAddrTxIndex(checkTxInfo.destTo, txid), txInfo));
+            }
+        }
+
+        mapBlockTxInfo.erase(nt++);
+    }
+
+    if (!fOnlyCheck && (!vAddUpdate.empty() || !vRemove.empty()))
+    {
+        if (!dbAddressTxIndex.RepairAddressTxIndex(hashFork, vAddUpdate, vRemove))
+        {
+            StdLog("check", "Check address tx index: Repair address tx index update fail");
+            return false;
+        }
+    }
+
+    nCacheTxInfoBlockCount = 0;
+    return true;
+}
+
 /////////////////////////////////////////////////////////////////////////
 // CCheckBlockWalker
 
 CCheckBlockWalker::~CCheckBlockWalker()
 {
-    ClearBlockIndex();
-    dbBlockIndex.Deinitialize();
+    Uninitialize();
 }
 
 bool CCheckBlockWalker::Initialize(const string& strPath)
 {
+    strDataPath = strPath;
     if (!objDelegateDB.Initialize(path(strPath)))
     {
         StdError("check", "Block walker: Delegate db initialize fail, path: %s.", strPath.c_str());
@@ -1290,7 +1399,20 @@ bool CCheckBlockWalker::Initialize(const string& strPath)
         StdLog("check", "dbBlockIndex Initialize fail");
         return false;
     }
+
+    if (!dbAddressTxIndex.Initialize(path(strPath), false))
+    {
+        StdLog("check", "dbAddressTxIndex Initialize fail");
+        return false;
+    }
     return true;
+}
+
+void CCheckBlockWalker::Uninitialize()
+{
+    ClearBlockIndex();
+    dbBlockIndex.Deinitialize();
+    dbAddressTxIndex.Deinitialize();
 }
 
 bool CCheckBlockWalker::Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset)
@@ -1354,7 +1476,7 @@ bool CCheckBlockWalker::Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset
     auto nt = mapCheckFork.find(hashFork);
     if (nt == mapCheckFork.end())
     {
-        nt = mapCheckFork.insert(make_pair(hashFork, CCheckBlockFork(objTsBlock))).first;
+        nt = mapCheckFork.insert(make_pair(hashFork, CCheckBlockFork(strDataPath, fOnlyCheck, objTsBlock, objForkManager, dbAddressTxIndex))).first;
     }
     CCheckBlockFork& checkBlockFork = nt->second;
     if (!checkBlockFork.AddForkBlock(block, pNewBlockIndex))
@@ -1372,7 +1494,7 @@ bool CCheckBlockWalker::Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset
             auto mt = mapCheckFork.find(vInheritFork[i]);
             if (mt == mapCheckFork.end())
             {
-                mt = mapCheckFork.insert(make_pair(vInheritFork[i], CCheckBlockFork(objTsBlock))).first;
+                mt = mapCheckFork.insert(make_pair(vInheritFork[i], CCheckBlockFork(strDataPath, fOnlyCheck, objTsBlock, objForkManager, dbAddressTxIndex))).first;
             }
             mt->second.CopyData(checkBlockFork);
         }
@@ -1389,6 +1511,10 @@ bool CCheckBlockWalker::Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset
         hashGenesis = hashBlock;
     }
     nBlockCount++;
+    if (nBlockCount % 100000 == 0)
+    {
+        StdLog("check", "Block walk: Fetch block count: %lu, height: %d.", nBlockCount, block.GetBlockHeight());
+    }
     return true;
 }
 
@@ -2152,6 +2278,40 @@ bool CCheckBlockWalker::CheckRefBlock()
     return true;
 }
 
+bool CCheckBlockWalker::CheckSurplusAddressTxIndex(uint64& nTxIndexCount)
+{
+    map<uint256, CCheckBlockFork>::iterator mt = mapCheckFork.begin();
+    for (; mt != mapCheckFork.end(); ++mt)
+    {
+        nTxIndexCount += mt->second.mapBlockTxInfo.size();
+        if (!mt->second.CheckForkAddressTxIndex(mt->first, 0x7FFFFFFF))
+        {
+            StdLog("check", "Check address tx index: Check fork address txindex fail, fork: %s", mt->first.GetHex().c_str());
+            return false;
+        }
+
+        CCheckAddressTxIndexWalker walker(mt->second.mapBlockTxIndex);
+        if (!dbAddressTxIndex.WalkThrough(mt->first, walker))
+        {
+            StdLog("check", "Check address tx index: Walk through address txindex fail, fork: %s", mt->first.GetHex().c_str());
+            return false;
+        }
+        if (!walker.vRemove.empty())
+        {
+            StdLog("check", "Check address tx index: Remove address txindex count: %lu, fork: %s", walker.vRemove.size(), mt->first.GetHex().c_str());
+            if (!fOnlyCheck)
+            {
+                if (!dbAddressTxIndex.RepairAddressTxIndex(mt->first, vector<pair<CAddrTxIndex, CAddrTxInfo>>(), walker.vRemove))
+                {
+                    StdLog("check", "Check address tx index: RepairAddressTxIndex fail, fork: %s", mt->first.GetHex().c_str());
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
 /////////////////////////////////////////////////////////////////////////
 // CCheckRepairData
 
@@ -2212,7 +2372,25 @@ bool CCheckRepairData::FetchBlockData()
             return false;
         }
         StdLog("check", "Check refblock success, main chain height: %d.", objBlockWalker.nMainChainHeight);
+
+        StdLog("check", "Check surplus address txindex starting");
+        uint64 nTxIndexCount = 0;
+        if (!objBlockWalker.CheckSurplusAddressTxIndex(nTxIndexCount))
+        {
+            StdError("check", "Check surplus address txindex fail");
+            return false;
+        }
+        StdLog("check", "Check surplus address txindex success, surplus count: %lu.", nTxIndexCount);
+
+        StdLog("check", "Check block index starting");
+        if (!objBlockWalker.CheckBlockIndex())
+        {
+            StdLog("check", "Check block index fail");
+            return false;
+        }
+        StdLog("check", "Check block index complete, count: %lu", objBlockWalker.mapBlockIndex.size());
     }
+    objBlockWalker.Uninitialize();
     return true;
 }
 
@@ -2307,6 +2485,7 @@ bool CCheckRepairData::CheckRepairAddressUnspent()
                 }
             }
         }
+        it->second.mapBlockUnspent.clear();
     }
 
     dbAddressUnspent.Deinitialize();
@@ -2357,6 +2536,7 @@ bool CCheckRepairData::CheckRepairAddress(uint64& nAddressCount)
             }
         }
         nAddressCount += it->second.mapBlockAddress.size();
+        it->second.mapBlockAddress.clear();
     }
 
     dbAddress.Deinitialize();
@@ -2407,6 +2587,7 @@ bool CCheckRepairData::CheckTxIndex(uint64& nTxIndexCount)
             }
             ++nTxIndexCount;
         }
+        mt->second.mapBlockTxIndex.clear();
     }
 
     // repair
@@ -2429,94 +2610,6 @@ bool CCheckRepairData::CheckTxIndex(uint64& nTxIndexCount)
     }
 
     dbTxIndex.Deinitialize();
-    return true;
-}
-
-bool CCheckRepairData::CheckAddressTxIndex(uint64& nTxIndexCount)
-{
-    CAddressTxIndexDB dbAddressTxIndex;
-    if (!dbAddressTxIndex.Initialize(path(strDataPath), false))
-    {
-        StdLog("check", "Check address tx index: dbAddressTxIndex Initialize fail");
-        return false;
-    }
-
-    map<uint256, CCheckBlockFork>::iterator mt = objBlockWalker.mapCheckFork.begin();
-    for (; mt != objBlockWalker.mapCheckFork.end(); ++mt)
-    {
-        if (!dbAddressTxIndex.AddNewFork(mt->first))
-        {
-            StdLog("check", "Check address tx index: dbAddressTxIndex LoadFork fail");
-            dbAddressTxIndex.Deinitialize();
-            return false;
-        }
-        vector<pair<CAddrTxIndex, CAddrTxInfo>> vAddUpdate;
-        vector<CAddrTxIndex> vRemove;
-        const uint256& hashFork = mt->first;
-        for (auto nt = mt->second.mapBlockTxInfo.begin(); nt != mt->second.mapBlockTxInfo.end(); ++nt)
-        {
-            const uint256& txid = nt->first;
-            const CCheckTxInfo& checkTxInfo = nt->second;
-
-            if (!checkTxInfo.destFrom.IsNull())
-            {
-                bool fCheckRet = true;
-                CAddrTxInfo addrTxInfo;
-                if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, CAddrTxIndex(checkTxInfo.destFrom, txid), addrTxInfo))
-                {
-                    StdLog("check", "Check address tx index: Retrieve address tx index fail 1, height: %d, tx: %s, destFrom: %s, destTo: %s.",
-                           nt->second.nBlockHeight, txid.GetHex().c_str(),
-                           CAddress(checkTxInfo.destFrom).ToString().c_str(),
-                           CAddress(checkTxInfo.destTo).ToString().c_str());
-                    fCheckRet = false;
-                }
-                if (!fCheckRet)
-                {
-                    int nDirection = CAddrTxInfo::TXI_DIRECTION_FROM;
-                    if (checkTxInfo.destFrom == checkTxInfo.destTo)
-                    {
-                        nDirection = CAddrTxInfo::TXI_DIRECTION_TWO;
-                    }
-                    CAddrTxInfo txInfo(nDirection, checkTxInfo.destTo, checkTxInfo.nTxType, checkTxInfo.nTimeStamp, checkTxInfo.nLockUntil,
-                                       checkTxInfo.nAmount, checkTxInfo.nTxFee, checkTxInfo.nBlockHeight, checkTxInfo.nFile, checkTxInfo.nOffset);
-                    vAddUpdate.push_back(make_pair(CAddrTxIndex(checkTxInfo.destFrom, txid), txInfo));
-                }
-            }
-
-            if (!checkTxInfo.destTo.IsNull() && checkTxInfo.destFrom != checkTxInfo.destTo)
-            {
-                bool fCheckRet = true;
-                CAddrTxInfo addrTxInfo;
-                if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, CAddrTxIndex(checkTxInfo.destTo, txid), addrTxInfo))
-                {
-                    StdLog("check", "Check address tx index: Retrieve address tx index fail 2, height: %d, tx: %s, destFrom: %s, destTo: %s.",
-                           nt->second.nBlockHeight, txid.GetHex().c_str(),
-                           CAddress(checkTxInfo.destFrom).ToString().c_str(),
-                           CAddress(checkTxInfo.destTo).ToString().c_str());
-                    fCheckRet = false;
-                }
-                if (!fCheckRet)
-                {
-                    CAddrTxInfo txInfo(CAddrTxInfo::TXI_DIRECTION_TO, checkTxInfo.destFrom, checkTxInfo.nTxType, checkTxInfo.nTimeStamp, checkTxInfo.nLockUntil,
-                                       checkTxInfo.nAmount, checkTxInfo.nTxFee, checkTxInfo.nBlockHeight, checkTxInfo.nFile, checkTxInfo.nOffset);
-                    vAddUpdate.push_back(make_pair(CAddrTxIndex(checkTxInfo.destTo, txid), txInfo));
-                }
-            }
-            ++nTxIndexCount;
-        }
-
-        if (!fOnlyCheck && (!vAddUpdate.empty() || !vRemove.empty()))
-        {
-            if (!dbAddressTxIndex.RepairAddressTxIndex(hashFork, vAddUpdate, vRemove))
-            {
-                StdLog("check", "Check address tx index: Repair address tx index update fail");
-                dbAddressTxIndex.Deinitialize();
-                return false;
-            }
-        }
-    }
-
-    dbAddressTxIndex.Deinitialize();
     return true;
 }
 
@@ -2545,6 +2638,17 @@ bool CCheckRepairData::CheckRepairData()
     }
     StdLog("check", "Fetch block data success");
 
+    StdLog("check", "Check txpool starting");
+    {
+        CCheckTxPoolData txpool(objBlockWalker.mapCheckFork);
+        if (!txpool.CheckTxPool(strDataPath, fOnlyCheck))
+        {
+            StdLog("check", "Check txpool fail");
+            return false;
+        }
+    }
+    StdLog("check", "Check txpool complete");
+
     StdLog("check", "Check unspent starting");
     uint64 nUnspentCount = 0;
     if (!CheckRepairUnspent(nUnspentCount))
@@ -2571,25 +2675,6 @@ bool CCheckRepairData::CheckRepairData()
     }
     StdLog("check", "Check address success, count: %lu", nAddressCount);
 
-    StdLog("check", "Check txpool starting");
-    {
-        CCheckTxPoolData txpool(objBlockWalker.mapCheckFork);
-        if (!txpool.CheckTxPool(strDataPath, fOnlyCheck))
-        {
-            StdLog("check", "Check txpool fail");
-            return false;
-        }
-    }
-    StdLog("check", "Check txpool complete");
-
-    StdLog("check", "Check block index starting");
-    if (!objBlockWalker.CheckBlockIndex())
-    {
-        StdLog("check", "Check block index fail");
-        return false;
-    }
-    StdLog("check", "Check block index complete, count: %lu", objBlockWalker.mapBlockIndex.size());
-
     StdLog("check", "Check tx index starting");
     uint64 nTxIndexCount = 0;
     if (!CheckTxIndex(nTxIndexCount))
@@ -2598,15 +2683,6 @@ bool CCheckRepairData::CheckRepairData()
         return false;
     }
     StdLog("check", "Check tx index complete, count: %lu", nTxIndexCount);
-
-    StdLog("check", "Check address tx index starting");
-    nTxIndexCount = 0;
-    if (!CheckAddressTxIndex(nTxIndexCount))
-    {
-        StdLog("check", "Check address tx index fail");
-        return false;
-    }
-    StdLog("check", "Check address tx index complete, count: %lu", nTxIndexCount);
     return true;
 }
 
