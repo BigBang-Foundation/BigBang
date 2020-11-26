@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04]
+        os: [ubuntu-20.04]
 
     steps:
     - uses: actions/checkout@v2
@@ -25,16 +25,8 @@ jobs:
       run: | 
         mkdir ${{runner.workspace}}/deps && cd ${{runner.workspace}}/deps 
         sudo apt-get update -qq
-        sudo apt install -y build-essential libboost-all-dev cmake openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl1.0-dev  libprotobuf-dev protobuf-compiler
+        sudo apt install -y build-essential libboost-all-dev cmake openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev  libprotobuf-dev protobuf-compiler
         sudo apt install -y cppcheck valgrind
-    
-    - name: Build libsodium1.0.18
-      shell: bash
-      working-directory: ${{runner.workspace}}/deps
-      run: |
-        wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz
-        tar -zxvf libsodium-1.0.18.tar.gz
-        cd libsodium-1.0.18 && ./autogen && && ./configure && make -j4 && sudo make install
     
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
