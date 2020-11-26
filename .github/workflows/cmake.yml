@@ -28,7 +28,7 @@ jobs:
       run: | 
         sudo apt-get update -qq
         sudo apt install -y build-essential libboost-all-dev cmake openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev  libprotobuf-dev protobuf-compiler libsodium-dev
-        sudo apt install -y cppcheck valgrind
+      # sudo apt install -y cppcheck valgrind
 
     - name: Build
       working-directory: ${{github.workspace}}
@@ -44,7 +44,6 @@ jobs:
       run: |
         ./build/test/test_big
         ./build/test/test_ctsdb
-        if [ "${{runner.os}}" == "Linux" ]; then
-          cppcheck --error-exitcode=1 --std=c++11 --enable=warning,performance,portability -i libsodium-1.0.18 -i src/leveldb -i build -i src/snappy -i src/crypto -i src/jsonrpc/json -i src/xengine/docker -i script -i test . ;
-        fi
-      # cppcheck --error-exitcode=1 --std=c++11 --enable=warning,performance,portability -i libsodium-1.0.18 -i src/leveldb -i build -i src/snappy -i src/crypto -i src/jsonrpc/json -i src/xengine/docker -i script -i test . 
+      # if [ "${{runner.os}}" == "Linux" ]; then
+      #   cppcheck --error-exitcode=1 --std=c++11 --enable=warning,performance,portability -i libsodium-1.0.18 -i src/leveldb -i build -i src/snappy -i src/crypto -i src/jsonrpc/json -i src/xengine/docker -i script -i test . ;
+      # fi
