@@ -12,11 +12,25 @@ jobs:
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-16.04, ubuntu-18.04, ubuntu-20.04]
 
     steps:
     - uses: actions/checkout@v2
 
+    - name: Prepare Build Dependencies
+      shell: bash
+      working-directory: ${{runner.workspace}}/deps
+      run: sudo apt-get update -qq;
+      run: sudo apt install -y g++ libboost-all-dev cmake openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl1.0-dev
+      run: wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz --no-check-certificate
+      run: tar -zxvf libsodium-1.0.18.tar.gz
+      run: cd libsodium-1.0.18
+      run: ./configure && make -j8 && sudo make install
+
+    
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
       # We'll use this as our working directory for all subsequent commands
@@ -36,11 +50,12 @@ jobs:
       working-directory: ${{runner.workspace}}/build
       shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
-      run: cmake --build . --config $BUILD_TYPE
+      run: make -j4
 
     - name: Test
-      working-directory: ${{runner.workspace}}/build
+      working-directory: ${{runner.workspace}}
       shell: bash
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest -C $BUILD_TYPE
+      run: ./build/test/test_big
+      run: ./build/test/test_ctsdb
