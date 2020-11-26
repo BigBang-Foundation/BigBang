@@ -27,6 +27,9 @@ jobs:
         sudo apt-get update -qq
         sudo apt install -y build-essential libboost-all-dev cmake openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl1.0-dev  libprotobuf-dev protobuf-compiler
         sudo apt install -y cppcheck valgrind
+        wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz
+        tar -zxvf libsodium-1.0.18.tar.gz
+        cd libsodium-1.0.18 && ./autogen && && ./configure && make -j4 && sudo make install
     
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
@@ -57,3 +60,4 @@ jobs:
       run: |
         ./build/test/test_big
         ./build/test/test_ctsdb
+        cppcheck --error-exitcode=1 --std=c++11 --enable=warning,performance,portability -i libsodium-1.0.18 -i src/leveldb -i build -i src/snappy -i src/crypto -i src/jsonrpc/json -i src/xengine/docker -i script -i test . 
