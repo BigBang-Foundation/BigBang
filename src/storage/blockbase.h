@@ -190,13 +190,13 @@ public:
     bool RetrieveTx(const uint256& txid, CTransaction& tx);
     bool RetrieveUnspent(const CTxOutPoint& out, CTxOut& unspent);
     bool AddTx(const uint256& txid, const CTransaction& tx, int nHeight, const CTxContxt& txContxt);
-    void RemoveTx(const uint256& txid, const CTransaction& tx, int nHeight, const CTxContxt& txContxt);
+    void RemoveTx(const uint256& txid, const CTransaction& tx, const int nHeight, const int nSeq, const CTxContxt& txContxt);
     void AddBlock(const uint256& hash, const CBlockEx& block);
     void RemoveBlock(const uint256& hash, const CBlockEx& block);
     void GetUnspentChanges(std::vector<CTxUnspent>& vAddNew, std::vector<CTxOutPoint>& vRemove);
     void GetUnspentChanges(std::vector<CTxUnspent>& vAddNewUnspent, std::vector<CTxUnspent>& vRemoveUnspent);
     void GetTxUpdated(std::set<uint256>& setUpdate);
-    void GetTxRemoved(std::vector<uint256>& vRemove, std::vector<CAddrTxIndex>& vAddrTxIndexRemove);
+    void GetTxRemoved(std::vector<uint256>& vRemove, std::vector<CAddrTxIndex>& vAddrTxIndexRemove, const bool fAddrTxIndexIn);
     void GetBlockChanges(std::vector<CBlockEx>& vAdd, std::vector<CBlockEx>& vRemove) const;
 
 protected:
@@ -254,7 +254,7 @@ class CBlockBase
 public:
     CBlockBase();
     ~CBlockBase();
-    bool Initialize(const boost::filesystem::path& pathDataLocation, const uint256& hashGenesisBlockIn, bool fDebug, bool fRenewDB = false);
+    bool Initialize(const boost::filesystem::path& pathDataLocation, const uint256& hashGenesisBlockIn, const bool fDebug, const bool fAddrTxIndexIn, const bool fRenewDB = false);
     void Deinitialize();
     void Clear();
     bool IsEmpty() const;
@@ -301,7 +301,7 @@ public:
     bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent);
     bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent);
     bool RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent);
-    bool RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx);
+    int64 RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx);
 
     // DeFi
     template <typename D, typename Convert>
@@ -394,7 +394,7 @@ protected:
     bool VerifyDelegateVote(const uint256& hash, CBlockEx& block, int64 nMinEnrollAmount, CDelegateContext& ctxtDelegate);
     bool UpdateDelegate(const uint256& hash, CBlockEx& block, const CDiskPos& posBlock, CDelegateContext& ctxtDelegate);
     bool GetTxUnspent(const uint256 fork, const CTxOutPoint& out, CTxOut& unspent);
-    bool GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, std::vector<std::pair<uint256, CTxIndex>>& vTxNew, std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddrTxNew);
+    bool GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, std::vector<std::pair<uint256, CTxIndex>>& vTxNew, std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddrTxNew, const bool fAddrTxIndexIn);
     bool IsValidBlock(CBlockIndex* pForkLast, const uint256& hashBlock);
     bool VerifyValidBlock(CBlockIndex* pIndexGenesisLast, const CBlockIndex* pIndex);
     CBlockIndex* GetLongChainLastBlock(const uint256& hashFork, int nStartHeight, CBlockIndex* pIndexGenesisLast, const std::set<uint256>& setInvalidHash);
@@ -439,6 +439,7 @@ protected:
     xengine::CLog log;
     uint256 hashGenesisBlock;
     bool fDebugLog;
+    bool fCfgAddrTxIndex;
     CBlockDB dbBlock;
     CTimeSeriesCached tsBlock;
     std::map<uint256, CBlockIndex*> mapIndex;

@@ -1624,6 +1624,11 @@ CRPCResultPtr CRPCMod::RPCGetBalance(CRPCParamPtr param)
 
 CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
 {
+    if (!BasicConfig()->fAddrTxIndex)
+    {
+        throw CRPCException(RPC_INVALID_REQUEST, "Please set config 'addrtxindex=true' and restart");
+    }
+
     auto spParam = CastParamPtr<CListTransactionParam>(param);
 
     const CRPCString& strFork = spParam->strFork;

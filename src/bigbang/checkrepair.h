@@ -48,9 +48,9 @@ class CCheckTxInfo
 public:
     CCheckTxInfo() {}
     CCheckTxInfo(const CDestination& destFromIn, const CDestination& destToIn, const int nTxTypeIn, const uint32 nTimeStampIn, const uint32 nLockUntilIn,
-                 const int64 nAmountIn, const int64 nTxFeeIn, const int nBlockHeightIn, const uint32 nFileIn, const uint32 nOffsetIn)
+                 const int64 nAmountIn, const int64 nTxFeeIn, const int nBlockHeightIn, const int nTxSeqNoIn)
       : destFrom(destFromIn), destTo(destToIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn), nLockUntil(nLockUntilIn),
-        nAmount(nAmountIn), nTxFee(nTxFeeIn), nBlockHeight(nBlockHeightIn), nFile(nFileIn), nOffset(nOffsetIn) {}
+        nAmount(nAmountIn), nTxFee(nTxFeeIn), nBlockHeight(nBlockHeightIn), nTxSeqNo(nTxSeqNoIn) {}
 
 public:
     CDestination destFrom;
@@ -61,8 +61,7 @@ public:
     int64 nAmount;
     int64 nTxFee;
     int nBlockHeight;
-    uint32 nFile;
-    uint32 nOffset;
+    int nTxSeqNo;
 };
 
 class CCheckTxOut : public CTxOut
@@ -370,9 +369,9 @@ public:
 class CCheckBlockFork
 {
 public:
-    CCheckBlockFork(const string& strPathIn, const bool fOnlyCheckIn, CCheckTsBlock& tsBlockIn,
+    CCheckBlockFork(const string& strPathIn, const bool fOnlyCheckIn, const bool fAddrTxIndexIn, CCheckTsBlock& tsBlockIn,
                     CCheckForkManager& objForkManagerIn, CAddressTxIndexDB& dbAddressTxIndexIn)
-      : pOrigin(nullptr), pLast(nullptr), fInvalidFork(false), strDataPath(strPathIn), fOnlyCheck(fOnlyCheckIn),
+      : pOrigin(nullptr), pLast(nullptr), fInvalidFork(false), strDataPath(strPathIn), fOnlyCheck(fOnlyCheckIn), fCheckAddrTxIndex(fAddrTxIndexIn),
         tsBlock(tsBlockIn), objForkManager(objForkManagerIn), dbAddressTxIndex(dbAddressTxIndexIn), nCacheTxInfoBlockCount(0) {}
 
     bool AddForkBlock(const CBlockEx& block, CBlockIndex* pBlockIndex);
@@ -380,7 +379,7 @@ public:
     bool AddBlockData(const CBlockEx& block, const CBlockIndex* pBlockIndex);
     bool RemoveBlockData(const CBlockEx& block, const CBlockIndex* pBlockIndex);
 
-    bool AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, int nHeight, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn);
+    bool AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, const int nHeight, const int nTxSeqNo, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn);
     bool RemoveBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn);
     bool AddBlockUnspent(const CTxOutPoint& txPoint, const CTxOut& txOut, int nTxType, int nHeight);
     bool AddBlockSpent(const CTxOutPoint& txPoint);
@@ -391,6 +390,7 @@ public:
 public:
     string strDataPath;
     bool fOnlyCheck;
+    bool fCheckAddrTxIndex;
     CCheckTsBlock& tsBlock;
     CCheckForkManager& objForkManager;
     CAddressTxIndexDB& dbAddressTxIndex;
@@ -409,9 +409,9 @@ public:
 class CCheckBlockWalker : public CTSWalker<CBlockEx>
 {
 public:
-    CCheckBlockWalker(bool fTestnetIn, bool fOnlyCheckIn, CCheckForkManager& objForkManagerIn)
-      : nBlockCount(0), nMainChainHeight(0), objProofParam(fTestnetIn),
-        fOnlyCheck(fOnlyCheckIn), objForkManager(objForkManagerIn) {}
+    CCheckBlockWalker(const bool fTestnetIn, const bool fOnlyCheckIn, const bool fAddrTxIndexIn, CCheckForkManager& objForkManagerIn)
+      : nBlockCount(0), nMainChainHeight(0), objProofParam(fTestnetIn), fOnlyCheck(fOnlyCheckIn),
+        fCheckAddrTxIndex(fAddrTxIndexIn), objForkManager(objForkManagerIn) {}
     ~CCheckBlockWalker();
 
     bool Initialize(const string& strPath);
@@ -439,6 +439,7 @@ public:
 
 public:
     bool fOnlyCheck;
+    bool fCheckAddrTxIndex;
     string strDataPath;
     int64 nBlockCount;
     uint32 nMainChainHeight;
@@ -460,9 +461,9 @@ public:
 class CCheckRepairData
 {
 public:
-    CCheckRepairData(const string& strPath, bool fTestnetIn, bool fOnlyCheckIn)
+    CCheckRepairData(const string& strPath, const bool fTestnetIn, const bool fOnlyCheckIn, const bool fAddrTxIndexIn)
       : strDataPath(strPath), fTestnet(fTestnetIn), fOnlyCheck(fOnlyCheckIn),
-        objProofOfWorkParam(fTestnetIn), objBlockWalker(fTestnetIn, fOnlyCheckIn, objForkManager)
+        objProofOfWorkParam(fTestnetIn), objBlockWalker(fTestnetIn, fOnlyCheckIn, fAddrTxIndexIn, objForkManager)
     {
     }
 

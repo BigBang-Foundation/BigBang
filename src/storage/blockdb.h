@@ -27,7 +27,7 @@ class CBlockDB
 public:
     CBlockDB();
     ~CBlockDB();
-    bool Initialize(const boost::filesystem::path& pathData);
+    bool Initialize(const boost::filesystem::path& pathData, const bool fAddrTxIndexIn);
     void Deinitialize();
     bool RemoveAll();
     bool WriteGenesisBlockHash(const uint256& hashGenesisBlockIn);
@@ -61,12 +61,13 @@ public:
     bool RetrieveEnroll(int height, const std::vector<uint256>& vBlockRange,
                         std::map<CDestination, CDiskPos>& mapEnrollTxPos);
     bool RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent);
-    bool RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, std::map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex);
+    int64 RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, std::map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex);
 
 protected:
     bool LoadFork();
 
 protected:
+    bool fDbCfgAddrTxIndex;
     CForkDB dbFork;
     CBlockIndexDB dbBlockIndex;
     CTxIndexDB dbTxIndex;

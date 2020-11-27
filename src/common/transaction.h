@@ -608,16 +608,28 @@ class CAddrTxIndex
 
 public:
     CDestination dest;
+    int64 nHeightSeq;
     uint256 txid;
 
 public:
     CAddrTxIndex() {}
-    CAddrTxIndex(const CDestination& destIn, const uint256& txidIn)
-      : dest(destIn), txid(txidIn) {}
+    CAddrTxIndex(const CDestination& destIn, const int64 nHeightSeqIn, const uint256& txidIn)
+      : dest(destIn), nHeightSeq(nHeightSeqIn), txid(txidIn) {}
+    CAddrTxIndex(const CDestination& destIn, const int nHeightIn, const int nSeqIn, const uint256& txidIn)
+      : dest(destIn), nHeightSeq(((int64)nHeightIn << 32) | nSeqIn), txid(txidIn) {}
+
+    int GetHeight() const
+    {
+        return (int)(nHeightSeq >> 32);
+    }
+    int GetSeq() const
+    {
+        return (int)(nHeightSeq & 0xFFFFFFFFL);
+    }
 
     friend bool operator==(const CAddrTxIndex& a, const CAddrTxIndex& b)
     {
-        return (a.dest == b.dest && a.txid == b.txid);
+        return (a.dest == b.dest && a.nHeightSeq == b.nHeightSeq && a.txid == b.txid);
     }
     friend bool operator!=(const CAddrTxIndex& a, const CAddrTxIndex& b)
     {
@@ -625,7 +637,22 @@ public:
     }
     friend bool operator<(const CAddrTxIndex& a, const CAddrTxIndex& b)
     {
-        return (a.dest < b.dest || (a.dest == b.dest && a.txid < b.txid));
+        if (a.dest < b.dest)
+        {
+            return true;
+        }
+        else if (a.dest == b.dest)
+        {
+            if (a.nHeightSeq < b.nHeightSeq)
+            {
+                return true;
+            }
+            else if (a.nHeightSeq == b.nHeightSeq && a.txid < b.txid)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
 protected:
@@ -633,6 +660,7 @@ protected:
     void Serialize(xengine::CStream& s, O& opt)
     {
         s.Serialize(dest, opt);
+        s.Serialize(nHeightSeq, opt);
         s.Serialize(txid, opt);
     }
 };
@@ -649,9 +677,6 @@ public:
     uint32 nLockUntil;
     int64 nAmount;
     int64 nTxFee;
-    int nBlockHeight;
-    uint32 nFile;
-    uint32 nOffset;
 
     enum
     {
@@ -666,16 +691,15 @@ public:
     {
         SetNull();
     }
-    CAddrTxInfo(const int nDirectionIn, const CDestination& destPeerIn, const int nTxTypeIn, const uint32 nTimeStampIn, const uint32 nLockUntilIn,
-                const int64 nAmountIn, const int64 nTxFeeIn, const int nBlockHeightIn, const uint32 nFileIn, const uint32 nOffsetIn)
-      : nDirection(nDirectionIn), destPeer(destPeerIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn), nLockUntil(nLockUntilIn),
-        nAmount(nAmountIn), nTxFee(nTxFeeIn), nBlockHeight(nBlockHeightIn), nFile(nFileIn), nOffset(nOffsetIn)
+    CAddrTxInfo(const int nDirectionIn, const CDestination& destPeerIn, const int nTxTypeIn, const uint32 nTimeStampIn,
+                const uint32 nLockUntilIn, const int64 nAmountIn, const int64 nTxFeeIn)
+      : nDirection(nDirectionIn), destPeer(destPeerIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn),
+        nLockUntil(nLockUntilIn), nAmount(nAmountIn), nTxFee(nTxFeeIn)
     {
     }
-    CAddrTxInfo(const int nDirectionIn, const CDestination& destPeerIn, const CTransaction& tx,
-                const int nBlockHeightIn, const uint32 nFileIn, const uint32 nOffsetIn)
-      : nDirection(nDirectionIn), destPeer(destPeerIn), nTxType(tx.nType), nTimeStamp(tx.nTimeStamp), nLockUntil(tx.nLockUntil),
-        nAmount(tx.nAmount), nTxFee(tx.nTxFee), nBlockHeight(nBlockHeightIn), nFile(nFileIn), nOffset(nOffsetIn)
+    CAddrTxInfo(const int nDirectionIn, const CDestination& destPeerIn, const CTransaction& tx)
+      : nDirection(nDirectionIn), destPeer(destPeerIn), nTxType(tx.nType), nTimeStamp(tx.nTimeStamp),
+        nLockUntil(tx.nLockUntil), nAmount(tx.nAmount), nTxFee(tx.nTxFee)
     {
     }
 
@@ -688,9 +712,6 @@ public:
         nLockUntil = 0;
         nAmount = 0;
         nTxFee = 0;
-        nBlockHeight = 0;
-        nFile = 0;
-        nOffset = 0;
     }
     bool IsNull() const
     {
@@ -708,9 +729,6 @@ protected:
         s.Serialize(nLockUntil, opt);
         s.Serialize(nAmount, opt);
         s.Serialize(nTxFee, opt);
-        s.Serialize(nBlockHeight, opt);
-        s.Serialize(nFile, opt);
-        s.Serialize(nOffset, opt);
     }
 };
 

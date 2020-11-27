@@ -68,23 +68,11 @@ bool CBlockChain::HandleInvoke()
     CBlock blockGenesis;
     pCoreProtocol->GetGenesisBlock(blockGenesis);
 
-    if (!cntrBlock.Initialize(Config()->pathData, blockGenesis.GetHash(), Config()->fDebug))
+    if (!cntrBlock.Initialize(Config()->pathData, blockGenesis.GetHash(), Config()->fDebug, Config()->fAddrTxIndex))
     {
         Error("Failed to initialize container");
         return false;
     }
-
-    /*if (!CheckContainer())
-    {
-        cntrBlock.Clear();
-        Log("Block container is invalid,try rebuild from block storage");
-        // Rebuild ...
-        if (!RebuildContainer())
-        {
-            cntrBlock.Clear();
-            Error("Failed to rebuild Block container,reconstruct all");
-        }
-    }*/
 
     if (cntrBlock.IsEmpty())
     {
@@ -2462,7 +2450,7 @@ bool CBlockChain::GetAddressUnspent(const uint256& hashFork, const CDestination&
     return cntrBlock.RetrieveAddressUnspent(hashFork, dest, mapUnspent);
 }
 
-bool CBlockChain::GetAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
+int64 CBlockChain::GetAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
 {
     return cntrBlock.RetrieveAddressTxList(hashFork, dest, nOffset, nCount, vTx);
 }

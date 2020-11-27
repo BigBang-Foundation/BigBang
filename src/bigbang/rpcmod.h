@@ -27,6 +27,10 @@ public:
 protected:
     bool HandleInitialize() override;
     void HandleDeinitialize() override;
+    const CBasicConfig* BasicConfig()
+    {
+        return dynamic_cast<const CBasicConfig*>(xengine::IBase::Config());
+    }
     const CNetworkConfig* Config()
     {
         return dynamic_cast<const CNetworkConfig*>(xengine::IBase::Config());

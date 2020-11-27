@@ -78,12 +78,12 @@ bool CForkAddressTxIndexDB::RepairAddressTxIndex(const vector<pair<CAddrTxIndex,
 
     for (const auto& vd : vAddUpdate)
     {
-        Write(vd.first, vd.second);
+        Write(CAddrTxIndex(vd.first.dest, BSwap64(vd.first.nHeightSeq), vd.first.txid), vd.second);
     }
 
     for (const auto& vd : vRemove)
     {
-        Erase(vd);
+        Erase(CAddrTxIndex(vd.dest, BSwap64(vd.nHeightSeq), vd.txid));
     }
 
     if (!TxnCommit())
@@ -95,7 +95,7 @@ bool CForkAddressTxIndexDB::RepairAddressTxIndex(const vector<pair<CAddrTxIndex,
 
 bool CForkAddressTxIndexDB::WriteAddressTxIndex(const CAddrTxIndex& key, const CAddrTxInfo& value)
 {
-    return Write(key, value);
+    return Write(CAddrTxIndex(key.dest, BSwap64(key.nHeightSeq), key.txid), value);
 }
 
 bool CForkAddressTxIndexDB::ReadAddressTxIndex(const CAddrTxIndex& key, CAddrTxInfo& value)
@@ -132,19 +132,19 @@ bool CForkAddressTxIndexDB::ReadAddressTxIndex(const CAddrTxIndex& key, CAddrTxI
         }
     }
 
-    return Read(key, value);
+    return Read(CAddrTxIndex(key.dest, BSwap64(key.nHeightSeq), key.txid), value);
 }
 
-bool CForkAddressTxIndexDB::RetrieveAddressTxIndex(const CDestination& dest, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
+int64 CForkAddressTxIndexDB::RetrieveAddressTxIndex(const CDestination& dest, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
 {
     CGetAddressTxIndexWalker walker(nOffset, nCount, mapAddrTxIndex);
     WalkThroughAddressTxIndex(walker, dest);
-    return true;
+    return walker.nCurPos;
 }
 
 bool CForkAddressTxIndexDB::RetrieveTxIndex(const CAddrTxIndex& addrTxIndex, CAddrTxInfo& addrTxInfo)
 {
-    return Read(addrTxIndex, addrTxInfo);
+    return Read(CAddrTxIndex(addrTxIndex.dest, BSwap64(addrTxIndex.nHeightSeq), addrTxIndex.txid), addrTxInfo);
 }
 
 bool CForkAddressTxIndexDB::Copy(CForkAddressTxIndexDB& dbAddressTxIndex)
@@ -240,8 +240,10 @@ bool CForkAddressTxIndexDB::CopyWalker(CBufStream& ssKey, CBufStream& ssValue,
 {
     CAddrTxIndex key;
     CAddrTxInfo value;
+
     ssKey >> key;
     ssValue >> value;
+    key.nHeightSeq = BSwap64(key.nHeightSeq);
 
     return dbAddressUnspent.WriteAddressTxIndex(key, value);
 }
@@ -259,6 +261,7 @@ bool CForkAddressTxIndexDB::LoadWalker(CBufStream& ssKey, CBufStream& ssValue,
     }
 
     ssValue >> value;
+    key.nHeightSeq = BSwap64(key.nHeightSeq);
 
     return walker.Walk(key, value);
 }
@@ -275,11 +278,11 @@ bool CForkAddressTxIndexDB::Flush()
     {
         if (it->second.IsNull())
         {
-            vRemove.push_back(it->first);
+            vRemove.push_back(CAddrTxIndex(it->first.dest, BSwap64(it->first.nHeightSeq), it->first.txid));
         }
         else
         {
-            vAddNew.push_back(*it);
+            vAddNew.push_back(make_pair(CAddrTxIndex(it->first.dest, BSwap64(it->first.nHeightSeq), it->first.txid), it->second));
         }
     }
 
@@ -454,7 +457,7 @@ bool CAddressTxIndexDB::RepairAddressTxIndex(const uint256& hashFork, const vect
     return it->second->RepairAddressTxIndex(vAddUpdate, vRemove);
 }
 
-bool CAddressTxIndexDB::RetrieveAddressTxIndex(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
+int64 CAddressTxIndexDB::RetrieveAddressTxIndex(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
 {
     CReadLock rlock(rwAccess);
 
@@ -462,7 +465,7 @@ bool CAddressTxIndexDB::RetrieveAddressTxIndex(const uint256& hashFork, const CD
     if (it == mapAddressDB.end())
     {
         StdLog("CAddressTxIndexDB", "RetrieveAddressTxIndex: find fork fail, fork: %s", hashFork.GetHex().c_str());
-        return false;
+        return -1;
     }
     return it->second->RetrieveAddressTxIndex(dest, nOffset, nCount, mapAddrTxIndex);
 }

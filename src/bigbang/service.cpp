@@ -797,26 +797,26 @@ bool CService::GetBalanceByUnspent(const CDestination& dest, const uint256& hash
 
 bool CService::ListTransaction(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
 {
-    int64 nTxPoolPos = pTxPool->ListTx(hashFork, dest, vTx, nOffset, nCount);
+    int64 nGetEndOffset = pBlockChain->GetAddressTxList(hashFork, dest, nOffset, nCount, vTx);
+    if (nGetEndOffset < 0)
+    {
+        return false;
+    }
     if (vTx.size() == 0)
     {
-        if (nTxPoolPos < 0)
+        int64 nTxPoolOffset = nOffset - nGetEndOffset;
+        if (nTxPoolOffset < 0)
         {
-            nTxPoolPos = 0;
+            nTxPoolOffset = 0;
         }
-        int64 nChainOffset = nOffset - nTxPoolPos;
-        if (nChainOffset < 0)
-        {
-            nChainOffset = 0;
-        }
-        if (!pBlockChain->GetAddressTxList(hashFork, dest, nChainOffset, nCount, vTx))
+        if (pTxPool->ListTx(hashFork, dest, vTx, nTxPoolOffset, nCount) < 0)
         {
             return false;
         }
     }
     else if (vTx.size() < nCount)
     {
-        if (!pBlockChain->GetAddressTxList(hashFork, dest, 0, nCount - vTx.size(), vTx))
+        if (pTxPool->ListTx(hashFork, dest, vTx, 0, nCount - vTx.size()) < 0)
         {
             return false;
         }

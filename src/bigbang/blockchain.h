@@ -77,7 +77,7 @@ public:
     bool InitDeFiRelation(const uint256& hashFork) override;
     bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent) override;
     bool GetAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent) override;
-    bool GetAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx) override;
+    int64 GetAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx) override;
 
     /////////////    CheckPoints    /////////////////////
     typedef std::map<int, CCheckPoint> MapCheckPointsType;
