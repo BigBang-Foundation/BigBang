@@ -152,7 +152,6 @@ public:
 
 public:
     CTxPoolView()
-      : nForkType(-1)
     {
     }
     std::size_t Count() const
@@ -294,8 +293,9 @@ public:
     std::map<CTxOutPoint, CSpent> mapSpent;
     uint256 hashLastBlock;
     int64 nLastBlockTime;
-    int nForkType;
+    CProfile profile;
     xengine::CForest<CDestination, uint256> relation;
+    uint256 mintHeightTxid;
 };
 
 class CTxCache

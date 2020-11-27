@@ -105,13 +105,14 @@ public:
     std::vector<uint8> vchSig;
     enum
     {
-        TX_TOKEN = 0x0000,        // normal Tx 0
-        TX_CERT = 0xff00,         // Enroll Tx 65280
-        TX_GENESIS = 0x0100,      // 256
-        TX_STAKE = 0x0200,        // DPoS mint tx 512
-        TX_WORK = 0x0300,         // PoW mint tx 768
-        TX_DEFI_REWARD = 0x0001,  // DeFi reward tx
-        TX_DEFI_RELATION = 0x0002 // DeFi bind relation tx
+        TX_TOKEN = 0x0000,           // normal Tx 0
+        TX_CERT = 0xff00,            // Enroll Tx 65280
+        TX_GENESIS = 0x0100,         // 256
+        TX_STAKE = 0x0200,           // DPoS mint Tx 512
+        TX_WORK = 0x0300,            // PoW mint Tx 768
+        TX_DEFI_REWARD = 0x0001,     // DeFi reward Tx
+        TX_DEFI_RELATION = 0x0002,   // DeFi bind relation Tx
+        TX_DEFI_MINT_HEIGHT = 0x0003 // setting DeFi mint height Tx
     };
     CTransaction()
     {
@@ -160,6 +161,8 @@ public:
             return std::string("defi-reward");
         else if (nType == TX_DEFI_RELATION)
             return std::string("defi-relation");
+        else if (nType == TX_DEFI_MINT_HEIGHT)
+            return std::string("defi-mint-height");
         return std::string("undefined");
     }
     int64 GetTxTime() const

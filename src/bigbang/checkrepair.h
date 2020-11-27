@@ -179,6 +179,7 @@ public:
     bool AddForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<pair<CDestination, CForkContext>>& vForkCtxt,
                         bool fCheckPointBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork);
     bool GetForkContext(const uint256& hashFork, CForkContext& ctxt);
+    bool UpdateForkContext(const uint256& hashFork, const CForkContext& ctxt);
     bool ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile);
     bool VerifyValidFork(const uint256& hashPrevBlock, const uint256& hashFork, const string& strForkName);
     bool GetValidFdForkId(const uint256& hashBlock, map<uint256, int>& mapFdForkIdOut);
@@ -445,7 +446,7 @@ class CCheckBlockFork
 {
 public:
     CCheckBlockFork()
-      : pOrigin(nullptr), pLast(nullptr) {}
+      : pOrigin(nullptr), pLast(nullptr), nMintHeight(-1) {}
 
     void UpdateMaxTrust(CBlockIndex* pBlockIndex);
     bool AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, int nHeight, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn);
@@ -459,6 +460,7 @@ public:
     map<uint256, CCheckBlockTx> mapBlockTx;
     map<CTxOutPoint, CCheckTxOut> mapBlockUnspent;
     map<CDestination, CAddrInfo> mapBlockAddress;
+    int32 nMintHeight;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -485,6 +487,7 @@ public:
     bool UpdateBlockNext();
     bool CheckRepairFork();
     bool UpdateBlockTx();
+    bool UpdateMintHeightTx();
     bool AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, int nHeight, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn, const vector<uint256>& vFork);
     CBlockIndex* AddNewIndex(const uint256& hash, const CBlock& block, uint32 nFile, uint32 nOffset, uint256 nChainTrust);
     CBlockIndex* AddNewIndex(const uint256& hash, const CBlockOutline& objBlockOutline);

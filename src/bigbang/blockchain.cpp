@@ -549,6 +549,7 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
     }
 
     // verify tx
+    uint256 mintHeightTxid;
     for (const CTransaction& tx : block.vtx)
     {
         uint256 txid = tx.GetHash();
@@ -561,7 +562,7 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
         }
 
         // non-defi fork should not exist defi tx
-        if (!fDeFiFork && (tx.nType == CTransaction::TX_DEFI_REWARD || tx.nType == CTransaction::TX_DEFI_RELATION))
+        if (!fDeFiFork && (tx.nType == CTransaction::TX_DEFI_REWARD || tx.nType == CTransaction::TX_DEFI_RELATION || tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT))
         {
             Log("AddNewBlock non-defi fork don't allow reward tx and relation tx");
             return ERR_TRANSACTION_INVALID;
@@ -594,13 +595,28 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
 
         if (tx.nType != CTransaction::TX_DEFI_REWARD)
         {
-            err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, block.GetBlockHeight(), forkid, profile.nForkType);
+            err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, block.GetBlockHeight(), forkid, profile);
             if (err != OK)
             {
                 Log("AddNewBlock Verify BlockTx Error(%s) : %s ", ErrorString(err), txid.ToString().c_str());
                 return err;
             }
         }
+
+        // check mint height tx uniqueness
+        if (tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+        {
+            if (!mintHeightTxid)
+            {
+                mintHeightTxid = txid;
+            }
+            else
+            {
+                Log("AddNewBlock there are too many mint height tx in block: %s, tx1: %s, tx2: %s", hash.ToString().c_str(), mintHeightTxid.ToString().c_str(), txid.ToString().c_str());
+                return ERR_TRANSACTION_TOO_MANY_MINTHEIGHT_TX;
+            }
+        }
+
         if (tx.nTimeStamp > block.nTimeStamp)
         {
             Log("AddNewBlock Verify BlockTx time fail: tx time: %d, block time: %d, tx: %s, block: %s",
@@ -673,6 +689,17 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
     {
         Log("AddNewBlock Storage Commit BlockView Error : %s ", hash.ToString().c_str());
         return ERR_SYS_STORAGE_ERROR;
+    }
+
+    // update profile in defiReward
+    if (!!mintHeightTxid)
+    {
+        if (!GetForkProfile(forkid, profile))
+        {
+            Error("AddNewBlock get fork profile error after commit, block: %s, fork: %s", hash.ToString().c_str(), forkid.ToString().c_str());
+            return ERR_BLOCK_INVALID_FORK;
+        }
+        defiReward.AddFork(forkid, profile);
     }
 
     update = CBlockChainUpdate(pIndexNew, profile.nForkType);
@@ -844,7 +871,6 @@ Errno CBlockChain::AddNewOrigin(const CBlock& block, CBlockChainUpdate& update)
     if (profile.nForkType == FORK_TYPE_DEFI)
     {
         defiReward.AddFork(hash, profile);
-        Log("................. AddNewOrigin supply: %ld", pIndexNew->GetMoneySupply());
     }
 
     return OK;
@@ -1214,7 +1240,7 @@ Errno CBlockChain::VerifyPowBlock(const CBlock& block, bool& fLongChain)
             Log("VerifyPowBlock Get txContxt Error([%d] %s) : %s ", err, ErrorString(err), txid.ToString().c_str());
             return err;
         }
-        err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, block.GetBlockHeight(), pIndexPrev->GetOriginHash(), profile.nForkType);
+        err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, block.GetBlockHeight(), pIndexPrev->GetOriginHash(), profile);
         if (err != OK)
         {
             Log("VerifyPowBlock Verify BlockTx Error(%s) : %s ", ErrorString(err), txid.ToString().c_str());
@@ -2213,7 +2239,7 @@ bool CBlockChain::IsSameBranch(const uint256& hashFork, const CBlock& block)
 list<CDeFiReward> CBlockChain::GetDeFiReward(const uint256& forkid, const uint256& hashPrev, const int32 nHeight, const int32 nMax)
 {
     list<CDeFiReward> listReward;
-    if (!defiReward.ExistFork(forkid))
+    if (!defiReward.ExistFork(forkid) || !defiReward.IsMinted(forkid, nHeight))
     {
         return listReward;
     }

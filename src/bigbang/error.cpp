@@ -81,6 +81,8 @@ static const char* _ErrorString[] = {
     "transaction too many cert",
     //ERR_TRANSACTION_INVALID_RELATION_TX,
     "transaction invalid relation tx",
+    //ERR_TRANSACTION_TOO_MANY_MINTHEIGHT_TX,
+    "transaction too many mint height tx",
     /* wallet */
     //ERR_WALLET_INVALID_AMOUNT,
     "wallet amount is invalid",

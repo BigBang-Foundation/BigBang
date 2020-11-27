@@ -1197,10 +1197,23 @@ bool CBlockBase::CommitBlockView(CBlockView& view, CBlockIndex* pIndexNew)
     }
     spFork->UpdateLast(pIndexNew);
 
-    if (!AddDeFiRelation(hashFork, view, spFork))
+    if (spFork->GetProfile().nForkType == FORK_TYPE_DEFI)
     {
-        StdTrace("BlockBase", "CommitBlockView: AddDeFiRelation fail, fork: %s", hashFork.ToString().c_str());
-        return false;
+        vector<CBlockEx> vAdd;
+        vector<CBlockEx> vRemove;
+        view.GetBlockChanges(vAdd, vRemove);
+
+        if (!AddDeFiRelation(hashFork, spFork, vAdd, vRemove))
+        {
+            StdTrace("BlockBase", "CommitBlockView: AddDeFiRelation fail, fork: %s", hashFork.ToString().c_str());
+            return false;
+        }
+
+        if (!UpdateDeFiMintHeight(hashFork, spFork, vAdd, vRemove))
+        {
+            StdTrace("BlockBase", "CommitBlockView: AddDeFiRelation fail, fork: %s", hashFork.ToString().c_str());
+            return false;
+        }
     }
 
     Log("B", "Update fork %s, last block hash=%s", hashFork.ToString().c_str(),
@@ -1944,7 +1957,7 @@ bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& v
     std::vector<CTxUnspent> vAddNew;
     std::vector<CTxOutPoint> vRemove;
     view.GetUnspentChanges(vAddNew, vRemove);
-    
+
     CListAddressUnspentWalker walker(vRemove);
     if (!dbBlock.WalkThroughUnspent(hashFork, walker))
     {
@@ -1958,14 +1971,10 @@ bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& v
     return true;
 }
 
-bool CBlockBase::AddDeFiRelation(const uint256& hashFork, CBlockView& view, boost::shared_ptr<CBlockFork> spFork)
+bool CBlockBase::AddDeFiRelation(const uint256& hashFork, boost::shared_ptr<CBlockFork> spFork, const vector<CBlockEx>& vAdd, const vector<CBlockEx>& vRemove)
 {
     vector<pair<CDestination, CAddrInfo>> vNewAddress;
     vector<CDestination> vRemoveAddress;
-
-    vector<CBlockEx> vAdd;
-    vector<CBlockEx> vRemove;
-    view.GetBlockChanges(vAdd, vRemove);
 
     for (const CBlockEx& block : vRemove)
     {
@@ -2094,6 +2103,74 @@ bool CBlockBase::CheckAddDeFiRelation(const uint256& hashFork, const CDestinatio
 
     CDestination root;
     return relation.CheckInsert(dest, parent, root);
+}
+
+bool CBlockBase::UpdateDeFiMintHeight(const uint256& hashFork, boost::shared_ptr<CBlockFork> spFork, const vector<CBlockEx>& vAdd, const vector<CBlockEx>& vRemove)
+{
+    const CProfile& profile = spFork->GetProfile();
+    int nMintHeight = profile.defi.nMintHeight;
+    {
+        bool fUpdate = false;
+        for (const CBlockEx& block : vRemove)
+        {
+            for (int i = block.vtx.size() - 1; i >= 0; --i)
+            {
+                const CTransaction& tx = block.vtx[i];
+                if (tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+                {
+                    nMintHeight = -1;
+                    fUpdate = true;
+                    break;
+                }
+            }
+            if (fUpdate)
+            {
+                break;
+            }
+        }
+    }
+
+    {
+        bool fUpdate = false;
+        for (const CBlockEx& block : boost::adaptors::reverse(vAdd))
+        {
+            for (std::size_t i = 0; i < block.vtx.size(); i++)
+            {
+                const CTransaction& tx = block.vtx[i];
+                if (tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+                {
+                    CIDataStream is(tx.vchData);
+                    is >> nMintHeight;
+                    fUpdate = true;
+                    break;
+                }
+            }
+            if (fUpdate)
+            {
+                break;
+            }
+        }
+    }
+
+    if (nMintHeight != profile.defi.nMintHeight)
+    {
+        CProfile newProfile = profile;
+        newProfile.defi.nMintHeight = nMintHeight;
+
+        // update fork context
+        CForkContext ctxt;
+        RetrieveForkContext(hashFork, ctxt);
+        ctxt.vchDeFi.clear();
+        newProfile.defi.Save(ctxt.vchDeFi);
+        if (!dbBlock.AddNewForkContext(ctxt))
+        {
+            StdError("sht", "add new error!");
+            return false;
+        }
+        spFork->SetProfile(newProfile);
+    }
+
+    return true;
 }
 
 bool CBlockBase::GetVotes(const uint256& hashGenesis, const CDestination& destDelegate, int64& nVotes)
@@ -2586,19 +2663,12 @@ boost::shared_ptr<CBlockFork> CBlockBase::AddNewFork(const CProfile& profileIn, 
 
 bool CBlockBase::LoadForkProfile(const CBlockIndex* pIndexOrigin, CProfile& profile)
 {
-    profile.SetNull();
-
-    CBlock block;
-    if (!Retrieve(pIndexOrigin, block))
+    CForkContext ctxt;
+    if (!RetrieveForkContext(pIndexOrigin->GetBlockHash(), ctxt))
     {
         return false;
     }
-
-    if (!profile.Load(block.vchProof))
-    {
-        return false;
-    }
-
+    profile = ctxt.GetProfile();
     return true;
 }
 
