@@ -626,16 +626,6 @@ bool CService::SignTransaction(CTransaction& tx, const vector<uint8>& vchSendToD
         return false;
     }
     return true;
-
-    // int32 nForkType = GetForkType(hashFork);
-    // if (!fCompleted
-    //     || (pCoreProtocol->ValidateTransaction(tx, nForkHeight) == OK
-    //         && pCoreProtocol->VerifyTransaction(tx, vUnspent, nForkHeight, hashFork, nForkType) == OK))
-    // {
-    //     return true;
-    // }
-    // StdError("CService", "SignTransaction: ValidateTransaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
-    // return false;
 }
 
 bool CService::HaveTemplate(const CTemplateId& tid)
@@ -773,55 +763,6 @@ bool CService::SignOfflineTransaction(const CDestination& destIn, CTransaction& 
 
 Errno CService::SendOfflineSignedTransaction(CTransaction& tx)
 {
-    // uint256 hashFork;
-    // int nHeight;
-    // if (!pBlockChain->GetBlockLocation(tx.hashAnchor, hashFork, nHeight))
-    // {
-    //     StdError("CService", "SendOfflineSignedTransaction: GetBlockLocation fail,"
-    //                          " txid: %s, hashAnchor: %s",
-    //              tx.GetHash().GetHex().c_str(), tx.hashAnchor.GetHex().c_str());
-    //     return FAILED;
-    // }
-
-    // vector<CTxOut> vUnspent;
-    // if (!pTxPool->FetchInputs(hashFork, tx, vUnspent) || vUnspent.empty())
-    // {
-    //     StdError("CService", "SendOfflineSignedTransaction: FetchInputs fail or vUnspent"
-    //                          " is empty, txid: %s",
-    //              tx.GetHash().GetHex().c_str());
-    //     return FAILED;
-    // }
-
-    // const CDestination& destIn = vUnspent[0].destTo;
-    // int32 nForkHeight;
-    // uint256 hashLastBlock;
-    // if (!GetForkLastBlock(hashFork, nForkHeight, hashLastBlock))
-    // {
-    //     StdError("CService", "SendOfflineSignedTransaction: GetForkLastBlock fail, txid: %s", tx.GetHash().GetHex().c_str());
-    //     return FAILED;
-    // }
-    // if (hashFork == pCoreProtocol->GetGenesisBlockHash()
-    //     && tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
-    // {
-    //     vector<pair<CDestination, CForkContext>> vForkCtxt;
-    //     if (!pBlockChain->VerifyBlockForkTx(hashLastBlock, tx, vForkCtxt) || vForkCtxt.empty())
-    //     {
-    //         StdError("CService", "SendOfflineSignedTransaction: Verify block fork tx fail, txid: %s", tx.GetHash().GetHex().c_str());
-    //         return FAILED;
-    //     }
-    // }
-
-    // //int32 nForkHeight = GetForkHeight(hashFork);
-    // //const CDestination& destIn = vUnspent[0].destTo;
-    // int nForkType = GetForkType(hashFork);
-    // if (OK != pCoreProtocol->VerifyTransaction(tx, vUnspent, nForkHeight, hashFork, nForkType))
-    // {
-    //     StdError("CService", "SendOfflineSignedTransaction: ValidateTransaction fail,"
-    //                          " txid: %s, destIn: %s",
-    //              tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
-    //     return FAILED;
-    // }
-
     return pDispatcher->AddNewTx(tx, 0);
 }
 
