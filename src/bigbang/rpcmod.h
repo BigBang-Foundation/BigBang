@@ -50,6 +50,10 @@ protected:
     {
         return i.IsValid() ? uint64(i) : valDefault;
     }
+    uint64 GetUint64(const rpc::CRPCUint64& i, uint64 valDefault)
+    {
+        return i.IsValid() ? uint64(i) : valDefault;
+    }
     bool GetForkHashOfDef(const rpc::CRPCString& hex, uint256& hashFork)
     {
         if (!hex.empty())

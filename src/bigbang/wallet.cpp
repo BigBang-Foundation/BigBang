@@ -419,6 +419,23 @@ CTemplatePtr CWallet::GetTemplate(const CTemplateId& tid) const
     return nullptr;
 }
 
+void CWallet::GetDestinations(set<CDestination>& setDest)
+{
+    boost::shared_lock<boost::shared_mutex> rlock(rwKeyStore);
+
+    for (map<crypto::CPubKey, CWalletKeyStore>::const_iterator it = mapKeyStore.begin();
+         it != mapKeyStore.end(); ++it)
+    {
+        setDest.insert(CDestination((*it).first));
+    }
+
+    for (map<CTemplateId, CTemplatePtr>::const_iterator it = mapTemplatePtr.begin();
+         it != mapTemplatePtr.end(); ++it)
+    {
+        setDest.insert(CDestination((*it).first));
+    }
+}
+
 bool CWallet::SignTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, const uint256& hashFork, const int32 nForkHeight, bool& fCompleted)
 {
     vector<uint8> vchSig;

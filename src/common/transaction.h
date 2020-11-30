@@ -578,10 +578,10 @@ class CTxInfo
 public:
     CTxInfo() {}
     CTxInfo(const uint256& txidIn, const uint256& hashForkIn, const int nTxTypeIn, const uint32 nTimeStampIn,
-            const uint32& nLockUntilIn, const int nBlockHeightIn, const CDestination& destFromIn, const CDestination& destToIn,
+            const uint32& nLockUntilIn, const int nBlockHeightIn, const uint64 nTxSeqIn, const CDestination& destFromIn, const CDestination& destToIn,
             const int64 nAoumtIn, const int64 nTxFeeIn, const uint64 nSizeIn)
       : txid(txidIn), hashFork(hashForkIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn), nLockUntil(nLockUntilIn),
-        nBlockHeight(nBlockHeightIn), destFrom(destFromIn), destTo(destToIn), nAmount(nAoumtIn), nTxFee(nTxFeeIn), nSize(nSizeIn) {}
+        nBlockHeight(nBlockHeightIn), nTxSeq(nTxSeqIn), destFrom(destFromIn), destTo(destToIn), nAmount(nAoumtIn), nTxFee(nTxFeeIn), nSize(nSizeIn) {}
 
     bool IsMintTx() const
     {
@@ -595,6 +595,7 @@ public:
     uint32 nTimeStamp;
     uint32 nLockUntil;
     int nBlockHeight;
+    uint64 nTxSeq;
     CDestination destFrom;
     CDestination destTo;
     int64 nAmount;

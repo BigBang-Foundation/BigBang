@@ -719,6 +719,11 @@
                 "desc": "block height",
                 "required": false
             },
+            "txseq": {
+                "type": "uint",
+                "desc": "tx sequence",
+                "required": false
+            },
             "type": {
                 "type": "string",
                 "desc": "transaction type"
@@ -2614,7 +2619,8 @@
         "name": "ListTransaction",
         "introduction": "Return transactions list.",
         "desc": [
-            "return up to (count) most recent transactions skipping the first (offset) transactions."
+            "If (offset) < 0,return last (count) transactions,",
+            "If (offset) >= 0,return up to (count) most recent transactions skipping the first (offset) transactions."
         ],
         "request": {
             "type": "object",
@@ -2639,9 +2645,21 @@
                 },
                 "address": {
                     "type": "string",
-                    "desc": "from address or sendto address. If not set, default is all address",
+                    "desc": "from address or sendto address. If not set, default is all wallet address",
                     "required": false,
                     "opt": "a"
+                },
+                "prevheight": {
+                    "type": "int",
+                    "desc": "query previous parameters: block height, if txpool is -1",
+                    "required": false,
+                    "opt": "h"
+                },
+                "prevtxseq": {
+                    "type": "uint",
+                    "desc": "query previous parameters: sequence of tx in block",
+                    "required": false,
+                    "opt": "s"
                 }
             }
         },

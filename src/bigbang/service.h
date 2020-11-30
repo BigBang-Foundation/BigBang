@@ -74,7 +74,7 @@ public:
     CTemplatePtr GetTemplate(const CTemplateId& tid) override;
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) override;
     bool GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) override;
-    bool ListTransaction(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx) override;
+    bool ListTransaction(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx) override;
     boost::optional<std::string> CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
                                                             const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
                                                             const std::vector<unsigned char>& vchData, CTransaction& txNew) override;
@@ -84,6 +84,7 @@ public:
     bool AesDecrypt(const crypto::CPubKey& pubkeyLocal, const crypto::CPubKey& pubkeyRemote, const std::vector<uint8>& vCiphertext, std::vector<uint8>& vMessage) override;
     bool AddMemKey(const uint256& secret, crypto::CPubKey& pubkey) override;
     void RemoveMemKey(const crypto::CPubKey& pubkey) override;
+    void GetWalletDestinations(std::set<CDestination>& setDest) override;
     /* Mint */
     bool GetWork(std::vector<unsigned char>& vchWorkData, int& nPrevBlockHeight,
                  uint256& hashPrev, uint32& nPrevTime, int& nAlgo, int& nBits,

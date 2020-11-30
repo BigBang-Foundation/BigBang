@@ -2032,10 +2032,10 @@ bool CBlockBase::RetrieveAddressUnspent(const uint256& hashFork, const CDestinat
     return dbBlock.RetrieveAddressUnspent(hashFork, dest, mapUnspent);
 }
 
-int64 CBlockBase::RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
+int64 CBlockBase::RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
 {
     map<CAddrTxIndex, CAddrTxInfo> mapAddrTxIndex;
-    int64 nGetEndPos = dbBlock.RetrieveAddressTxList(hashFork, dest, nOffset, nCount, mapAddrTxIndex);
+    int64 nGetEndPos = dbBlock.RetrieveAddressTxList(hashFork, dest, nPrevHeight, nPrevTxSeq, nOffset, nCount, mapAddrTxIndex);
     if (nGetEndPos < 0)
     {
         return nGetEndPos;
@@ -2045,13 +2045,13 @@ int64 CBlockBase::RetrieveAddressTxList(const uint256& hashFork, const CDestinat
         if (vd.second.nDirection == CAddrTxInfo::TXI_DIRECTION_TO)
         {
             vTx.push_back(CTxInfo(vd.first.txid, hashFork, vd.second.nTxType, vd.second.nTimeStamp,
-                                  vd.second.nLockUntil, vd.first.GetHeight(), vd.second.destPeer, vd.first.dest,
+                                  vd.second.nLockUntil, vd.first.GetHeight(), vd.first.GetSeq(), vd.second.destPeer, vd.first.dest,
                                   vd.second.nAmount, vd.second.nTxFee, 0));
         }
         else
         {
             vTx.push_back(CTxInfo(vd.first.txid, hashFork, vd.second.nTxType, vd.second.nTimeStamp,
-                                  vd.second.nLockUntil, vd.first.GetHeight(), vd.first.dest, vd.second.destPeer,
+                                  vd.second.nLockUntil, vd.first.GetHeight(), vd.first.GetSeq(), vd.first.dest, vd.second.destPeer,
                                   vd.second.nAmount, vd.second.nTxFee, 0));
         }
     }

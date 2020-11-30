@@ -152,6 +152,8 @@ public:
     bool Have(const CTemplateId& tid) const override;
     bool AddTemplate(CTemplatePtr& ptr) override;
     CTemplatePtr GetTemplate(const CTemplateId& tid) const override;
+    /* Destination */
+    void GetDestinations(std::set<CDestination>& setDest) override;
     /* Wallet Tx */
     bool SignTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, const uint256& hashFork, const int32 nForkHeight, bool& fCompleted) override;
     /* Update */
@@ -263,6 +265,10 @@ public:
     virtual CTemplatePtr GetTemplate(const CTemplateId& tid) const override
     {
         return nullptr;
+    }
+    /* Destination */
+    void GetDestinations(std::set<CDestination>& setDest)
+    {
     }
     /* Wallet Tx */
     virtual bool SignTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData,

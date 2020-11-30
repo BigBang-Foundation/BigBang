@@ -19,6 +19,45 @@ namespace storage
 #define ADDRESS_TXINDEX_FLUSH_INTERVAL (600)
 
 //////////////////////////////
+// CGetAddressTxIndexWalker
+
+bool CGetAddressTxIndexWalker::Walk(const CAddrTxIndex& key, const CAddrTxInfo& value)
+{
+    if (nPrevHeight < -1 || nPrevTxSeq == -1)
+    {
+        if (nOffset < 0)
+        {
+            vCacheAddrTxInfo.push_back(make_pair(key, value));
+        }
+        else
+        {
+            if (nCurPos++ >= nOffset)
+            {
+                mapAddressTxIndex[key] = value;
+                if (nCount > 0 && mapAddressTxIndex.size() >= nCount)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    else
+    {
+        int64 nPrevHeightSeq = (((int64)nPrevHeight << 32) | (nPrevTxSeq & 0xFFFFFFFFL));
+        if (key.nHeightSeq > nPrevHeightSeq)
+        {
+            nCurPos++;
+            mapAddressTxIndex[key] = value;
+            if (nCount > 0 && mapAddressTxIndex.size() >= nCount)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+//////////////////////////////
 // CForkAddressTxIndexDB
 
 CForkAddressTxIndexDB::CForkAddressTxIndexDB(const boost::filesystem::path& pathDB)
@@ -135,10 +174,42 @@ bool CForkAddressTxIndexDB::ReadAddressTxIndex(const CAddrTxIndex& key, CAddrTxI
     return Read(CAddrTxIndex(key.dest, BSwap64(key.nHeightSeq), key.txid), value);
 }
 
-int64 CForkAddressTxIndexDB::RetrieveAddressTxIndex(const CDestination& dest, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
+int64 CForkAddressTxIndexDB::RetrieveAddressTxIndex(const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
 {
-    CGetAddressTxIndexWalker walker(nOffset, nCount, mapAddrTxIndex);
-    WalkThroughAddressTxIndex(walker, dest);
+    if ((nPrevHeight < -1 || nPrevTxSeq == -1) && nOffset == -1)
+    {
+        // last count tx
+        if (dest.IsNull())
+        {
+            return -1;
+        }
+        CGetAddressTxIndexWalker walker(-2, -1, -1, nCount, mapAddrTxIndex);
+        WalkThroughAddressTxIndex(walker, dest, -2, -1);
+        if (!walker.vCacheAddrTxInfo.empty())
+        {
+            int64 nSetOffset;
+            if (nCount >= 0)
+            {
+                nSetOffset = walker.vCacheAddrTxInfo.size() - nCount;
+                if (nSetOffset < 0)
+                {
+                    nSetOffset = 0;
+                }
+            }
+            else
+            {
+                nSetOffset = 0;
+            }
+            auto it = walker.vCacheAddrTxInfo.begin() + nSetOffset;
+            for (; it != walker.vCacheAddrTxInfo.end(); ++it)
+            {
+                mapAddrTxIndex.insert(make_pair(it->first, it->second));
+            }
+        }
+        return walker.vCacheAddrTxInfo.size();
+    }
+    CGetAddressTxIndexWalker walker(nPrevHeight, nPrevTxSeq, nOffset, nCount, mapAddrTxIndex);
+    WalkThroughAddressTxIndex(walker, dest, nPrevHeight, nPrevTxSeq);
     return walker.nCurPos;
 }
 
@@ -174,7 +245,7 @@ bool CForkAddressTxIndexDB::Copy(CForkAddressTxIndexDB& dbAddressTxIndex)
     return true;
 }
 
-bool CForkAddressTxIndexDB::WalkThroughAddressTxIndex(CForkAddressTxIndexDBWalker& walker, const CDestination& dest)
+bool CForkAddressTxIndexDB::WalkThroughAddressTxIndex(CForkAddressTxIndexDBWalker& walker, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq)
 {
     try
     {
@@ -194,11 +265,24 @@ bool CForkAddressTxIndexDB::WalkThroughAddressTxIndex(CForkAddressTxIndexDBWalke
         }
         else
         {
-            if (!WalkThrough(boost::bind(&CForkAddressTxIndexDB::LoadWalker, this, _1, _2, boost::ref(walker),
-                                         boost::ref(mapUpper), boost::ref(mapLower)),
-                             dest, true))
+            if (nPrevHeight < -1 || nPrevTxSeq == -1)
             {
-                return false;
+                if (!WalkThrough(boost::bind(&CForkAddressTxIndexDB::LoadWalker, this, _1, _2, boost::ref(walker),
+                                             boost::ref(mapUpper), boost::ref(mapLower)),
+                                 dest, true))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                int64 nHeightSeq = (((int64)nPrevHeight << 32) | (nPrevTxSeq & 0xFFFFFFFFL));
+                if (!WalkThroughOfPrefix(boost::bind(&CForkAddressTxIndexDB::LoadWalker, this, _1, _2, boost::ref(walker),
+                                                     boost::ref(mapUpper), boost::ref(mapLower)),
+                                         make_pair(dest, BSwap64(nHeightSeq)), dest))
+                {
+                    return false;
+                }
             }
         }
 
@@ -457,7 +541,7 @@ bool CAddressTxIndexDB::RepairAddressTxIndex(const uint256& hashFork, const vect
     return it->second->RepairAddressTxIndex(vAddUpdate, vRemove);
 }
 
-int64 CAddressTxIndexDB::RetrieveAddressTxIndex(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
+int64 CAddressTxIndexDB::RetrieveAddressTxIndex(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
 {
     CReadLock rlock(rwAccess);
 
@@ -467,7 +551,7 @@ int64 CAddressTxIndexDB::RetrieveAddressTxIndex(const uint256& hashFork, const C
         StdLog("CAddressTxIndexDB", "RetrieveAddressTxIndex: find fork fail, fork: %s", hashFork.GetHex().c_str());
         return -1;
     }
-    return it->second->RetrieveAddressTxIndex(dest, nOffset, nCount, mapAddrTxIndex);
+    return it->second->RetrieveAddressTxIndex(dest, nPrevHeight, nPrevTxSeq, nOffset, nCount, mapAddrTxIndex);
 }
 
 bool CAddressTxIndexDB::RetrieveTxIndex(const uint256& hashFork, const CAddrTxIndex& addrTxIndex, CAddrTxInfo& addrTxInfo)

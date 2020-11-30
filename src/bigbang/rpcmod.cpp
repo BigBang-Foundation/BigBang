@@ -126,15 +126,16 @@ static CTransactionData TxToJSON(const uint256& txid, const CTransaction& tx,
     return ret;
 }
 
-static CWalletTxData TxInfoToJSON(const CTxInfo& tx)
+static CWalletTxData TxInfoToJSON(const CTxInfo& tx, const bool fSendFromIn)
 {
     CWalletTxData data;
     data.strTxid = tx.txid.GetHex();
     data.strFork = tx.hashFork.GetHex();
     data.nBlockheight = tx.nBlockHeight;
+    data.nTxseq = tx.nTxSeq;
     data.strType = CTransaction::GetTypeStringStatic(tx.nTxType);
     data.nTime = (boost::int64_t)tx.nTimeStamp;
-    data.fSend = false; //wtx.IsFromMe();
+    data.fSend = fSendFromIn;
     if (!tx.IsMintTx() && tx.nTxType != CTransaction::TX_DEFI_REWARD)
     {
         data.strFrom = CAddress(tx.destFrom).ToString();
@@ -1626,7 +1627,7 @@ CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
 {
     if (!BasicConfig()->fAddrTxIndex)
     {
-        throw CRPCException(RPC_INVALID_REQUEST, "Please set config 'addrtxindex=true' and restart");
+        throw CRPCException(RPC_INVALID_REQUEST, "If you need this function, please set config 'addrtxindex=true' and restart");
     }
 
     auto spParam = CastParamPtr<CListTransactionParam>(param);
@@ -1652,21 +1653,83 @@ CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Negative, zero or out of range count");
     }
-    if (nOffset < 0)
+    if (nOffset < -1)
     {
-        nOffset = 0;
+        nOffset = -1;
     }
+    int nPrevHeight = GetInt(spParam->nPrevheight, -2);
+    uint64 nPrevTxSeq = GetUint64(spParam->nPrevtxseq, -1);
 
     vector<CTxInfo> vTx;
-    if (!pService->ListTransaction(fork, address, nOffset, nCount, vTx))
+    if (!address.IsNull())
     {
-        throw CRPCException(RPC_WALLET_ERROR, "Failed to list transactions");
+        if (!pService->ListTransaction(fork, address, nPrevHeight, nPrevTxSeq, nOffset, nCount, vTx))
+        {
+            throw CRPCException(RPC_WALLET_ERROR, "Failed to list transactions");
+        }
+    }
+    else
+    {
+        set<CDestination> setWalletDest;
+        pService->GetWalletDestinations(setWalletDest);
+
+        vector<CTxInfo> vTxCache;
+        for (const CDestination& dest : setWalletDest)
+        {
+            vector<CTxInfo> vCache;
+            if (!pService->ListTransaction(fork, dest, -2, -1, 0, 0, vCache))
+            {
+                throw CRPCException(RPC_WALLET_ERROR, "Failed to list transactions");
+            }
+            if (!vCache.empty())
+            {
+                vTxCache.insert(vTxCache.end(), vCache.begin(), vCache.end());
+            }
+            if (nOffset != -1 && vTxCache.size() >= nOffset + nCount)
+            {
+                break;
+            }
+        }
+        if (!vTxCache.empty())
+        {
+            if (nOffset == -1)
+            {
+                if (vTxCache.size() <= nCount)
+                {
+                    vTx.assign(vTxCache.begin(), vTxCache.end());
+                }
+                else
+                {
+                    vTx.assign(vTxCache.begin() + (vTxCache.size() - nCount), vTxCache.end());
+                }
+            }
+            else
+            {
+                if (vTxCache.size() > nOffset)
+                {
+                    if (vTxCache.size() >= nOffset + nCount)
+                    {
+                        vTx.assign(vTxCache.begin() + nOffset, vTxCache.begin() + nOffset + nCount);
+                    }
+                    else
+                    {
+                        vTx.assign(vTxCache.begin() + nOffset, vTxCache.end());
+                    }
+                }
+            }
+        }
     }
 
     auto spResult = MakeCListTransactionResultPtr();
     for (const CTxInfo& tx : vTx)
     {
-        spResult->vecTransaction.push_back(TxInfoToJSON(tx));
+        bool fSendFrom = false;
+        if ((tx.destFrom.IsPubKey() && pService->HaveKey(tx.destFrom.GetPubKey()))
+            || (tx.destFrom.IsTemplate() && pService->HaveTemplate(tx.destFrom.GetTemplateId())))
+        {
+            fSendFrom = true;
+        }
+        spResult->vecTransaction.push_back(TxInfoToJSON(tx, fSendFrom));
     }
     return spResult;
 }

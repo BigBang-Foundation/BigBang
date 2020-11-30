@@ -330,6 +330,49 @@ protected:
         return false;
     }
 
+    template <typename K, typename P>
+    bool WalkThroughOfPrefix(WalkerFunc fnWalker, const K& keyBegin, const P& keyPrefix)
+    {
+        try
+        {
+            boost::recursive_mutex::scoped_lock lock(mtx);
+
+            if (dbEngine == nullptr)
+                return false;
+
+            CBufStream ssKeyBegin;
+            ssKeyBegin << keyBegin;
+            CBufStream ssKeyPrefix;
+            ssKeyPrefix << keyPrefix;
+
+            if (!dbEngine->MoveTo(ssKeyBegin))
+                return false;
+
+            for (;;)
+            {
+                CBufStream ssKey, ssValue;
+                if (!dbEngine->MoveNext(ssKey, ssValue))
+                    break;
+
+                if (ssKey.GetSize() < ssKeyPrefix.GetSize())
+                    break;
+
+                if (memcmp(ssKey.GetData(), ssKeyPrefix.GetData(), ssKeyPrefix.GetSize()) > 0)
+                    break;
+
+                if (!fnWalker(ssKey, ssValue))
+                    break;
+            }
+            return true;
+        }
+        catch (std::exception& e)
+        {
+            StdError(__PRETTY_FUNCTION__, e.what());
+        }
+
+        return false;
+    }
+
 protected:
     boost::recursive_mutex mtx;
     CKVDBEngine* dbEngine;

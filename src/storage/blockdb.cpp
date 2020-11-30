@@ -352,11 +352,11 @@ bool CBlockDB::RetrieveAddressUnspent(const uint256& hashFork, const CDestinatio
     return dbAddressUnspent.RetrieveAddressUnspent(hashFork, dest, mapUnspent);
 }
 
-int64 CBlockDB::RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
+int64 CBlockDB::RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
 {
     if (fDbCfgAddrTxIndex)
     {
-        return dbAddressTxIndex.RetrieveAddressTxIndex(hashFork, dest, nOffset, nCount, mapAddrTxIndex);
+        return dbAddressTxIndex.RetrieveAddressTxIndex(hashFork, dest, nPrevHeight, nPrevTxSeq, nOffset, nCount, mapAddrTxIndex);
     }
     return -1;
 }

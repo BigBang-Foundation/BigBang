@@ -2450,9 +2450,9 @@ bool CBlockChain::GetAddressUnspent(const uint256& hashFork, const CDestination&
     return cntrBlock.RetrieveAddressUnspent(hashFork, dest, mapUnspent);
 }
 
-int64 CBlockChain::GetAddressTxList(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
+int64 CBlockChain::GetAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
 {
-    return cntrBlock.RetrieveAddressTxList(hashFork, dest, nOffset, nCount, vTx);
+    return cntrBlock.RetrieveAddressTxList(hashFork, dest, nPrevHeight, nPrevTxSeq, nOffset, nCount, vTx);
 }
 
 } // namespace bigbang

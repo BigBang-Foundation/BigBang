@@ -30,29 +30,18 @@ public:
 class CGetAddressTxIndexWalker : public CForkAddressTxIndexDBWalker
 {
 public:
-    CGetAddressTxIndexWalker(const int64 nOffsetIn, const int64 nCountIn, std::map<CAddrTxIndex, CAddrTxInfo>& mapAddressTxIndexIn)
-      : nCurPos(0), nOffset(nOffsetIn), nCount(nCountIn), mapAddressTxIndex(mapAddressTxIndexIn) {}
-    bool Walk(const CAddrTxIndex& key, const CAddrTxInfo& value) override
-    {
-        if (nCurPos++ >= nOffset)
-        {
-            if (nCount > 0)
-            {
-                mapAddressTxIndex[key] = value;
-            }
-            if (--nCount <= 0)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
+    CGetAddressTxIndexWalker(const int nPrevHeightIn, const uint64 nPrevTxSeqIn, const int64 nOffsetIn, const int64 nCountIn, std::map<CAddrTxIndex, CAddrTxInfo>& mapAddressTxIndexIn)
+      : nCurPos(0), nPrevHeight(nPrevHeightIn), nPrevTxSeq(nPrevTxSeqIn), nOffset(nOffsetIn), nCount(nCountIn), mapAddressTxIndex(mapAddressTxIndexIn) {}
+    bool Walk(const CAddrTxIndex& key, const CAddrTxInfo& value) override;
 
 public:
     int64 nCurPos;
+    int nPrevHeight;
+    uint64 nPrevTxSeq;
     int64 nOffset;
     int64 nCount;
     std::map<CAddrTxIndex, CAddrTxInfo>& mapAddressTxIndex;
+    std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>> vCacheAddrTxInfo;
 };
 
 //////////////////////////////
@@ -100,14 +89,14 @@ public:
     bool RepairAddressTxIndex(const std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddUpdate, const std::vector<CAddrTxIndex>& vRemove);
     bool WriteAddressTxIndex(const CAddrTxIndex& key, const CAddrTxInfo& value);
     bool ReadAddressTxIndex(const CAddrTxIndex& key, CAddrTxInfo& value);
-    int64 RetrieveAddressTxIndex(const CDestination& dest, const int64 nOffset, const int64 nCount, std::map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex);
+    int64 RetrieveAddressTxIndex(const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, std::map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex);
     bool RetrieveTxIndex(const CAddrTxIndex& addrTxIndex, CAddrTxInfo& addrTxInfo);
     bool Copy(CForkAddressTxIndexDB& dbAddressTxIndex);
     void SetCache(const CDblMap& dblCacheIn)
     {
         dblCache = dblCacheIn;
     }
-    bool WalkThroughAddressTxIndex(CForkAddressTxIndexDBWalker& walker, const CDestination& dest = CDestination());
+    bool WalkThroughAddressTxIndex(CForkAddressTxIndexDBWalker& walker, const CDestination& dest = CDestination(), const int nPrevHeight = -2, const uint64 nPrevTxSeq = -1);
     bool Flush();
 
 protected:
@@ -137,7 +126,7 @@ public:
     void Clear();
     bool UpdateAddressTxIndex(const uint256& hashFork, const std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddNew, const std::vector<CAddrTxIndex>& vRemove);
     bool RepairAddressTxIndex(const uint256& hashFork, const std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddUpdate, const std::vector<CAddrTxIndex>& vRemove);
-    int64 RetrieveAddressTxIndex(const uint256& hashFork, const CDestination& dest, const int64 nOffset, const int64 nCount, std::map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex);
+    int64 RetrieveAddressTxIndex(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, std::map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex);
     bool RetrieveTxIndex(const uint256& hashFork, const CAddrTxIndex& addrTxIndex, CAddrTxInfo& addrTxInfo);
     bool Copy(const uint256& srcFork, const uint256& destFork);
     bool WalkThrough(const uint256& hashFork, CForkAddressTxIndexDBWalker& walker);
