@@ -3382,18 +3382,24 @@ CRPCResultPtr CRPCMod::RPCQueryStat(rpc::CRPCParamPtr param)
 /*Lws RPC*/
 CRPCResultPtr CRPCMod::RPCGetFork(rpc::CRPCParamPtr param)
 {
+    auto spParam = CastParamPtr<CGetForkParam>(param);
+
     auto spResult = MakeCGetForkResultPtr();
     return spResult;
 }
 
 CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
 {
+    auto spParam = CastParamPtr<CReportParam>(param);
+
     auto spResult = MakeCReportResultPtr();
     return spResult;
 }
 
 CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
 {
+    auto spParam = CastParamPtr<CGetBlocksParam>(param);
+
     auto spResult = MakeCGetBlocksResultPtr();
     return spResult;
 }
