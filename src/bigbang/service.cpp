@@ -795,6 +795,101 @@ bool CService::GetBalanceByUnspent(const CDestination& dest, const uint256& hash
     return true;
 }
 
+bool CService::ListTransaction(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
+{
+    if (nPrevHeight < -1 || nPrevTxSeq == -1)
+    {
+        // nOffset is valid
+        if (nOffset == -1)
+        {
+            // last count transactions
+            if (dest.IsNull())
+            {
+                return false;
+            }
+            vector<CTxInfo> vTxCache;
+            if (!pTxPool->ListTx(hashFork, dest, vTxCache, -1, nCount))
+            {
+                return false;
+            }
+            if (nCount <= 0 || vTxCache.size() < nCount)
+            {
+                if (pBlockChain->GetAddressTxList(hashFork, dest, -2, -1, -1, ((nCount > 0) ? (nCount - vTxCache.size()) : 0), vTx) < 0)
+                {
+                    return false;
+                }
+                if (!vTxCache.empty())
+                {
+                    vTx.insert(vTx.end(), vTxCache.begin(), vTxCache.end());
+                }
+            }
+            else
+            {
+                vTx.assign(vTxCache.begin(), vTxCache.end());
+            }
+        }
+        else
+        {
+            // positive sequence
+            int64 nGetEndOffset = pBlockChain->GetAddressTxList(hashFork, dest, -2, -1, nOffset, nCount, vTx);
+            if (nGetEndOffset < 0)
+            {
+                return false;
+            }
+            if (vTx.size() == 0)
+            {
+                int64 nTxPoolOffset = nOffset - nGetEndOffset;
+                if (nTxPoolOffset < 0)
+                {
+                    nTxPoolOffset = 0;
+                }
+                if (!pTxPool->ListTx(hashFork, dest, vTx, nTxPoolOffset, nCount))
+                {
+                    return false;
+                }
+            }
+            else if (nCount <= 0 || vTx.size() < nCount)
+            {
+                if (!pTxPool->ListTx(hashFork, dest, vTx, 0, ((nCount > 0) ? (nCount - vTx.size()) : 0)))
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    else if (nPrevHeight == -1)
+    {
+        // nPrevHeight at txpool
+        if (!pTxPool->ListTxOfSeq(hashFork, dest, vTx, nPrevTxSeq, nCount))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        // nPrevHeight and nPrevTxSeq is valid
+        if (pBlockChain->GetAddressTxList(hashFork, dest, nPrevHeight, nPrevTxSeq, nOffset, nCount, vTx) < 0)
+        {
+            return false;
+        }
+        if (vTx.size() == 0)
+        {
+            if (!pTxPool->ListTx(hashFork, dest, vTx, 0, nCount))
+            {
+                return false;
+            }
+        }
+        else if (nCount <= 0 || vTx.size() < nCount)
+        {
+            if (!pTxPool->ListTx(hashFork, dest, vTx, 0, ((nCount > 0) ? (nCount - vTx.size()) : 0)))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
                                                                   const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
                                                                   const vector<unsigned char>& vchData, CTransaction& txNew)
@@ -1075,6 +1170,11 @@ bool CService::AddMemKey(const uint256& secret, crypto::CPubKey& pubkey)
 void CService::RemoveMemKey(const crypto::CPubKey& pubkey)
 {
     return pWallet->RemoveMemKey(pubkey);
+}
+
+void CService::GetWalletDestinations(std::set<CDestination>& setDest)
+{
+    pWallet->GetDestinations(setDest);
 }
 
 bool CService::GetWork(vector<unsigned char>& vchWorkData, int& nPrevBlockHeight,

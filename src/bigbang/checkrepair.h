@@ -43,6 +43,27 @@ public:
     int nTxType;
 };
 
+class CCheckTxInfo
+{
+public:
+    CCheckTxInfo() {}
+    CCheckTxInfo(const CDestination& destFromIn, const CDestination& destToIn, const int nTxTypeIn, const uint32 nTimeStampIn, const uint32 nLockUntilIn,
+                 const int64 nAmountIn, const int64 nTxFeeIn, const int nBlockHeightIn, const int nTxSeqNoIn)
+      : destFrom(destFromIn), destTo(destToIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn), nLockUntil(nLockUntilIn),
+        nAmount(nAmountIn), nTxFee(nTxFeeIn), nBlockHeight(nBlockHeightIn), nTxSeqNo(nTxSeqNoIn) {}
+
+public:
+    CDestination destFrom;
+    CDestination destTo;
+    int nTxType;
+    uint32 nTimeStamp;
+    uint32 nLockUntil;
+    int64 nAmount;
+    int64 nTxFee;
+    int nBlockHeight;
+    int nTxSeqNo;
+};
+
 class CCheckTxOut : public CTxOut
 {
 public:
@@ -117,6 +138,21 @@ protected:
 public:
     vector<pair<CDestination, CAddrInfo>> vAddUpdate;
     vector<CDestination> vRemove;
+};
+
+class CCheckAddressTxIndexWalker : public CForkAddressTxIndexDBWalker
+{
+public:
+    CCheckAddressTxIndexWalker(const map<uint256, CCheckTxIndex>& mapBlockTxIndexIn)
+      : mapBlockTxIndex(mapBlockTxIndexIn) {}
+
+    bool Walk(const CAddrTxIndex& key, const CAddrTxInfo& value) override;
+
+protected:
+    const map<uint256, CCheckTxIndex>& mapBlockTxIndex;
+
+public:
+    vector<CAddrTxIndex> vRemove;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -222,6 +258,7 @@ public:
     bool RemoveDbForkLast(const uint256& hashFork);
 
     bool GetValidForkContext(const uint256& hashPrimaryLastBlock, const uint256& hashFork, CForkContext& ctxt);
+    bool IsCheckPoint(const uint256& hashFork, const uint256& hashBlock);
 
 public:
     string strDataPath;
@@ -230,7 +267,7 @@ public:
     uint256 hashGenesisBlock;
     CForkDB dbFork;
     map<uint256, uint256> mapActiveFork;
-    map<int, uint256> mapCheckPoints;
+    map<uint256, map<int, uint256>> mapCheckPoints;
     std::map<uint256, CCheckForkSchedule> mapBlockForkSched;
     std::map<uint256, CCheckValidFdForkId> mapBlockValidFork;
 };
@@ -332,29 +369,39 @@ public:
 class CCheckBlockFork
 {
 public:
-    CCheckBlockFork(CCheckTsBlock& tsBlockIn)
-      : pOrigin(nullptr), pLast(nullptr), fInvalidFork(false), tsBlock(tsBlockIn) {}
+    CCheckBlockFork(const string& strPathIn, const bool fOnlyCheckIn, const bool fAddrTxIndexIn, CCheckTsBlock& tsBlockIn,
+                    CCheckForkManager& objForkManagerIn, CAddressTxIndexDB& dbAddressTxIndexIn)
+      : pOrigin(nullptr), pLast(nullptr), fInvalidFork(false), strDataPath(strPathIn), fOnlyCheck(fOnlyCheckIn), fCheckAddrTxIndex(fAddrTxIndexIn),
+        tsBlock(tsBlockIn), objForkManager(objForkManagerIn), dbAddressTxIndex(dbAddressTxIndexIn), nCacheTxInfoBlockCount(0) {}
 
     bool AddForkBlock(const CBlockEx& block, CBlockIndex* pBlockIndex);
     CBlockIndex* GetBranch(CBlockIndex* pIndexRef, CBlockIndex* pIndex, vector<CBlockIndex*>& vPath);
     bool AddBlockData(const CBlockEx& block, const CBlockIndex* pBlockIndex);
     bool RemoveBlockData(const CBlockEx& block, const CBlockIndex* pBlockIndex);
 
-    bool AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, int nHeight, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn);
+    bool AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, const int nHeight, const int nTxSeqNo, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn);
     bool RemoveBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn);
     bool AddBlockUnspent(const CTxOutPoint& txPoint, const CTxOut& txOut, int nTxType, int nHeight);
     bool AddBlockSpent(const CTxOutPoint& txPoint);
 
     void CopyData(const CCheckBlockFork& from);
+    bool CheckForkAddressTxIndex(const uint256& hashFork, const int nCheckHeight);
 
 public:
+    string strDataPath;
+    bool fOnlyCheck;
+    bool fCheckAddrTxIndex;
     CCheckTsBlock& tsBlock;
+    CCheckForkManager& objForkManager;
+    CAddressTxIndexDB& dbAddressTxIndex;
     CBlockIndex* pOrigin;
     CBlockIndex* pLast;
     bool fInvalidFork;
     map<uint256, CCheckTxIndex> mapBlockTxIndex;
+    map<uint256, CCheckTxInfo> mapBlockTxInfo;
     map<CTxOutPoint, CCheckTxOut> mapBlockUnspent;
     map<CDestination, pair<uint256, CAddrInfo>> mapBlockAddress;
+    uint64 nCacheTxInfoBlockCount;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -362,12 +409,13 @@ public:
 class CCheckBlockWalker : public CTSWalker<CBlockEx>
 {
 public:
-    CCheckBlockWalker(bool fTestnetIn, bool fOnlyCheckIn, CCheckForkManager& objForkManagerIn)
-      : nBlockCount(0), nMainChainHeight(0), objProofParam(fTestnetIn),
-        fOnlyCheck(fOnlyCheckIn), objForkManager(objForkManagerIn) {}
+    CCheckBlockWalker(const bool fTestnetIn, const bool fOnlyCheckIn, const bool fAddrTxIndexIn, CCheckForkManager& objForkManagerIn)
+      : nBlockCount(0), nMainChainHeight(0), objProofParam(fTestnetIn), fOnlyCheck(fOnlyCheckIn),
+        fCheckAddrTxIndex(fAddrTxIndexIn), objForkManager(objForkManagerIn) {}
     ~CCheckBlockWalker();
 
     bool Initialize(const string& strPath);
+    void Uninitialize();
 
     bool Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset) override;
 
@@ -387,9 +435,12 @@ public:
     void ClearBlockIndex();
     bool CheckBlockIndex();
     bool CheckRefBlock();
+    bool CheckSurplusAddressTxIndex(uint64& nTxIndexCount);
 
 public:
     bool fOnlyCheck;
+    bool fCheckAddrTxIndex;
+    string strDataPath;
     int64 nBlockCount;
     uint32 nMainChainHeight;
     uint256 hashGenesis;
@@ -401,6 +452,7 @@ public:
     CBlockIndexDB dbBlockIndex;
     CCheckDelegateDB objDelegateDB;
     CCheckTsBlock objTsBlock;
+    CAddressTxIndexDB dbAddressTxIndex;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -409,9 +461,9 @@ public:
 class CCheckRepairData
 {
 public:
-    CCheckRepairData(const string& strPath, bool fTestnetIn, bool fOnlyCheckIn)
+    CCheckRepairData(const string& strPath, const bool fTestnetIn, const bool fOnlyCheckIn, const bool fAddrTxIndexIn)
       : strDataPath(strPath), fTestnet(fTestnetIn), fOnlyCheck(fOnlyCheckIn),
-        objProofOfWorkParam(fTestnetIn), objBlockWalker(fTestnetIn, fOnlyCheckIn, objForkManager)
+        objProofOfWorkParam(fTestnetIn), objBlockWalker(fTestnetIn, fOnlyCheckIn, fAddrTxIndexIn, objForkManager)
     {
     }
 

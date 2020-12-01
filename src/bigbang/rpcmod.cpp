@@ -125,30 +125,28 @@ static CTransactionData TxToJSON(const uint256& txid, const CTransaction& tx,
 
     return ret;
 }
-/*
-static CWalletTxData WalletTxToJSON(const CWalletTx& wtx)
+
+static CWalletTxData TxInfoToJSON(const CTxInfo& tx, const bool fSendFromIn)
 {
     CWalletTxData data;
-    data.strTxid = wtx.txid.GetHex();
-    data.strFork = wtx.hashFork.GetHex();
-    if (wtx.nBlockHeight >= 0)
+    data.strTxid = tx.txid.GetHex();
+    data.strFork = tx.hashFork.GetHex();
+    data.nBlockheight = tx.nBlockHeight;
+    data.nTxseq = tx.nTxSeq;
+    data.strType = CTransaction::GetTypeStringStatic(tx.nTxType);
+    data.nTime = (boost::int64_t)tx.nTimeStamp;
+    data.fSend = fSendFromIn;
+    if (!tx.IsMintTx() && tx.nTxType != CTransaction::TX_DEFI_REWARD)
     {
-        data.nBlockheight = wtx.nBlockHeight;
+        data.strFrom = CAddress(tx.destFrom).ToString();
     }
-    data.strType = wtx.GetTypeString();
-    data.nTime = (boost::int64_t)wtx.nTimeStamp;
-    data.fSend = wtx.IsFromMe();
-    if (!wtx.IsMintTx() && wtx.nType != CTransaction::TX_DEFI_REWARD)
-    {
-        data.strFrom = CAddress(wtx.destIn).ToString();
-    }
-    data.strTo = CAddress(wtx.sendTo).ToString();
-    data.dAmount = ValueFromAmount(wtx.nAmount);
-    data.dFee = ValueFromAmount(wtx.nTxFee);
-    data.nLockuntil = (boost::int64_t)wtx.nLockUntil;
+    data.strTo = CAddress(tx.destTo).ToString();
+    data.dAmount = ValueFromAmount(tx.nAmount);
+    data.dFee = ValueFromAmount(tx.nTxFee);
+    data.nLockuntil = (boost::int64_t)tx.nLockUntil;
     return data;
 }
-*/
+
 static CUnspentData UnspentToJSON(const CTxUnspent& unspent)
 {
     CUnspentData data;
@@ -1627,7 +1625,131 @@ CRPCResultPtr CRPCMod::RPCGetBalance(CRPCParamPtr param)
 
 CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
 {
-    throw CRPCException(RPC_REQUEST_FUNC_OBSOLETE, "Requested function is obsolete");
+    if (!BasicConfig()->fAddrTxIndex)
+    {
+        throw CRPCException(RPC_INVALID_REQUEST, "If you need this function, please set config 'addrtxindex=true' and restart");
+    }
+
+    auto spParam = CastParamPtr<CListTransactionParam>(param);
+
+    const CRPCString& strFork = spParam->strFork;
+    const CRPCString& strAddress = spParam->strAddress;
+
+    uint256 fork;
+    if (!GetForkHashOfDef(strFork, fork))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
+    }
+
+    CAddress address;
+    if (!strAddress.empty() && !address.ParseString(strAddress))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address");
+    }
+
+    int nCount = GetUint(spParam->nCount, 10);
+    int nOffset = GetInt(spParam->nOffset, 0);
+    if (nCount <= 0)
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Negative, zero or out of range count");
+    }
+    if (nOffset < -1)
+    {
+        nOffset = -1;
+    }
+    int nPrevHeight = GetInt(spParam->nPrevheight, -2);
+    uint64 nPrevTxSeq = GetUint64(spParam->nPrevtxseq, -1);
+
+    vector<CTxInfo> vTx;
+    if (!address.IsNull())
+    {
+        if (!pService->ListTransaction(fork, address, nPrevHeight, nPrevTxSeq, nOffset, nCount, vTx))
+        {
+            throw CRPCException(RPC_WALLET_ERROR, "Failed to list transactions");
+        }
+    }
+    else
+    {
+        set<CDestination> setWalletDest;
+        pService->GetWalletDestinations(setWalletDest);
+
+        map<pair<uint32, uint64>, CTxInfo> mapTxCache;
+        for (const CDestination& dest : setWalletDest)
+        {
+            vector<CTxInfo> vCache;
+            if (!pService->ListTransaction(fork, dest, -2, -1, 0, 0, vCache))
+            {
+                throw CRPCException(RPC_WALLET_ERROR, "Failed to list transactions");
+            }
+            for (const auto& vd : vCache)
+            {
+                mapTxCache.insert(make_pair(make_pair(vd.nBlockHeight, vd.nTxSeq), vd));
+            }
+            if (nOffset != -1 && mapTxCache.size() >= nOffset + nCount)
+            {
+                break;
+            }
+        }
+        if (!mapTxCache.empty())
+        {
+            if (nPrevHeight < -1 || nPrevTxSeq == -1)
+            {
+                if (nOffset == -1)
+                {
+                    nOffset = mapTxCache.size() - nCount;
+                    if (nOffset < 0)
+                    {
+                        nOffset = 0;
+                    }
+                }
+                if (mapTxCache.size() > nOffset)
+                {
+                    vTx.reserve(nCount);
+                    int64 nPos = nOffset;
+                    for (const auto& vd : mapTxCache)
+                    {
+                        if (--nPos <= 0)
+                        {
+                            vTx.push_back(vd.second);
+                            if (vTx.size() >= nCount)
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                vTx.reserve(nCount);
+                for (const auto& vd : mapTxCache)
+                {
+                    if (vd.second.nBlockHeight > nPrevHeight
+                        || (vd.second.nBlockHeight == nPrevHeight && vd.second.nTxSeq > nPrevTxSeq))
+                    {
+                        vTx.push_back(vd.second);
+                        if (vTx.size() >= nCount)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    auto spResult = MakeCListTransactionResultPtr();
+    for (const CTxInfo& tx : vTx)
+    {
+        bool fSendFrom = false;
+        if ((tx.destFrom.IsPubKey() && pService->HaveKey(tx.destFrom.GetPubKey()))
+            || (tx.destFrom.IsTemplate() && pService->HaveTemplate(tx.destFrom.GetTemplateId())))
+        {
+            fSendFrom = true;
+        }
+        spResult->vecTransaction.push_back(TxInfoToJSON(tx, fSendFrom));
+    }
+    return spResult;
 }
 
 CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)

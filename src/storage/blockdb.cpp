@@ -24,8 +24,9 @@ CBlockDB::~CBlockDB()
 {
 }
 
-bool CBlockDB::Initialize(const boost::filesystem::path& pathData)
+bool CBlockDB::Initialize(const boost::filesystem::path& pathData, const bool fAddrTxIndexIn)
 {
+    fDbCfgAddrTxIndex = fAddrTxIndexIn;
     if (!dbFork.Initialize(pathData))
     {
         return false;
@@ -61,6 +62,13 @@ bool CBlockDB::Initialize(const boost::filesystem::path& pathData)
         return false;
     }
 
+    if (fDbCfgAddrTxIndex)
+    {
+        if (!dbAddressTxIndex.Initialize(pathData))
+        {
+            return false;
+        }
+    }
     return LoadFork();
 }
 
@@ -68,6 +76,10 @@ void CBlockDB::Deinitialize()
 {
     dbAddress.Deinitialize();
     dbAddressUnspent.Deinitialize();
+    if (fDbCfgAddrTxIndex)
+    {
+        dbAddressTxIndex.Deinitialize();
+    }
     dbDelegate.Deinitialize();
     dbUnspent.Deinitialize();
     dbTxIndex.Deinitialize();
@@ -79,6 +91,10 @@ bool CBlockDB::RemoveAll()
 {
     dbAddress.Clear();
     dbAddressUnspent.Clear();
+    if (fDbCfgAddrTxIndex)
+    {
+        dbAddressTxIndex.Clear();
+    }
     dbDelegate.Clear();
     dbUnspent.Clear();
     dbTxIndex.Clear();
@@ -156,6 +172,15 @@ bool CBlockDB::AddNewFork(const uint256& hash)
         return false;
     }
 
+    if (fDbCfgAddrTxIndex)
+    {
+        if (!dbAddressTxIndex.AddNewFork(hash))
+        {
+            dbFork.RemoveFork(hash);
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -176,6 +201,14 @@ bool CBlockDB::RemoveFork(const uint256& hash)
         return false;
     }
 
+    if (fDbCfgAddrTxIndex)
+    {
+        if (!dbAddressTxIndex.RemoveFork(hash))
+        {
+            return false;
+        }
+    }
+
     return dbFork.RemoveFork(hash);
 }
 
@@ -187,6 +220,7 @@ bool CBlockDB::ListFork(vector<pair<uint256, uint256>>& vFork)
 
 bool CBlockDB::UpdateFork(const uint256& hash, const uint256& hashRefBlock, const uint256& hashForkBased,
                           const vector<pair<uint256, CTxIndex>>& vTxNew, const vector<uint256>& vTxDel,
+                          const vector<pair<CAddrTxIndex, CAddrTxInfo>>& vAddrTxNew, const vector<CAddrTxIndex>& vAddrTxDel,
                           const vector<CTxUnspent>& vAddNewUnspent, const vector<CTxUnspent>& vRemoveUnspent)
 {
     if (!dbUnspent.Exists(hash))
@@ -226,6 +260,14 @@ bool CBlockDB::UpdateFork(const uint256& hash, const uint256& hashRefBlock, cons
     if (!dbAddressUnspent.UpdateAddressUnspent(hash, vAddNewUnspent, vRemoveUnspent))
     {
         return false;
+    }
+
+    if (fDbCfgAddrTxIndex)
+    {
+        if (!dbAddressTxIndex.UpdateAddressTxIndex(hash, vAddrTxNew, fIgnoreTxDel ? vector<CAddrTxIndex>() : vAddrTxDel))
+        {
+            return false;
+        }
     }
 
     return true;
@@ -310,6 +352,15 @@ bool CBlockDB::RetrieveAddressUnspent(const uint256& hashFork, const CDestinatio
     return dbAddressUnspent.RetrieveAddressUnspent(hashFork, dest, mapUnspent);
 }
 
+int64 CBlockDB::RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
+{
+    if (fDbCfgAddrTxIndex)
+    {
+        return dbAddressTxIndex.RetrieveAddressTxIndex(hashFork, dest, nPrevHeight, nPrevTxSeq, nOffset, nCount, mapAddrTxIndex);
+    }
+    return -1;
+}
+
 bool CBlockDB::LoadFork()
 {
     vector<pair<uint256, uint256>> vFork;
@@ -338,6 +389,14 @@ bool CBlockDB::LoadFork()
         if (!dbAddressUnspent.AddNewFork(vFork[i].first))
         {
             return false;
+        }
+
+        if (fDbCfgAddrTxIndex)
+        {
+            if (!dbAddressTxIndex.AddNewFork(vFork[i].first))
+            {
+                return false;
+            }
         }
     }
     return true;

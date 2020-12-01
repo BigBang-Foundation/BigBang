@@ -25,7 +25,7 @@ bool CPurger::ResetDB(const boost::filesystem::path& pathDataLocation) const
 {
     {
         CBlockDB dbBlock;
-        if (dbBlock.Initialize(pathDataLocation))
+        if (dbBlock.Initialize(pathDataLocation, true))
         {
             if (!dbBlock.RemoveAll())
             {

@@ -719,6 +719,11 @@
                 "desc": "block height",
                 "required": false
             },
+            "txseq": {
+                "type": "uint",
+                "desc": "tx sequence",
+                "required": false
+            },
             "type": {
                 "type": "string",
                 "desc": "transaction type"
@@ -2634,15 +2639,27 @@
                 },
                 "fork": {
                     "type": "string",
-                    "desc": "fork hash. If not set, return all local fork 10 tx",
+                    "desc": "fork hash. If not set, default is genesis",
                     "required": false,
                     "opt": "f"
                 },
                 "address": {
                     "type": "string",
-                    "desc": "from address or sendto address",
+                    "desc": "from address or sendto address. If not set, default is all wallet address",
                     "required": false,
                     "opt": "a"
+                },
+                "prevheight": {
+                    "type": "int",
+                    "desc": "query previous parameters: block height, if txpool is -1",
+                    "required": false,
+                    "opt": "h"
+                },
+                "prevtxseq": {
+                    "type": "uint",
+                    "desc": "query previous parameters: sequence of tx in block",
+                    "required": false,
+                    "opt": "s"
                 }
             }
         },

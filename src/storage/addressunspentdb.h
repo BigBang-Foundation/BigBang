@@ -28,7 +28,7 @@ public:
 
 public:
     CAddrUnspentKey() {}
-    CAddrUnspentKey(const CDestination& dest_in, CTxOutPoint out_in)
+    CAddrUnspentKey(const CDestination& dest_in, const CTxOutPoint& out_in)
       : dest(dest_in), out(out_in) {}
 
     friend bool operator==(const CAddrUnspentKey& a, const CAddrUnspentKey& b)
