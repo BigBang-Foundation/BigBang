@@ -620,14 +620,6 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
         {
             return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi fork mint halvecycle must be zero");
         }
-        if (forkProfile.hashParent != GetGenesisBlockHash())
-        {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi fork must be the direct child fork of main fork");
-        }
-        if (!forkProfile.IsIsolated())
-        {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi fork must be the isolated fork");
-        }
 
         const CDeFiProfile& defi = forkProfile.defi;
         if (defi.nMintHeight >= 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2)
