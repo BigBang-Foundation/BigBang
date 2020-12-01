@@ -427,7 +427,7 @@ map<uint256, CBlockHeightIndex>* CForkHeightIndex::GetBlockMintList(uint32 nHeig
 // CBlockBase
 
 CBlockBase::CBlockBase()
-  : fDebugLog(false)
+  : fDebugLog(false), fCfgAddrTxIndex(false)
 {
 }
 

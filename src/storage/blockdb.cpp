@@ -17,6 +17,7 @@ namespace storage
 // CBlockDB
 
 CBlockDB::CBlockDB()
+  : fDbCfgAddrTxIndex(false)
 {
 }
 
