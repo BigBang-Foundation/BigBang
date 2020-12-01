@@ -1705,10 +1705,10 @@ CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
                 if (mapTxCache.size() > nOffset)
                 {
                     vTx.reserve(nCount);
-                    int64 nPos = nOffset;
+                    int64 nPos = 0;
                     for (const auto& vd : mapTxCache)
                     {
-                        if (--nPos <= 0)
+                        if (nPos++ >= nOffset)
                         {
                             vTx.push_back(vd.second);
                             if (vTx.size() >= nCount)
