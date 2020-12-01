@@ -267,7 +267,7 @@ public:
         return nullptr;
     }
     /* Destination */
-    void GetDestinations(std::set<CDestination>& setDest)
+    virtual void GetDestinations(std::set<CDestination>& setDest)
     {
     }
     /* Wallet Tx */

@@ -1437,6 +1437,8 @@ void CCheckBlockWalker::Uninitialize()
 {
     ClearBlockIndex();
     dbBlockIndex.Deinitialize();
+    objDelegateDB.Deinitialize();
+    objTsBlock.Deinitialize();
     if (fCheckAddrTxIndex)
     {
         dbAddressTxIndex.Deinitialize();
@@ -2345,29 +2347,36 @@ bool CCheckBlockWalker::CheckSurplusAddressTxIndex(uint64& nTxIndexCount)
 
 bool CCheckRepairData::FetchBlockData()
 {
-    CTimeSeriesCached tsBlock;
-    if (!tsBlock.Initialize(path(strDataPath) / "block", BLOCKFILE_PREFIX))
     {
-        StdError("check", "tsBlock Initialize fail");
-        return false;
-    }
+        CTimeSeriesCached tsBlock;
+        if (!tsBlock.Initialize(path(strDataPath) / "block", BLOCKFILE_PREFIX))
+        {
+            StdError("check", "tsBlock Initialize fail");
+            return false;
+        }
 
-    if (!objBlockWalker.Initialize(strDataPath))
-    {
-        StdError("check", "objBlockWalker Initialize fail");
-        return false;
-    }
+        if (!objBlockWalker.Initialize(strDataPath))
+        {
+            StdError("check", "objBlockWalker Initialize fail");
+            tsBlock.Deinitialize();
+            return false;
+        }
 
-    uint32 nLastFileRet = 0;
-    uint32 nLastPosRet = 0;
+        uint32 nLastFileRet = 0;
+        uint32 nLastPosRet = 0;
 
-    StdLog("check", "Fetch block starting");
-    if (!tsBlock.WalkThrough(objBlockWalker, nLastFileRet, nLastPosRet, !fOnlyCheck))
-    {
-        StdError("check", "Fetch block fail.");
-        return false;
+        StdLog("check", "Fetch block starting");
+        if (!tsBlock.WalkThrough(objBlockWalker, nLastFileRet, nLastPosRet, !fOnlyCheck))
+        {
+            StdError("check", "Fetch block fail.");
+            tsBlock.Deinitialize();
+            return false;
+        }
+        StdLog("check", "Fetch block success, count: %ld.", objBlockWalker.nBlockCount);
+        tsBlock.Deinitialize();
     }
-    StdLog("check", "Fetch block success, count: %ld.", objBlockWalker.nBlockCount);
+    objBlockWalker.objDelegateDB.Deinitialize();
+    objBlockWalker.objTsBlock.Deinitialize();
 
     if (objBlockWalker.nBlockCount > 0)
     {
