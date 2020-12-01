@@ -267,7 +267,7 @@ public:
         return nullptr;
     }
     /* Destination */
-    virtual void GetDestinations(std::set<CDestination>& setDest)
+    virtual void GetDestinations(std::set<CDestination>& setDest) override
     {
     }
     /* Wallet Tx */
