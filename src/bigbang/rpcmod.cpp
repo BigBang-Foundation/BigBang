@@ -90,7 +90,7 @@ static CTransactionData TxToJSON(const uint256& txid, const CTransaction& tx,
     CTransactionData ret;
     ret.strTxid = txid.GetHex();
     ret.nVersion = tx.nVersion;
-    ret.strType = tx.GetTypeString();
+    ret.nType = tx.nType;
     ret.nTime = tx.nTimeStamp;
     ret.nLockuntil = tx.nLockUntil;
     ret.strAnchor = tx.hashAnchor.GetHex();
@@ -896,7 +896,7 @@ CRPCResultPtr CRPCMod::RPCGetBlockDetail(CRPCParamPtr param)
     data.strHash = hashBlock.GetHex();
     data.strHashprev = block.hashPrev.GetHex();
     data.nVersion = block.nVersion;
-    data.strType = GetBlockTypeStr(block.nType, block.txMint.nType);
+    data.nType = block.nType;
     data.nTime = block.GetBlockTime();
     if (block.hashPrev != 0)
     {
