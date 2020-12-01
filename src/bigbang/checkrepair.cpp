@@ -1340,7 +1340,6 @@ bool CCheckBlockFork::CheckForkAddressTxIndex(const uint256& hashFork, const int
 
         if (!checkTxInfo.destFrom.IsNull())
         {
-            bool fCheckRet = true;
             CAddrTxIndex txIndex(checkTxInfo.destFrom, checkTxInfo.nBlockHeight, checkTxInfo.nTxSeqNo, txid);
             CAddrTxInfo addrTxInfo;
             if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, txIndex, addrTxInfo))
@@ -1349,10 +1348,7 @@ bool CCheckBlockFork::CheckForkAddressTxIndex(const uint256& hashFork, const int
                        nt->second.nBlockHeight, txid.GetHex().c_str(),
                        CAddress(checkTxInfo.destFrom).ToString().c_str(),
                        CAddress(checkTxInfo.destTo).ToString().c_str());
-                fCheckRet = false;
-            }
-            if (!fCheckRet)
-            {
+
                 int nDirection = CAddrTxInfo::TXI_DIRECTION_FROM;
                 if (checkTxInfo.destFrom == checkTxInfo.destTo)
                 {
@@ -1366,7 +1362,6 @@ bool CCheckBlockFork::CheckForkAddressTxIndex(const uint256& hashFork, const int
 
         if (!checkTxInfo.destTo.IsNull() && checkTxInfo.destFrom != checkTxInfo.destTo)
         {
-            bool fCheckRet = true;
             CAddrTxIndex txIndex(checkTxInfo.destTo, checkTxInfo.nBlockHeight, checkTxInfo.nTxSeqNo, txid);
             CAddrTxInfo addrTxInfo;
             if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, txIndex, addrTxInfo))
@@ -1375,10 +1370,7 @@ bool CCheckBlockFork::CheckForkAddressTxIndex(const uint256& hashFork, const int
                        nt->second.nBlockHeight, txid.GetHex().c_str(),
                        CAddress(checkTxInfo.destFrom).ToString().c_str(),
                        CAddress(checkTxInfo.destTo).ToString().c_str());
-                fCheckRet = false;
-            }
-            if (!fCheckRet)
-            {
+
                 CAddrTxInfo txInfo(CAddrTxInfo::TXI_DIRECTION_TO, checkTxInfo.destFrom, checkTxInfo.nTxType, checkTxInfo.nTimeStamp,
                                    checkTxInfo.nLockUntil, checkTxInfo.nAmount, checkTxInfo.nTxFee);
                 vAddUpdate.push_back(make_pair(txIndex, txInfo));

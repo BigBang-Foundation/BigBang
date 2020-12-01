@@ -2894,13 +2894,13 @@ bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<
         for (int i = 0; i < block.vtx.size(); i++)
         {
             CTransaction& tx = block.vtx[i];
-            const CTxContxt& txContxt = block.vTxContxt[i];
             uint256 txid = tx.GetHash();
             CTxIndex txIndex(nHeight, pIndex->nFile, nOffset);
             vTxNew.push_back(make_pair(txid, txIndex));
 
             if (fAddrTxIndexIn)
             {
+                const CTxContxt& txContxt = block.vTxContxt[i];
                 if (tx.nType == CTransaction::TX_DEFI_REWARD)
                 {
                     CAddrTxInfo txToInfo(CAddrTxInfo::TXI_DIRECTION_TO, CDestination(), tx);

@@ -1933,10 +1933,10 @@ bool CBlockChain::VerifyBlockCertTx(const CBlock& block)
 
 void CBlockChain::InitCheckPoints(const uint256& hashFork, const map<int, uint256>& mapCheckPointsIn)
 {
-    mapForkCheckPoints.insert(std::make_pair(hashFork, MapCheckPointsType()));
+    MapCheckPointsType& mapCheckPoints = mapForkCheckPoints[hashFork];
     for (const auto& vd : mapCheckPointsIn)
     {
-        mapForkCheckPoints[hashFork].insert(std::make_pair(vd.first, CCheckPoint(vd.first, vd.second)));
+        mapCheckPoints.insert(std::make_pair(vd.first, CCheckPoint(vd.first, vd.second)));
     }
 }
 

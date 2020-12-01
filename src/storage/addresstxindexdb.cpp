@@ -33,6 +33,10 @@ bool CGetAddressTxIndexWalker::Walk(const CAddrTxIndex& key, const CAddrTxInfo& 
         {
             if (nCurPos++ >= nOffset)
             {
+                if (nCount > 0 && mapAddressTxIndex.size() >= nCount)
+                {
+                    return false;
+                }
                 mapAddressTxIndex[key] = value;
                 if (nCount > 0 && mapAddressTxIndex.size() >= nCount)
                 {
@@ -46,6 +50,10 @@ bool CGetAddressTxIndexWalker::Walk(const CAddrTxIndex& key, const CAddrTxInfo& 
         int64 nPrevHeightSeq = (((int64)nPrevHeight << 32) | (nPrevTxSeq & 0xFFFFFFFFL));
         if (key.nHeightSeq > nPrevHeightSeq)
         {
+            if (nCount > 0 && mapAddressTxIndex.size() >= nCount)
+            {
+                return false;
+            }
             nCurPos++;
             mapAddressTxIndex[key] = value;
             if (nCount > 0 && mapAddressTxIndex.size() >= nCount)

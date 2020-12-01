@@ -1673,7 +1673,7 @@ CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
         set<CDestination> setWalletDest;
         pService->GetWalletDestinations(setWalletDest);
 
-        vector<CTxInfo> vTxCache;
+        map<pair<uint32, uint64>, CTxInfo> mapTxCache;
         for (const CDestination& dest : setWalletDest)
         {
             vector<CTxInfo> vCache;
@@ -1681,39 +1681,57 @@ CRPCResultPtr CRPCMod::RPCListTransaction(CRPCParamPtr param)
             {
                 throw CRPCException(RPC_WALLET_ERROR, "Failed to list transactions");
             }
-            if (!vCache.empty())
+            for (const auto& vd : vCache)
             {
-                vTxCache.insert(vTxCache.end(), vCache.begin(), vCache.end());
+                mapTxCache.insert(make_pair(make_pair(vd.nBlockHeight, vd.nTxSeq), vd));
             }
-            if (nOffset != -1 && vTxCache.size() >= nOffset + nCount)
+            if (nOffset != -1 && mapTxCache.size() >= nOffset + nCount)
             {
                 break;
             }
         }
-        if (!vTxCache.empty())
+        if (!mapTxCache.empty())
         {
-            if (nOffset == -1)
+            if (nPrevHeight < -1 || nPrevTxSeq == -1)
             {
-                if (vTxCache.size() <= nCount)
+                if (nOffset == -1)
                 {
-                    vTx.assign(vTxCache.begin(), vTxCache.end());
+                    nOffset = mapTxCache.size() - nCount;
+                    if (nOffset < 0)
+                    {
+                        nOffset = 0;
+                    }
                 }
-                else
+                if (mapTxCache.size() > nOffset)
                 {
-                    vTx.assign(vTxCache.begin() + (vTxCache.size() - nCount), vTxCache.end());
+                    vTx.reserve(nCount);
+                    int64 nPos = nOffset;
+                    for (const auto& vd : mapTxCache)
+                    {
+                        if (--nPos <= 0)
+                        {
+                            vTx.push_back(vd.second);
+                            if (vTx.size() >= nCount)
+                            {
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             else
             {
-                if (vTxCache.size() > nOffset)
+                vTx.reserve(nCount);
+                for (const auto& vd : mapTxCache)
                 {
-                    if (vTxCache.size() >= nOffset + nCount)
+                    if (vd.second.nBlockHeight > nPrevHeight
+                        || (vd.second.nBlockHeight == nPrevHeight && vd.second.nTxSeq > nPrevTxSeq))
                     {
-                        vTx.assign(vTxCache.begin() + nOffset, vTxCache.begin() + nOffset + nCount);
-                    }
-                    else
-                    {
-                        vTx.assign(vTxCache.begin() + nOffset, vTxCache.end());
+                        vTx.push_back(vd.second);
+                        if (vTx.size() >= nCount)
+                        {
+                            break;
+                        }
                     }
                 }
             }
