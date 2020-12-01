@@ -139,6 +139,11 @@ private:
     rpc::CRPCResultPtr RPCSubmitWork(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCQueryStat(rpc::CRPCParamPtr param);
 
+    /*Lws RPC*/
+    rpc::CRPCResultPtr RPCGetFork(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCReport(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCGetBlocks(rpc::CRPCParamPtr param);
+
 protected:
     xengine::IIOProc* pHttpServer;
     ICoreProtocol* pCoreProtocol;

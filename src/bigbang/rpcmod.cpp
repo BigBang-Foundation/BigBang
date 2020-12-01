@@ -194,6 +194,12 @@ CRPCMod::CRPCMod()
         ("getforkcount", &CRPCMod::RPCGetForkCount)
         //
         ("listfork", &CRPCMod::RPCListFork)
+        /*Lws RPC */
+        ("getfork", &CRPCMod::RPCGetFork)
+        //
+        ("report", &CRPCMod::RPCReport)
+        //
+        ("getblocks", &CRPCMod::RPCGetBlocks)
         //
         ("getgenealogy", &CRPCMod::RPCGetForkGenealogy)
         //
@@ -3371,6 +3377,25 @@ CRPCResultPtr CRPCMod::RPCQueryStat(rpc::CRPCParamPtr param)
     }
 
     return MakeCQueryStatResultPtr(string("error"));
+}
+
+/*Lws RPC*/
+CRPCResultPtr CRPCMod::RPCGetFork(rpc::CRPCParamPtr param)
+{
+    auto spResult = MakeCGetForkResultPtr();
+    return spResult;
+}
+
+CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
+{
+    auto spResult = MakeCReportResultPtr();
+    return spResult;
+}
+
+CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
+{
+    auto spResult = MakeCGetBlocksResultPtr();
+    return spResult;
 }
 
 } // namespace bigbang
