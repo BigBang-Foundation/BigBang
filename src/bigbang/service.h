@@ -35,6 +35,7 @@ public:
     bool GetForkLastBlock(const uint256& hashFork, int& nLastHeight, uint256& hashLastBlock) override;
     int GetForkType(const uint256& hashFork) override;
     void ListFork(std::vector<std::pair<uint256, CProfile>>& vFork, bool fAll = false) override;
+    bool GetFork(const uint256& hashFork, CProfile& profile) override;
     bool GetForkGenealogy(const uint256& hashFork, std::vector<std::pair<uint256, int>>& vAncestry,
                           std::vector<std::pair<int, uint256>>& vSubline) override;
     bool GetBlockLocation(const uint256& hashBlock, uint256& hashFork, int& nHeight) override;

@@ -366,6 +366,7 @@ public:
     virtual bool GetForkLastBlock(const uint256& hashFork, int& nLastHeight, uint256& hashLastBlock) = 0;
     virtual int GetForkType(const uint256& hashFork) = 0;
     virtual void ListFork(std::vector<std::pair<uint256, CProfile>>& vFork, bool fAll = false) = 0;
+    virtual bool GetFork(const uint256& hashFork, CProfile& profile) = 0;
     virtual bool GetForkGenealogy(const uint256& hashFork, std::vector<std::pair<uint256, int>>& vAncestry,
                                   std::vector<std::pair<int, uint256>>& vSubline)
         = 0;

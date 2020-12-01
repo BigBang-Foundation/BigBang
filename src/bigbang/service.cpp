@@ -294,6 +294,11 @@ void CService::ListFork(std::vector<std::pair<uint256, CProfile>>& vFork, bool f
     }
 }
 
+bool CService::GetFork(const uint256& hashFork, CProfile& profile)
+{
+    return pBlockChain->GetForkProfile(hashFork, profile);
+}
+
 bool CService::GetForkGenealogy(const uint256& hashFork, vector<pair<uint256, int>>& vAncestry, vector<pair<int, uint256>>& vSubline)
 {
     boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);

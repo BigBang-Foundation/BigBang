@@ -1335,6 +1335,14 @@
                     "type": "uint",
                     "desc": "halve cycle: 0: fixed reward, >0: blocks of halve cycle"
                 },
+                "mortgage": {
+                    "type": "double",
+                    "desc": "mortage amount"
+                },
+                "mortgageheight": {
+                    "type": "uint",
+                    "desc": "the next request mortgage height"
+                },
                 "isolated": {
                     "type": "bool",
                     "desc": "is isolated"

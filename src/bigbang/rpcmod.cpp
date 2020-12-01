@@ -3383,8 +3383,64 @@ CRPCResultPtr CRPCMod::RPCQueryStat(rpc::CRPCParamPtr param)
 CRPCResultPtr CRPCMod::RPCGetFork(rpc::CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CGetForkParam>(param);
+    uint256 hashFork;
+    if (!GetForkHashOfDef(spParam->strFork, hashFork))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
+    }
+
+    if (!pService->HaveFork(hashFork))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
+    }
+
+    CProfile profile;
+    if (!pService->GetFork(hashFork, profile))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Get Fork failed");
+    }
 
     auto spResult = MakeCGetForkResultPtr();
+    spResult->strFork = hashFork.ToString();
+    spResult->strName = profile.strName;
+    spResult->strSymbol = profile.strSymbol;
+    spResult->dAmount = ValueFromAmount(profile.nAmount);
+    spResult->dReward = ValueFromAmount(profile.nMintReward);
+    spResult->nHalvecycle = (uint64)(profile.nHalveCycle);
+    spResult->dMortgage = 1314.0;
+    spResult->nMortgageheight = 1314;
+    spResult->fIsolated = profile.IsIsolated();
+    spResult->fPrivate = profile.IsPrivate();
+    spResult->fEnclosed = profile.IsEnclosed();
+    spResult->strOwner = CAddress(profile.destOwner).ToString();
+    spResult->nForktype = profile.nForkType;
+    if (spResult->nForktype == FORK_TYPE_DEFI)
+    {
+        spResult->defi.nMintheight = profile.defi.nMintHeight;
+        spResult->defi.dMaxsupply = ValueFromAmount(profile.defi.nMaxSupply);
+        spResult->defi.nCoinbasetype = profile.defi.nCoinbaseType;
+        spResult->defi.nDecaycycle = profile.defi.nDecayCycle;
+        spResult->defi.nCoinbasedecaypercent = profile.defi.nCoinbaseDecayPercent;
+        spResult->defi.nInitcoinbasepercent = profile.defi.nInitCoinbasePercent;
+        spResult->defi.nPromotionrewardpercent = profile.defi.nPromotionRewardPercent;
+        spResult->defi.nRewardcycle = profile.defi.nRewardCycle;
+        spResult->defi.dStakemintoken = ValueFromAmount(profile.defi.nStakeMinToken);
+        spResult->defi.nStakerewardpercent = profile.defi.nStakeRewardPercent;
+        spResult->defi.nSupplycycle = profile.defi.nSupplyCycle;
+
+        for (const auto& kv : profile.defi.mapPromotionTokenTimes)
+        {
+            CGetForkResult::CDefi::CMappromotiontokentimes promotiontokentimes(kv.first, kv.second);
+            spResult->defi.vecMappromotiontokentimes.push_back(promotiontokentimes);
+        }
+
+        for (const auto& kv : profile.defi.mapCoinbasePercent)
+        {
+            CGetForkResult::CDefi::CMapcoinbasepercent coinbasepercent(kv.first, kv.second);
+            spResult->defi.vecMapcoinbasepercent.push_back(coinbasepercent);
+        }
+    }
+
     return spResult;
 }
 
