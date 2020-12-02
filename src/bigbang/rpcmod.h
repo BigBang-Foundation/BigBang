@@ -153,6 +153,13 @@ protected:
 
 private:
     std::map<std::string, RPCFunc> mapRPCFunc;
+    typedef struct _LiveClientInfo
+    {
+        int64 timestamp;
+        std::vector<uint256> registerForks;
+    } LiveClientInfo;
+
+    std::map<std::string, LiveClientInfo> mapRPCClient;
     bool fWriteRPCLog;
 };
 

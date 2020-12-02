@@ -3446,9 +3446,19 @@ CRPCResultPtr CRPCMod::RPCGetFork(rpc::CRPCParamPtr param)
 
 CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
 {
-    auto spParam = CastParamPtr<CReportParam>(param);
-
     auto spResult = MakeCReportResultPtr();
+    auto spParam = CastParamPtr<CReportParam>(param);
+    if (spParam->strIpport.empty() || spParam->vecForks.size() == 0)
+    {
+        return spResult;
+    }
+
+    mapRPCClient[spParam->strIpport].timestamp = GetTime();
+    for (const std::string& fork : spParam->vecForks)
+    {
+        mapRPCClient[spParam->strIpport].registerForks.push_back(uint256(fork));
+    }
+
     return spResult;
 }
 
