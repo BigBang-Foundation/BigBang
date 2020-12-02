@@ -1510,6 +1510,10 @@
         "request": {
             "type": "object",
             "content": {
+                "fork": {
+                    "type": "string",
+                    "desc": "fork hash"
+                },
                 "blockhashes": {
                     "type": "array",
                     "desc": "latest block hashes from high to low height",

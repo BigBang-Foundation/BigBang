@@ -3455,6 +3455,17 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
 
     for (const std::string& fork : spParam->vecForks)
     {
+        uint256 hashFork;
+        if (!GetForkHashOfDef(fork, hashFork))
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
+        }
+
+        if (!pService->HaveFork(hashFork))
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
+        }
+
         mapRPCClient[spParam->strIpport].registerForks.push_back(uint256(fork));
     }
 
@@ -3466,8 +3477,19 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
 CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CGetBlocksParam>(param);
-    CBlockEx block;
+
     uint256 hashFork;
+    if (!GetForkHashOfDef(spParam->strFork, hashFork))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
+    }
+
+    if (!pService->HaveFork(hashFork))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
+    }
+
+    CBlockEx block;
     int nHeight = -1;
     for (const std::string& hash : spParam->vecBlockhashes)
     {
@@ -3479,11 +3501,14 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
     }
 
     auto spResult = MakeCGetBlocksResultPtr();
-    if (nHeight >= 0)
+    if (nHeight >= 0 && hashFork == uint256(spParam->strFork))
     {
         for (size_t i = 0; i < spParam->nNum; ++i)
         {
-                }
+        }
+    }
+    else
+    {
     }
 
     return spResult;
