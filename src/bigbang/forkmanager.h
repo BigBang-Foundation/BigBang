@@ -78,6 +78,7 @@ public:
     void GetValidForkList(std::map<uint256, bool>& mapFork) override;
     bool GetSubline(const uint256& hashFork, std::vector<std::pair<int, uint256>>& vSubline) const override;
     int64 ForkLockedCoin(const uint256& hashFork, const uint256& hashBlock) override;
+    int GetForkNextMortgageDecayHeight(const uint256& hashFork, const uint256& hashBlock) override;
     int GetForkCreatedHeight(const uint256& hashFork) override;
 
 protected:

@@ -3400,6 +3400,24 @@ CRPCResultPtr CRPCMod::RPCGetFork(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Get Fork failed");
     }
 
+    int nForkLastHeight = -1;
+    uint256 nHashLastBlock;
+    if (!pService->GetForkLastBlock(hashFork, nForkLastHeight, nHashLastBlock))
+    {
+        throw CRPCException(RPC_INTERNAL_ERROR, "GetForkLastBlock failed");
+    }
+    int64 nLockedCoin = pForkManager->ForkLockedCoin(hashFork, nHashLastBlock);
+    if (nLockedCoin == -1)
+    {
+        throw CRPCException(RPC_INTERNAL_ERROR, "ForkLockedCoin failed");
+    }
+
+    int nextMortgageDecayHeight = pForkManager->GetForkNextMortgageDecayHeight(hashFork, nHashLastBlock);
+    if (nextMortgageDecayHeight == -1)
+    {
+        throw CRPCException(RPC_INTERNAL_ERROR, "GetForkNextMortgageDecayHeight failed");
+    }
+
     auto spResult = MakeCGetForkResultPtr();
     spResult->strFork = hashFork.ToString();
     spResult->strName = profile.strName;
@@ -3407,8 +3425,8 @@ CRPCResultPtr CRPCMod::RPCGetFork(rpc::CRPCParamPtr param)
     spResult->dAmount = ValueFromAmount(profile.nAmount);
     spResult->dReward = ValueFromAmount(profile.nMintReward);
     spResult->nHalvecycle = (uint64)(profile.nHalveCycle);
-    spResult->dMortgage = 1314.0;
-    spResult->nMortgageheight = 1314;
+    spResult->dMortgage = ValueFromAmount(nLockedCoin);
+    spResult->nMortgageheight = pForkManager->GetForkCreatedHeight(hashFork) + nextMortgageDecayHeight;
     spResult->fIsolated = profile.IsIsolated();
     spResult->fPrivate = profile.IsPrivate();
     spResult->fEnclosed = profile.IsEnclosed();

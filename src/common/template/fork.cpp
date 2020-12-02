@@ -62,6 +62,12 @@ int64 CTemplateFork::LockedCoin(const int32 nHeight)
 {
     return (int64)(MORTGAGE_BASE * pow(MORTGAGE_DECAY_QUANTITY, nHeight / MORTGAGE_DECAY_CYCLE));
 }
+
+int CTemplateFork::NextMortgageHeight(const int32 nHeight)
+{
+    int n = nHeight / MORTGAGE_DECAY_CYCLE;
+    return (n + 1) * MORTGAGE_DECAY_CYCLE;
+}
 /*
 int64 CTemplateFork::LockedCoin(const CDestination& destTo, const int32 nForkHeight) const
 {
