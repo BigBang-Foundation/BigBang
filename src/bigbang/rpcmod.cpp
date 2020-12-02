@@ -3518,7 +3518,47 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INTERNAL_ERROR, "GetBlocks failed");
     }
 
-    
+    for (const CBlockEx& block : blocks)
+    {
+        Cblockdatadetail data;
+
+        data.strHash = block.GetHash().ToString();
+        data.strHashprev = block.hashPrev.GetHex();
+        data.nVersion = block.nVersion;
+        data.nType = block.nType;
+        data.nTime = block.GetBlockTime();
+        data.strSig = "";
+        data.strProof = "";
+        if (block.hashPrev != 0)
+        {
+            data.strPrev = block.hashPrev.GetHex();
+        }
+        data.strFork = spParam->strFork;
+        data.nHeight = block.GetBlockHeight();
+        int nDepth = pService->GetForkHeight(hashFork) - block.GetBlockHeight();
+        if (hashFork != pCoreProtocol->GetGenesisBlockHash())
+        {
+            nDepth = nDepth * 30;
+        }
+        data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, hashFork, block.GetHash(), nDepth, CAddress().ToString());
+        if (block.IsProofOfWork())
+        {
+            CProofOfHashWorkCompact proof;
+            proof.Load(block.vchProof);
+            data.nBits = proof.nBits;
+        }
+        else
+        {
+            data.nBits = 0;
+        }
+        for (int i = 0; i < block.vtx.size(); i++)
+        {
+            const CTransaction& tx = block.vtx[i];
+            data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, hashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
+        }
+
+        spResult->vecBlocks.push_back(data);
+    }
     return spResult;
 }
 
