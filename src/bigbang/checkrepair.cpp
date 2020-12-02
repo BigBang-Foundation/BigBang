@@ -6,6 +6,7 @@
 
 #include "param.h"
 #include "template/vote.h"
+#include "util.h"
 
 using namespace std;
 using namespace xengine;
@@ -1064,9 +1065,15 @@ bool CCheckBlockFork::AddBlockData(const CBlockEx& block, const CBlockIndex* pBl
     {
         const uint256& hashFork = pBlockIndex->GetOriginHash();
 
+        int nBlockSeq = 0;
+        if (fCheckAddrTxIndex && pBlockIndex->IsExtended())
+        {
+            nBlockSeq = pBlockIndex->GetExtendedSequence();
+        }
+
         CBufStream ss;
         uint32 nTxOffset = pBlockIndex->nOffset + block.GetTxSerializedOffset();
-        if (!AddBlockTx(block.txMint, CTxContxt(), block.GetBlockHeight(), 0, hashFork, pBlockIndex->nFile, nTxOffset))
+        if (!AddBlockTx(block.txMint, CTxContxt(), block.GetBlockHeight(), nBlockSeq, 0, hashFork, pBlockIndex->nFile, nTxOffset))
         {
             StdError("check", "Add block data: Add mint tx fail, txid: %s, block: %s",
                      block.txMint.GetHash().GetHex().c_str(), pBlockIndex->GetBlockHash().GetHex().c_str());
@@ -1078,7 +1085,7 @@ bool CCheckBlockFork::AddBlockData(const CBlockEx& block, const CBlockIndex* pBl
         nTxOffset += ss.GetSerializeSize(var);
         for (size_t i = 0; i < block.vtx.size(); i++)
         {
-            if (!AddBlockTx(block.vtx[i], block.vTxContxt[i], block.GetBlockHeight(), i + 1, hashFork, pBlockIndex->nFile, nTxOffset))
+            if (!AddBlockTx(block.vtx[i], block.vTxContxt[i], block.GetBlockHeight(), nBlockSeq, i + 1, hashFork, pBlockIndex->nFile, nTxOffset))
             {
                 StdError("check", "Add block data: Add tx fail, txid: %s, block: %s",
                          block.vtx[i].GetHash().GetHex().c_str(), pBlockIndex->GetBlockHash().GetHex().c_str());
@@ -1160,7 +1167,7 @@ bool CCheckBlockFork::RemoveBlockData(const CBlockEx& block, const CBlockIndex* 
     return true;
 }
 
-bool CCheckBlockFork::AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, const int nHeight, const int nTxSeqNo, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn)
+bool CCheckBlockFork::AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, const int nHeight, const int nBlockSeqNo, const int nTxSeqNo, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn)
 {
     const uint256 txid = txIn.GetHash();
     auto it = mapBlockTxIndex.insert(make_pair(txid, CCheckTxIndex(txIn.nType, nHeight, nFileNoIn, nOffsetIn))).first;
@@ -1172,7 +1179,7 @@ bool CCheckBlockFork::AddBlockTx(const CTransaction& txIn, const CTxContxt& cont
     if (fCheckAddrTxIndex)
     {
         if (!mapBlockTxInfo.insert(make_pair(txid, CCheckTxInfo(contxtIn.destIn, txIn.sendTo, txIn.nType, txIn.nTimeStamp,
-                                                                txIn.nLockUntil, txIn.nAmount, txIn.nTxFee, nHeight, nTxSeqNo)))
+                                                                txIn.nLockUntil, txIn.nAmount, txIn.nTxFee, nHeight, nBlockSeqNo, nTxSeqNo)))
                  .second)
         {
             StdError("check", "AddBlockTx: add block tx info fail, txid: %s.", txid.GetHex().c_str());
@@ -1340,7 +1347,7 @@ bool CCheckBlockFork::CheckForkAddressTxIndex(const uint256& hashFork, const int
 
         if (!checkTxInfo.destFrom.IsNull())
         {
-            CAddrTxIndex txIndex(checkTxInfo.destFrom, checkTxInfo.nBlockHeight, checkTxInfo.nTxSeqNo, txid);
+            CAddrTxIndex txIndex(checkTxInfo.destFrom, checkTxInfo.nBlockHeight, checkTxInfo.nBlockSeqNo, checkTxInfo.nTxSeqNo, txid);
             CAddrTxInfo addrTxInfo;
             if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, txIndex, addrTxInfo))
             {
@@ -1362,7 +1369,7 @@ bool CCheckBlockFork::CheckForkAddressTxIndex(const uint256& hashFork, const int
 
         if (!checkTxInfo.destTo.IsNull() && checkTxInfo.destFrom != checkTxInfo.destTo)
         {
-            CAddrTxIndex txIndex(checkTxInfo.destTo, checkTxInfo.nBlockHeight, checkTxInfo.nTxSeqNo, txid);
+            CAddrTxIndex txIndex(checkTxInfo.destTo, checkTxInfo.nBlockHeight, checkTxInfo.nBlockSeqNo, checkTxInfo.nTxSeqNo, txid);
             CAddrTxInfo addrTxInfo;
             if (!dbAddressTxIndex.RetrieveTxIndex(hashFork, txIndex, addrTxInfo))
             {

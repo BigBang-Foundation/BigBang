@@ -372,6 +372,17 @@ public:
         }
         return false;
     }
+    int GetExtendedSequence() const
+    {
+        int nSeq = 0;
+        const CBlockIndex* pIndex = this;
+        while (pIndex && pIndex->IsExtended())
+        {
+            nSeq++;
+            pIndex = pIndex->pPrev;
+        }
+        return nSeq;
+    }
     const std::string GetBlockType() const
     {
         return GetBlockTypeStr(nType, nMintType);

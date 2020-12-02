@@ -48,9 +48,9 @@ class CCheckTxInfo
 public:
     CCheckTxInfo() {}
     CCheckTxInfo(const CDestination& destFromIn, const CDestination& destToIn, const int nTxTypeIn, const uint32 nTimeStampIn, const uint32 nLockUntilIn,
-                 const int64 nAmountIn, const int64 nTxFeeIn, const int nBlockHeightIn, const int nTxSeqNoIn)
+                 const int64 nAmountIn, const int64 nTxFeeIn, const int nBlockHeightIn, const int nBlockSeqNoIn, const int nTxSeqNoIn)
       : destFrom(destFromIn), destTo(destToIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn), nLockUntil(nLockUntilIn),
-        nAmount(nAmountIn), nTxFee(nTxFeeIn), nBlockHeight(nBlockHeightIn), nTxSeqNo(nTxSeqNoIn) {}
+        nAmount(nAmountIn), nTxFee(nTxFeeIn), nBlockHeight(nBlockHeightIn), nBlockSeqNo(nBlockSeqNoIn), nTxSeqNo(nTxSeqNoIn) {}
 
 public:
     CDestination destFrom;
@@ -61,6 +61,7 @@ public:
     int64 nAmount;
     int64 nTxFee;
     int nBlockHeight;
+    int nBlockSeqNo;
     int nTxSeqNo;
 };
 
@@ -379,7 +380,7 @@ public:
     bool AddBlockData(const CBlockEx& block, const CBlockIndex* pBlockIndex);
     bool RemoveBlockData(const CBlockEx& block, const CBlockIndex* pBlockIndex);
 
-    bool AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, const int nHeight, const int nTxSeqNo, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn);
+    bool AddBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn, const int nHeight, const int nBlockSeqNo, const int nTxSeqNo, const uint256& hashAtForkIn, uint32 nFileNoIn, uint32 nOffsetIn);
     bool RemoveBlockTx(const CTransaction& txIn, const CTxContxt& contxtIn);
     bool AddBlockUnspent(const CTxOutPoint& txPoint, const CTxOut& txOut, int nTxType, int nHeight);
     bool AddBlockSpent(const CTxOutPoint& txPoint);

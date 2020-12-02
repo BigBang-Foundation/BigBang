@@ -616,8 +616,8 @@ public:
     CAddrTxIndex() {}
     CAddrTxIndex(const CDestination& destIn, const int64 nHeightSeqIn, const uint256& txidIn)
       : dest(destIn), nHeightSeq(nHeightSeqIn), txid(txidIn) {}
-    CAddrTxIndex(const CDestination& destIn, const int nHeightIn, const int nSeqIn, const uint256& txidIn)
-      : dest(destIn), nHeightSeq(((int64)nHeightIn << 32) | nSeqIn), txid(txidIn) {}
+    CAddrTxIndex(const CDestination& destIn, const int nHeightIn, const int nBlockSeqIn, const int nTxSeqIn, const uint256& txidIn)
+      : dest(destIn), nHeightSeq(((int64)nHeightIn << 32) | ((nBlockSeqIn << 24) | nTxSeqIn)), txid(txidIn) {}
 
     int GetHeight() const
     {

@@ -190,26 +190,29 @@ bool CBlockView::AddTx(const uint256& txid, const CTransaction& tx, int nHeight,
     return true;
 }
 
-void CBlockView::RemoveTx(const uint256& txid, const CTransaction& tx, const int nHeight, const int nSeq, const CTxContxt& txContxt)
+void CBlockView::RemoveTx(const uint256& txid, const CTransaction& tx, const int nHeight, const int nBlockSeq, const int nTxSeq, const CTxContxt& txContxt, const bool fAddrTxIndexIn)
 {
     mapTx[txid].SetNull();
     vTxRemove.push_back(txid);
 
-    if (tx.IsMintTx() || tx.nType == CTransaction::TX_DEFI_REWARD)
+    if (fAddrTxIndexIn)
     {
-        vAddrTxRemove.push_back(CAddrTxIndex(tx.sendTo, nHeight, nSeq, txid));
-    }
-    else if (txContxt.destIn == tx.sendTo)
-    {
-        vAddrTxRemove.push_back(CAddrTxIndex(txContxt.destIn, nHeight, nSeq, txid));
-    }
-    else
-    {
-        if (!txContxt.destIn.IsNull())
+        if (tx.IsMintTx() || tx.nType == CTransaction::TX_DEFI_REWARD)
         {
-            vAddrTxRemove.push_back(CAddrTxIndex(txContxt.destIn, nHeight, nSeq, txid));
+            vAddrTxRemove.push_back(CAddrTxIndex(tx.sendTo, nHeight, nBlockSeq, nTxSeq, txid));
         }
-        vAddrTxRemove.push_back(CAddrTxIndex(tx.sendTo, nHeight, nSeq, txid));
+        else if (txContxt.destIn == tx.sendTo)
+        {
+            vAddrTxRemove.push_back(CAddrTxIndex(txContxt.destIn, nHeight, nBlockSeq, nTxSeq, txid));
+        }
+        else
+        {
+            if (!txContxt.destIn.IsNull())
+            {
+                vAddrTxRemove.push_back(CAddrTxIndex(txContxt.destIn, nHeight, nBlockSeq, nTxSeq, txid));
+            }
+            vAddrTxRemove.push_back(CAddrTxIndex(tx.sendTo, nHeight, nBlockSeq, nTxSeq, txid));
+        }
     }
 
     for (int i = 0; i < tx.vInput.size(); i++)
@@ -551,7 +554,7 @@ bool CBlockBase::Initiate(const uint256& hashGenesis, const CBlock& blockGenesis
     vTxNew.push_back(make_pair(txidMintTx, CTxIndex(0, nFile, nTxOffset)));
 
     CAddrTxInfo txInfo(CAddrTxInfo::TXI_DIRECTION_TO, CDestination(), blockGenesis.txMint);
-    vAddrTxNew.push_back(make_pair(CAddrTxIndex(blockGenesis.txMint.sendTo, 0, 0, txidMintTx), txInfo));
+    vAddrTxNew.push_back(make_pair(CAddrTxIndex(blockGenesis.txMint.sendTo, 0, 0, 0, txidMintTx), txInfo));
 
     vector<CTxUnspent> vAddNew;
     vAddNew.push_back(CTxUnspent(CTxOutPoint(txidMintTx, 0), CTxOut(blockGenesis.txMint), blockGenesis.txMint.nType, blockGenesis.GetBlockHeight()));
@@ -1147,12 +1150,17 @@ bool CBlockBase::GetBlockView(const uint256& hash, CBlockView& view, bool fCommi
                          p->GetBlockHash().ToString().c_str());
                 return false;
             }
+            int nBlockSeq = 0;
+            if (fCfgAddrTxIndex && p->IsExtended())
+            {
+                nBlockSeq = p->GetExtendedSequence();
+            }
             for (int j = block.vtx.size() - 1; j >= 0; j--)
             {
                 StdTrace("BlockBase",
                          "Chain rollback attempt[removed tx]: %s",
                          block.vtx[j].GetHash().ToString().c_str());
-                view.RemoveTx(block.vtx[j].GetHash(), block.vtx[j], block.GetBlockHeight(), j + 1, block.vTxContxt[j]);
+                view.RemoveTx(block.vtx[j].GetHash(), block.vtx[j], block.GetBlockHeight(), nBlockSeq, j + 1, block.vTxContxt[j], fCfgAddrTxIndex);
                 ++nTxRemoved;
             }
             if (!block.txMint.sendTo.IsNull())
@@ -1160,7 +1168,7 @@ bool CBlockBase::GetBlockView(const uint256& hash, CBlockView& view, bool fCommi
                 StdTrace("BlockBase",
                          "Chain rollback attempt[removed mint tx]: %s",
                          block.txMint.GetHash().ToString().c_str());
-                view.RemoveTx(block.txMint.GetHash(), block.txMint, block.GetBlockHeight(), 0, CTxContxt());
+                view.RemoveTx(block.txMint.GetHash(), block.txMint, block.GetBlockHeight(), nBlockSeq, 0, CTxContxt(), fCfgAddrTxIndex);
                 ++nTxRemoved;
             }
             view.RemoveBlock(p->GetBlockHash(), block);
@@ -1259,7 +1267,7 @@ bool CBlockBase::CommitBlockView(CBlockView& view, CBlockIndex* pIndexNew)
 
     vector<pair<uint256, CTxIndex>> vTxNew;
     vector<pair<CAddrTxIndex, CAddrTxInfo>> vAddrTxNew;
-    if (!GetTxNewIndex(view, pIndexNew, vTxNew, vAddrTxNew, fCfgAddrTxIndex))
+    if (!GetTxNewIndex(view, pIndexNew, vTxNew, vAddrTxNew))
     {
         StdTrace("BlockBase", "CommitBlockView: Get tx new index failed");
         return false;
@@ -2852,7 +2860,7 @@ bool CBlockBase::GetTxUnspent(const uint256 fork, const CTxOutPoint& out, CTxOut
     return dbBlock.RetrieveTxUnspent(fork, out, unspent);
 }
 
-bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<pair<uint256, CTxIndex>>& vTxNew, vector<pair<CAddrTxIndex, CAddrTxInfo>>& vAddrTxNew, const bool fAddrTxIndexIn)
+bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<pair<uint256, CTxIndex>>& vTxNew, vector<pair<CAddrTxIndex, CAddrTxInfo>>& vAddrTxNew)
 {
     vector<CBlockIndex*> vPath;
     if (view.GetFork() != nullptr && view.GetFork()->GetLast() != nullptr)
@@ -2876,15 +2884,21 @@ bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<
         int nHeight = pIndex->GetBlockHeight();
         uint32 nOffset = pIndex->nOffset + block.GetTxSerializedOffset();
 
+        int nBlockSeq = 0;
+        if (fCfgAddrTxIndex && pIndex->IsExtended())
+        {
+            nBlockSeq = pIndex->GetExtendedSequence();
+        }
+
         if (!block.txMint.sendTo.IsNull())
         {
             CTxIndex txIndex(nHeight, pIndex->nFile, nOffset);
             vTxNew.push_back(make_pair(block.txMint.GetHash(), txIndex));
 
-            if (fAddrTxIndexIn)
+            if (fCfgAddrTxIndex)
             {
                 CAddrTxInfo txInfo(CAddrTxInfo::TXI_DIRECTION_TO, CDestination(), block.txMint);
-                vAddrTxNew.push_back(make_pair(CAddrTxIndex(block.txMint.sendTo, nHeight, 0, block.txMint.GetHash()), txInfo));
+                vAddrTxNew.push_back(make_pair(CAddrTxIndex(block.txMint.sendTo, nHeight, nBlockSeq, 0, block.txMint.GetHash()), txInfo));
             }
         }
         nOffset += ss.GetSerializeSize(block.txMint);
@@ -2898,28 +2912,28 @@ bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<
             CTxIndex txIndex(nHeight, pIndex->nFile, nOffset);
             vTxNew.push_back(make_pair(txid, txIndex));
 
-            if (fAddrTxIndexIn)
+            if (fCfgAddrTxIndex)
             {
                 const CTxContxt& txContxt = block.vTxContxt[i];
                 if (tx.nType == CTransaction::TX_DEFI_REWARD)
                 {
                     CAddrTxInfo txToInfo(CAddrTxInfo::TXI_DIRECTION_TO, CDestination(), tx);
-                    vAddrTxNew.push_back(make_pair(CAddrTxIndex(tx.sendTo, nHeight, i + 1, txid), txToInfo));
+                    vAddrTxNew.push_back(make_pair(CAddrTxIndex(tx.sendTo, nHeight, nBlockSeq, i + 1, txid), txToInfo));
                 }
                 else if (tx.sendTo == txContxt.destIn)
                 {
                     CAddrTxInfo txInfo(CAddrTxInfo::TXI_DIRECTION_TWO, tx.sendTo, tx);
-                    vAddrTxNew.push_back(make_pair(CAddrTxIndex(txContxt.destIn, nHeight, i + 1, txid), txInfo));
+                    vAddrTxNew.push_back(make_pair(CAddrTxIndex(txContxt.destIn, nHeight, nBlockSeq, i + 1, txid), txInfo));
                 }
                 else
                 {
                     if (!txContxt.destIn.IsNull())
                     {
                         CAddrTxInfo txFromInfo(CAddrTxInfo::TXI_DIRECTION_FROM, tx.sendTo, tx);
-                        vAddrTxNew.push_back(make_pair(CAddrTxIndex(txContxt.destIn, nHeight, i + 1, txid), txFromInfo));
+                        vAddrTxNew.push_back(make_pair(CAddrTxIndex(txContxt.destIn, nHeight, nBlockSeq, i + 1, txid), txFromInfo));
                     }
                     CAddrTxInfo txToInfo(CAddrTxInfo::TXI_DIRECTION_TO, txContxt.destIn, tx);
-                    vAddrTxNew.push_back(make_pair(CAddrTxIndex(tx.sendTo, nHeight, i + 1, txid), txToInfo));
+                    vAddrTxNew.push_back(make_pair(CAddrTxIndex(tx.sendTo, nHeight, nBlockSeq, i + 1, txid), txToInfo));
                 }
             }
             nOffset += ss.GetSerializeSize(tx);
