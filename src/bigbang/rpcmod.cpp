@@ -3545,8 +3545,8 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         data.nVersion = block.nVersion;
         data.nType = block.nType;
         data.nTime = block.GetBlockTime();
-        data.strSig = "";
-        data.strProof = "";
+        data.strSig = ToHexString(block.vchSig);
+        data.strProof = ToHexString(block.vchProof);
         if (block.hashPrev != 0)
         {
             data.strPrev = block.hashPrev.GetHex();
