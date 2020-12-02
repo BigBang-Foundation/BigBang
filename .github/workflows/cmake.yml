@@ -21,51 +21,57 @@ jobs:
         os: [ubuntu-20.04, ubuntu-18.04, ubuntu-16.04]
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Prepare Build Dependencies
-      shell: bash
-      run: | 
-        sudo apt update -qq
-        sudo apt install -y build-essential libboost-all-dev openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev
+      - name: Prepare ubuntu-20.04 Build Dependencies
+        shell: bash
+        if: matrix.os == 'ubuntu-20.04'
+        run: | 
+          sudo apt update -qq
+          sudo apt install -y build-essential libboost-all-dev openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev libsodium-dev cmake libprotobuf-dev protobuf-compiler
       
-      if: matrix.os == 'ubuntu-20.04'
-      run: |
-        sudo apt install -y libsodium-dev
+      - name: Prepare ubuntu-18.04 Build Dependencies
+        shell: bash
+        if: matrix.os == 'ubuntu-18.04'
+        run: | 
+          sudo apt update -qq
+          sudo apt install -y build-essential libboost-all-dev openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev cmake libprotobuf-dev protobuf-compiler
+          sudo apt install -y cppcheck valgrind
 
-      if: matrix.os == 'ubuntu-20.04' || matrix.os == 'ubuntu-18.04'
-      run: |
-        sudo apt install -y cmake libprotobuf-dev protobuf-compiler
-      
-      if: matrix.os == 'ubuntu-18.04'
-      run: |
-        sudo apt install -y cppcheck valgrind
+          wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz --no-check-certificate
+          tar -zxvf libsodium-1.0.18.tar.gz
+          cd libsodium-1.0.18
+          ./configure
+          make -j8 && make check
+          sudo make install
+          cd ..
 
-      if: matrix.os == 'ubuntu-18.04' || matrix.os == 'ubuntu-16.04'
-      # compile libsodium 1.0.18
-      run: |
-        wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz --no-check-certificate
-        tar -zxvf libsodium-1.0.18.tar.gz
-        cd libsodium-1.0.18
-        ./configure
-        make -j8 && make check
-        sudo make install
-        cd ..
-      
-      if: matrix.os == 'ubuntu-16.04'
-      # compile cmake 3.18 & protobuf
-      run: |
-        wget https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.18.0-Linux-x86_64.tar.gz
-        tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz
-        export PATH=`pwd`/cmake-3.18.0-Linux-x86_64/bin:$PATH
+      - name: Prepare ubuntu-16.04 Build Dependencies
+        shell: bash
+        if: matrix.os == 'ubuntu-16.04'
+        run: | 
+          sudo apt update -qq
+          sudo apt install -y build-essential libboost-all-dev openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev
 
-        wget https://github.com/protocolbuffers/protobuf/releases/download/v3.11.3/protobuf-cpp-3.11.3.tar.gz
-        tar -xzvf protobuf-cpp-3.11.3.tar.gz
-        cd protobuf-3.11.3
-        ./configure --prefix=/usr
-        make -j8
-        sudo make install
-        cd ..
+          wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz --no-check-certificate
+          tar -zxvf libsodium-1.0.18.tar.gz
+          cd libsodium-1.0.18
+          ./configure
+          make -j8 && make check
+          sudo make install
+          cd ..
+
+          wget https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.18.0-Linux-x86_64.tar.gz
+          tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz
+          export PATH=`pwd`/cmake-3.18.0-Linux-x86_64/bin:$PATH
+
+          wget https://github.com/protocolbuffers/protobuf/releases/download/v3.11.3/protobuf-cpp-3.11.3.tar.gz
+          tar -xzvf protobuf-cpp-3.11.3.tar.gz
+          cd protobuf-3.11.3
+          ./configure --prefix=/usr
+          make -j8
+          sudo make install
+          cd ..
 
     - name: Build
       working-directory: ${{github.workspace}}
@@ -82,6 +88,9 @@ jobs:
         ./build/test/test_big
         ./build/test/test_ctsdb
 
+    - name: CPPCheck
+      working-directory: ${{github.workspace}}
+      shell: bash
       if: matrix.os == 'ubuntu-18.04'
       run: |
         cppcheck --error-exitcode=1 --std=c++11 --enable=warning,performance,portability -i libsodium-1.0.18 -i src/leveldb -i build -i src/snappy -i src/crypto -i src/jsonrpc/json -i src/xengine/docker -i script -i test .
