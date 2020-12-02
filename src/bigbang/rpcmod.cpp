@@ -3552,14 +3552,18 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         {
             data.strPrev = block.hashPrev.GetHex();
         }
-        data.strFork = spParam->strFork;
+
+        uint256 tempHashFork;
+        int tempHeight = 0;
+        pService->GetBlockLocation(block.GetHash(), tempHashFork, tempHeight);
+        data.strFork = tempHashFork.ToString();
         data.nHeight = block.GetBlockHeight();
-        int nDepth = pService->GetForkHeight(hashFork) - block.GetBlockHeight();
+        int nDepth = pService->GetForkHeight(tempHashFork) - block.GetBlockHeight();
         if (hashFork != pCoreProtocol->GetGenesisBlockHash())
         {
             nDepth = nDepth * 30;
         }
-        data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, hashFork, block.GetHash(), nDepth, CAddress().ToString());
+        data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, tempHashFork, block.GetHash(), nDepth, CAddress().ToString());
         if (block.IsProofOfWork())
         {
             CProofOfHashWorkCompact proof;
@@ -3573,7 +3577,7 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         for (int i = 0; i < block.vtx.size(); i++)
         {
             const CTransaction& tx = block.vtx[i];
-            data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, hashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
+            data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, tempHashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
         }
 
         spResult->vecBlocks.push_back(data);
