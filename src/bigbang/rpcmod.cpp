@@ -3402,10 +3402,11 @@ CRPCResultPtr CRPCMod::RPCGetFork(rpc::CRPCParamPtr param)
 
     int nForkLastHeight = -1;
     uint256 nHashLastBlock;
-    if (!pService->GetForkLastBlock(hashFork, nForkLastHeight, nHashLastBlock))
+    if (!pService->GetForkLastBlock(pCoreProtocol->GetGenesisBlockHash(), nForkLastHeight, nHashLastBlock))
     {
         throw CRPCException(RPC_INTERNAL_ERROR, "GetForkLastBlock failed");
     }
+
     int64 nLockedCoin = pForkManager->ForkLockedCoin(hashFork, nHashLastBlock);
     if (nLockedCoin == -1)
     {
