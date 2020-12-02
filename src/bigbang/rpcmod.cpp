@@ -3510,17 +3510,15 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INTERNAL_ERROR, "block is invalid");
     }
 
-    if (hashFork != uint256(spParam->strFork))
-    {
-        throw CRPCException(RPC_INVALID_PARAMETER, "block doest not located in the fork");
-    }
-
     auto spResult = MakeCGetBlocksResultPtr();
 
-    for (size_t i = 0; i < spParam->nNum; ++i)
+    std::vector<CBlockEx> blocks;
+    if (!GetBlocks(uint256(spParam->strFork), block.GetHash(), (int32)spParam->nNum, blocks))
     {
+        throw CRPCException(RPC_INTERNAL_ERROR, "GetBlocks failed");
     }
 
+    
     return spResult;
 }
 
@@ -3568,6 +3566,60 @@ void CRPCMod::TrySwitchFork(const uint256& blockHash, uint256& forkHash)
         auto value = it->second;
         forkHash = value.first;
     }
+}
+
+bool CRPCMod::GetBlocks(const uint256& forkHash, const uint256& startHash, int32 n, std::vector<CBlockEx>& blocks)
+{
+    uint256 connectForkHash = forkHash;
+    uint256 blockHash = startHash;
+
+    if (!forkHash)
+    {
+        connectForkHash = pCoreProtocol->GetGenesisBlockHash();
+    }
+
+    int blockHeight = 0;
+    uint256 tempForkHash;
+    if (!pService->GetBlockLocation(blockHash, tempForkHash, blockHeight))
+    {
+        StdWarn("CRPCMod", "GetBlocks::GetBlockLocation failed");
+        return false;
+    }
+
+    if (!CalcForkPoints(connectForkHash))
+    {
+        StdWarn("CRPCMod", "GetBlocks::CalcForkPoint failed");
+        return false;
+    }
+
+    const std::size_t nonExtendBlockMaxNum = n;
+    std::size_t nonExtendBlockCount = 0;
+
+    pService->GetBlockLocation(blockHash, tempForkHash, blockHeight);
+
+    std::vector<uint256> blocksHash;
+    while (nonExtendBlockCount < nonExtendBlockMaxNum && pService->GetBlockHash(tempForkHash, blockHeight, blocksHash))
+    {
+        for (int i = 0; i < blocksHash.size(); ++i)
+        {
+            CBlockEx block;
+            int height;
+            pService->GetBlockEx(blocksHash[i], block, tempForkHash, height);
+            if (block.nType != CBlock::BLOCK_EXTENDED)
+            {
+                nonExtendBlockCount++;
+            }
+
+            blocks.push_back(block);
+        }
+
+        TrySwitchFork(blocksHash[0], tempForkHash);
+        blockHeight++;
+        blocksHash.clear();
+        blocksHash.shrink_to_fit();
+    }
+
+    return true;
 }
 
 } // namespace bigbang

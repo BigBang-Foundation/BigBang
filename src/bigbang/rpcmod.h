@@ -148,6 +148,7 @@ private:
 protected:
     bool CalcForkPoints(const uint256& forkHash);
     void TrySwitchFork(const uint256& blockHash, uint256& forkHash);
+    bool GetBlocks(const uint256& forkHash, const uint256& startHash, int32 n, std::vector<CBlockEx>& blocks);
 
 protected:
     xengine::IIOProc* pHttpServer;
