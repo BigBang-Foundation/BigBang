@@ -94,7 +94,7 @@ static CTransactionData TxToJSON(const uint256& txid, const CTransaction& tx,
     ret.nTime = tx.nTimeStamp;
     ret.nLockuntil = tx.nLockUntil;
     ret.strAnchor = tx.hashAnchor.GetHex();
-    ret.strBlockhash = (!blockHash) ? std::string() : blockHash.GetHex();
+    //ret.strBlockhash = (!blockHash) ? std::string() : blockHash.GetHex();
     for (const CTxIn& txin : tx.vInput)
     {
         CTransactionData::CVin vin;
@@ -117,7 +117,7 @@ static CTransactionData TxToJSON(const uint256& txid, const CTransaction& tx,
         ret.strData = xengine::ToHexString(tx.vchData);
     }
     ret.strSig = xengine::ToHexString(tx.vchSig);
-    ret.strFork = hashFork.GetHex();
+    //ret.strFork = hashFork.GetHex();
     if (nDepth >= 0)
     {
         ret.nConfirmations = nDepth;
@@ -900,7 +900,7 @@ CRPCResultPtr CRPCMod::RPCGetBlockDetail(CRPCParamPtr param)
     Cblockdatadetail data;
 
     data.strHash = hashBlock.GetHex();
-    data.strHashprev = block.hashPrev.GetHex();
+    data.strPrev = block.hashPrev.GetHex();
     data.nVersion = block.nVersion;
     data.nType = block.nType;
     data.nTime = block.GetBlockTime();
@@ -3541,7 +3541,7 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         Cblockdatadetail data;
 
         data.strHash = block.GetHash().ToString();
-        data.strHashprev = block.hashPrev.GetHex();
+        data.strPrev = block.hashPrev.GetHex();
         data.nVersion = block.nVersion;
         data.nType = block.nType;
         data.nTime = block.GetBlockTime();

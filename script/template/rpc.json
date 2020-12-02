@@ -643,10 +643,6 @@
                 "type": "string",
                 "desc": "anchor hash"
             },
-            "blockhash": {
-                "type": "string",
-                "desc": "which block tx located in"
-            },
             "vin": {
                 "type": "array",
                 "desc": "vin list",
@@ -690,10 +686,6 @@
             "sig": {
                 "type": "string",
                 "desc": "sign"
-            },
-            "fork": {
-                "type": "string",
-                "desc": "fork hash"
             },
             "confirmations": {
                 "type": "int",
@@ -815,7 +807,7 @@
                 "type": "string",
                 "desc": "block hash"
             },
-            "hashPrev": {
+            "prev": {
                 "type": "string",
                 "desc": "block prev hash"
             },
@@ -834,11 +826,6 @@
             "bits": {
                 "type": "uint",
                 "desc": "nBits"
-            },
-            "prev": {
-                "type": "string",
-                "desc": "previous block hash",
-                "required": false
             },
             "fork": {
                 "type": "string",
