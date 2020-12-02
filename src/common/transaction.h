@@ -577,21 +577,170 @@ class CTxInfo
 {
 public:
     CTxInfo() {}
-    CTxInfo(const uint256& txidIn, const int nTxTypeIn, const uint32 nTimeStampIn,
-            const CDestination& destFromIn, const CDestination& destToIn,
+    CTxInfo(const uint256& txidIn, const uint256& hashForkIn, const int nTxTypeIn, const uint32 nTimeStampIn,
+            const uint32& nLockUntilIn, const int nBlockHeightIn, const uint64 nTxSeqIn, const CDestination& destFromIn, const CDestination& destToIn,
             const int64 nAoumtIn, const int64 nTxFeeIn, const uint64 nSizeIn)
-      : txid(txidIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn),
-        destFrom(destFromIn), destTo(destToIn), nAmount(nAoumtIn), nTxFee(nTxFeeIn), nSize(nSizeIn) {}
+      : txid(txidIn), hashFork(hashForkIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn), nLockUntil(nLockUntilIn),
+        nBlockHeight(nBlockHeightIn), nTxSeq(nTxSeqIn), destFrom(destFromIn), destTo(destToIn), nAmount(nAoumtIn), nTxFee(nTxFeeIn), nSize(nSizeIn) {}
+
+    bool IsMintTx() const
+    {
+        return (nTxType == CTransaction::TX_GENESIS || nTxType == CTransaction::TX_STAKE || nTxType == CTransaction::TX_WORK);
+    }
 
 public:
     uint256 txid;
+    uint256 hashFork;
     int nTxType;
     uint32 nTimeStamp;
+    uint32 nLockUntil;
+    int nBlockHeight;
+    uint64 nTxSeq;
     CDestination destFrom;
     CDestination destTo;
     int64 nAmount;
     int64 nTxFee;
     uint64 nSize;
+};
+
+class CAddrTxIndex
+{
+    friend class xengine::CStream;
+
+public:
+    CDestination dest;
+    int64 nHeightSeq;
+    uint256 txid;
+
+public:
+    CAddrTxIndex() {}
+    CAddrTxIndex(const CDestination& destIn, const int64 nHeightSeqIn, const uint256& txidIn)
+      : dest(destIn), nHeightSeq(nHeightSeqIn), txid(txidIn) {}
+    CAddrTxIndex(const CDestination& destIn, const int nHeightIn, const int nBlockSeqIn, const int nTxSeqIn, const uint256& txidIn)
+      : dest(destIn), nHeightSeq(((int64)nHeightIn << 32) | ((nBlockSeqIn << 24) | nTxSeqIn)), txid(txidIn) {}
+
+    int GetHeight() const
+    {
+        return (int)(nHeightSeq >> 32);
+    }
+    int GetSeq() const
+    {
+        return (int)(nHeightSeq & 0xFFFFFFFFL);
+    }
+
+    friend bool operator==(const CAddrTxIndex& a, const CAddrTxIndex& b)
+    {
+        return (a.dest == b.dest && a.nHeightSeq == b.nHeightSeq && a.txid == b.txid);
+    }
+    friend bool operator!=(const CAddrTxIndex& a, const CAddrTxIndex& b)
+    {
+        return !(a == b);
+    }
+    friend bool operator<(const CAddrTxIndex& a, const CAddrTxIndex& b)
+    {
+        if (a.dest < b.dest)
+        {
+            return true;
+        }
+        else if (a.dest == b.dest)
+        {
+            if (a.nHeightSeq < b.nHeightSeq)
+            {
+                return true;
+            }
+            else if (a.nHeightSeq == b.nHeightSeq && a.txid < b.txid)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+protected:
+    template <typename O>
+    void Serialize(xengine::CStream& s, O& opt)
+    {
+        s.Serialize(dest, opt);
+        s.Serialize(nHeightSeq, opt);
+        s.Serialize(txid, opt);
+    }
+};
+
+class CAddrTxInfo
+{
+    friend class xengine::CStream;
+
+public:
+    int nDirection;
+    CDestination destPeer;
+    int nTxType;
+    uint32 nTimeStamp;
+    uint32 nLockUntil;
+    int64 nAmount;
+    int64 nTxFee;
+
+    enum
+    {
+        TXI_DIRECTION_NULL = 0,
+        TXI_DIRECTION_FROM = 1,
+        TXI_DIRECTION_TO = 2,
+        TXI_DIRECTION_TWO = 3
+    };
+
+public:
+    CAddrTxInfo()
+    {
+        SetNull();
+    }
+    CAddrTxInfo(const int nDirectionIn, const CDestination& destPeerIn, const int nTxTypeIn, const uint32 nTimeStampIn,
+                const uint32 nLockUntilIn, const int64 nAmountIn, const int64 nTxFeeIn)
+      : nDirection(nDirectionIn), destPeer(destPeerIn), nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn),
+        nLockUntil(nLockUntilIn), nAmount(nAmountIn), nTxFee(nTxFeeIn)
+    {
+    }
+    CAddrTxInfo(const int nDirectionIn, const CDestination& destPeerIn, const CTransaction& tx)
+      : nDirection(nDirectionIn), destPeer(destPeerIn), nTxType(tx.nType), nTimeStamp(tx.nTimeStamp),
+        nLockUntil(tx.nLockUntil), nAmount(tx.nAmount), nTxFee(tx.nTxFee)
+    {
+    }
+
+    void SetNull()
+    {
+        nDirection = TXI_DIRECTION_NULL;
+        destPeer.SetNull();
+        nTxType = 0;
+        nTimeStamp = 0;
+        nLockUntil = 0;
+        nAmount = 0;
+        nTxFee = 0;
+    }
+    bool IsNull() const
+    {
+        return (nDirection == TXI_DIRECTION_NULL);
+    };
+
+    friend bool operator==(const CAddrTxInfo& a, const CAddrTxInfo& b)
+    {
+        return (a.nDirection == b.nDirection && a.destPeer == b.destPeer && a.nTxType == b.nTxType && a.nTimeStamp == b.nTimeStamp
+                && a.nLockUntil == b.nLockUntil && a.nAmount == b.nAmount && a.nTxFee == b.nTxFee);
+    }
+    friend bool operator!=(const CAddrTxInfo& a, const CAddrTxInfo& b)
+    {
+        return !(a == b);
+    }
+
+protected:
+    template <typename O>
+    void Serialize(xengine::CStream& s, O& opt)
+    {
+        s.Serialize(nDirection, opt);
+        s.Serialize(destPeer, opt);
+        s.Serialize(nTxType, opt);
+        s.Serialize(nTimeStamp, opt);
+        s.Serialize(nLockUntil, opt);
+        s.Serialize(nAmount, opt);
+        s.Serialize(nTxFee, opt);
+    }
 };
 
 #endif //COMMON_TRANSACTION_H

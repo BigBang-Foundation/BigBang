@@ -23,6 +23,7 @@ set(sources
     delegatevotesave.cpp delegatevotesave.h
     addressdb.cpp       addressdb.h
     addressunspentdb.cpp  addressunspentdb.h
+    addresstxindexdb.cpp  addresstxindexdb.h
 )
 
 add_library(storage ${sources})

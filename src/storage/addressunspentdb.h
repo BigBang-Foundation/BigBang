@@ -28,7 +28,7 @@ public:
 
 public:
     CAddrUnspentKey() {}
-    CAddrUnspentKey(const CDestination& dest_in, CTxOutPoint out_in)
+    CAddrUnspentKey(const CDestination& dest_in, const CTxOutPoint& out_in)
       : dest(dest_in), out(out_in) {}
 
     friend bool operator==(const CAddrUnspentKey& a, const CAddrUnspentKey& b)
@@ -167,7 +167,7 @@ class CAddressUnspentDB
 {
 public:
     CAddressUnspentDB();
-    bool Initialize(const boost::filesystem::path& pathData);
+    bool Initialize(const boost::filesystem::path& pathData, const bool fFlush = true);
     void Deinitialize();
     bool Exists(const uint256& hashFork)
     {

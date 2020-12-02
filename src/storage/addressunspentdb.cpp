@@ -320,7 +320,7 @@ CAddressUnspentDB::CAddressUnspentDB()
     fStopFlush = true;
 }
 
-bool CAddressUnspentDB::Initialize(const boost::filesystem::path& pathData)
+bool CAddressUnspentDB::Initialize(const boost::filesystem::path& pathData, const bool fFlush)
 {
     pathAddress = pathData / "addressunspent";
 
@@ -334,14 +334,16 @@ bool CAddressUnspentDB::Initialize(const boost::filesystem::path& pathData)
         return false;
     }
 
-    fStopFlush = false;
-    pThreadFlush = new boost::thread(boost::bind(&CAddressUnspentDB::FlushProc, this));
-    if (pThreadFlush == nullptr)
+    if (fFlush)
     {
-        fStopFlush = true;
-        return false;
+        fStopFlush = false;
+        pThreadFlush = new boost::thread(boost::bind(&CAddressUnspentDB::FlushProc, this));
+        if (pThreadFlush == nullptr)
+        {
+            fStopFlush = true;
+            return false;
+        }
     }
-
     return true;
 }
 
@@ -357,19 +359,23 @@ void CAddressUnspentDB::Deinitialize()
         pThreadFlush->join();
         delete pThreadFlush;
         pThreadFlush = nullptr;
-    }
 
-    {
-        CWriteLock wlock(rwAccess);
-
-        for (map<uint256, std::shared_ptr<CForkAddressUnspentDB>>::iterator it = mapAddressDB.begin();
-             it != mapAddressDB.end(); ++it)
         {
-            std::shared_ptr<CForkAddressUnspentDB> spAddress = (*it).second;
+            CWriteLock wlock(rwAccess);
 
-            spAddress->Flush();
-            spAddress->Flush();
+            for (map<uint256, std::shared_ptr<CForkAddressUnspentDB>>::iterator it = mapAddressDB.begin();
+                 it != mapAddressDB.end(); ++it)
+            {
+                std::shared_ptr<CForkAddressUnspentDB> spAddress = (*it).second;
+
+                spAddress->Flush();
+                spAddress->Flush();
+            }
+            mapAddressDB.clear();
         }
+    }
+    else
+    {
         mapAddressDB.clear();
     }
 }

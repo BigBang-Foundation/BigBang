@@ -27,6 +27,10 @@ public:
 protected:
     bool HandleInitialize() override;
     void HandleDeinitialize() override;
+    const CBasicConfig* BasicConfig()
+    {
+        return dynamic_cast<const CBasicConfig*>(xengine::IBase::Config());
+    }
     const CNetworkConfig* Config()
     {
         return dynamic_cast<const CNetworkConfig*>(xengine::IBase::Config());
@@ -43,6 +47,10 @@ protected:
         return i.IsValid() ? int(i) : valDefault;
     }
     unsigned int GetUint(const rpc::CRPCUint64& i, unsigned int valDefault)
+    {
+        return i.IsValid() ? uint64(i) : valDefault;
+    }
+    uint64 GetUint64(const rpc::CRPCUint64& i, uint64 valDefault)
     {
         return i.IsValid() ? uint64(i) : valDefault;
     }
@@ -109,12 +117,9 @@ private:
     rpc::CRPCResultPtr RPCExportTemplate(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCImportTemplateAddress(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCValidateAddress(rpc::CRPCParamPtr param);
-    rpc::CRPCResultPtr RPCResyncWallet(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetBalance(rpc::CRPCParamPtr param);
-    rpc::CRPCResultPtr RPCGetBalanceWallet(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListTransaction(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSendFrom(rpc::CRPCParamPtr param);
-    rpc::CRPCResultPtr RPCSendFromWallet(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCCreateTransaction(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSignTransaction(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSignMessage(rpc::CRPCParamPtr param);
