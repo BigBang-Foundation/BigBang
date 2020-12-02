@@ -1544,7 +1544,7 @@
             "{\"code\":-6,\"message\":\"Invalid fork\"}",
             "{\"code\":-6,\"message\":\"Unknown fork\"}",
             "{\"code\":-6,\"message\":\"block hashes is empty\"}",
-            "{\"code\":-32603,\"message\":\"block is invalid\"}",
+            "{\"code\":404,\"message\":\"all of blocks are invalid\"}",
             "{\"code\":-32603,\"message\":\"GetBlocks failed\"}"
         ]
     },
