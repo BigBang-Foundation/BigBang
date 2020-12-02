@@ -3453,11 +3453,12 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
         return spResult;
     }
 
-    mapRPCClient[spParam->strIpport].timestamp = GetTime();
     for (const std::string& fork : spParam->vecForks)
     {
         mapRPCClient[spParam->strIpport].registerForks.push_back(uint256(fork));
     }
+
+    mapRPCClient[spParam->strIpport].timestamp = GetTime();
 
     return spResult;
 }
