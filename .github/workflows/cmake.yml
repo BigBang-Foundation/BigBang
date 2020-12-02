@@ -18,7 +18,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-18.04, ubuntu-16.04]
+        os: [ubuntu-20.04, ubuntu-18.04]
 
     steps:
       - uses: actions/checkout@v2
@@ -43,34 +43,6 @@ jobs:
           cd libsodium-1.0.18
           ./configure
           make -j8 && make check
-          sudo make install
-          cd ..
-
-      - name: Prepare ubuntu-16.04 Build Dependencies
-        shell: bash
-        if: matrix.os == 'ubuntu-16.04'
-        run: | 
-          sudo apt update -qq
-          sudo apt remove -y openssl libssl-dev
-          sudo apt install -y build-essential libboost-all-dev openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev
-
-          wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz --no-check-certificate
-          tar -zxvf libsodium-1.0.18.tar.gz
-          cd libsodium-1.0.18
-          ./configure
-          make -j8 && make check
-          sudo make install
-          cd ..
-
-          wget https://github.com/Kitware/CMake/releases/download/v3.18.0/cmake-3.18.0-Linux-x86_64.tar.gz
-          tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz
-          export PATH=`pwd`/cmake-3.18.0-Linux-x86_64/bin:$PATH
-
-          wget https://github.com/protocolbuffers/protobuf/releases/download/v3.11.3/protobuf-cpp-3.11.3.tar.gz
-          tar -xzvf protobuf-cpp-3.11.3.tar.gz
-          cd protobuf-3.11.3
-          ./configure --prefix=/usr
-          make -j8
           sudo make install
           cd ..
 
