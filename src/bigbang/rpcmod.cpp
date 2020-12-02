@@ -3397,7 +3397,7 @@ CRPCResultPtr CRPCMod::RPCGetFork(rpc::CRPCParamPtr param)
     CProfile profile;
     if (!pService->GetFork(hashFork, profile))
     {
-        throw CRPCException(RPC_INVALID_PARAMETER, "Get Fork failed");
+        throw CRPCException(RPC_INTERNAL_ERROR, "Get Fork failed");
     }
 
     int nForkLastHeight = -1;
