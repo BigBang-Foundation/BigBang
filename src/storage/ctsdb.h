@@ -164,6 +164,11 @@ class CCTSDB
         int nIdxUpper;
     };
 
+    enum
+    {
+        CACHE_UPPER_DURATION = 600
+    };
+
 public:
     bool Initialize(const boost::filesystem::path& pathCTSDB)
     {
@@ -236,7 +241,7 @@ public:
             {
                 mapUpper[nTime].insert(chunk.begin(), chunk.end());
 
-                int64 nDelStartTime = nTime - 600;
+                int64 nDelStartTime = nTime - CACHE_UPPER_DURATION;
                 for (auto it = mapUpper.begin(); it != mapUpper.end();)
                 {
                     if (it->first > nDelStartTime)

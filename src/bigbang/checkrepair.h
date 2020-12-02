@@ -369,6 +369,14 @@ public:
 
 class CCheckBlockFork
 {
+    enum
+    {
+        MAX_CACHE_BLOCK_COUNT = 1000,
+        MAX_CACHE_BLOCK_TXINFO_COUNT = 200000,
+        DEF_CHECK_HEIGHT_DEPTH = 120,
+        DPOS_CONFIRM_HEIGHT = 6
+    };
+
 public:
     CCheckBlockFork(const string& strPathIn, const bool fOnlyCheckIn, const bool fAddrTxIndexIn, CCheckTsBlock& tsBlockIn,
                     CCheckForkManager& objForkManagerIn, CAddressTxIndexDB& dbAddressTxIndexIn)
@@ -385,7 +393,7 @@ public:
     bool AddBlockUnspent(const CTxOutPoint& txPoint, const CTxOut& txOut, int nTxType, int nHeight);
     bool AddBlockSpent(const CTxOutPoint& txPoint);
 
-    void CopyData(const CCheckBlockFork& from);
+    void InheritCopyData(const CCheckBlockFork& from);
     bool CheckForkAddressTxIndex(const uint256& hashFork, const int nCheckHeight);
 
 public:
@@ -398,6 +406,7 @@ public:
     CBlockIndex* pOrigin;
     CBlockIndex* pLast;
     bool fInvalidFork;
+    map<uint256, CCheckTxIndex> mapParentForkBlockTxIndex;
     map<uint256, CCheckTxIndex> mapBlockTxIndex;
     map<uint256, CCheckTxInfo> mapBlockTxInfo;
     map<CTxOutPoint, CCheckTxOut> mapBlockUnspent;

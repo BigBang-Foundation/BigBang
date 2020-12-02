@@ -719,6 +719,16 @@ public:
         return (nDirection == TXI_DIRECTION_NULL);
     };
 
+    friend bool operator==(const CAddrTxInfo& a, const CAddrTxInfo& b)
+    {
+        return (a.nDirection == b.nDirection && a.destPeer == b.destPeer && a.nTxType == b.nTxType && a.nTimeStamp == b.nTimeStamp
+                && a.nLockUntil == b.nLockUntil && a.nAmount == b.nAmount && a.nTxFee == b.nTxFee);
+    }
+    friend bool operator!=(const CAddrTxInfo& a, const CAddrTxInfo& b)
+    {
+        return !(a == b);
+    }
+
 protected:
     template <typename O>
     void Serialize(xengine::CStream& s, O& opt)
