@@ -7,6 +7,7 @@
 
 #include "json/json_spirit.h"
 #include <boost/function.hpp>
+#include <unordered_map>
 
 #include "base.h"
 #include "rpc/rpc.h"
@@ -163,6 +164,7 @@ private:
     } LiveClientInfo;
 
     std::map<std::string, LiveClientInfo> mapRPCClient;
+    std::unordered_map<std::string, std::pair<uint256, uint256>> mapForkPoint; // fork point hash => (fork hash, fork point hash)
     bool fWriteRPCLog;
 };
 
