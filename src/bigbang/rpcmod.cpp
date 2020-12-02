@@ -3489,6 +3489,11 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
+    if (spParam->vecBlockhashes.size() == 0)
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "block hashes is empty");
+    }
+
     CBlockEx block;
     int nHeight = -1;
     for (const std::string& hash : spParam->vecBlockhashes)
@@ -3500,14 +3505,19 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         }
     }
 
-    auto spResult = MakeCGetBlocksResultPtr();
-    if (nHeight >= 0 && hashFork == uint256(spParam->strFork))
+    if (nHeight == -1)
     {
-        for (size_t i = 0; i < spParam->nNum; ++i)
-        {
-        }
+        throw CRPCException(RPC_INTERNAL_ERROR, "block is invalid");
     }
-    else
+
+    if (hashFork != uint256(spParam->strFork))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "block doest not located in the fork");
+    }
+
+    auto spResult = MakeCGetBlocksResultPtr();
+
+    for (size_t i = 0; i < spParam->nNum; ++i)
     {
     }
 
