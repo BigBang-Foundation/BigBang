@@ -3466,8 +3466,26 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
 CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CGetBlocksParam>(param);
+    CBlockEx block;
+    uint256 hashFork;
+    int nHeight = -1;
+    for (const std::string& hash : spParam->vecBlockhashes)
+    {
+        uint256 hashBlock(hash);
+        if (pService->GetBlockEx(hashBlock, block, hashFork, nHeight))
+        {
+            break;
+        }
+    }
 
     auto spResult = MakeCGetBlocksResultPtr();
+    if (nHeight >= 0)
+    {
+        for (size_t i = 0; i < spParam->nNum; ++i)
+        {
+                }
+    }
+
     return spResult;
 }
 
