@@ -3560,4 +3560,14 @@ bool CRPCMod::CalcForkPoints(const uint256& forkHash)
     return true;
 }
 
+void CRPCMod::TrySwitchFork(const uint256& blockHash, uint256& forkHash)
+{
+    auto it = mapForkPoint.find(blockHash.ToString());
+    if (it != mapForkPoint.end())
+    {
+        auto value = it->second;
+        forkHash = value.first;
+    }
+}
+
 } // namespace bigbang

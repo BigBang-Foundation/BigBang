@@ -147,6 +147,7 @@ private:
 
 protected:
     bool CalcForkPoints(const uint256& forkHash);
+    void TrySwitchFork(const uint256& blockHash, uint256& forkHash);
 
 protected:
     xengine::IIOProc* pHttpServer;
