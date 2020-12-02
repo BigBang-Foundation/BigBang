@@ -51,6 +51,7 @@ jobs:
         if: matrix.os == 'ubuntu-16.04'
         run: | 
           sudo apt update -qq
+          sudo apt remove openssl libssl-dev
           sudo apt install -y build-essential libboost-all-dev openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev
 
           wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz --no-check-certificate
