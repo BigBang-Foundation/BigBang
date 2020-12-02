@@ -3468,7 +3468,7 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
     auto spParam = CastParamPtr<CReportParam>(param);
     if (spParam->strIpport.empty() || spParam->vecForks.size() == 0)
     {
-        return spResult;
+        throw CRPCException(RPC_INVALID_PARAMETER, "IP:PORT or forks is invalid");
     }
 
     for (const std::string& fork : spParam->vecForks)
@@ -3488,7 +3488,7 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
     }
 
     mapRPCClient[spParam->strIpport].timestamp = GetTime();
-
+    spResult->strIpport = spParam->strIpport;
     return spResult;
 }
 
