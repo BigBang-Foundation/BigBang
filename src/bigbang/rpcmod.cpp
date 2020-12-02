@@ -3524,4 +3524,40 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
     return spResult;
 }
 
+bool CRPCMod::CalcForkPoints(const uint256& forkHash)
+{
+    std::vector<std::pair<uint256, int>> vAncestors;
+    std::vector<std::pair<int, uint256>> vSublines;
+    std::vector<std::pair<uint256, uint256>> path;
+    if (!pService->GetForkGenealogy(forkHash, vAncestors, vSublines))
+    {
+        return false;
+    }
+
+    std::vector<std::pair<uint256, uint256>> forkAncestors;
+    for (int i = vAncestors.size() - 1; i >= 0; i--)
+    {
+        CBlock block;
+        uint256 tempFork;
+        int nHeight = 0;
+        pService->GetBlock(vAncestors[i].first, block, tempFork, nHeight);
+        forkAncestors.push_back(std::make_pair(vAncestors[i].first, block.hashPrev));
+    }
+
+    path = forkAncestors;
+    CBlock block;
+    uint256 tempFork;
+    int nHeight = 0;
+    pService->GetBlock(forkHash, block, tempFork, nHeight);
+    path.push_back(std::make_pair(forkHash, block.hashPrev));
+
+    for (const auto& fork : path)
+    {
+        mapForkPoint.insert(std::make_pair(fork.second.ToString(),
+                                           std::make_pair(fork.first, fork.second)));
+    }
+
+    return true;
+}
+
 } // namespace bigbang

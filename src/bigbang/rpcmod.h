@@ -145,6 +145,9 @@ private:
     rpc::CRPCResultPtr RPCGetBlocks(rpc::CRPCParamPtr param);
 
 protected:
+    bool CalcForkPoints(const uint256& forkHash);
+
+protected:
     xengine::IIOProc* pHttpServer;
     ICoreProtocol* pCoreProtocol;
     IService* pService;
