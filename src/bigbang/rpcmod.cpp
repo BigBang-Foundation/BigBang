@@ -3526,7 +3526,7 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
 
     if (nHeight == -1)
     {
-        throw CRPCException(RPC_INTERNAL_ERROR, "block is invalid");
+        throw CRPCException(RPC_REQUEST_NOT_FOUND, "all of blocks are invalid");
     }
 
     auto spResult = MakeCGetBlocksResultPtr();

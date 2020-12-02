@@ -25,6 +25,7 @@ enum RPCErrorCode
     RPC_INVALID_PARAMS = -32602,
     RPC_INTERNAL_ERROR = -32603,
     RPC_PARSE_ERROR = -32700,
+    RPC_REQUEST_NOT_FOUND = 404,
 
     //! General application defined errors
     RPC_MISC_ERROR = -1,               //!< std::exception thrown in command handling
