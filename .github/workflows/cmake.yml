@@ -113,7 +113,9 @@ jobs:
         id: vcpkg
         uses: actions/cache@v2
         with:
-          path: C:\vcpkg\downloads
+          path: |
+            C:\vcpkg\downloads
+            C:\vcpkg\packages
           key: ${{ runner.os }}-vcpkg
       
       # install dependencies by brew
