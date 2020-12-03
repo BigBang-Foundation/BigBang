@@ -158,7 +158,9 @@ protected:
     bool CallRPC(const std::string& strHost, int nPort, uint64 nNonce, rpc::CRPCParamPtr spParam, int nReqId);
     bool GetResponse(const std::string& strHost, int nPort, uint64 nNonce, const std::string& content);
     rpc::Cblockdatadetail BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block);
-
+    void RemoveClients(const std::vector<std::string>& clients);
+    void RemoveClient(const std::string& client);
+    void RemoveClient(uint64 nNonce);
 protected:
     xengine::IIOProc* pHttpServer;
     ICoreProtocol* pCoreProtocol;

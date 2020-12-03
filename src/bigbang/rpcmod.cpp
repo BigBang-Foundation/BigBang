@@ -3688,11 +3688,37 @@ bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
         StdWarn("CRPCMod::CSH", "Update New Block Call Finished: IP: %s, Port: %d, Nonce: %d", client.second.strIp.c_str(), client.second.nPort, client.second.nNonce);
     }
 
-    for (const std::string& ipport : deletes)
-    {
-        mapRPCClient.erase(ipport);
-    }
+    RemoveClients(deletes);
     return true;
+}
+
+void CRPCMod::RemoveClient(const std::string& client)
+{
+    mapRPCClient.erase(client);
+}
+
+void CRPCMod::RemoveClients(const std::vector<std::string>& clients)
+{
+    for (const std::string& client : clients)
+    {
+        RemoveClient(client);
+    }
+}
+
+void CRPCMod::RemoveClient(uint64 nNonce)
+{
+    std::string removeClient;
+    for (const auto& client : mapRPCClient)
+    {
+        if (client.second.nNonce == nNonce)
+        {
+            removeClient = client.first;
+        }
+    }
+    if (!removeClient.empty())
+    {
+        RemoveClient(removeClient);
+    }
 }
 
 bool CRPCMod::HandleEvent(CRPCModEventUpdateNewTx& event)
@@ -3735,21 +3761,29 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
             const char* strErr[] = { "", "connect failed", "invalid nonce", "activate failed",
                                      "disconnected", "no response", "resolve failed",
                                      "internal failure", "aborted" };
-            throw runtime_error(rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
+
+            RemoveClient(event.nNonce);
+            StdError("CRPCMod", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
+            return false;
         }
         if (rsp.nStatusCode == 401)
         {
-            throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
+            RemoveClient(event.nNonce);
+            StdError("CRPCMod", "incorrect rpcuser or rpcpassword (authorization failed)");
+            return false;
         }
         else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
         {
             ostringstream oss;
             oss << "server returned HTTP error " << rsp.nStatusCode;
-            throw runtime_error(oss.str());
+            RemoveClient(event.nNonce);
+            StdError("CRPCMod", oss.str().c_str());
+            return false;
         }
         else if (rsp.strContent.empty())
         {
-            throw runtime_error("no response from server");
+            StdError("CRPCMod", "no response from server");
+            return false;
         }
 
         // Parse reply
@@ -3763,8 +3797,8 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
         if (spResp->IsError())
         {
             // Error
-            cerr << spResp->spError->Serialize(true) << endl;
-            cerr << strServerHelpTips << endl;
+            //cerr << spResp->spError->Serialize(true) << endl;
+            //cerr << strServerHelpTips << endl;
             StdError("CRPCMod", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
             StdError("CRPCMod", "RPC Response error tips: %s", strServerHelpTips.c_str());
         }
@@ -3774,14 +3808,14 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
         }
         else
         {
-            cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
+            //cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
             StdError("CRPCMod", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
         }
     }
-    catch (exception& e)
+    catch (const std::exception& e)
     {
-        cerr << e.what() << endl;
         StdError("CRPCMod", "RPC Response Exception: %s ", e.what());
+        return false;
     }
     //ioComplt.Completed(false);
     return true;
