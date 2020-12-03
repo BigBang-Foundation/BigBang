@@ -10,13 +10,14 @@
 #include <unordered_map>
 
 #include "base.h"
+#include "event.h"
 #include "rpc/rpc.h"
 #include "xengine.h"
 
 namespace bigbang
 {
 
-class CRPCMod : public xengine::IIOModule, virtual public xengine::CHttpEventListener
+class CRPCMod : public xengine::IIOModule, virtual public xengine::CHttpEventListener, public CRPCModEventListener
 {
 public:
     typedef rpc::CRPCResultPtr (CRPCMod::*RPCFunc)(rpc::CRPCParamPtr param);
@@ -24,6 +25,8 @@ public:
     ~CRPCMod();
     bool HandleEvent(xengine::CEventHttpReq& eventHttpReq) override;
     bool HandleEvent(xengine::CEventHttpBroken& eventHttpBroken) override;
+    bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
+    bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
 
 protected:
     bool HandleInitialize() override;

@@ -3685,4 +3685,17 @@ bool CRPCMod::GetBlocks(const uint256& forkHash, const uint256& startHash, int32
     return true;
 }
 
+bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
+{
+    (void)event;
+    StdWarn("CRPCMod::CSH", "Update New Block %s", event.data.GetHash().ToString().c_str());
+    return true;
+}
+
+bool CRPCMod::HandleEvent(CRPCModEventUpdateNewTx& event)
+{
+    (void)event;
+    return true;
+}
+
 } // namespace bigbang
