@@ -81,7 +81,13 @@ jobs:
       # install dependencies by brew
       - name: Prepare macos Build Dependencies
         shell: bash
-        run: brew install cmake pkg-config openssl boost libsodium readline protobuf ncurses 
+        run: |
+          brew install cmake pkg-config openssl boost libsodium readline protobuf ncurses 
+          echo "export OPENSSL_ROOT_DIR=`brew --prefix openssl`" >> ~/.bash_profile
+          echo "export BOOST_ROOT=`brew --prefix boost`" >> ~/.bash_profile
+          echo "export PKG_CONFIG_PATH=`brew --prefix libsodium`/lib/pkgconfig:\${PKG_CONFIG_PATH}" >> ~/.bash_profile
+          . ~/.bash_profile
+          brew link --force readline
       
       # checkout
       - uses: actions/checkout@v2
