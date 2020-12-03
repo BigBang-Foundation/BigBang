@@ -89,10 +89,9 @@ jobs:
       - name: Env
         shell: bash
         run: |
-          echo "export OPENSSL_ROOT_DIR=`brew --prefix openssl`" >> ~/.bash_profile
-          echo "export BOOST_ROOT=`brew --prefix boost`" >> ~/.bash_profile
-          echo "export PKG_CONFIG_PATH=`brew --prefix libsodium`/lib/pkgconfig:\${PKG_CONFIG_PATH}" >> ~/.bash_profile
-          . ~/.bash_profile
+          export OPENSSL_ROOT_DIR=`brew --prefix openssl`
+          export BOOST_ROOT=`brew --prefix boost`
+          export PKG_CONFIG_PATH=`brew --prefix libsodium`/lib/pkgconfig:${PKG_CONFIG_PATH}
 
       # checkout
       - uses: actions/checkout@v2
