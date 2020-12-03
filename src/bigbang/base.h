@@ -147,7 +147,7 @@ public:
     virtual bool ListDeFiRelation(const uint256& hashFork, xengine::CForest<CDestination, CDestination>& relation) = 0;
     virtual bool InitDeFiRelation(const uint256& hashFork) = 0;
     virtual bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent) = 0;
-    virtual bool GetAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent) = 0;
+    virtual bool GetAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut) = 0;
     virtual int64 GetAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx) = 0;
 
     /////////////    CheckPoints    /////////////////////

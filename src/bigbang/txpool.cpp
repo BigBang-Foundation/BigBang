@@ -513,8 +513,14 @@ void CTxPoolView::GetBlockTxList(vector<CTransaction>& vtx, int64& nTotalTxFee, 
     }
 }
 
-bool CTxPoolView::GetAddressUnspent(const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent)
+bool CTxPoolView::GetAddressUnspent(const CDestination& dest, const uint256& hashChainLastBlock, map<CTxOutPoint, CUnspentOut>& mapUnspent)
 {
+    if (hashChainLastBlock != hashLastBlock)
+    {
+        StdError("CTxPoolView", "Get address unspent fail, last block error, chain last block: %s, txpool last block: %s",
+                 hashChainLastBlock.GetHex().c_str(), hashLastBlock.GetHex().c_str());
+        return false;
+    }
     map<CDestination, CAddrUnspent>::const_iterator it = mapAddressUnspent.find(dest);
     if (it != mapAddressUnspent.end())
     {
@@ -1279,13 +1285,23 @@ void CTxPool::AddDestDelegate(const CDestination& destDeleage)
 
 bool CTxPool::FetchAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent)
 {
-    boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
-    if (!pBlockChain->GetAddressUnspent(hashFork, dest, mapUnspent))
+    uint256 hashLastBlock;
+    if (!pBlockChain->GetAddressUnspent(hashFork, dest, mapUnspent, hashLastBlock))
     {
-        StdError("CTxPool", "Fetch address unspent: Get address unspent fail");
+        StdError("CTxPool", "Fetch address unspent: Get address unspent fail, fork: %s, dest: %s",
+                 hashFork.GetHex().c_str(), CAddress(dest).ToString().c_str());
         return false;
     }
-    return mapPoolView[hashFork].GetAddressUnspent(dest, mapUnspent);
+    {
+        boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
+        if (!mapPoolView[hashFork].GetAddressUnspent(dest, hashLastBlock, mapUnspent))
+        {
+            StdError("CTxPool", "Fetch address unspent: Get txpool address unspent fail, fork: %s, dest: %s",
+                     hashFork.GetHex().c_str(), CAddress(dest).ToString().c_str());
+            return false;
+        }
+    }
+    return true;
 }
 
 bool CTxPool::LoadData()

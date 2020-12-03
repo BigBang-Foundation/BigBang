@@ -76,7 +76,7 @@ public:
     bool ListDeFiRelation(const uint256& hashFork, xengine::CForest<CDestination, CDestination>& relation) override;
     bool InitDeFiRelation(const uint256& hashFork) override;
     bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent) override;
-    bool GetAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent) override;
+    bool GetAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut) override;
     int64 GetAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx) override;
 
     /////////////    CheckPoints    /////////////////////

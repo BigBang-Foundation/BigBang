@@ -135,20 +135,20 @@ class CForkAddressUnspentDB : public xengine::CKVDB
     };
 
 public:
-    CForkAddressUnspentDB(const boost::filesystem::path& pathDB);
+    CForkAddressUnspentDB(const boost::filesystem::path& pathDB, const uint256& hashLastBlockIn);
     ~CForkAddressUnspentDB();
     bool RemoveAll();
-    bool UpdateAddressUnspent(const std::vector<CTxUnspent>& vAddNew, const std::vector<CTxUnspent>& vRemove);
+    bool UpdateAddressUnspent(const uint256& hashLastBlockIn, const std::vector<CTxUnspent>& vAddNew, const std::vector<CTxUnspent>& vRemove);
     bool RepairAddressUnspent(const std::vector<std::pair<CAddrUnspentKey, CUnspentOut>>& vAddUpdate, const std::vector<CAddrUnspentKey>& vRemove);
     bool WriteAddressUnspent(const CAddrUnspentKey& out, const CUnspentOut& unspent);
     bool ReadAddressUnspent(const CAddrUnspentKey& out, CUnspentOut& unspent);
-    bool RetrieveAddressUnspent(const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent);
+    bool RetrieveAddressUnspent(const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut);
     bool Copy(CForkAddressUnspentDB& dbAddressUnspent);
     void SetCache(const CDblMap& dblCacheIn)
     {
         dblCache = dblCacheIn;
     }
-    bool WalkThroughAddressUnspent(CForkAddressUnspentDBWalker& walker, const CDestination& dest = CDestination());
+    bool WalkThroughAddressUnspent(CForkAddressUnspentDBWalker& walker, const CDestination& dest, uint256& hashLastBlockOut);
     bool Flush();
 
 protected:
@@ -161,6 +161,7 @@ protected:
     xengine::CRWAccess rwUpper;
     xengine::CRWAccess rwLower;
     CDblMap dblCache;
+    uint256 hashLastBlock;
 };
 
 class CAddressUnspentDB
@@ -173,12 +174,12 @@ public:
     {
         return (!!mapAddressDB.count(hashFork));
     }
-    bool AddNewFork(const uint256& hashFork);
+    bool AddNewFork(const uint256& hashFork, const uint256& hashLastBlock = uint256());
     bool RemoveFork(const uint256& hashFork);
     void Clear();
-    bool UpdateAddressUnspent(const uint256& hashFork, const std::vector<CTxUnspent>& vAddNew, const std::vector<CTxUnspent>& vRemove);
+    bool UpdateAddressUnspent(const uint256& hashFork, const uint256& hashLastBlockIn, const std::vector<CTxUnspent>& vAddNew, const std::vector<CTxUnspent>& vRemove);
     bool RepairAddressUnspent(const uint256& hashFork, const std::vector<std::pair<CAddrUnspentKey, CUnspentOut>>& vAddUpdate, const std::vector<CAddrUnspentKey>& vRemove);
-    bool RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent);
+    bool RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut);
     bool Copy(const uint256& srcFork, const uint256& destFork);
     bool WalkThrough(const uint256& hashFork, CForkAddressUnspentDBWalker& walker);
     void Flush(const uint256& hashFork);

@@ -315,7 +315,7 @@ public:
         }
     }
     void InvalidateSpent(const CTxOutPoint& out, CTxPoolView& viewInvolvedTx);
-    bool GetAddressUnspent(const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent);
+    bool GetAddressUnspent(const CDestination& dest, const uint256& hashChainLastBlock, std::map<CTxOutPoint, CUnspentOut>& mapUnspent);
     void GetBlockTxList(std::vector<CTransaction>& vtx, int64& nTotalTxFee, const int64 nBlockTime, const std::size_t nMaxSize, const uint256& hashFork, const int nHeight,
                         std::map<CDestination, int>& mapVoteCert, const std::map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight,
                         std::vector<std::pair<uint256, std::vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock);

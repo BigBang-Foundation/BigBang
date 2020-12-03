@@ -77,7 +77,7 @@
             "type": "bool",
             "opt": "addrtxindex",
             "default": false,
-            "format": "-noaddrtxindex",
+            "format": "-addrtxindex",
             "desc": "Launch server without address txindex"
         }
     ],

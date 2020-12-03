@@ -258,7 +258,7 @@ bool CBlockDB::UpdateFork(const uint256& hash, const uint256& hashRefBlock, cons
         return false;
     }
 
-    if (!dbAddressUnspent.UpdateAddressUnspent(hash, vAddNewUnspent, vRemoveUnspent))
+    if (!dbAddressUnspent.UpdateAddressUnspent(hash, hashRefBlock, vAddNewUnspent, vRemoveUnspent))
     {
         return false;
     }
@@ -348,9 +348,9 @@ bool CBlockDB::RetrieveEnroll(int height, const vector<uint256>& vBlockRange,
     return dbDelegate.RetrieveEnrollTx(height, vBlockRange, mapEnrollTxPos);
 }
 
-bool CBlockDB::RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent)
+bool CBlockDB::RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut)
 {
-    return dbAddressUnspent.RetrieveAddressUnspent(hashFork, dest, mapUnspent);
+    return dbAddressUnspent.RetrieveAddressUnspent(hashFork, dest, mapUnspent, hashLastBlockOut);
 }
 
 int64 CBlockDB::RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
@@ -387,7 +387,7 @@ bool CBlockDB::LoadFork()
             return false;
         }
 
-        if (!dbAddressUnspent.AddNewFork(vFork[i].first))
+        if (!dbAddressUnspent.AddNewFork(vFork[i].first, vFork[i].second))
         {
             return false;
         }

@@ -2035,9 +2035,9 @@ bool CBlockBase::ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std:
     return true;
 }
 
-bool CBlockBase::RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent)
+bool CBlockBase::RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut)
 {
-    return dbBlock.RetrieveAddressUnspent(hashFork, dest, mapUnspent);
+    return dbBlock.RetrieveAddressUnspent(hashFork, dest, mapUnspent, hashLastBlockOut);
 }
 
 int64 CBlockBase::RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)

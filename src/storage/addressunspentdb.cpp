@@ -21,7 +21,7 @@ namespace storage
 //////////////////////////////
 // CForkAddressUnspentDB
 
-CForkAddressUnspentDB::CForkAddressUnspentDB(const boost::filesystem::path& pathDB)
+CForkAddressUnspentDB::CForkAddressUnspentDB(const boost::filesystem::path& pathDB, const uint256& hashLastBlockIn)
 {
     CLevelDBArguments args;
     args.path = pathDB.string();
@@ -32,6 +32,7 @@ CForkAddressUnspentDB::CForkAddressUnspentDB(const boost::filesystem::path& path
     {
         delete engine;
     }
+    hashLastBlock = hashLastBlockIn;
 }
 
 CForkAddressUnspentDB::~CForkAddressUnspentDB()
@@ -50,7 +51,7 @@ bool CForkAddressUnspentDB::RemoveAll()
     return true;
 }
 
-bool CForkAddressUnspentDB::UpdateAddressUnspent(const vector<CTxUnspent>& vAddNew, const vector<CTxUnspent>& vRemove)
+bool CForkAddressUnspentDB::UpdateAddressUnspent(const uint256& hashLastBlockIn, const vector<CTxUnspent>& vAddNew, const vector<CTxUnspent>& vRemove)
 {
     xengine::CWriteLock wlock(rwUpper);
 
@@ -66,6 +67,7 @@ bool CForkAddressUnspentDB::UpdateAddressUnspent(const vector<CTxUnspent>& vAddN
         mapUpper[CAddrUnspentKey(vd.output.destTo, static_cast<const CTxOutPoint&>(vd))].SetNull();
     }
 
+    hashLastBlock = hashLastBlockIn;
     return true;
 }
 
@@ -135,14 +137,14 @@ bool CForkAddressUnspentDB::ReadAddressUnspent(const CAddrUnspentKey& out, CUnsp
     return Read(out, unspent);
 }
 
-bool CForkAddressUnspentDB::RetrieveAddressUnspent(const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent)
+bool CForkAddressUnspentDB::RetrieveAddressUnspent(const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut)
 {
     if (dest.IsNull())
     {
         return false;
     }
     CGetSingleAddressUnspentWalker walker(mapUnspent);
-    return WalkThroughAddressUnspent(walker, dest);
+    return WalkThroughAddressUnspent(walker, dest, hashLastBlockOut);
 }
 
 bool CForkAddressUnspentDB::Copy(CForkAddressUnspentDB& dbAddressUnspent)
@@ -172,7 +174,7 @@ bool CForkAddressUnspentDB::Copy(CForkAddressUnspentDB& dbAddressUnspent)
     return true;
 }
 
-bool CForkAddressUnspentDB::WalkThroughAddressUnspent(CForkAddressUnspentDBWalker& walker, const CDestination& dest)
+bool CForkAddressUnspentDB::WalkThroughAddressUnspent(CForkAddressUnspentDBWalker& walker, const CDestination& dest, uint256& hashLastBlockOut)
 {
     try
     {
@@ -224,6 +226,7 @@ bool CForkAddressUnspentDB::WalkThroughAddressUnspent(CForkAddressUnspentDBWalke
                 }
             }
         }
+        hashLastBlockOut = hashLastBlock;
     }
     catch (exception& e)
     {
@@ -380,7 +383,7 @@ void CAddressUnspentDB::Deinitialize()
     }
 }
 
-bool CAddressUnspentDB::AddNewFork(const uint256& hashFork)
+bool CAddressUnspentDB::AddNewFork(const uint256& hashFork, const uint256& hashLastBlock)
 {
     CWriteLock wlock(rwAccess);
 
@@ -390,7 +393,7 @@ bool CAddressUnspentDB::AddNewFork(const uint256& hashFork)
         return true;
     }
 
-    std::shared_ptr<CForkAddressUnspentDB> spAddress(new CForkAddressUnspentDB(pathAddress / hashFork.GetHex()));
+    std::shared_ptr<CForkAddressUnspentDB> spAddress(new CForkAddressUnspentDB(pathAddress / hashFork.GetHex(), hashLastBlock));
     if (spAddress == nullptr || !spAddress->IsValid())
     {
         return false;
@@ -425,7 +428,7 @@ void CAddressUnspentDB::Clear()
     }
 }
 
-bool CAddressUnspentDB::UpdateAddressUnspent(const uint256& hashFork, const vector<CTxUnspent>& vAddNew, const vector<CTxUnspent>& vRemove)
+bool CAddressUnspentDB::UpdateAddressUnspent(const uint256& hashFork, const uint256& hashLastBlockIn, const vector<CTxUnspent>& vAddNew, const vector<CTxUnspent>& vRemove)
 {
     CReadLock rlock(rwAccess);
 
@@ -435,7 +438,7 @@ bool CAddressUnspentDB::UpdateAddressUnspent(const uint256& hashFork, const vect
         StdLog("CAddressUnspentDB", "UpdateAddressUnspent: find fork fail, fork: %s", hashFork.GetHex().c_str());
         return false;
     }
-    return it->second->UpdateAddressUnspent(vAddNew, vRemove);
+    return it->second->UpdateAddressUnspent(hashLastBlockIn, vAddNew, vRemove);
 }
 
 bool CAddressUnspentDB::RepairAddressUnspent(const uint256& hashFork, const vector<pair<CAddrUnspentKey, CUnspentOut>>& vAddUpdate, const vector<CAddrUnspentKey>& vRemove)
@@ -451,7 +454,7 @@ bool CAddressUnspentDB::RepairAddressUnspent(const uint256& hashFork, const vect
     return it->second->RepairAddressUnspent(vAddUpdate, vRemove);
 }
 
-bool CAddressUnspentDB::RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent)
+bool CAddressUnspentDB::RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut)
 {
     CReadLock rlock(rwAccess);
 
@@ -461,7 +464,7 @@ bool CAddressUnspentDB::RetrieveAddressUnspent(const uint256& hashFork, const CD
         StdLog("CAddressUnspentDB", "RetrieveAddressUnspent: find fork fail, fork: %s", hashFork.GetHex().c_str());
         return false;
     }
-    return it->second->RetrieveAddressUnspent(dest, mapUnspent);
+    return it->second->RetrieveAddressUnspent(dest, mapUnspent, hashLastBlockOut);
 }
 
 bool CAddressUnspentDB::Copy(const uint256& srcFork, const uint256& destFork)
@@ -490,7 +493,8 @@ bool CAddressUnspentDB::WalkThrough(const uint256& hashFork, CForkAddressUnspent
     map<uint256, std::shared_ptr<CForkAddressUnspentDB>>::iterator it = mapAddressDB.find(hashFork);
     if (it != mapAddressDB.end())
     {
-        return (*it).second->WalkThroughAddressUnspent(walker);
+        uint256 hashLastBlock;
+        return (*it).second->WalkThroughAddressUnspent(walker, CDestination(), hashLastBlock);
     }
     return false;
 }

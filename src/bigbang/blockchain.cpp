@@ -2445,9 +2445,9 @@ bool CBlockChain::CheckAddDeFiRelation(const uint256& hashFork, const CDestinati
     return cntrBlock.CheckAddDeFiRelation(hashFork, dest, parent);
 }
 
-bool CBlockChain::GetAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent)
+bool CBlockChain::GetAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut)
 {
-    return cntrBlock.RetrieveAddressUnspent(hashFork, dest, mapUnspent);
+    return cntrBlock.RetrieveAddressUnspent(hashFork, dest, mapUnspent, hashLastBlockOut);
 }
 
 int64 CBlockChain::GetAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
