@@ -103,3 +103,35 @@ jobs:
         run: |
           ./build/test/test_big
           ./build/test/test_ctsdb
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      # install dependencies by brew
+      - name: Prepare macos Build Dependencies
+        shell: bash
+        run: |
+          vcpkg.exe install boost:x64-windows
+          vcpkg.exe install libsodium:x64-windows
+          vcpkg.exe install openssl:x64-windows
+          vcpkg.exe install protobuf:x64-windows
+          vcpkg.exe install readline-win32:x64-windows
+
+      # checkout
+      - uses: actions/checkout@v2
+
+      # build
+      - name: Build
+        working-directory: ${{github.workspace}}
+        shell: bash
+        run: |
+          INSTALL.bat ${{ env.BUILD_TYPE }}
+
+      # test
+      - name: Test
+        working-directory: ${{github.workspace}}
+        shell: bash
+        run: |
+          .\build\test\test_big
+          .\build\test\test_ctsdb
