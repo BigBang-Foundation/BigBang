@@ -83,12 +83,6 @@ jobs:
         shell: bash
         run: |
           brew install cmake pkg-config openssl boost libsodium readline protobuf ncurses 
-          brew link --force readline
-      
-      # env
-      - name: Env
-        shell: bash
-        run: export PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig:/usr/local/opt/readline/lib/pkgconfig:${PKG_CONFIG_PATH}
 
       # checkout
       - uses: actions/checkout@v2
@@ -97,7 +91,11 @@ jobs:
       - name: Build
         working-directory: ${{github.workspace}}
         shell: bash
-        run: ./INSTALL.sh ${{ env.BUILD_TYPE }}
+        run: |
+          export OPENSSL_ROOT_DIR=`brew --prefix openssl`
+          export BOOST_ROOT=`brew --prefix boost`
+          export PKG_CONFIG_PATH=`brew --prefix libsodium`/lib/pkgconfig:${PKG_CONFIG_PATH}
+          ./INSTALL.sh ${{ env.BUILD_TYPE }}
 
       # test
       - name: Test
