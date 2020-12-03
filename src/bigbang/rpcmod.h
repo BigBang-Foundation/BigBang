@@ -25,6 +25,7 @@ public:
     ~CRPCMod();
     bool HandleEvent(xengine::CEventHttpReq& eventHttpReq) override;
     bool HandleEvent(xengine::CEventHttpBroken& eventHttpBroken) override;
+    bool HandleEvent(xengine::CEventHttpGetRsp& event) override;
     bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
     bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
 
@@ -152,6 +153,8 @@ protected:
     bool CalcForkPoints(const uint256& forkHash);
     void TrySwitchFork(const uint256& blockHash, uint256& forkHash);
     bool GetBlocks(const uint256& forkHash, const uint256& startHash, int32 n, std::vector<CBlockEx>& blocks);
+    bool CallRPC(const std::string& strHost, int nPort, uint64 nNonce, rpc::CRPCParamPtr spParam, int nReqId);
+    bool GetResponse(const std::string& strHost, int nPort, uint64 nNonce, const std::string& content);
 
 protected:
     xengine::IIOProc* pHttpServer;
@@ -159,16 +162,21 @@ protected:
     IService* pService;
     IDataStat* pDataStat;
     IForkManager* pForkManager;
+    xengine::IIOProc* pHttpGet;
+    xengine::CIOCompletion ioComplt;
 
 private:
     std::map<std::string, RPCFunc> mapRPCFunc;
     typedef struct _LiveClientInfo
     {
         int64 timestamp;
-        std::vector<uint256> registerForks;
+        uint64 nNonce;
+        std::string strIp;
+        int nPort;
+        std::set<uint256> registerForks;
     } LiveClientInfo;
 
-    std::map<std::string, LiveClientInfo> mapRPCClient;
+    std::map<std::string, LiveClientInfo> mapRPCClient;                        //  IP:PORT -> LiveClientInfo
     std::unordered_map<std::string, std::pair<uint256, uint256>> mapForkPoint; // fork point hash => (fork hash, fork point hash)
     bool fWriteRPCLog;
 };

@@ -174,6 +174,7 @@ CRPCMod::CRPCMod()
     pService = nullptr;
     pDataStat = nullptr;
     pForkManager = nullptr;
+    pHttpGet = nullptr;
 
     std::map<std::string, RPCFunc> temp_map = boost::assign::map_list_of
         /* System */
@@ -344,6 +345,11 @@ bool CRPCMod::HandleInitialize()
         Error("Failed to request forkmanager");
         return false;
     }
+    if (!GetObject("httpget", pHttpGet))
+    {
+        cerr << "Failed to request httpget\n";
+        return false;
+    }
     fWriteRPCLog = RPCServerConfig()->fRPCLogEnable;
 
     return true;
@@ -356,6 +362,7 @@ void CRPCMod::HandleDeinitialize()
     pService = nullptr;
     pDataStat = nullptr;
     pForkManager = nullptr;
+    pHttpGet = nullptr;
 }
 
 bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
@@ -3465,11 +3472,20 @@ CRPCResultPtr CRPCMod::RPCGetFork(rpc::CRPCParamPtr param)
 
 CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
 {
+    static uint64 nNonce = 0;
     auto spResult = MakeCReportResultPtr();
     auto spParam = CastParamPtr<CReportParam>(param);
     if (spParam->strIpport.empty() || spParam->vecForks.size() == 0)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "IP:PORT or forks is invalid");
+    }
+
+    // TODO: CHECK IP PORT FORMAT
+    std::string ipformat(spParam->strIpport.c_str());
+    std::size_t found = ipformat.find(':');
+    if (found == std::string::npos)
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid IP:PORT format.");
     }
 
     for (const std::string& fork : spParam->vecForks)
@@ -3485,10 +3501,11 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
             throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
         }
 
-        mapRPCClient[spParam->strIpport].registerForks.push_back(uint256(fork));
+        mapRPCClient[spParam->strIpport].registerForks.insert(uint256(fork));
     }
 
     mapRPCClient[spParam->strIpport].timestamp = GetTime();
+    mapRPCClient[spParam->strIpport].nNonce = nNonce++;
     spResult->strIpport = spParam->strIpport;
     return spResult;
 }
@@ -3687,8 +3704,73 @@ bool CRPCMod::GetBlocks(const uint256& forkHash, const uint256& startHash, int32
 
 bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
 {
-    (void)event;
-    StdWarn("CRPCMod::CSH", "Update New Block %s", event.data.GetHash().ToString().c_str());
+    const CBlockEx& block = event.data;
+    const uint256& hashFork = event.hashFork;
+    std::vector<std::string> deletes;
+    for (const auto& client : mapRPCClient)
+    {
+        const std::string& ipport = client.first;
+        int64 nTimeStamp = client.second.timestamp;
+        if (GetTime() - nTimeStamp > 60)
+        {
+            deletes.push_back(ipport);
+            continue;
+        }
+
+        if (client.second.registerForks.count(hashFork) == 0)
+        {
+            continue;
+        }
+
+        Cblockdatadetail data;
+
+        data.strHash = block.GetHash().ToString();
+        data.strPrev = block.hashPrev.GetHex();
+        data.nVersion = block.nVersion;
+        data.nType = block.nType;
+        data.nTime = block.GetBlockTime();
+        data.strSig = ToHexString(block.vchSig);
+        data.strProof = ToHexString(block.vchProof);
+        if (block.hashPrev != 0)
+        {
+            data.strPrev = block.hashPrev.GetHex();
+        }
+
+        uint256 tempHashFork;
+        int tempHeight = 0;
+        pService->GetBlockLocation(block.GetHash(), tempHashFork, tempHeight);
+        data.strFork = tempHashFork.ToString();
+        data.nHeight = block.GetBlockHeight();
+        int nDepth = pService->GetForkHeight(tempHashFork) - block.GetBlockHeight();
+        if (hashFork != pCoreProtocol->GetGenesisBlockHash())
+        {
+            nDepth = nDepth * 30;
+        }
+        data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, tempHashFork, block.GetHash(), nDepth, CAddress().ToString());
+        if (block.IsProofOfWork())
+        {
+            CProofOfHashWorkCompact proof;
+            proof.Load(block.vchProof);
+            data.nBits = proof.nBits;
+        }
+        else
+        {
+            data.nBits = 0;
+        }
+        for (int i = 0; i < block.vtx.size(); i++)
+        {
+            const CTransaction& tx = block.vtx[i];
+            data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, tempHashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
+        }
+
+        auto spParam = MakeCPushBlockParamPtr(data);
+        CallRPC(client.second.strIp, client.second.nPort, client.second.nNonce, spParam, client.second.nNonce);
+    }
+
+    for (const std::string& ipport : deletes)
+    {
+        mapRPCClient.erase(ipport);
+    }
     return true;
 }
 
@@ -3696,6 +3778,140 @@ bool CRPCMod::HandleEvent(CRPCModEventUpdateNewTx& event)
 {
     (void)event;
     return true;
+}
+
+bool CRPCMod::CallRPC(const std::string& strHost, int nPort, uint64 nNonce, CRPCParamPtr spParam, int nReqId)
+{
+    try
+    {
+        CRPCReqPtr spReq = MakeCRPCReqPtr(nReqId, spParam->Method(), spParam);
+        return GetResponse(strHost, nPort, nNonce, spReq->Serialize());
+    }
+    catch (const std::exception& e)
+    {
+        cerr << e.what() << endl;
+        StdError("CRPCMod", "CallRPC Exception: %s", e.what());
+        return false;
+    }
+    catch (...)
+    {
+        cerr << "Unknown error" << endl;
+        StdError("CRPCMod", "CallRPC Exception: Unknown error");
+        return false;
+    }
+    return false;
+}
+
+bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
+{
+    try
+    {
+        CHttpRsp& rsp = event.data;
+
+        if (rsp.nStatusCode < 0)
+        {
+
+            const char* strErr[] = { "", "connect failed", "invalid nonce", "activate failed",
+                                     "disconnected", "no response", "resolve failed",
+                                     "internal failure", "aborted" };
+            throw runtime_error(rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
+        }
+        if (rsp.nStatusCode == 401)
+        {
+            throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
+        }
+        else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
+        {
+            ostringstream oss;
+            oss << "server returned HTTP error " << rsp.nStatusCode;
+            throw runtime_error(oss.str());
+        }
+        else if (rsp.strContent.empty())
+        {
+            throw runtime_error("no response from server");
+        }
+
+        // Parse reply
+        if (Config()->fDebug)
+        {
+            cout << "response: " << rsp.strContent;
+            StdDebug("CRPCMod", "response: ", rsp.strContent.c_str());
+        }
+
+        auto spResp = DeserializeCRPCResp("", rsp.strContent);
+        if (spResp->IsError())
+        {
+            // Error
+            cerr << spResp->spError->Serialize(true) << endl;
+            cerr << strServerHelpTips << endl;
+            StdError("CRPCMod", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
+            StdError("CRPCMod", "RPC Response error tips: %s", strServerHelpTips.c_str());
+        }
+        else if (spResp->IsSuccessful())
+        {
+            cout << spResp->spResult->Serialize(true) << endl;
+        }
+        else
+        {
+            cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
+            StdError("CRPCMod", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
+        }
+    }
+    catch (exception& e)
+    {
+        cerr << e.what() << endl;
+        StdError("CRPCMod", "RPC Response Exception: %s ", e.what());
+    }
+    ioComplt.Completed(false);
+    return true;
+}
+
+bool CRPCMod::GetResponse(const std::string& strHost, int nPort, uint64 nNonce, const std::string& content)
+{
+
+    CEventHttpGet eventHttpGet(nNonce);
+    CHttpReqData& httpReqData = eventHttpGet.data;
+    httpReqData.strIOModule = GetOwnKey();
+    httpReqData.nTimeout = /*Config()->nRPCConnectTimeout*/ 10;
+
+    // if (Config()->fRPCSSLEnable)
+    // {
+    //     httpReqData.strProtocol = "https";
+    //     httpReqData.fVerifyPeer = Config()->fRPCSSLVerify;
+    //     httpReqData.strPathCA = Config()->strRPCCAFile;
+    //     httpReqData.strPathCert = Config()->strRPCCertFile;
+    //     httpReqData.strPathPK = Config()->strRPCPKFile;
+    // }
+    // else
+    //{
+    httpReqData.strProtocol = "http";
+    //}
+
+    CNetHost host(strHost, nPort);
+    httpReqData.mapHeader["host"] = host.ToString();
+    httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
+    httpReqData.mapHeader["method"] = "POST";
+    httpReqData.mapHeader["accept"] = "application/json";
+    httpReqData.mapHeader["content-type"] = "application/json";
+    httpReqData.mapHeader["user-agent"] = string("bigbang-json-rpc/");
+    httpReqData.mapHeader["connection"] = "Keep-Alive";
+    // if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
+    // {
+    //     string strAuth;
+    //     CHttpUtil().Base64Encode(Config()->strRPCUser + ":" + Config()->strRPCPass, strAuth);
+    //     httpReqData.mapHeader["authorization"] = string("Basic ") + strAuth;
+    // }
+
+    httpReqData.strContent = content + "\n";
+
+    ioComplt.Reset();
+
+    if (!pHttpGet->DispatchEvent(&eventHttpGet))
+    {
+        return false;
+    }
+    bool fResult = false;
+    return (ioComplt.WaitForComplete(fResult) && fResult);
 }
 
 } // namespace bigbang
