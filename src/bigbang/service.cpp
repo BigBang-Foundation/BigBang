@@ -21,7 +21,7 @@ namespace bigbang
 // CService
 
 CService::CService()
-  : pCoreProtocol(nullptr), pBlockChain(nullptr), pTxPool(nullptr), pDispatcher(nullptr), pWallet(nullptr), pNetwork(nullptr), pForkManager(nullptr), pNetChannel(nullptr)
+  : pCoreProtocol(nullptr), pBlockChain(nullptr), pTxPool(nullptr), pDispatcher(nullptr), pWallet(nullptr), pNetwork(nullptr), pForkManager(nullptr), pNetChannel(nullptr), pRPCMod(nullptr)
 {
 }
 
@@ -79,6 +79,12 @@ bool CService::HandleInitialize()
         return false;
     }
 
+    if (!GetObject("rpcmod", pRPCMod))
+    {
+        Error("Failed to request rpcmod");
+        return false;
+    }
+
     return true;
 }
 
@@ -92,6 +98,7 @@ void CService::HandleDeinitialize()
     pNetwork = nullptr;
     pForkManager = nullptr;
     pNetChannel = nullptr;
+    pRPCMod = nullptr;
 }
 
 bool CService::HandleInvoke()
