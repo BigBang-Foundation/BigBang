@@ -113,10 +113,8 @@ jobs:
         id: vcpkg
         uses: actions/cache@v2
         with:
-          path: |
-            C:\vcpkg\downloads
-            C:\vcpkg\packages
-          key: ${{ runner.os }}-vcpkg
+          path: C:\vcpkg\installed
+          key: ${{ runner.os }}-vcpkg-installed
       
       # install dependencies by brew
       - name: Prepare windows Build Dependencies
