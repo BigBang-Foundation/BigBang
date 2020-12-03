@@ -159,6 +159,11 @@ void CService::NotifyBlockChainUpdate(const CBlockChainUpdate& update)
             ++mt;
         }
     }
+
+    uint64 nNonce = 0;
+    CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, update.hashFork, 0);
+    pUpdateNewBlockEvent->data = update.vBlockAddNew[update.vBlockAddNew.size() - 1];
+    pRPCMod->PostEvent(pUpdateNewBlockEvent);
 }
 
 void CService::NotifyNetworkPeerUpdate(const CNetworkPeerUpdate& update)
