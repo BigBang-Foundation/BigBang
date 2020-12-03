@@ -628,7 +628,7 @@ bool CCheckForkManager::CheckDbValidFork(const uint256& hashBlock, const uint256
         StdLog("check", "CheckDbValidFork: hashRefFdBlock or mapValidFork error, block: %s", hashBlock.GetHex().c_str());
         return false;
     }
-    for (const auto vd : mapValidForkGet)
+    for (const auto& vd : mapValidForkGet)
     {
         const auto it = mapValidFork.find(vd.first);
         if (it == mapValidFork.end() || it->second != vd.second)

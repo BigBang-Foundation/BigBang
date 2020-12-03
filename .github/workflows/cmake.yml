@@ -81,8 +81,7 @@ jobs:
       # install dependencies by brew
       - name: Prepare macos Build Dependencies
         shell: bash
-        run: |
-          brew install cmake pkg-config openssl boost libsodium readline protobuf ncurses 
+        run: brew install cmake pkg-config openssl boost libsodium readline protobuf ncurses 
 
       # checkout
       - uses: actions/checkout@v2
