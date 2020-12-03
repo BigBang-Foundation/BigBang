@@ -3676,6 +3676,7 @@ bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
             continue;
         }
 
+        StdWarn("CRPCMod::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
         if (client.second.registerForks.count(hashFork) == 0)
         {
             continue;
@@ -3782,7 +3783,7 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
         cerr << e.what() << endl;
         StdError("CRPCMod", "RPC Response Exception: %s ", e.what());
     }
-    ioComplt.Completed(false);
+    //ioComplt.Completed(false);
     return true;
 }
 
@@ -3824,14 +3825,15 @@ bool CRPCMod::GetResponse(const std::string& strHost, int nPort, uint64 nNonce, 
 
     httpReqData.strContent = content + "\n";
 
-    ioComplt.Reset();
+    //ioComplt.Reset();
 
     if (!pHttpGet->DispatchEvent(&eventHttpGet))
     {
         return false;
     }
-    bool fResult = false;
-    return (ioComplt.WaitForComplete(fResult) && fResult);
+    //bool fResult = false;
+    //return (ioComplt.WaitForComplete(fResult) && fResult);
+    return true;
 }
 
 Cblockdatadetail CRPCMod::BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block)
