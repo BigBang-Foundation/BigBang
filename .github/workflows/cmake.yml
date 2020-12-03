@@ -108,8 +108,16 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # cache vcpkg download
+      - name: cache vcpkg
+        id: vcpkg
+        uses: actions/cache@v2
+        with:
+          path: C:\vcpkg\downloads
+          key: ${{ runner.os }}-vcpkg
+      
       # install dependencies by brew
-      - name: Prepare macos Build Dependencies
+      - name: Prepare windows Build Dependencies
         shell: bash
         run: |
           vcpkg.exe install boost:x64-windows
