@@ -155,12 +155,13 @@ protected:
     bool CalcForkPoints(const uint256& forkHash);
     void TrySwitchFork(const uint256& blockHash, uint256& forkHash);
     bool GetBlocks(const uint256& forkHash, const uint256& startHash, int32 n, std::vector<CBlockEx>& blocks);
-    bool CallRPC(const std::string& strHost, int nPort, uint64 nNonce, rpc::CRPCParamPtr spParam, int nReqId);
-    bool GetResponse(const std::string& strHost, int nPort, uint64 nNonce, const std::string& content);
+    bool CallRPC(bool fSSL, const std::string& strHost, int nPort, uint64 nNonce, rpc::CRPCParamPtr spParam, int nReqId);
+    bool GetResponse(bool fSSL, const std::string& strHost, int nPort, uint64 nNonce, const std::string& content);
     rpc::Cblockdatadetail BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block);
     void RemoveClients(const std::vector<std::string>& clients);
     void RemoveClient(const std::string& client);
     void RemoveClient(uint64 nNonce);
+
 protected:
     xengine::IIOProc* pHttpServer;
     ICoreProtocol* pCoreProtocol;
@@ -176,7 +177,8 @@ private:
     {
         int64 timestamp;
         uint64 nNonce;
-        std::string strIp;
+        bool fSSL;
+        std::string strHost;
         int nPort;
         std::set<uint256> registerForks;
     } LiveClientInfo;

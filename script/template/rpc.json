@@ -1470,7 +1470,7 @@
             "content": {
                 "ipport": {
                     "type": "string",
-                    "desc": "client ip and port, like: 192.168.1.100:33"
+                    "desc": "client ip and port, like: http://192.168.1.100:33 or https://192.168.1.100:33"
                 },
                 "forks": {
                     "type": "array",
@@ -1490,7 +1490,7 @@
             "desc": "client ip and port, like: 192.168.1.100:33"
         },
         "example": [{
-            "request": "curl -d '{\"id\":69,\"method\":\"report\",\"jsonrpc\":\"2.0\",\"params\":{\"ipport\":\"192.168.1.100:33\", \"forks\":[\"a63d6f9d8055dc1bd7799593fb46ddc1b4e4519bd049e8eba1a0806917dcafc0\"]}}' http://127.0.0.1:9902",
+            "request": "curl -d '{\"id\":69,\"method\":\"report\",\"jsonrpc\":\"2.0\",\"params\":{\"ipport\":\"http://192.168.1.100:33\", \"forks\":[\"a63d6f9d8055dc1bd7799593fb46ddc1b4e4519bd049e8eba1a0806917dcafc0\"]}}' http://127.0.0.1:9902",
             "response": "{\"id\":69,\"jsonrpc\":\"2.0\",\"result\":\"192.168.1.100:33\"}"
         }],
         "error": [
