@@ -148,6 +148,8 @@ private:
     rpc::CRPCResultPtr RPCGetFork(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCReport(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetBlocks(rpc::CRPCParamPtr param);
+    /*call LWS Server for test PushBlock*/
+    rpc::CRPCResultPtr RPCPushBlock(rpc::CRPCParamPtr param);
 
 protected:
     bool CalcForkPoints(const uint256& forkHash);

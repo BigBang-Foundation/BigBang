@@ -202,6 +202,8 @@ CRPCMod::CRPCMod()
         //
         ("getblocks", &CRPCMod::RPCGetBlocks)
         //
+        ("pushblock", &CRPCMod::RPCPushBlock)
+        ////////////////////////////////////////
         ("getgenealogy", &CRPCMod::RPCGetForkGenealogy)
         //
         ("getblocklocation", &CRPCMod::RPCGetBlockLocation)
@@ -3650,15 +3652,24 @@ bool CRPCMod::GetBlocks(const uint256& forkHash, const uint256& startHash, int32
     return true;
 }
 
+CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CPushBlockParam>(param);
+    StdWarn("CRPCMod::CSH", "Push Block called hash: %s", spParam->block.strHash.c_str());
+    return MakeCPushBlockResultPtr(spParam->block.strHash);
+}
+
 bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
 {
     const CBlockEx& block = event.data;
     const uint256& hashFork = event.hashFork;
+    StdWarn("CRPCMod::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
     std::vector<std::string> deletes;
     for (const auto& client : mapRPCClient)
     {
         const std::string& ipport = client.first;
         int64 nTimeStamp = client.second.timestamp;
+        StdWarn("CRPCMod::CSH", "Update New Block ipport: %s", ipport.c_str());
         if (GetTime() - nTimeStamp > 60)
         {
             deletes.push_back(ipport);
@@ -3671,6 +3682,7 @@ bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
         }
         Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
         auto spParam = MakeCPushBlockParamPtr(data);
+        StdWarn("CRPCMod::CSH", "Update New Block Calling: IP: %s, Port: %d, Nonce: %d", client.second.strIp.c_str(), client.second.nPort, client.second.nNonce);
         CallRPC(client.second.strIp, client.second.nPort, client.second.nNonce, spParam, client.second.nNonce);
     }
 
