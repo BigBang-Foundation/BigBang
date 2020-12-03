@@ -17,7 +17,7 @@
 namespace bigbang
 {
 
-class CRPCMod : public xengine::IIOModule, virtual public xengine::CHttpEventListener, public CRPCModEventListener
+class CRPCMod : public xengine::IIOModule, virtual public xengine::CHttpEventListener, virtual public CRPCModEventListener
 {
 public:
     typedef rpc::CRPCResultPtr (CRPCMod::*RPCFunc)(rpc::CRPCParamPtr param);
