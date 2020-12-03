@@ -120,6 +120,7 @@ jobs:
       
       # install dependencies by brew
       - name: Prepare windows Build Dependencies
+        if: steps.vcpkg.outputs.cache-hit != 'true'
         run: |
           vcpkg.exe install boost:x64-windows
           vcpkg.exe install libsodium:x64-windows
