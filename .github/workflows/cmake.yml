@@ -130,11 +130,11 @@ jobs:
       # checkout
       - uses: actions/checkout@v2
 
-      # build
-      - name: Build
-        working-directory: ${{github.workspace}}
-        run: |
-          .\INSTALL.bat ${{ env.BUILD_TYPE }}
+      # # build
+      # - name: Build
+      #   working-directory: ${{github.workspace}}
+      #   run: |
+      #     .\INSTALL.bat ${{ env.BUILD_TYPE }}
 
       # test
       - name: Test
