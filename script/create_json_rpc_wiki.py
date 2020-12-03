@@ -4,7 +4,7 @@
 import sys
 sys.dont_write_bytecode = True
 
-import commands
+import subprocess
 import os
 import re
 
@@ -19,11 +19,11 @@ def create_wiki(filename = None):
     output_format, output_index, output_commands = '', '', ''
 
     # get summary help info
-    return_code, simple = commands.getstatusoutput(simple_help)
+    return_code, simple = subprocess.getstatusoutput(simple_help)
     if return_code != 0:
         raise Exception('Execute fail: [%s]' % simple_help)
     # get detail help info
-    return_code, detail = commands.getstatusoutput(detail_help)
+    return_code, detail = subprocess.getstatusoutput(detail_help)
     if return_code != 0:
         raise Exception('Execute fail: [%s]' % detail_help)
 
@@ -107,9 +107,9 @@ def create_wiki(filename = None):
         command_list[index] = '### %s\n' % cmd + c
     output_commands = ''.join(command_list)
 
-    print output_format
-    print output_index
-    print output_commands
+    print (output_format)
+    print (output_index)
+    print (output_commands)
     
 
 if __name__ == '__main__':
