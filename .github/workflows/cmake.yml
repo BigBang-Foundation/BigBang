@@ -21,30 +21,36 @@ jobs:
         os: [ubuntu-20.04, ubuntu-18.04]
 
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Prepare ubuntu-20.04 Build Dependencies
+      - name: Prepare ubuntu Build Dependencies
         shell: bash
-        if: matrix.os == 'ubuntu-20.04'
-        run: | 
-          sudo apt update -qq
-          sudo apt install -y build-essential libboost-all-dev openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev libsodium-dev cmake libprotobuf-dev protobuf-compiler
-      
-      - name: Prepare ubuntu-18.04 Build Dependencies
-        shell: bash
-        if: matrix.os == 'ubuntu-18.04'
         run: | 
           sudo apt update -qq
           sudo apt install -y build-essential libboost-all-dev openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev cmake libprotobuf-dev protobuf-compiler
           sudo apt install -y cppcheck valgrind
+      
+      - name: cache libsodium-1.0.18
+        id: libsodium
+        uses: actions/cache@v2
+        with:
+          path: ~/libsodium-1.0.18
+          key: ${{ runner.os }}-libsodium-1.0.18
+      
+      - name: Install cache libsodium-1.0.18
+        if: steps.libsodium.outputs.cache-hit == 'true'
+        run: cd ~/libsodium-1.0.18 && sudo make install
 
-          wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz --no-check-certificate
-          tar -zxvf libsodium-1.0.18.tar.gz
-          cd libsodium-1.0.18
+      - name: Install cache libsodium-1.0.18
+        if: steps.libsodium.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz -P ~ --no-check-certificate
+          tar -zxvf ~/libsodium-1.0.18.tar.gz -C ~
+          cd ~/libsodium-1.0.18
           ./configure
-          make -j8 && make check
+          make -j4
           sudo make install
-          cd ..
+          cd -
+
+      - uses: actions/checkout@v2
 
       - name: Build
         working-directory: ${{github.workspace}}
