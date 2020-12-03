@@ -904,40 +904,7 @@ CRPCResultPtr CRPCMod::RPCGetBlockDetail(CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown block");
     }
 
-    Cblockdatadetail data;
-
-    data.strHash = hashBlock.GetHex();
-    data.strPrev = block.hashPrev.GetHex();
-    data.nVersion = block.nVersion;
-    data.nType = block.nType;
-    data.nTime = block.GetBlockTime();
-    if (block.hashPrev != 0)
-    {
-        data.strPrev = block.hashPrev.GetHex();
-    }
-    data.strFork = fork.GetHex();
-    data.nHeight = height;
-    int nDepth = height < 0 ? 0 : pService->GetForkHeight(fork) - height;
-    if (fork != pCoreProtocol->GetGenesisBlockHash())
-    {
-        nDepth = nDepth * 30;
-    }
-    data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, fork, hashBlock, nDepth, CAddress().ToString());
-    if (block.IsProofOfWork())
-    {
-        CProofOfHashWorkCompact proof;
-        proof.Load(block.vchProof);
-        data.nBits = proof.nBits;
-    }
-    else
-    {
-        data.nBits = 0;
-    }
-    for (int i = 0; i < block.vtx.size(); i++)
-    {
-        const CTransaction& tx = block.vtx[i];
-        data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, fork, hashBlock, nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
-    }
+    Cblockdatadetail data = BlockDetailToJSON(fork, block);
     return MakeCgetblockdetailResultPtr(data);
 }
 
@@ -3556,47 +3523,7 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
 
     for (const CBlockEx& block : blocks)
     {
-        Cblockdatadetail data;
-
-        data.strHash = block.GetHash().ToString();
-        data.strPrev = block.hashPrev.GetHex();
-        data.nVersion = block.nVersion;
-        data.nType = block.nType;
-        data.nTime = block.GetBlockTime();
-        data.strSig = ToHexString(block.vchSig);
-        data.strProof = ToHexString(block.vchProof);
-        if (block.hashPrev != 0)
-        {
-            data.strPrev = block.hashPrev.GetHex();
-        }
-
-        uint256 tempHashFork;
-        int tempHeight = 0;
-        pService->GetBlockLocation(block.GetHash(), tempHashFork, tempHeight);
-        data.strFork = tempHashFork.ToString();
-        data.nHeight = block.GetBlockHeight();
-        int nDepth = pService->GetForkHeight(tempHashFork) - block.GetBlockHeight();
-        if (hashFork != pCoreProtocol->GetGenesisBlockHash())
-        {
-            nDepth = nDepth * 30;
-        }
-        data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, tempHashFork, block.GetHash(), nDepth, CAddress().ToString());
-        if (block.IsProofOfWork())
-        {
-            CProofOfHashWorkCompact proof;
-            proof.Load(block.vchProof);
-            data.nBits = proof.nBits;
-        }
-        else
-        {
-            data.nBits = 0;
-        }
-        for (int i = 0; i < block.vtx.size(); i++)
-        {
-            const CTransaction& tx = block.vtx[i];
-            data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, tempHashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
-        }
-
+        Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
         spResult->vecBlocks.push_back(data);
     }
     return spResult;
@@ -3721,48 +3648,7 @@ bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
         {
             continue;
         }
-
-        Cblockdatadetail data;
-
-        data.strHash = block.GetHash().ToString();
-        data.strPrev = block.hashPrev.GetHex();
-        data.nVersion = block.nVersion;
-        data.nType = block.nType;
-        data.nTime = block.GetBlockTime();
-        data.strSig = ToHexString(block.vchSig);
-        data.strProof = ToHexString(block.vchProof);
-        if (block.hashPrev != 0)
-        {
-            data.strPrev = block.hashPrev.GetHex();
-        }
-
-        uint256 tempHashFork;
-        int tempHeight = 0;
-        pService->GetBlockLocation(block.GetHash(), tempHashFork, tempHeight);
-        data.strFork = tempHashFork.ToString();
-        data.nHeight = block.GetBlockHeight();
-        int nDepth = pService->GetForkHeight(tempHashFork) - block.GetBlockHeight();
-        if (hashFork != pCoreProtocol->GetGenesisBlockHash())
-        {
-            nDepth = nDepth * 30;
-        }
-        data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, tempHashFork, block.GetHash(), nDepth, CAddress().ToString());
-        if (block.IsProofOfWork())
-        {
-            CProofOfHashWorkCompact proof;
-            proof.Load(block.vchProof);
-            data.nBits = proof.nBits;
-        }
-        else
-        {
-            data.nBits = 0;
-        }
-        for (int i = 0; i < block.vtx.size(); i++)
-        {
-            const CTransaction& tx = block.vtx[i];
-            data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, tempHashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
-        }
-
+        Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
         auto spParam = MakeCPushBlockParamPtr(data);
         CallRPC(client.second.strIp, client.second.nPort, client.second.nNonce, spParam, client.second.nNonce);
     }
@@ -3912,6 +3798,51 @@ bool CRPCMod::GetResponse(const std::string& strHost, int nPort, uint64 nNonce, 
     }
     bool fResult = false;
     return (ioComplt.WaitForComplete(fResult) && fResult);
+}
+
+Cblockdatadetail CRPCMod::BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block)
+{
+    Cblockdatadetail data;
+
+    data.strHash = block.GetHash().ToString();
+    data.strPrev = block.hashPrev.GetHex();
+    data.nVersion = block.nVersion;
+    data.nType = block.nType;
+    data.nTime = block.GetBlockTime();
+    data.strSig = ToHexString(block.vchSig);
+    data.strProof = ToHexString(block.vchProof);
+    if (block.hashPrev != 0)
+    {
+        data.strPrev = block.hashPrev.GetHex();
+    }
+
+    uint256 tempHashFork;
+    int tempHeight = 0;
+    pService->GetBlockLocation(block.GetHash(), tempHashFork, tempHeight);
+    data.strFork = tempHashFork.ToString();
+    data.nHeight = block.GetBlockHeight();
+    int nDepth = pService->GetForkHeight(tempHashFork) - block.GetBlockHeight();
+    if (hashFork != pCoreProtocol->GetGenesisBlockHash())
+    {
+        nDepth = nDepth * 30;
+    }
+    data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, tempHashFork, block.GetHash(), nDepth, CAddress().ToString());
+    if (block.IsProofOfWork())
+    {
+        CProofOfHashWorkCompact proof;
+        proof.Load(block.vchProof);
+        data.nBits = proof.nBits;
+    }
+    else
+    {
+        data.nBits = 0;
+    }
+    for (int i = 0; i < block.vtx.size(); i++)
+    {
+        const CTransaction& tx = block.vtx[i];
+        data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, tempHashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
+    }
+    return data;
 }
 
 } // namespace bigbang

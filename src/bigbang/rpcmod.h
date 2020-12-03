@@ -155,6 +155,7 @@ protected:
     bool GetBlocks(const uint256& forkHash, const uint256& startHash, int32 n, std::vector<CBlockEx>& blocks);
     bool CallRPC(const std::string& strHost, int nPort, uint64 nNonce, rpc::CRPCParamPtr spParam, int nReqId);
     bool GetResponse(const std::string& strHost, int nPort, uint64 nNonce, const std::string& content);
+    rpc::Cblockdatadetail BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block);
 
 protected:
     xengine::IIOProc* pHttpServer;
