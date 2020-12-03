@@ -3684,6 +3684,7 @@ bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
         auto spParam = MakeCPushBlockParamPtr(data);
         StdWarn("CRPCMod::CSH", "Update New Block Calling: IP: %s, Port: %d, Nonce: %d", client.second.strIp.c_str(), client.second.nPort, client.second.nNonce);
         CallRPC(client.second.strIp, client.second.nPort, client.second.nNonce, spParam, client.second.nNonce);
+        StdWarn("CRPCMod::CSH", "Update New Block Call Finished: IP: %s, Port: %d, Nonce: %d", client.second.strIp.c_str(), client.second.nPort, client.second.nNonce);
     }
 
     for (const std::string& ipport : deletes)
