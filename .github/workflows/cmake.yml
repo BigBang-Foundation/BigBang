@@ -118,7 +118,6 @@ jobs:
       
       # install dependencies by brew
       - name: Prepare windows Build Dependencies
-        shell: bash
         run: |
           vcpkg.exe install boost:x64-windows
           vcpkg.exe install libsodium:x64-windows
@@ -132,14 +131,12 @@ jobs:
       # build
       - name: Build
         working-directory: ${{github.workspace}}
-        shell: bash
         run: |
           INSTALL.bat ${{ env.BUILD_TYPE }}
 
       # test
       - name: Test
         working-directory: ${{github.workspace}}
-        shell: bash
         run: |
           .\build\test\test_big
           .\build\test\test_ctsdb
