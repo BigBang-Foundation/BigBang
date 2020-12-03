@@ -75,7 +75,7 @@ public:
 
 protected:
     template <typename O>
-    void BlockheadSerialize(CStream& s, O& opt)
+    void Serialize(CStream& s, O& opt)
     {
         s.Serialize(hashFork, opt);
         s.Serialize(data, opt);
