@@ -132,7 +132,7 @@ jobs:
       - name: Build
         working-directory: ${{github.workspace}}
         run: |
-          INSTALL.bat ${{ env.BUILD_TYPE }}
+          .\INSTALL.bat ${{ env.BUILD_TYPE }}
 
       # test
       - name: Test
