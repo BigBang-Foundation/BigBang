@@ -3447,12 +3447,31 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "IP:PORT or forks is invalid");
     }
 
-    // TODO: CHECK IP PORT FORMAT
     std::string ipformat(spParam->strIpport.c_str());
     std::size_t found = ipformat.find(':');
     if (found == std::string::npos)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid IP:PORT format.");
+    }
+
+    std::vector<std::string> tokens;
+    std::string token;
+    std::istringstream tokenStream(ipformat);
+    while (std::getline(tokenStream, token, ':'))
+    {
+        tokens.push_back(token);
+    }
+
+    if (tokens.size() != 2)
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid IP:PORT format.");
+    }
+
+    std::string strIP = tokens[0];
+    int nPort = stoi(tokens[1]);
+    if (nPort < 0)
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid Port");
     }
 
     for (const std::string& fork : spParam->vecForks)
@@ -3473,6 +3492,8 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
 
     mapRPCClient[spParam->strIpport].timestamp = GetTime();
     mapRPCClient[spParam->strIpport].nNonce = nNonce++;
+    mapRPCClient[spParam->strIpport].strIp = strIP;
+    mapRPCClient[spParam->strIpport].nPort = nPort;
     spResult->strIpport = spParam->strIpport;
     return spResult;
 }

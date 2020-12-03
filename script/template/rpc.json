@@ -1495,7 +1495,10 @@
         }],
         "error": [
             "{\"code\":-6,\"message\":\"Invalid fork\"}",
-            "{\"code\":-6,\"message\":\"Unknown fork\"}"
+            "{\"code\":-6,\"message\":\"Unknown fork\"}",
+            "{\"code\":-6,\"message\":\"IP:PORT or forks is invalid\"}",
+            "{\"code\":-6,\"message\":\"Invalid IP:PORT format.\"}",
+            "{\"code\":-6,\"message\":\"Invalid Port\"}"
         ]
     },
     "getblocks": {
