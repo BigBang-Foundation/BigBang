@@ -241,7 +241,6 @@ public:
 
     bool Initialize(const string& strDataPathIn, bool fTestnetIn, bool fOnlyCheckIn, const uint256& hashGenesisBlockIn);
     bool FetchForkStatus();
-    void GetJointInheritFork(const uint256& hashFork, const uint256& hashJoint, std::vector<uint256>& vFork);
 
     bool AddBlockForkContext(const CBlockEx& blockex);
     bool VerifyBlockForkTx(const uint256& hashPrev, const CTransaction& tx, vector<pair<CDestination, CForkContext>>& vForkCtxt);
@@ -393,7 +392,7 @@ public:
     bool AddBlockUnspent(const CTxOutPoint& txPoint, const CTxOut& txOut, int nTxType, int nHeight);
     bool AddBlockSpent(const CTxOutPoint& txPoint);
 
-    void InheritCopyData(const CCheckBlockFork& from);
+    bool InheritCopyData(const CCheckBlockFork& fromParent, const CBlockIndex* pJointBlockIndex);
     bool CheckForkAddressTxIndex(const uint256& hashFork, const int nCheckHeight);
 
 public:
@@ -429,6 +428,7 @@ public:
 
     bool Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset) override;
 
+    bool InheritForkData(const CBlockEx& blockOrigin, CCheckBlockFork& subBlockFork);
     CBlockIndex* AddBlockIndex(const uint256& hashBlock, const CBlockEx& block, CBlockIndex* pIndexPrev, uint32 nFile, uint32 nOffset);
     bool GetBlockTrust(const CBlockEx& block, uint256& nChainTrust, const CBlockIndex* pIndexPrev = nullptr, const CDelegateAgreement& agreement = CDelegateAgreement(), const CBlockIndex* pIndexRef = nullptr, std::size_t nEnrollTrust = 0);
     bool GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlgo, int& nBits);

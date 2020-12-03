@@ -246,25 +246,6 @@ bool CCheckForkManager::FetchForkStatus()
     return true;
 }
 
-void CCheckForkManager::GetJointInheritFork(const uint256& hashFork, const uint256& hashJoint, std::vector<uint256>& vFork)
-{
-    auto mt = mapBlockForkSched.find(hashFork);
-    if (mt != mapBlockForkSched.end() && !mt->second.ctxtFork.IsPrivate())
-    {
-        auto it = mt->second.mapJoint.lower_bound(hashJoint);
-        while (it != mt->second.mapJoint.upper_bound(hashJoint))
-        {
-            const uint256& hashSubFork = it->second;
-            auto nt = mapBlockForkSched.find(hashSubFork);
-            if (nt != mapBlockForkSched.end() && !nt->second.ctxtFork.IsIsolated())
-            {
-                vFork.push_back(hashSubFork);
-            }
-            ++it;
-        }
-    }
-}
-
 bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
 {
     uint256 hashBlock = blockex.GetHash();
@@ -1322,14 +1303,48 @@ bool CCheckBlockFork::AddBlockSpent(const CTxOutPoint& txPoint)
     return true;
 }
 
-void CCheckBlockFork::InheritCopyData(const CCheckBlockFork& from)
+bool CCheckBlockFork::InheritCopyData(const CCheckBlockFork& fromParent, const CBlockIndex* pJointBlockIndex)
 {
     mapBlockUnspent.clear();
-    mapBlockUnspent.insert(from.mapBlockUnspent.begin(), from.mapBlockUnspent.end());
+    mapBlockUnspent.insert(fromParent.mapBlockUnspent.begin(), fromParent.mapBlockUnspent.end());
 
     mapParentForkBlockTxIndex.clear();
-    mapParentForkBlockTxIndex.insert(from.mapParentForkBlockTxIndex.begin(), from.mapParentForkBlockTxIndex.end());
-    mapParentForkBlockTxIndex.insert(from.mapBlockTxIndex.begin(), from.mapBlockTxIndex.end());
+    mapParentForkBlockTxIndex.insert(fromParent.mapParentForkBlockTxIndex.begin(), fromParent.mapParentForkBlockTxIndex.end());
+
+    mapBlockTxIndex.clear();
+    mapBlockTxIndex.insert(fromParent.mapBlockTxIndex.begin(), fromParent.mapBlockTxIndex.end());
+
+    mapBlockTxInfo.clear();
+    mapBlockTxInfo.insert(fromParent.mapBlockTxInfo.begin(), fromParent.mapBlockTxInfo.end());
+
+    mapBlockAddress.clear();
+    mapBlockAddress.insert(fromParent.mapBlockAddress.begin(), fromParent.mapBlockAddress.end());
+
+    // remove block
+    for (CBlockIndex* p = fromParent.pLast; p != nullptr && p != pJointBlockIndex; p = p->pPrev)
+    {
+        CBlockEx block;
+        if (!tsBlock.Read(block, p->nFile, p->nOffset))
+        {
+            StdError("check", "Inherit copy data: Read remove block fail, block: %s", p->GetBlockHash().GetHex().c_str());
+            return false;
+        }
+        if (!RemoveBlockData(block, p))
+        {
+            StdError("check", "Inherit copy data: Remove block fail, block: %s", p->GetBlockHash().GetHex().c_str());
+            return false;
+        }
+    }
+
+    if (!mapBlockTxIndex.empty())
+    {
+        mapParentForkBlockTxIndex.insert(mapBlockTxIndex.begin(), mapBlockTxIndex.end());
+        mapBlockTxIndex.clear();
+    }
+    mapBlockTxInfo.clear();
+    mapBlockAddress.clear();
+    nCacheTxInfoBlockCount = 0;
+    return true;
 }
 
 bool CCheckBlockFork::CheckForkAddressTxIndex(const uint256& hashFork, const int nCheckHeight)
@@ -1545,27 +1560,20 @@ bool CCheckBlockWalker::Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset
     if (nt == mapCheckFork.end())
     {
         nt = mapCheckFork.insert(make_pair(hashFork, CCheckBlockFork(strDataPath, fOnlyCheck, fCheckAddrTxIndex, objTsBlock, objForkManager, dbAddressTxIndex))).first;
+        if (block.IsOrigin() && !block.IsGenesis())
+        {
+            if (!InheritForkData(block, nt->second))
+            {
+                StdError("check", "Block walk: Get fork joint block fail, prev block: %s.", block.hashPrev.GetHex().c_str());
+                return false;
+            }
+        }
     }
     CCheckBlockFork& checkBlockFork = nt->second;
     if (!checkBlockFork.AddForkBlock(block, pNewBlockIndex))
     {
         StdError("check", "Block walk: Add fork block fail, block: %s.", hashBlock.GetHex().c_str());
         return false;
-    }
-
-    vector<uint256> vInheritFork;
-    objForkManager.GetJointInheritFork(hashFork, hashBlock, vInheritFork);
-    if (!vInheritFork.empty())
-    {
-        for (size_t i = 0; i < vInheritFork.size(); i++)
-        {
-            auto mt = mapCheckFork.find(vInheritFork[i]);
-            if (mt == mapCheckFork.end())
-            {
-                mt = mapCheckFork.insert(make_pair(vInheritFork[i], CCheckBlockFork(strDataPath, fOnlyCheck, fCheckAddrTxIndex, objTsBlock, objForkManager, dbAddressTxIndex))).first;
-            }
-            mt->second.InheritCopyData(checkBlockFork);
-        }
     }
 
     if (block.IsGenesis())
@@ -1582,6 +1590,53 @@ bool CCheckBlockWalker::Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset
     if (nBlockCount % 100000 == 0)
     {
         StdLog("check", "Block walk: Fetch block count: %lu, height: %d.", nBlockCount, block.GetBlockHeight());
+    }
+    return true;
+}
+
+bool CCheckBlockWalker::InheritForkData(const CBlockEx& blockOrigin, CCheckBlockFork& subBlockFork)
+{
+    uint256 hashNewOriginBlock = blockOrigin.GetHash();
+
+    auto nt = mapCheckFork.find(objProofParam.hashGenesisBlock);
+    if (nt == mapCheckFork.end() || nt->second.pLast == nullptr)
+    {
+        StdError("check", "Inherit fork data: Genesis fork not find, genesis fork: %s.",
+                 objProofParam.hashGenesisBlock.GetHex().c_str());
+        return false;
+    }
+
+    CForkContext ctxt;
+    if (!objForkManager.GetValidForkContext(nt->second.pLast->GetBlockHash(), hashNewOriginBlock, ctxt))
+    {
+        StdError("check", "Inherit fork data: fork not find or invalid, fork: %s.", hashNewOriginBlock.GetHex().c_str());
+        return false;
+    }
+    if (!ctxt.IsIsolated())
+    {
+        auto it = mapBlockIndex.find(blockOrigin.hashPrev);
+        if (it == mapBlockIndex.end() || it->second == nullptr)
+        {
+            StdError("check", "Inherit fork data: Find fork joint block fail, origin block: %s, prev block: %s.",
+                     hashNewOriginBlock.GetHex().c_str(), blockOrigin.hashPrev.GetHex().c_str());
+            return false;
+        }
+        CBlockIndex* pPrevBlockIndex = it->second;
+        const uint256& hashParentFork = pPrevBlockIndex->GetOriginHash();
+
+        auto mt = mapCheckFork.find(hashParentFork);
+        if (mt == mapCheckFork.end())
+        {
+            StdError("check", "Inherit fork data: Find parent fork fail, origin block: %s, parent fork: %s.",
+                     hashNewOriginBlock.GetHex().c_str(), hashParentFork.GetHex().c_str());
+            return false;
+        }
+
+        if (!subBlockFork.InheritCopyData(mt->second, pPrevBlockIndex))
+        {
+            StdError("check", "Inherit fork data: Copy data fail, origin block: %s.", hashNewOriginBlock.GetHex().c_str());
+            return false;
+        }
     }
     return true;
 }
