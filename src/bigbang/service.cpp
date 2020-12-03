@@ -173,7 +173,10 @@ void CService::NotifyNetworkPeerUpdate(const CNetworkPeerUpdate& update)
 
 void CService::NotifyTransactionUpdate(const CTransactionUpdate& update)
 {
-    (void)update;
+    // uint64 nNonce = 0;
+    // CRPCModEventUpdateNewTx* pUpdateNewTxEvent = new CRPCModEventUpdateNewTx(nNonce, update.hashFork, update.nChange);
+    // pUpdateNewTxEvent->data = update.txUpdate;
+    // pRPCMod->PostEvent(pUpdateNewTxEvent);
 }
 
 void CService::Stop()
