@@ -88,10 +88,7 @@ jobs:
       # env
       - name: Env
         shell: bash
-        run: |
-          export OPENSSL_ROOT_DIR=`brew --prefix openssl`
-          export BOOST_ROOT=`brew --prefix boost`
-          export PKG_CONFIG_PATH=`brew --prefix libsodium`/lib/pkgconfig:${PKG_CONFIG_PATH}
+        run: export PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig:/usr/local/opt/readline/lib/pkgconfig:${PKG_CONFIG_PATH}
 
       # checkout
       - uses: actions/checkout@v2
