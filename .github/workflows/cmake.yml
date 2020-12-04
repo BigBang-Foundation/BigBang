@@ -131,10 +131,11 @@ jobs:
 
       # build
       - uses: ilammy/msvc-dev-cmd@v1
-      - name: Build
-        working-directory: ${{github.workspace}}
         with:
           arch: x64
+
+      - name: Build
+        working-directory: ${{github.workspace}}
         run: .\INSTALL.bat ${{ env.BUILD_TYPE }}
 
       # test
