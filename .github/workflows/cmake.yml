@@ -109,16 +109,16 @@ jobs:
 
     steps:
       # cache vcpkg download
-      - name: cache vcpkg
-        id: vcpkg
-        uses: actions/cache@v2
-        with:
-          path: C:\vcpkg\installed
-          key: ${{ runner.os }}-vcpkg-installed
+      # - name: cache vcpkg
+      #   id: vcpkg
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: C:\vcpkg\installed
+      #     key: ${{ runner.os }}-vcpkg-installed
       
       # install dependencies by brew
       - name: Prepare windows Build Dependencies
-        if: steps.vcpkg.outputs.cache-hit != 'true'
+        # if: steps.vcpkg.outputs.cache-hit != 'true'
         run: |
           vcpkg.exe install boost:x64-windows
           vcpkg.exe install libsodium:x64-windows
@@ -126,10 +126,10 @@ jobs:
           vcpkg.exe install protobuf:x64-windows
           vcpkg.exe install readline-win32:x64-windows
 
-      - name: sht
-        if: steps.vcpkg.outputs.cache-hit == 'true'
-        run: |
-          vcpkg.exe list
+      # - name: sht
+      #   if: steps.vcpkg.outputs.cache-hit == 'true'
+      #   run: |
+      #     vcpkg.exe list
 
       # checkout
       - uses: actions/checkout@v2
