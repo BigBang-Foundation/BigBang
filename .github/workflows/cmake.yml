@@ -126,10 +126,6 @@ jobs:
           vcpkg.exe install protobuf:x64-windows
           vcpkg.exe install readline-win32:x64-windows
 
-      - name: Set VCPKG_ROOT enviroment
-        env:
-          VCPKG_ROOT: C:\vcpkg
-
       # checkout
       - uses: actions/checkout@v2
 
@@ -140,6 +136,8 @@ jobs:
 
       - name: Build
         working-directory: ${{github.workspace}}
+        env:
+          VCPKG_ROOT: C:\vcpkg
         run: .\INSTALL.bat ${{ env.BUILD_TYPE }}
 
       # test
