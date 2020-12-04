@@ -1712,7 +1712,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
     }
 
     uint16 nType = (uint16)spParam->nType;
-    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION)
+    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION && nType != CTransaction::TX_DEFI_MINT_HEIGHT)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid tx type");
     }
@@ -1742,6 +1742,20 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         {
             vchData = ParseHexString(strDataTmp);
         }
+    }
+    if (nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+    {
+        if (vchData.size() > 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "mint height tx can't set customized data");
+        }
+        if (!spParam->nMintheight.IsValid())
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "mint height tx must set mint height param");
+        }
+        int32 nMintHeight = spParam->nMintheight;
+        CODataStream os(vchData);
+        os << nMintHeight;
     }
 
     int64 nTxFee = CalcMinTxFee(vchData.size(), NEW_MIN_TX_FEE);
@@ -1878,7 +1892,7 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     uint16 nType = (uint16)spParam->nType;
-    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION)
+    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION && nType != CTransaction::TX_DEFI_MINT_HEIGHT)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid tx type");
     }
@@ -1900,6 +1914,20 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     if (spParam->strData.IsValid())
     {
         vchData = ParseHexString(spParam->strData);
+    }
+    if (nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+    {
+        if (vchData.size() > 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "mint height tx can't set customized data");
+        }
+        if (!spParam->nMintheight.IsValid())
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "mint height tx must set mint height param");
+        }
+        int32 nMintHeight = spParam->nMintheight;
+        CODataStream os(vchData);
+        os << nMintHeight;
     }
 
     int64 nTxFee = CalcMinTxFee(vchData.size(), NEW_MIN_TX_FEE);
@@ -2395,7 +2423,7 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
         }
 
         profile.defi.nMintHeight = spParam->defi.nMintheight;
-        if (profile.defi.nMintHeight >= 0 && profile.defi.nMintHeight < nJointHeight + 2)
+        if (profile.defi.nMintHeight > 0 && profile.defi.nMintHeight < nJointHeight + 2)
         {
             throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param mintheight should be -1 or larger than fork genesis block height");
         }

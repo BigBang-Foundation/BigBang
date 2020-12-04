@@ -336,6 +336,15 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
                 return true;
             }
         }
+        if (ptx->nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+        {
+            if (pCorePro->VerifyMintHeightTx(tx, ptx->destIn, hashFork, nHeight, profile) != OK)
+            {
+                setUnTx.insert(ptx->GetHash());
+                vTxRemove.push_back(make_pair(ptx->GetHash(), ptx->vInput));
+                return true;
+            }
+        }
         CTemplateId tid;
         if (ptx->destIn.GetTemplateId(tid))
         {
@@ -838,6 +847,11 @@ bool CTxPool::FetchArrangeBlockTx(const uint256& hashFork, const uint256& hashPr
 {
     boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
 
+    // if (hashFork == uint256("00000001aeababf13e5fb76897130a0c659ce9fefdf49db65b0c72569abfa16c"))
+    // {
+    //     return true;
+    // }
+
     const CTxPoolView& viewTx = mapPoolView[hashFork];
     if (hashPrev == viewTx.hashLastBlock)
     {
@@ -987,6 +1001,14 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                 change.vTxAddNew.push_back(CAssembledTx(tx, nBlockHeight));
                 continue;
             }
+            else if (tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+            {
+                if (!pBlockChain->GetForkProfile(update.hashFork, txView.profile))
+                {
+                    Error("SynchronizeBlockChain Get fork profile error, fork: %s", update.hashFork.ToString().c_str());
+                    return false;
+                }
+            }
 
             uint256 txid = tx.GetHash();
             if (!update.setTxUpdate.count(txid))
@@ -1035,6 +1057,14 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                 txView.InvalidateSpent(CTxOutPoint(txid, 0), viewInvolvedTx);
                 vTxRemove.push_back(make_pair(txid, tx.vInput));
                 continue;
+            }
+            else if (tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+            {
+                if (!pBlockChain->GetForkProfile(update.hashFork, txView.profile))
+                {
+                    Error("SynchronizeBlockChain Get fork profile error, fork: %s", update.hashFork.ToString().c_str());
+                    return false;
+                }
             }
 
             if (!update.setTxUpdate.count(txid))
@@ -1261,18 +1291,16 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     }
 
     //init fork type and DeFi relation
-    if (txView.nForkType < 0)
+    if (txView.profile.IsNull())
     {
-        CProfile profile;
-        if (!pBlockChain->GetForkProfile(hashFork, profile))
+        if (!pBlockChain->GetForkProfile(hashFork, txView.profile))
         {
             Error("AddNew Get fork profile error, fork: %s", hashFork.ToString().c_str());
             return ERR_SYS_STORAGE_ERROR;
         }
-        txView.nForkType = profile.nForkType;
     }
 
-    Errno err = pCoreProtocol->VerifyTransaction(tx, vPrevOutput, nForkHeight, hashFork, txView.nForkType);
+    Errno err = pCoreProtocol->VerifyTransaction(tx, vPrevOutput, nForkHeight, hashFork, txView.profile);
     if (err != OK)
     {
         StdTrace("CTxPool", "AddNew: VerifyTransaction fail, txid: %s", txid.GetHex().c_str());
@@ -1287,14 +1315,27 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
             return ERR_TRANSACTION_TOO_MANY_CERTTX;
         }
     }
+    else if (tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+    {
+        // check mint height tx uniqueness
+        if (!txView.Exists(txView.mintHeightTxid))
+        {
+            txView.mintHeightTxid = txid;
+        }
+        else
+        {
+            StdTrace("CTxPool", "AddNew: mint height Tx must be unique, txid: %s, fork: %s", txid.GetHex().c_str(), hashFork.ToString().c_str());
+            return ERR_TRANSACTION_TOO_MANY_MINTHEIGHT_TX;
+        }
+    }
 
     CDestination destIn = vPrevOutput[0].destTo;
-    if (txView.nForkType != FORK_TYPE_DEFI && tx.IsDeFiRelation())
+    if (txView.profile.nForkType != FORK_TYPE_DEFI && tx.IsDeFiRelation())
     {
         return ERR_TRANSACTION_INVALID_RELATION_TX;
     }
 
-    if (txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
+    if (txView.profile.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
     {
         CDestination root;
         if (!txView.relation.CheckInsert(tx.sendTo, destIn, root))
