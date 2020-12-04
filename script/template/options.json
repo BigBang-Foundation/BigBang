@@ -87,6 +87,13 @@
             "opt": "addgroup",
             "format": "-addgroup=<forkid of group leader>",
             "desc": "Add a supported fork group"
+        },
+        {
+            "name": "vExcludeFork",
+            "type": "vector<string>",
+            "opt": "excludefork",
+            "format": "-excludefork=<forkid>",
+            "desc": "Exclude a fork"
         }
     ],
     "CMintConfigOption": [
