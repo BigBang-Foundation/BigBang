@@ -130,9 +130,9 @@ jobs:
       - uses: actions/checkout@v2
 
       # build
+      - uses: ilammy/msvc-dev-cmd@v1
       - name: Build
         working-directory: ${{github.workspace}}
-        uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
         run: .\INSTALL.bat ${{ env.BUILD_TYPE }}
