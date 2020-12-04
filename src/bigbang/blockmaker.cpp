@@ -507,7 +507,7 @@ void CBlockMaker::ProcessSubFork(const CBlockMakerProfile& profile, const CDeleg
                     {
                         if (pBlockChain->GetLastBlockOfHeight(hashFork, nPrevHeight, status.hashBlock, status.nBlockTime))
                         {
-                            block.hashPrev = status.nBlockHeight;
+                            block.hashPrev = status.hashBlock;
                         }
                         else
                         {
