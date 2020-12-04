@@ -667,7 +667,7 @@ Errno CTxPool::Push(const CTransaction& tx, uint256& hashFork, CDestination& des
     }
 
     CTxPoolView& txView = mapPoolView[hashFork];
-    Errno err = AddNew(txView, txid, tx, hashFork, nHeight);
+    Errno err = AddNew(txView, txid, tx, hashFork, status.nBlockHeight);
     if (err == OK)
     {
         CPooledTx* pPooledTx = txView.Get(txid);
