@@ -2394,15 +2394,6 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
             throw CRPCException(RPC_INVALID_PARAMETER, "DeFi fork mint halvecycle must be zero");
         }
 
-        if (hashParent != pCoreProtocol->GetGenesisBlockHash())
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "DeFi fork must be the direct child fork of main fork");
-        }
-        if (!profile.IsIsolated())
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "DeFi fork must be the isolated fork");
-        }
-
         profile.defi.nMintHeight = spParam->defi.nMintheight;
         if (profile.defi.nMintHeight >= 0 && profile.defi.nMintHeight < nJointHeight + 2)
         {
