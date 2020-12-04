@@ -129,15 +129,17 @@ jobs:
       # checkout
       - uses: actions/checkout@v2
 
-      # # build
-      # - name: Build
-      #   working-directory: ${{github.workspace}}
-      #   run: |
-      #     .\INSTALL.bat ${{ env.BUILD_TYPE }}
+      # build
+      - name: Build
+        working-directory: ${{github.workspace}}
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+        run: .\INSTALL.bat ${{ env.BUILD_TYPE }}
 
-      # # test
-      # - name: Test
-      #   working-directory: ${{github.workspace}}
-      #   run: |
-      #     .\build\test\test_big
-      #     .\build\test\test_ctsdb
+      # test
+      - name: Test
+        working-directory: ${{github.workspace}}
+        run: |
+          .\build\test\test_big
+          .\build\test\test_ctsdb
