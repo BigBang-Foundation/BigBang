@@ -126,6 +126,11 @@ jobs:
           vcpkg.exe install protobuf:x64-windows
           vcpkg.exe install readline-win32:x64-windows
 
+      - name: sht
+        if: steps.vcpkg.outputs.cache-hit == 'true'
+        run: |
+          vcpkg.exe list
+
       # checkout
       - uses: actions/checkout@v2
 
