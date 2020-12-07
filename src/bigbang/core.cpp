@@ -166,7 +166,7 @@ static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
 #ifdef BIGBANG_TESTNET
 static const int32 CHANGE_MINT_RATE_HEIGHT = 0;
 #else
-static const int32 CHANGE_MINT_RATE_HEIGHT = 545400;
+static const int32 CHANGE_MINT_RATE_HEIGHT = 580000;
 #endif
 
 namespace bigbang
