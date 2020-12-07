@@ -1601,6 +1601,18 @@ CRPCResultPtr CRPCMod::RPCGetBalance(CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CGetBalanceParam>(param);
 
+    uint64 nNonce = 0;
+
+    for (int i = 0; i < 100000; ++i)
+    {
+        CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, pCoreProtocol->GetGenesisBlockHash(), 0);
+
+        CBlockEx block;
+        pCoreProtocol->GetGenesisBlock(block);
+        pUpdateNewBlockEvent->data = block;
+        pPusher->PostEvent(pUpdateNewBlockEvent);
+    }
+
     //getbalance (-f="fork") (-a="address")
     uint256 hashFork;
     if (!GetForkHashOfDef(spParam->strFork, hashFork))
@@ -3771,10 +3783,13 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
 }
 
 CPusher::CPusher()
+  : thrDispatch("pushtask", boost::bind(&CPusher::LaunchPushTask, this))
 {
     pHttpGet = nullptr;
     pCoreProtocol = nullptr;
     pService = nullptr;
+    fIsDispatchRunning = false;
+    fStopWait = false;
 }
 
 CPusher::~CPusher()
@@ -3820,15 +3835,30 @@ void CPusher::HandleDeinitialize()
     pService = nullptr;
 }
 
-// bool CPusher::HandleInvoke()
-// {
-//     StdWarn("CPusher", "Invoking");
-//     return true;
-// }
+bool CPusher::HandleInvoke()
+{
+    fIsDispatchRunning = true;
+    if (!ThreadStart(thrDispatch))
+    {
+        return false;
+    }
 
-// void CPusher::HandleHalt()
-// {
-// }
+    return IIOModule::HandleInvoke();
+}
+
+void CPusher::HandleHalt()
+{
+    IIOModule::HandleHalt();
+    if (thrDispatch.IsRunning())
+    {
+        thrDispatch.Interrupt();
+    }
+    thrDispatch.Interrupt();
+    fIsDispatchRunning = false;
+    fStopWait = true;
+    condNewPush.notify_all();
+    ThreadExit(thrDispatch);
+}
 
 void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& client)
 {
@@ -3895,26 +3925,31 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
         for (const auto& client : mapRPCClient)
         {
             const std::string& ipport = client.first;
-            int64 nTimeStamp = client.second.timestamp;
+            // int64 nTimeStamp = client.second.timestamp;
             StdWarn("CPusher::CSH", "Update New Block ipport: %s", ipport.c_str());
-            if (GetTime() - nTimeStamp > 60)
-            {
-                StdWarn("CPusher::CSH", "Timeout IPORT: %s", ipport.c_str());
-                deletes.push_back(ipport);
-                continue;
-            }
+            // if (GetTime() - nTimeStamp > 60)
+            // {
+            //     StdWarn("CPusher::CSH", "Timeout IPORT: %s", ipport.c_str());
+            //     deletes.push_back(ipport);
+            //     continue;
+            // }
 
             StdWarn("CPusher::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
-            if (client.second.registerForks.count(hashFork) == 0)
-            {
-                StdWarn("CPusher::CSH", "No register fork: %s", hashFork.ToString().c_str());
-                continue;
-            }
-            Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
-            auto spParam = MakeCPushBlockParamPtr(data);
-            StdWarn("CPusher::CSH", "Update New Block Calling: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, nNonce);
-            CallRPC(client.second.fSSL, client.second.strHost, client.second.nPort, client.second.strURL, nNonce, spParam, nNonce);
-            StdWarn("CPusher::CSH", "Update New Block Call Finished: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, nNonce);
+            // if (client.second.registerForks.count(hashFork) == 0)
+            // {
+            //     StdWarn("CPusher::CSH", "No register fork: %s", hashFork.ToString().c_str());
+            //     continue;
+            // }
+
+            StdWarn("CPusher::CSH", "Pushed Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
+            DisPatchMessage message;
+            message.client = client.second;
+            message.hashFork = hashFork;
+            message.nNonce = nNonce++;
+            message.nReqId = client.second.nNonce;
+            message.block = block;
+            PushDispatchMessage(message);
+            StdWarn("CPusher::CSH", "Pushed Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
         }
 
         RemoveClients(deletes);
@@ -3958,10 +3993,48 @@ void CPusher::RemoveClient(uint64 nNonce)
 //     return true;
 // }
 
-bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, CRPCParamPtr spParam, int nReqId)
+void CPusher::PushDispatchMessage(const DisPatchMessage& message)
+{
+    boost::mutex::scoped_lock lock(mMutexReady);
+    // if (queueDispatch.size() >= 5)
+    // {
+    //     condNewPush.notify_one();
+    //     return;
+    // }
+    queueDispatch.push(message);
+    condNewPush.notify_one();
+}
+
+void CPusher::LaunchPushTask()
+{
+    StdWarn("CPusher::CSH", "LaunchedPushTask");
+    while (fIsDispatchRunning)
+    {
+        DisPatchMessage message;
+        {
+            boost::unique_lock<boost::mutex> lock(mMutexReady);
+
+            while (queueDispatch.empty() || fStopWait)
+            {
+                condNewPush.wait(lock);
+                StdWarn("CPusher::CSH", "wait finished queue empty %s", queueDispatch.empty() ? "true" : "false");
+            }
+
+            message = queueDispatch.front();
+            queueDispatch.pop();
+        }
+        StdWarn("CPusher::CSH", "Calling  Queue New Block: Host: %s, Port: %d, Nonce: %d", message.client.strHost.c_str(), message.client.nPort, message.client.nNonce);
+        CallRPC(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strURL, message.client.nNonce, message.hashFork, message.block, message.client.nNonce);
+        StdWarn("CPusher::CSH", "Called Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", message.client.strHost.c_str(), message.client.nPort, message.client.nNonce);
+    }
+}
+
+bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CBlockEx& block, int nReqId)
 {
     try
     {
+        Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
+        auto spParam = MakeCPushBlockParamPtr(data);
         CRPCReqPtr spReq = MakeCRPCReqPtr(nReqId, spParam->Method(), spParam);
         return GetResponse(fSSL, strHost, nPort, strURL, nNonce, spReq->Serialize());
     }
@@ -3986,6 +4059,7 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
     {
         CHttpRsp& rsp = event.data;
 
+        StdWarn("CPusher", "Response Content %s", rsp.strContent.c_str());
         if (rsp.nStatusCode < 0)
         {
 
@@ -3995,13 +4069,15 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
 
             //RemoveClient(event.nNonce);
             StdError("CPusher", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
-            return false;
+            ioComplt.Completed(false);
+            return true;
         }
         if (rsp.nStatusCode == 401)
         {
             //RemoveClient(event.nNonce);
             StdError("CPusher", "incorrect rpcuser or rpcpassword (authorization failed)");
-            return false;
+            ioComplt.Completed(false);
+            return true;
         }
         else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
         {
@@ -4009,12 +4085,14 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
             oss << "server returned HTTP error " << rsp.nStatusCode;
             //RemoveClient(event.nNonce);
             StdError("CPusher", oss.str().c_str());
-            return false;
+            ioComplt.Completed(false);
+            return true;
         }
         else if (rsp.strContent.empty())
         {
             StdError("CPusher", "no response from server");
-            return false;
+            ioComplt.Completed(false);
+            return true;
         }
 
         // Parse reply
@@ -4024,7 +4102,8 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
             StdDebug("CPusher", "response: ", rsp.strContent.c_str());
         }
 
-        auto spResp = DeserializeCRPCResp("", rsp.strContent);
+        std::string content = rsp.strContent;
+        auto spResp = DeserializeCRPCResp("", content);
         if (spResp->IsError())
         {
             // Error
@@ -4032,6 +4111,8 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
             //cerr << strServerHelpTips << endl;
             StdError("CPusher", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
             StdError("CPusher", "RPC Response error tips: %s", strServerHelpTips.c_str());
+            ioComplt.Completed(false);
+            return true;
         }
         else if (spResp->IsSuccessful())
         {
@@ -4041,14 +4122,17 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
         {
             //cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
             StdError("CPusher", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
+            ioComplt.Completed(false);
+            return true;
         }
     }
     catch (const std::exception& e)
     {
         StdError("CPusher", "RPC Response Exception: %s ", e.what());
-        return false;
+        ioComplt.Completed(false);
+        return true;
     }
-    //ioComplt.Completed(false);
+    ioComplt.Completed(false);
     return true;
 }
 
@@ -4058,7 +4142,7 @@ bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, cons
     CEventHttpGet eventHttpGet(nNonce);
     CHttpReqData& httpReqData = eventHttpGet.data;
     httpReqData.strIOModule = GetOwnKey();
-    httpReqData.nTimeout = /*Config()->nRPCConnectTimeout*/ 2;
+    httpReqData.nTimeout = /*Config()->nRPCConnectTimeout*/ 1;
 
     if (fSSL)
     {
@@ -4075,8 +4159,8 @@ bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, cons
 
     CNetHost host(strHost, nPort);
     httpReqData.mapHeader["host"] = host.ToString();
-    //httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
-    httpReqData.mapHeader["url"] = "/" + strURL;
+    httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
+    //httpReqData.mapHeader["url"] = "/" + strURL;
     httpReqData.mapHeader["method"] = "POST";
     httpReqData.mapHeader["accept"] = "application/json";
     httpReqData.mapHeader["content-type"] = "application/json";
@@ -4091,15 +4175,15 @@ bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, cons
 
     httpReqData.strContent = content + "\n";
 
-    //ioComplt.Reset();
+    ioComplt.Reset();
 
     if (!pHttpGet->DispatchEvent(&eventHttpGet))
     {
         return false;
     }
-    //bool fResult = false;
-    //return (ioComplt.WaitForComplete(fResult) && fResult);
-    return true;
+    bool fResult = false;
+    return (ioComplt.WaitForComplete(fResult) && fResult);
+    //return true;
 }
 
 } // namespace bigbang
