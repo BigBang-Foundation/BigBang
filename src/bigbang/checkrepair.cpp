@@ -159,13 +159,8 @@ CCheckForkManager::~CCheckForkManager()
     dbFork.Deinitialize();
 }
 
-bool CCheckForkManager::Initialize(const string& strDataPathIn, bool fTestnetIn, bool fOnlyCheckIn, const uint256& hashGenesisBlockIn)
+bool CCheckForkManager::Initialize()
 {
-    strDataPath = strDataPathIn;
-    fTestnet = fTestnetIn;
-    fOnlyCheck = fOnlyCheckIn;
-    hashGenesisBlock = hashGenesisBlockIn;
-
 #ifdef BIGBANG_TESTNET
     mapCheckPoints[hashGenesisBlockIn].insert(make_pair(0, hashGenesisBlockIn));
 #else
@@ -185,15 +180,21 @@ bool CCheckForkManager::Initialize(const string& strDataPathIn, bool fTestnetIn,
 
 bool CCheckForkManager::FetchForkStatus()
 {
+    if (!Initialize())
+    {
+        StdLog("check", "Fetch fork status: Initialize fail");
+        return false;
+    }
+
     uint256 hashGetGenesisBlock;
-    if (!dbFork.GetGenesisBlockHash(hashGetGenesisBlock) || hashGetGenesisBlock != hashGenesisBlock)
+    if (!dbFork.GetGenesisBlockHash(hashGetGenesisBlock) || hashGetGenesisBlock != objParam.hashGenesisBlock)
     {
         StdError("check", "Fetch fork status: Get genesis block hash fail");
         if (fOnlyCheck)
         {
             return false;
         }
-        if (!dbFork.WriteGenesisBlockHash(hashGenesisBlock))
+        if (!dbFork.WriteGenesisBlockHash(objParam.hashGenesisBlock))
         {
             StdError("check", "Fetch fork status: Write genesis block hash fail");
             return false;
@@ -203,7 +204,7 @@ bool CCheckForkManager::FetchForkStatus()
     bool fCheckGenesisRet = true;
     uint256 hashRefFdBlock;
     map<uint256, int> mapValidFork;
-    if (!dbFork.RetrieveValidForkHash(hashGenesisBlock, hashRefFdBlock, mapValidFork))
+    if (!dbFork.RetrieveValidForkHash(objParam.hashGenesisBlock, hashRefFdBlock, mapValidFork))
     {
         fCheckGenesisRet = false;
     }
@@ -215,7 +216,7 @@ bool CCheckForkManager::FetchForkStatus()
         }
         else
         {
-            const auto it = mapValidFork.find(hashGenesisBlock);
+            const auto it = mapValidFork.find(objParam.hashGenesisBlock);
             if (it == mapValidFork.end() || it->second != 0)
             {
                 fCheckGenesisRet = false;
@@ -229,8 +230,8 @@ bool CCheckForkManager::FetchForkStatus()
         {
             return false;
         }
-        mapValidFork.insert(make_pair(hashGenesisBlock, 0));
-        if (!dbFork.AddValidForkHash(hashGenesisBlock, uint256(), mapValidFork))
+        mapValidFork.insert(make_pair(objParam.hashGenesisBlock, 0));
+        if (!dbFork.AddValidForkHash(objParam.hashGenesisBlock, uint256(), mapValidFork))
         {
             StdError("check", "Fetch fork status: Add valid fork fail");
             return false;
@@ -252,19 +253,19 @@ bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
     uint256 hashRefFdBlock;
     map<uint256, int> mapValidFork;
 
-    if (hashBlock == hashGenesisBlock)
+    if (hashBlock == objParam.hashGenesisBlock)
     {
         vector<pair<CDestination, CForkContext>> vForkCtxt;
         CProfile profile;
         if (!profile.Load(blockex.vchProof))
         {
-            StdLog("check", "Add block fork context: Load genesis %s block Proof failed", hashGenesisBlock.ToString().c_str());
+            StdLog("check", "Add block fork context: Load genesis %s block Proof failed", objParam.hashGenesisBlock.ToString().c_str());
             return false;
         }
-        vForkCtxt.push_back(make_pair(profile.destOwner, CForkContext(hashGenesisBlock, uint64(0), uint64(0), profile)));
+        vForkCtxt.push_back(make_pair(profile.destOwner, CForkContext(objParam.hashGenesisBlock, uint64(0), uint64(0), profile)));
 
-        mapValidFork.insert(make_pair(hashGenesisBlock, 0));
-        if (!AddForkContext(uint256(), hashGenesisBlock, vForkCtxt, true, hashRefFdBlock, mapValidFork))
+        mapValidFork.insert(make_pair(objParam.hashGenesisBlock, 0));
+        if (!AddForkContext(uint256(), objParam.hashGenesisBlock, vForkCtxt, true, hashRefFdBlock, mapValidFork))
         {
             StdLog("check", "Add block fork context: Add fork context fail, block: %s", hashBlock.ToString().c_str());
             return false;
@@ -304,7 +305,7 @@ bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
             }
         }
 
-        if (!AddForkContext(blockex.hashPrev, hashBlock, vForkCtxt, IsCheckPoint(hashGenesisBlock, hashBlock), hashRefFdBlock, mapValidFork))
+        if (!AddForkContext(blockex.hashPrev, hashBlock, vForkCtxt, IsCheckPoint(objParam.hashGenesisBlock, hashBlock), hashRefFdBlock, mapValidFork))
         {
             StdLog("check", "Add block fork context: Add fork context fail, block: %s", hashBlock.ToString().c_str());
             return false;
@@ -383,7 +384,7 @@ bool CCheckForkManager::VerifyBlockForkTx(const uint256& hashPrev, const CTransa
         }
 
         CProfile forkProfile;
-        if (!ValidateOrigin(block, ctxtParent.GetProfile(), forkProfile))
+        if (objParam.ValidateOrigin(block, ctxtParent.GetProfile(), forkProfile) != OK)
         {
             StdLog("check", "Verify block fork tx: Validate origin, tx: %s", tx.GetHash().ToString().c_str());
             break;
@@ -513,44 +514,6 @@ bool CCheckForkManager::GetForkContext(const uint256& hashFork, CForkContext& ct
     return false;
 }
 
-bool CCheckForkManager::ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile)
-{
-    if (!forkProfile.Load(block.vchProof))
-    {
-        StdLog("check", "Validate origin: load profile error");
-        return false;
-    }
-    if (forkProfile.IsNull())
-    {
-        StdLog("check", "Validate origin: invalid profile");
-        return false;
-    }
-    if (!MoneyRange(forkProfile.nAmount))
-    {
-        StdLog("check", "Validate origin: invalid fork amount");
-        return false;
-    }
-    if (!RewardRange(forkProfile.nMintReward))
-    {
-        StdLog("check", "Validate origin: invalid fork reward");
-        return false;
-    }
-    if (block.txMint.sendTo != forkProfile.destOwner)
-    {
-        StdLog("check", "Validate origin: invalid fork sendTo");
-        return false;
-    }
-    if (parentProfile.IsPrivate())
-    {
-        if (!forkProfile.IsPrivate() || parentProfile.destOwner != forkProfile.destOwner)
-        {
-            StdLog("check", "Validate origin: permission denied");
-            return false;
-        }
-    }
-    return true;
-}
-
 bool CCheckForkManager::VerifyValidFork(const uint256& hashPrevBlock, const uint256& hashFork, const string& strForkName)
 {
     map<uint256, int> mapValidFork;
@@ -633,7 +596,7 @@ bool CCheckForkManager::CheckDbValidFork(const uint256& hashBlock, const uint256
         StdLog("check", "CheckDbValidFork: hashRefFdBlock or mapValidFork error, block: %s", hashBlock.GetHex().c_str());
         return false;
     }
-    for (const auto vd : mapValidForkGet)
+    for (const auto& vd : mapValidForkGet)
     {
         const auto it = mapValidFork.find(vd.first);
         if (it == mapValidFork.end() || it->second != vd.second)
@@ -2751,11 +2714,6 @@ bool CCheckRepairData::CheckRepairData()
 {
     StdLog("check", "Start check and repair, path: %s", strDataPath.c_str());
 
-    if (!objForkManager.Initialize(strDataPath, fTestnet, fOnlyCheck, objProofOfWorkParam.hashGenesisBlock))
-    {
-        StdLog("check", "Fork manager set param fail");
-        return false;
-    }
     if (!objForkManager.FetchForkStatus())
     {
         StdLog("check", "Fetch fork status fail");

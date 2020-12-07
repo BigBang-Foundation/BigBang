@@ -235,11 +235,11 @@ public:
 class CCheckForkManager
 {
 public:
-    CCheckForkManager()
-      : fTestnet(false), fOnlyCheck(false) {}
+    CCheckForkManager(const string& strDataPathIn, bool fTestnetIn, bool fOnlyCheckIn, const CProofOfWorkParam& objParamIn)
+      : strDataPath(strDataPathIn), fTestnet(fTestnetIn), fOnlyCheck(fOnlyCheckIn), objParam(objParamIn) {}
     ~CCheckForkManager();
 
-    bool Initialize(const string& strDataPathIn, bool fTestnetIn, bool fOnlyCheckIn, const uint256& hashGenesisBlockIn);
+    bool Initialize();
     bool FetchForkStatus();
 
     bool AddBlockForkContext(const CBlockEx& blockex);
@@ -247,7 +247,6 @@ public:
     bool AddForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<pair<CDestination, CForkContext>>& vForkCtxt,
                         bool fCheckPointBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork);
     bool GetForkContext(const uint256& hashFork, CForkContext& ctxt);
-    bool ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile);
     bool VerifyValidFork(const uint256& hashPrevBlock, const uint256& hashFork, const string& strForkName);
     bool GetValidFdForkId(const uint256& hashBlock, map<uint256, int>& mapFdForkIdOut);
     int GetValidForkCreatedHeight(const uint256& hashBlock, const uint256& hashFork);
@@ -264,7 +263,7 @@ public:
     string strDataPath;
     bool fTestnet;
     bool fOnlyCheck;
-    uint256 hashGenesisBlock;
+    const CProofOfWorkParam& objParam;
     CForkDB dbFork;
     map<uint256, uint256> mapActiveFork;
     map<uint256, map<int, uint256>> mapCheckPoints;
@@ -473,7 +472,8 @@ class CCheckRepairData
 public:
     CCheckRepairData(const string& strPath, const bool fTestnetIn, const bool fOnlyCheckIn, const bool fAddrTxIndexIn)
       : strDataPath(strPath), fTestnet(fTestnetIn), fOnlyCheck(fOnlyCheckIn),
-        objProofOfWorkParam(fTestnetIn), objBlockWalker(fTestnetIn, fOnlyCheckIn, fAddrTxIndexIn, objForkManager)
+        objProofOfWorkParam(fTestnetIn), objForkManager(strPath, fTestnetIn, fOnlyCheckIn, objProofOfWorkParam),
+        objBlockWalker(fTestnetIn, fOnlyCheckIn, fAddrTxIndexIn, objForkManager)
     {
     }
 

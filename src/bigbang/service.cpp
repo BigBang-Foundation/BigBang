@@ -486,6 +486,7 @@ Errno CService::ListForkAddressUnspent(const uint256& hashFork, const CDestinati
         if (!pTxPool->FetchAddressUnspent(hashFork, dest, mapUnspent))
         {
             StdError("CService", "ListForkAddressUnspent: Fetch address unspent fail, fork: %s", hashFork.GetHex().c_str());
+            strErr = "Fetch address unspent fail";
             return ERR_WALLET_NOT_FOUND;
         }
 
@@ -508,6 +509,8 @@ Errno CService::ListForkAddressUnspent(const uint256& hashFork, const CDestinati
         map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
         if (it == mapForkStatus.end())
         {
+            StdError("CService", "ListForkAddressUnspent: Find fork fail, fork: %s", hashFork.GetHex().c_str());
+            strErr = "Find fork fail";
             return ERR_BLOCK_INVALID_FORK;
         }
         nForkHeight = it->second.nLastBlockHeight;

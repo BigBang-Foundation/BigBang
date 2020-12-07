@@ -881,7 +881,7 @@ bool CTxPool::ListTx(const uint256& hashFork, const CDestination& dest, vector<C
     return true;
 }
 
-bool CTxPool::ListTxOfSeq(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const uint64 nTxSeq, const int64 nGetCount)
+bool CTxPool::ListTxOfSeq(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const uint64 nPrevTxSeq, const int64 nGetCount)
 {
     boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
     map<uint256, CTxPoolView>::const_iterator it = mapPoolView.find(hashFork);
@@ -893,7 +893,7 @@ bool CTxPool::ListTxOfSeq(const uint256& hashFork, const CDestination& dest, std
     const CPooledTxLinkSetBySequenceNumber& idxTx = (*it).second.setTxLinkIndex.get<1>();
     for (CPooledTxLinkSetBySequenceNumber::iterator mi = idxTx.begin(); mi != idxTx.end(); ++mi)
     {
-        if (mi->nSequenceNumber >= nTxSeq)
+        if (mi->nSequenceNumber > nPrevTxSeq)
         {
             if (dest.IsNull() || dest == mi->ptx->destIn || dest == mi->ptx->sendTo)
             {

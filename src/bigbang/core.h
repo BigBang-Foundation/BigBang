@@ -15,6 +15,7 @@ class CCoreProtocol : public ICoreProtocol
 public:
     CCoreProtocol();
     virtual ~CCoreProtocol();
+    virtual void InitializeGenesisBlock() override;
     virtual const uint256& GetGenesisBlockHash() override;
     virtual void GetGenesisBlock(CBlock& block) override;
     virtual Errno ValidateTransaction(const CTransaction& tx, int nHeight) override;
@@ -80,9 +81,11 @@ public:
 class CProofOfWorkParam
 {
 public:
-    CProofOfWorkParam(bool fTestnet);
+    CProofOfWorkParam(const bool fTestnetIn);
+    ~CProofOfWorkParam();
 
 public:
+    bool fTestnet;
     int nProofOfWorkLowerLimit;
     int nProofOfWorkUpperLimit;
     int nProofOfWorkInit;
@@ -96,10 +99,14 @@ public:
     uint32 nDelegateProofOfStakeHeight;
     uint256 hashGenesisBlock;
 
+protected:
+    ICoreProtocol* pCoreProtocol;
+
 public:
     bool IsDposHeight(int height);
     bool DPoSConsensusCheckRepeated(int height);
     bool IsRefVacantHeight(int height);
+    Errno ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile) const;
 };
 
 } // namespace bigbang
