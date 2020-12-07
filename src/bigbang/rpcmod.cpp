@@ -4031,7 +4031,7 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
         }
         else if (spResp->IsSuccessful())
         {
-            cout << spResp->spResult->Serialize(true) << endl;
+            //cout << spResp->spResult->Serialize(true) << endl;
         }
         else
         {
