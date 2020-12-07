@@ -3477,10 +3477,21 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
 
     std::string strProtocol = tokens[0];
     std::string strHost = tokens[1].substr(2);
-    int nPort = stoi(tokens[2]);
+    std::string::size_type sz;
+    int nPort = stoi(tokens[2], &sz);
     if (nPort < 0)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid Port");
+    }
+
+    std::string urlPath = tokens[2].substr(sz);
+    if (urlPath.size() >= 2)
+    {
+        urlPath = tokens[2].substr(sz + 1);
+    }
+    else
+    {
+        urlPath = "";
     }
 
     for (const std::string& fork : spParam->vecForks)
@@ -3504,6 +3515,9 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
     mapRPCClient[spParam->strIpport].fSSL = strProtocol == "http" ? false : true;
     mapRPCClient[spParam->strIpport].strHost = strHost;
     mapRPCClient[spParam->strIpport].nPort = nPort;
+    mapRPCClient[spParam->strIpport].strURL = urlPath;
+
+    StdWarn("CRPCMod", "port %d, url: %s", nPort, urlPath.c_str());
     spResult->strIpport = spParam->strIpport;
     return spResult;
 }
@@ -3692,7 +3706,7 @@ bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
         Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
         auto spParam = MakeCPushBlockParamPtr(data);
         StdWarn("CRPCMod::CSH", "Update New Block Calling: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
-        CallRPC(client.second.fSSL, client.second.strHost, client.second.nPort, client.second.nNonce, spParam, client.second.nNonce);
+        CallRPC(client.second.fSSL, client.second.strHost, client.second.nPort, client.second.strURL, client.second.nNonce, spParam, client.second.nNonce);
         StdWarn("CRPCMod::CSH", "Update New Block Call Finished: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
     }
 
@@ -3735,12 +3749,12 @@ bool CRPCMod::HandleEvent(CRPCModEventUpdateNewTx& event)
     return true;
 }
 
-bool CRPCMod::CallRPC(bool fSSL, const std::string& strHost, int nPort, uint64 nNonce, CRPCParamPtr spParam, int nReqId)
+bool CRPCMod::CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, CRPCParamPtr spParam, int nReqId)
 {
     try
     {
         CRPCReqPtr spReq = MakeCRPCReqPtr(nReqId, spParam->Method(), spParam);
-        return GetResponse(fSSL, strHost, nPort, nNonce, spReq->Serialize());
+        return GetResponse(fSSL, strHost, nPort, strURL, nNonce, spReq->Serialize());
     }
     catch (const std::exception& e)
     {
@@ -3829,7 +3843,7 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
     return true;
 }
 
-bool CRPCMod::GetResponse(bool fSSL, const std::string& strHost, int nPort, uint64 nNonce, const std::string& content)
+bool CRPCMod::GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content)
 {
 
     CEventHttpGet eventHttpGet(nNonce);
@@ -3852,7 +3866,8 @@ bool CRPCMod::GetResponse(bool fSSL, const std::string& strHost, int nPort, uint
 
     CNetHost host(strHost, nPort);
     httpReqData.mapHeader["host"] = host.ToString();
-    httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
+    //httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
+    httpReqData.mapHeader["url"] = "/" + strURL;
     httpReqData.mapHeader["method"] = "POST";
     httpReqData.mapHeader["accept"] = "application/json";
     httpReqData.mapHeader["content-type"] = "application/json";
