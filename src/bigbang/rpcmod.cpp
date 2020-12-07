@@ -403,6 +403,7 @@ bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
         }
 
         bool fArray;
+        StdWarn("CRPCMod::CSH", "crashing string is: %s", eventHttpReq.data.strContent.c_str());
         CRPCReqVec vecReq = DeserializeCRPCReq(eventHttpReq.data.strContent, fArray);
         CRPCRespVec vecResp;
         for (auto& spReq : vecReq)
