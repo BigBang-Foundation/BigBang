@@ -444,6 +444,25 @@ public:
     virtual bool GetP2pSynStatData(const uint256& hashFork, uint32 nBeginTime, uint32 nGetCount, std::vector<CStatItemP2pSyn>& vStatData) = 0;
 };
 
+class IPusher : public xengine::IIOModule
+{
+public:
+    typedef struct _LiveClientInfo
+    {
+        int64 timestamp;
+        uint64 nNonce;
+        bool fSSL;
+        std::string strHost;
+        int nPort;
+        std::string strURL;
+        std::set<uint256> registerForks;
+    } LiveClientInfo;
+
+    IPusher()
+      : IIOModule("pusher") {}
+    virtual void InsertNewClient(const std::string& ipport, const LiveClientInfo& client) = 0;
+};
+
 class IRecovery : public xengine::IBase
 {
 public:

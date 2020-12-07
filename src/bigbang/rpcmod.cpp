@@ -174,7 +174,8 @@ CRPCMod::CRPCMod()
     pService = nullptr;
     pDataStat = nullptr;
     pForkManager = nullptr;
-    pHttpGet = nullptr;
+    // pHttpGet = nullptr;
+    pPusher = nullptr;
 
     std::map<std::string, RPCFunc> temp_map = boost::assign::map_list_of
         /* System */
@@ -347,9 +348,14 @@ bool CRPCMod::HandleInitialize()
         Error("Failed to request forkmanager");
         return false;
     }
-    if (!GetObject("httpget", pHttpGet))
+    // if (!GetObject("httpget", pHttpGet))
+    // {
+    //     cerr << "Failed to request httpget\n";
+    //     return false;
+    // }
+    if (!GetObject("pusher", pPusher))
     {
-        cerr << "Failed to request httpget\n";
+        cerr << "Failed to request pusher\n";
         return false;
     }
     fWriteRPCLog = RPCServerConfig()->fRPCLogEnable;
@@ -364,7 +370,8 @@ void CRPCMod::HandleDeinitialize()
     pService = nullptr;
     pDataStat = nullptr;
     pForkManager = nullptr;
-    pHttpGet = nullptr;
+    //pHttpGet = nullptr;
+    pPusher = nullptr;
 }
 
 bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
@@ -3494,6 +3501,8 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
         urlPath = "";
     }
 
+    IPusher::LiveClientInfo client;
+
     for (const std::string& fork : spParam->vecForks)
     {
         uint256 hashFork;
@@ -3507,15 +3516,17 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
             throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
         }
 
-        mapRPCClient[spParam->strIpport].registerForks.insert(uint256(fork));
+        client.registerForks.insert(uint256(fork));
     }
 
-    mapRPCClient[spParam->strIpport].timestamp = GetTime();
-    mapRPCClient[spParam->strIpport].nNonce = nNonce++;
-    mapRPCClient[spParam->strIpport].fSSL = strProtocol == "http" ? false : true;
-    mapRPCClient[spParam->strIpport].strHost = strHost;
-    mapRPCClient[spParam->strIpport].nPort = nPort;
-    mapRPCClient[spParam->strIpport].strURL = urlPath;
+    client.timestamp = GetTime();
+    client.nNonce = nNonce++;
+    client.fSSL = strProtocol == "http" ? false : true;
+    client.strHost = strHost;
+    client.nPort = nPort;
+    client.strURL = urlPath;
+
+    pPusher->InsertNewClient(spParam->strIpport, client);
 
     StdWarn("CRPCMod", "port %d, url: %s", nPort, urlPath.c_str());
     spResult->strIpport = spParam->strIpport;
@@ -3605,104 +3616,149 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
     return spResult;
 }
 
-bool CRPCMod::CalcForkPoints(const uint256& forkHash)
+// bool CRPCMod::CalcForkPoints(const uint256& forkHash)
+// {
+//     std::vector<std::pair<uint256, int>> vAncestors;
+//     std::vector<std::pair<int, uint256>> vSublines;
+//     std::vector<std::pair<uint256, uint256>> path;
+//     if (!pService->GetForkGenealogy(forkHash, vAncestors, vSublines))
+//     {
+//         return false;
+//     }
+
+//     std::vector<std::pair<uint256, uint256>> forkAncestors;
+//     for (int i = vAncestors.size() - 1; i >= 0; i--)
+//     {
+//         CBlock block;
+//         uint256 tempFork;
+//         int nHeight = 0;
+//         pService->GetBlock(vAncestors[i].first, block, tempFork, nHeight);
+//         forkAncestors.push_back(std::make_pair(vAncestors[i].first, block.hashPrev));
+//     }
+
+//     path = forkAncestors;
+//     CBlock block;
+//     uint256 tempFork;
+//     int nHeight = 0;
+//     pService->GetBlock(forkHash, block, tempFork, nHeight);
+//     path.push_back(std::make_pair(forkHash, block.hashPrev));
+
+//     for (const auto& fork : path)
+//     {
+//         mapForkPoint.insert(std::make_pair(fork.second.ToString(),
+//                                            std::make_pair(fork.first, fork.second)));
+//     }
+
+//     return true;
+// }
+
+// void CRPCMod::TrySwitchFork(const uint256& blockHash, uint256& forkHash)
+// {
+//     auto it = mapForkPoint.find(blockHash.ToString());
+//     if (it != mapForkPoint.end())
+//     {
+//         auto value = it->second;
+//         forkHash = value.first;
+//     }
+// }
+
+// bool CRPCMod::GetBlocks(const uint256& forkHash, const uint256& startHash, int32 n, std::vector<CBlockEx>& blocks)
+// {
+//     uint256 connectForkHash = forkHash;
+//     uint256 blockHash = startHash;
+
+//     if (!forkHash)
+//     {
+//         connectForkHash = pCoreProtocol->GetGenesisBlockHash();
+//     }
+
+//     int blockHeight = 0;
+//     uint256 tempForkHash;
+//     if (!pService->GetBlockLocation(blockHash, tempForkHash, blockHeight))
+//     {
+//         StdWarn("CRPCMod", "GetBlocks::GetBlockLocation failed");
+//         return false;
+//     }
+
+//     if (!CalcForkPoints(connectForkHash))
+//     {
+//         StdWarn("CRPCMod", "GetBlocks::CalcForkPoint failed");
+//         return false;
+//     }
+
+//     const std::size_t nonExtendBlockMaxNum = n + 1;
+//     std::size_t nonExtendBlockCount = 0;
+
+//     pService->GetBlockLocation(blockHash, tempForkHash, blockHeight);
+
+//     std::vector<uint256> blocksHash;
+//     while (nonExtendBlockCount < nonExtendBlockMaxNum && pService->GetBlockHash(tempForkHash, blockHeight, blocksHash))
+//     {
+//         for (int i = 0; i < blocksHash.size(); ++i)
+//         {
+//             CBlockEx block;
+//             int height;
+//             pService->GetBlockEx(blocksHash[i], block, tempForkHash, height);
+//             if (block.nType != CBlock::BLOCK_EXTENDED)
+//             {
+//                 nonExtendBlockCount++;
+//             }
+
+//             blocks.push_back(block);
+//         }
+
+//         TrySwitchFork(blocksHash[0], tempForkHash);
+//         blockHeight++;
+//         blocksHash.clear();
+//         blocksHash.shrink_to_fit();
+//     }
+
+//     return true;
+// }
+
+Cblockdatadetail CRPCMod::BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block)
 {
-    std::vector<std::pair<uint256, int>> vAncestors;
-    std::vector<std::pair<int, uint256>> vSublines;
-    std::vector<std::pair<uint256, uint256>> path;
-    if (!pService->GetForkGenealogy(forkHash, vAncestors, vSublines))
+    Cblockdatadetail data;
+
+    data.strHash = block.GetHash().ToString();
+    data.strPrev = block.hashPrev.GetHex();
+    data.nVersion = block.nVersion;
+    data.nType = block.nType;
+    data.nTime = block.GetBlockTime();
+    data.strSig = ToHexString(block.vchSig);
+    data.strProof = ToHexString(block.vchProof);
+    if (block.hashPrev != 0)
     {
-        return false;
+        data.strPrev = block.hashPrev.GetHex();
     }
 
-    std::vector<std::pair<uint256, uint256>> forkAncestors;
-    for (int i = vAncestors.size() - 1; i >= 0; i--)
+    uint256 tempHashFork;
+    int tempHeight = 0;
+    pService->GetBlockLocation(block.GetHash(), tempHashFork, tempHeight);
+    data.strFork = tempHashFork.ToString();
+    data.nHeight = block.GetBlockHeight();
+    int nDepth = pService->GetForkHeight(tempHashFork) - block.GetBlockHeight();
+    if (hashFork != pCoreProtocol->GetGenesisBlockHash())
     {
-        CBlock block;
-        uint256 tempFork;
-        int nHeight = 0;
-        pService->GetBlock(vAncestors[i].first, block, tempFork, nHeight);
-        forkAncestors.push_back(std::make_pair(vAncestors[i].first, block.hashPrev));
+        nDepth = nDepth * 30;
     }
-
-    path = forkAncestors;
-    CBlock block;
-    uint256 tempFork;
-    int nHeight = 0;
-    pService->GetBlock(forkHash, block, tempFork, nHeight);
-    path.push_back(std::make_pair(forkHash, block.hashPrev));
-
-    for (const auto& fork : path)
+    data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, tempHashFork, block.GetHash(), nDepth, CAddress().ToString());
+    if (block.IsProofOfWork())
     {
-        mapForkPoint.insert(std::make_pair(fork.second.ToString(),
-                                           std::make_pair(fork.first, fork.second)));
+        CProofOfHashWorkCompact proof;
+        proof.Load(block.vchProof);
+        data.nBits = proof.nBits;
     }
-
-    return true;
-}
-
-void CRPCMod::TrySwitchFork(const uint256& blockHash, uint256& forkHash)
-{
-    auto it = mapForkPoint.find(blockHash.ToString());
-    if (it != mapForkPoint.end())
+    else
     {
-        auto value = it->second;
-        forkHash = value.first;
+        data.nBits = 0;
     }
-}
-
-bool CRPCMod::GetBlocks(const uint256& forkHash, const uint256& startHash, int32 n, std::vector<CBlockEx>& blocks)
-{
-    uint256 connectForkHash = forkHash;
-    uint256 blockHash = startHash;
-
-    if (!forkHash)
+    for (int i = 0; i < block.vtx.size(); i++)
     {
-        connectForkHash = pCoreProtocol->GetGenesisBlockHash();
+        const CTransaction& tx = block.vtx[i];
+        data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, tempHashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
     }
-
-    int blockHeight = 0;
-    uint256 tempForkHash;
-    if (!pService->GetBlockLocation(blockHash, tempForkHash, blockHeight))
-    {
-        StdWarn("CRPCMod", "GetBlocks::GetBlockLocation failed");
-        return false;
-    }
-
-    if (!CalcForkPoints(connectForkHash))
-    {
-        StdWarn("CRPCMod", "GetBlocks::CalcForkPoint failed");
-        return false;
-    }
-
-    const std::size_t nonExtendBlockMaxNum = n + 1;
-    std::size_t nonExtendBlockCount = 0;
-
-    pService->GetBlockLocation(blockHash, tempForkHash, blockHeight);
-
-    std::vector<uint256> blocksHash;
-    while (nonExtendBlockCount < nonExtendBlockMaxNum && pService->GetBlockHash(tempForkHash, blockHeight, blocksHash))
-    {
-        for (int i = 0; i < blocksHash.size(); ++i)
-        {
-            CBlockEx block;
-            int height;
-            pService->GetBlockEx(blocksHash[i], block, tempForkHash, height);
-            if (block.nType != CBlock::BLOCK_EXTENDED)
-            {
-                nonExtendBlockCount++;
-            }
-
-            blocks.push_back(block);
-        }
-
-        TrySwitchFork(blocksHash[0], tempForkHash);
-        blockHeight++;
-        blocksHash.clear();
-        blocksHash.shrink_to_fit();
-    }
-
-    return true;
+    return data;
 }
 
 CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
@@ -3712,47 +3768,160 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
     return MakeCPushBlockResultPtr(spParam->block.strHash);
 }
 
-// bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
-// {
-//     // const CBlockEx& block = event.data;
-//     // const uint256& hashFork = event.hashFork;
-//     // StdWarn("CRPCMod::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
-//     // std::vector<std::string> deletes;
-//     // for (const auto& client : mapRPCClient)
-//     // {
-//     //     const std::string& ipport = client.first;
-//     //     int64 nTimeStamp = client.second.timestamp;
-//     //     StdWarn("CRPCMod::CSH", "Update New Block ipport: %s", ipport.c_str());
-//     //     if (GetTime() - nTimeStamp > 60)
-//     //     {
-//     //         StdWarn("CRPCMod::CSH", "Timeout IPORT: %s", ipport.c_str());
-//     //         deletes.push_back(ipport);
-//     //         continue;
-//     //     }
+CPusher::CPusher()
+{
+    pHttpGet = nullptr;
+    pCoreProtocol = nullptr;
+    pService = nullptr;
+}
 
-//     //     StdWarn("CRPCMod::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
-//     //     if (client.second.registerForks.count(hashFork) == 0)
-//     //     {
-//     //         StdWarn("CRPCMod::CSH", "No register fork: %s", hashFork.ToString().c_str());
-//     //         continue;
-//     //     }
-//     //     Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
-//     //     auto spParam = MakeCPushBlockParamPtr(data);
-//     //     StdWarn("CRPCMod::CSH", "Update New Block Calling: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
-//     //     CallRPC(client.second.fSSL, client.second.strHost, client.second.nPort, client.second.strURL, client.second.nNonce, spParam, client.second.nNonce);
-//     //     StdWarn("CRPCMod::CSH", "Update New Block Call Finished: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
-//     // }
+CPusher::~CPusher()
+{
+    pHttpGet = nullptr;
+    pCoreProtocol = nullptr;
+    pService = nullptr;
+}
 
-//     // RemoveClients(deletes);
-//     return true;
-// }
+const CRPCServerConfig* CPusher::RPCServerConfig()
+{
+    return dynamic_cast<const CRPCServerConfig*>(IBase::Config());
+}
 
-void CRPCMod::RemoveClient(const std::string& client)
+bool CPusher::HandleInitialize()
+{
+
+    if (!GetObject("coreprotocol", pCoreProtocol))
+    {
+        Error("Failed to request coreprotocol");
+        return false;
+    }
+
+    if (!GetObject("service", pService))
+    {
+        Error("Failed to request service");
+        return false;
+    }
+
+    if (!GetObject("httpget", pHttpGet))
+    {
+        cerr << "Failed to request httpget\n";
+        return false;
+    }
+
+    return true;
+}
+
+void CPusher::HandleDeinitialize()
+{
+    pHttpGet = nullptr;
+    pCoreProtocol = nullptr;
+    pService = nullptr;
+}
+
+bool CPusher::HandleInvoke()
+{
+    return true;
+}
+
+void CPusher::HandleHalt()
+{
+}
+
+void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& client)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+
+    mapRPCClient[ipport] = client;
+}
+
+Cblockdatadetail CPusher::BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block)
+{
+    Cblockdatadetail data;
+
+    data.strHash = block.GetHash().ToString();
+    data.strPrev = block.hashPrev.GetHex();
+    data.nVersion = block.nVersion;
+    data.nType = block.nType;
+    data.nTime = block.GetBlockTime();
+    data.strSig = ToHexString(block.vchSig);
+    data.strProof = ToHexString(block.vchProof);
+    if (block.hashPrev != 0)
+    {
+        data.strPrev = block.hashPrev.GetHex();
+    }
+
+    uint256 tempHashFork;
+    int tempHeight = 0;
+    pService->GetBlockLocation(block.GetHash(), tempHashFork, tempHeight);
+    data.strFork = tempHashFork.ToString();
+    data.nHeight = block.GetBlockHeight();
+    int nDepth = pService->GetForkHeight(tempHashFork) - block.GetBlockHeight();
+    if (hashFork != pCoreProtocol->GetGenesisBlockHash())
+    {
+        nDepth = nDepth * 30;
+    }
+    data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, tempHashFork, block.GetHash(), nDepth, CAddress().ToString());
+    if (block.IsProofOfWork())
+    {
+        CProofOfHashWorkCompact proof;
+        proof.Load(block.vchProof);
+        data.nBits = proof.nBits;
+    }
+    else
+    {
+        data.nBits = 0;
+    }
+    for (int i = 0; i < block.vtx.size(); i++)
+    {
+        const CTransaction& tx = block.vtx[i];
+        data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, tempHashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
+    }
+    return data;
+}
+
+bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
+{
+    const CBlockEx& block = event.data;
+    const uint256& hashFork = event.hashFork;
+    StdWarn("CPusher::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
+    std::vector<std::string> deletes;
+
+    std::lock_guard<std::mutex> lock(mMutex);
+    for (const auto& client : mapRPCClient)
+    {
+        const std::string& ipport = client.first;
+        int64 nTimeStamp = client.second.timestamp;
+        StdWarn("CPusher::CSH", "Update New Block ipport: %s", ipport.c_str());
+        if (GetTime() - nTimeStamp > 60)
+        {
+            StdWarn("CPusher::CSH", "Timeout IPORT: %s", ipport.c_str());
+            deletes.push_back(ipport);
+            continue;
+        }
+
+        StdWarn("CPusher::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
+        if (client.second.registerForks.count(hashFork) == 0)
+        {
+            StdWarn("CPusher::CSH", "No register fork: %s", hashFork.ToString().c_str());
+            continue;
+        }
+        Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
+        auto spParam = MakeCPushBlockParamPtr(data);
+        StdWarn("CPusher::CSH", "Update New Block Calling: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
+        CallRPC(client.second.fSSL, client.second.strHost, client.second.nPort, client.second.strURL, client.second.nNonce, spParam, client.second.nNonce);
+        StdWarn("CPusher::CSH", "Update New Block Call Finished: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
+    }
+
+    // RemoveClients(deletes);
+    return true;
+}
+
+void CPusher::RemoveClient(const std::string& client)
 {
     mapRPCClient.erase(client);
 }
 
-void CRPCMod::RemoveClients(const std::vector<std::string>& clients)
+void CPusher::RemoveClients(const std::vector<std::string>& clients)
 {
     for (const std::string& client : clients)
     {
@@ -3760,7 +3929,7 @@ void CRPCMod::RemoveClients(const std::vector<std::string>& clients)
     }
 }
 
-void CRPCMod::RemoveClient(uint64 nNonce)
+void CPusher::RemoveClient(uint64 nNonce)
 {
     std::string removeClient;
     for (const auto& client : mapRPCClient)
@@ -3782,7 +3951,7 @@ void CRPCMod::RemoveClient(uint64 nNonce)
 //     return true;
 // }
 
-bool CRPCMod::CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, CRPCParamPtr spParam, int nReqId)
+bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, CRPCParamPtr spParam, int nReqId)
 {
     try
     {
@@ -3792,19 +3961,19 @@ bool CRPCMod::CallRPC(bool fSSL, const std::string& strHost, int nPort, const st
     catch (const std::exception& e)
     {
         cerr << e.what() << endl;
-        StdError("CRPCMod", "CallRPC Exception: %s", e.what());
+        StdError("CPusher", "CallRPC Exception: %s", e.what());
         return false;
     }
     catch (...)
     {
         cerr << "Unknown error" << endl;
-        StdError("CRPCMod", "CallRPC Exception: Unknown error");
+        StdError("CPusher", "CallRPC Exception: Unknown error");
         return false;
     }
     return false;
 }
 
-bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
+bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
 {
     try
     {
@@ -3818,13 +3987,13 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
                                      "internal failure", "aborted" };
 
             //RemoveClient(event.nNonce);
-            StdError("CRPCMod", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
+            StdError("CPusher", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
             return false;
         }
         if (rsp.nStatusCode == 401)
         {
             //RemoveClient(event.nNonce);
-            StdError("CRPCMod", "incorrect rpcuser or rpcpassword (authorization failed)");
+            StdError("CPusher", "incorrect rpcuser or rpcpassword (authorization failed)");
             return false;
         }
         else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
@@ -3832,12 +4001,12 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
             ostringstream oss;
             oss << "server returned HTTP error " << rsp.nStatusCode;
             //RemoveClient(event.nNonce);
-            StdError("CRPCMod", oss.str().c_str());
+            StdError("CPusher", oss.str().c_str());
             return false;
         }
         else if (rsp.strContent.empty())
         {
-            StdError("CRPCMod", "no response from server");
+            StdError("CPusher", "no response from server");
             return false;
         }
 
@@ -3845,7 +4014,7 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
         if (Config()->fDebug)
         {
             cout << "response: " << rsp.strContent;
-            StdDebug("CRPCMod", "response: ", rsp.strContent.c_str());
+            StdDebug("CPusher", "response: ", rsp.strContent.c_str());
         }
 
         auto spResp = DeserializeCRPCResp("", rsp.strContent);
@@ -3854,8 +4023,8 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
             // Error
             //cerr << spResp->spError->Serialize(true) << endl;
             //cerr << strServerHelpTips << endl;
-            StdError("CRPCMod", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
-            StdError("CRPCMod", "RPC Response error tips: %s", strServerHelpTips.c_str());
+            StdError("CPusher", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
+            StdError("CPusher", "RPC Response error tips: %s", strServerHelpTips.c_str());
         }
         else if (spResp->IsSuccessful())
         {
@@ -3864,19 +4033,19 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
         else
         {
             //cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
-            StdError("CRPCMod", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
+            StdError("CPusher", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
         }
     }
     catch (const std::exception& e)
     {
-        StdError("CRPCMod", "RPC Response Exception: %s ", e.what());
+        StdError("CPusher", "RPC Response Exception: %s ", e.what());
         return false;
     }
     //ioComplt.Completed(false);
     return true;
 }
 
-bool CRPCMod::GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content)
+bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content)
 {
 
     CEventHttpGet eventHttpGet(nNonce);
@@ -3924,51 +4093,6 @@ bool CRPCMod::GetResponse(bool fSSL, const std::string& strHost, int nPort, cons
     //bool fResult = false;
     //return (ioComplt.WaitForComplete(fResult) && fResult);
     return true;
-}
-
-Cblockdatadetail CRPCMod::BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block)
-{
-    Cblockdatadetail data;
-
-    data.strHash = block.GetHash().ToString();
-    data.strPrev = block.hashPrev.GetHex();
-    data.nVersion = block.nVersion;
-    data.nType = block.nType;
-    data.nTime = block.GetBlockTime();
-    data.strSig = ToHexString(block.vchSig);
-    data.strProof = ToHexString(block.vchProof);
-    if (block.hashPrev != 0)
-    {
-        data.strPrev = block.hashPrev.GetHex();
-    }
-
-    uint256 tempHashFork;
-    int tempHeight = 0;
-    pService->GetBlockLocation(block.GetHash(), tempHashFork, tempHeight);
-    data.strFork = tempHashFork.ToString();
-    data.nHeight = block.GetBlockHeight();
-    int nDepth = pService->GetForkHeight(tempHashFork) - block.GetBlockHeight();
-    if (hashFork != pCoreProtocol->GetGenesisBlockHash())
-    {
-        nDepth = nDepth * 30;
-    }
-    data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, tempHashFork, block.GetHash(), nDepth, CAddress().ToString());
-    if (block.IsProofOfWork())
-    {
-        CProofOfHashWorkCompact proof;
-        proof.Load(block.vchProof);
-        data.nBits = proof.nBits;
-    }
-    else
-    {
-        data.nBits = 0;
-    }
-    for (int i = 0; i < block.vtx.size(); i++)
-    {
-        const CTransaction& tx = block.vtx[i];
-        data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, tempHashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
-    }
-    return data;
 }
 
 } // namespace bigbang
