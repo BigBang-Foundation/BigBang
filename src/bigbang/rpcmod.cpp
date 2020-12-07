@@ -3804,7 +3804,7 @@ bool CPusher::HandleInitialize()
 
     if (!GetObject("httpget", pHttpGet))
     {
-        cerr << "Failed to request httpget\n";
+        Error("Failed to request httpget");
         return false;
     }
 
@@ -3829,7 +3829,7 @@ void CPusher::HandleHalt()
 
 void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& client)
 {
-    std::lock_guard<std::mutex> lock(mMutex);
+    //std::lock_guard<std::mutex> lock(mMutex);
 
     mapRPCClient[ipport] = client;
 }
@@ -3886,7 +3886,7 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
     StdWarn("CPusher::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
     std::vector<std::string> deletes;
 
-    std::lock_guard<std::mutex> lock(mMutex);
+    //std::lock_guard<std::mutex> lock(mMutex);
     for (const auto& client : mapRPCClient)
     {
         const std::string& ipport = client.first;
