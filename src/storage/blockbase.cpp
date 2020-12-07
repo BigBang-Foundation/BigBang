@@ -1208,6 +1208,11 @@ bool CBlockBase::CommitBlockView(CBlockView& view, CBlockIndex* pIndexNew)
     return true;
 }
 
+bool CBlockBase::GetValidBlocksFromHashes(const uint256& hashFork, const std::vector<uint256>& vBlockHashes, const int num, std::vector<CBlockEx>& blocks)
+{
+    return false;
+}
+
 bool CBlockBase::LoadIndex(CBlockOutline& outline)
 {
     uint256 hash = outline.GetBlockHash();
@@ -1944,7 +1949,7 @@ bool CBlockBase::ListForkAllAddressAmount(const uint256& hashFork, CBlockView& v
     std::vector<CTxUnspent> vAddNew;
     std::vector<CTxOutPoint> vRemove;
     view.GetUnspentChanges(vAddNew, vRemove);
-    
+
     CListAddressUnspentWalker walker(vRemove);
     if (!dbBlock.WalkThroughUnspent(hashFork, walker))
     {

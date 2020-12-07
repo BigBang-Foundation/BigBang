@@ -338,7 +338,7 @@ bool CBlockChain::GetLastBlockOfHeight(const uint256& hashFork, const int nHeigh
 
 bool CBlockChain::GetValidBlocksFromHashes(const uint256& hashFork, const std::vector<uint256>& vBlockHashes, const int num, std::vector<CBlockEx>& blocks)
 {
-    return false;
+    return cntrBlock.GetValidBlocksFromHashes(hashFork, vBlockHashes, num, blocks);
 }
 
 bool CBlockChain::GetLastBlock(const uint256& hashFork, uint256& hashBlock, int& nHeight, int64& nTime, uint16& nMintType)
