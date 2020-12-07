@@ -3539,7 +3539,7 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
 
     if (spParam->vecBlockhashes.size() == 0)
     {
-        throw CRPCException(RPC_INVALID_PARAMETER, "block hashes is empty");
+        spParam->vecBlockhashes.push_back(hashFork.ToString());
     }
 
     CBlockEx block;
