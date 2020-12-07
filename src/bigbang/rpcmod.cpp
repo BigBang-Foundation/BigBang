@@ -3820,6 +3820,7 @@ void CPusher::HandleDeinitialize()
 
 bool CPusher::HandleInvoke()
 {
+    StdWarn("CPusher", "Invoking");
     return true;
 }
 
