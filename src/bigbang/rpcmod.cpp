@@ -3566,15 +3566,35 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
 
     auto spResult = MakeCGetBlocksResultPtr();
 
+    std::vector<uint256> vHashes;
+    for (const std::string& hash : spParam->vecBlockhashes)
+    {
+        uint256 hashBlock(hash);
+        vHashes.push_back(hashBlock);
+    }
+
     std::vector<CBlockEx> blocks;
     // if (!GetBlocks(uint256(spParam->strFork), block.GetHash(), (int32)spParam->nNum, blocks))
     // {
     //     throw CRPCException(RPC_INTERNAL_ERROR, "GetBlocks failed");
     // }
 
-    if (!fIsEmptyHashes)
+    if (!pService->GetValidBlocksFromHashes(hashFork, vHashes, spParam->nNum, blocks))
     {
-        blocks.erase(blocks.begin());
+        throw CRPCException(RPC_INTERNAL_ERROR, "GetValidBlocksFromHashes failed");
+    }
+
+    if (fIsEmptyHashes)
+    {
+        CBlockEx block;
+        uint256 temp;
+        int nHeight = 0;
+        if (!pService->GetBlockEx(hashFork, block, temp, nHeight))
+        {
+            throw CRPCException(RPC_INTERNAL_ERROR, "GetFork Origin Block failed");
+        }
+
+        blocks.insert(blocks.begin(), block);
     }
 
     for (const CBlockEx& block : blocks)
