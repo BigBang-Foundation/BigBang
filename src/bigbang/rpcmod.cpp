@@ -4016,7 +4016,7 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
         // Parse reply
         if (Config()->fDebug)
         {
-            cout << "response: " << rsp.strContent;
+            //cout << "response: " << rsp.strContent;
             StdDebug("CPusher", "response: ", rsp.strContent.c_str());
         }
 
