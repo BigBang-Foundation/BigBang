@@ -3537,9 +3537,11 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
+    bool fIsEmptyHashes = false;
     if (spParam->vecBlockhashes.size() == 0)
     {
         spParam->vecBlockhashes.push_back(hashFork.ToString());
+        fIsEmptyHashes = true;
     }
 
     CBlockEx block;
@@ -3566,7 +3568,10 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INTERNAL_ERROR, "GetBlocks failed");
     }
 
-    blocks.erase(blocks.begin());
+    if (!fIsEmptyHashes)
+    {
+        blocks.erase(blocks.begin());
+    }
 
     for (const CBlockEx& block : blocks)
     {
