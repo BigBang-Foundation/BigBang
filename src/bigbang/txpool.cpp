@@ -53,6 +53,19 @@ public:
 //////////////////////////////
 // CTxPoolView
 
+void CTxPoolView::RemoveSpent(const CTxOutPoint& out)
+{
+    auto it = mapSpent.find(out);
+    if (it != mapSpent.end())
+    {
+        if (!it->second.destTo.IsNull())
+        {
+            mapAddressUnspent[it->second.destTo].RemoveTxUnspent(out);
+        }
+        mapSpent.erase(it);
+    }
+}
+
 bool CTxPoolView::AddTxIndex(const uint256& txid, CPooledTx& tx)
 {
     CPooledTxLinkSetByTxHash& idxTx = setTxLinkIndex.get<0>();
@@ -199,6 +212,11 @@ bool CTxPoolView::AddNew(const uint256& txid, CPooledTx& tx)
         }
     }
 
+    if (!AddAddressUnspent(txid, tx))
+    {
+        return false;
+    }
+
     return true;
 }
 
@@ -223,7 +241,7 @@ void CTxPoolView::InvalidateSpent(const CTxOutPoint& out, CTxPoolView& viewInvol
             }
             else
             {
-                mapSpent.erase(out0);
+                RemoveSpent(out0);
             }
             CTxOutPoint out1(txidNextTx, 1);
             if (IsSpent(out1))
@@ -232,14 +250,14 @@ void CTxPoolView::InvalidateSpent(const CTxOutPoint& out, CTxPoolView& viewInvol
             }
             else
             {
-                mapSpent.erase(out1);
+                RemoveSpent(out1);
             }
             viewInvolvedTx.AddNew(txidNextTx, *pNextTx);
             setTxLinkIndex.erase(txidNextTx);
         }
         else
         {
-            mapSpent.erase(vOutPoint[i]);
+            RemoveSpent(vOutPoint[i]);
         }
     }
 }
@@ -421,6 +439,31 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
     return true;
 }
 
+bool CTxPoolView::AddAddressUnspent(const uint256& txid, const CPooledTx& tx)
+{
+    CAddrUnspent& addrDestIn = mapAddressUnspent[tx.destIn];
+    CAddrUnspent& addrSendTo = mapAddressUnspent[tx.sendTo];
+
+    for (std::size_t i = 0; i < tx.vInput.size(); i++)
+    {
+        addrDestIn.SetTxSpent(tx.vInput[i].prevout);
+    }
+
+    CTxOut output;
+    output = tx.GetOutput(0);
+    if (!output.IsNull())
+    {
+        addrSendTo.SetTxUnspent(CTxOutPoint(txid, 0), CUnspentOut(output, tx.nType, -1));
+    }
+
+    output = tx.GetOutput(1);
+    if (!output.IsNull())
+    {
+        addrDestIn.SetTxUnspent(CTxOutPoint(txid, 1), CUnspentOut(output, tx.nType, -1));
+    }
+    return true;
+}
+
 void CTxPoolView::GetBlockTxList(vector<CTransaction>& vtx, int64& nTotalTxFee, const int64 nBlockTime, const size_t nMaxSize, const uint256& hashFork, const int nHeight,
                                  map<CDestination, int>& mapVoteCert, const map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight,
                                  vector<pair<uint256, vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock)
@@ -477,6 +520,32 @@ void CTxPoolView::GetBlockTxList(vector<CTransaction>& vtx, int64& nTotalTxFee, 
             }
         }
     }
+}
+
+bool CTxPoolView::GetAddressUnspent(const CDestination& dest, const uint256& hashChainLastBlock, map<CTxOutPoint, CUnspentOut>& mapUnspent)
+{
+    if (hashChainLastBlock != hashLastBlock)
+    {
+        StdError("CTxPoolView", "Get address unspent fail, last block error, chain last block: %s, txpool last block: %s",
+                 hashChainLastBlock.GetHex().c_str(), hashLastBlock.GetHex().c_str());
+        return false;
+    }
+    map<CDestination, CAddrUnspent>::const_iterator it = mapAddressUnspent.find(dest);
+    if (it != mapAddressUnspent.end())
+    {
+        for (const auto& vd : it->second.mapTxUnspent)
+        {
+            if (vd.second.IsNull())
+            {
+                mapUnspent.erase(vd.first);
+            }
+            else
+            {
+                mapUnspent.insert(vd);
+            }
+        }
+    }
+    return true;
 }
 
 //////////////////////////////
@@ -753,6 +822,98 @@ void CTxPool::ListTx(const uint256& hashFork, vector<uint256>& vTxPool)
             vTxPool.push_back((*mi).hashTX);
         }
     }
+}
+
+bool CTxPool::ListTx(const uint256& hashFork, const CDestination& dest, vector<CTxInfo>& vTxPool, const int64 nGetOffset, const int64 nGetCount)
+{
+    boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
+    map<uint256, CTxPoolView>::const_iterator it = mapPoolView.find(hashFork);
+    if (it == mapPoolView.end())
+    {
+        return false;
+    }
+
+    const CPooledTxLinkSetBySequenceNumber& idxTx = (*it).second.setTxLinkIndex.get<1>();
+    if (nGetOffset >= 0)
+    {
+        int64 nPos = 0;
+        for (CPooledTxLinkSetBySequenceNumber::iterator mi = idxTx.begin(); mi != idxTx.end(); ++mi)
+        {
+            if (dest.IsNull() || dest == mi->ptx->destIn || dest == mi->ptx->sendTo)
+            {
+                if (nPos >= nGetOffset)
+                {
+                    vTxPool.push_back(CTxInfo(mi->hashTX, hashFork, mi->ptx->nType, mi->ptx->nTimeStamp, mi->ptx->nLockUntil, -1, mi->nSequenceNumber,
+                                              mi->ptx->destIn, mi->ptx->sendTo, mi->ptx->nAmount, mi->ptx->nTxFee, mi->ptx->nSerializeSize));
+                    if (nGetCount > 0 && vTxPool.size() >= nGetCount)
+                    {
+                        break;
+                    }
+                }
+                nPos++;
+            }
+        }
+    }
+    else
+    {
+        // last count transactions
+        vector<CTxInfo> vTxCache;
+        for (CPooledTxLinkSetBySequenceNumber::iterator mi = idxTx.begin(); mi != idxTx.end(); ++mi)
+        {
+            if (dest.IsNull() || dest == mi->ptx->destIn || dest == mi->ptx->sendTo)
+            {
+                vTxCache.push_back(CTxInfo(mi->hashTX, hashFork, mi->ptx->nType, mi->ptx->nTimeStamp, mi->ptx->nLockUntil, -1, mi->nSequenceNumber,
+                                           mi->ptx->destIn, mi->ptx->sendTo, mi->ptx->nAmount, mi->ptx->nTxFee, mi->ptx->nSerializeSize));
+            }
+        }
+        if (vTxCache.size() > 0)
+        {
+            if (nGetCount > 0)
+            {
+                if (vTxCache.size() <= nGetCount)
+                {
+                    vTxPool.assign(vTxCache.begin(), vTxCache.end());
+                }
+                else
+                {
+                    vTxPool.assign(vTxCache.begin() + (vTxCache.size() - nGetCount), vTxCache.end());
+                }
+            }
+            else
+            {
+                vTxPool.assign(vTxCache.begin(), vTxCache.end());
+            }
+        }
+    }
+    return true;
+}
+
+bool CTxPool::ListTxOfSeq(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const uint64 nTxSeq, const int64 nGetCount)
+{
+    boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
+    map<uint256, CTxPoolView>::const_iterator it = mapPoolView.find(hashFork);
+    if (it == mapPoolView.end())
+    {
+        return false;
+    }
+
+    const CPooledTxLinkSetBySequenceNumber& idxTx = (*it).second.setTxLinkIndex.get<1>();
+    for (CPooledTxLinkSetBySequenceNumber::iterator mi = idxTx.begin(); mi != idxTx.end(); ++mi)
+    {
+        if (mi->nSequenceNumber >= nTxSeq)
+        {
+            if (dest.IsNull() || dest == mi->ptx->destIn || dest == mi->ptx->sendTo)
+            {
+                vTxPool.push_back(CTxInfo(mi->hashTX, hashFork, mi->ptx->nType, mi->ptx->nTimeStamp, mi->ptx->nLockUntil, -1, mi->nSequenceNumber,
+                                          mi->ptx->destIn, mi->ptx->sendTo, mi->ptx->nAmount, mi->ptx->nTxFee, mi->ptx->nSerializeSize));
+                if (nGetCount > 0 && vTxPool.size() >= nGetCount)
+                {
+                    break;
+                }
+            }
+        }
+    }
+    return true;
 }
 
 bool CTxPool::ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, const std::vector<CTxUnspent>& vUnspentOnChain, std::vector<CTxUnspent>& vUnspent)
@@ -1076,9 +1237,9 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                 if (AddNew(txView, txid, tx, update.hashFork, update.nLastBlockHeight) == OK)
                 {
                     if (spent0 != 0)
-                        txView.SetSpent(CTxOutPoint(txid, 0), spent0);
+                        txView.SetSpent(CTxOutPoint(txid, 0), tx.sendTo, spent0);
                     if (spent1 != 0)
-                        txView.SetSpent(CTxOutPoint(txid, 1), spent1);
+                        txView.SetSpent(CTxOutPoint(txid, 1), block.vTxContxt[i].destIn, spent1);
 
                     change.mapTxUpdate.insert(make_pair(txid, -1));
                 }
@@ -1148,6 +1309,27 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
 void CTxPool::AddDestDelegate(const CDestination& destDeleage)
 {
     certTxDest.AddDelegate(destDeleage);
+}
+
+bool CTxPool::FetchAddressUnspent(const uint256& hashFork, const CDestination& dest, map<CTxOutPoint, CUnspentOut>& mapUnspent)
+{
+    uint256 hashLastBlock;
+    if (!pBlockChain->GetAddressUnspent(hashFork, dest, mapUnspent, hashLastBlock))
+    {
+        StdError("CTxPool", "Fetch address unspent: Get address unspent fail, fork: %s, dest: %s",
+                 hashFork.GetHex().c_str(), CAddress(dest).ToString().c_str());
+        return false;
+    }
+    {
+        boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
+        if (!mapPoolView[hashFork].GetAddressUnspent(dest, hashLastBlock, mapUnspent))
+        {
+            StdError("CTxPool", "Fetch address unspent: Get txpool address unspent fail, fork: %s, dest: %s",
+                     hashFork.GetHex().c_str(), CAddress(dest).ToString().c_str());
+            return false;
+        }
+    }
+    return true;
 }
 
 bool CTxPool::LoadData()

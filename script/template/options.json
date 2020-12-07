@@ -60,9 +60,9 @@
             "name": "nLogFileSize",
             "type": "int",
             "opt": "logfilesize",
-            "default": 10,
+            "default": 200,
             "format": "-logfilesize=<size>",
-            "desc": "Log file size(M) (default: 10M)"
+            "desc": "Log file size(M) (default: 200M)"
         },
         {
             "name": "nLogHistorySize",
@@ -71,6 +71,14 @@
             "default": 2048,
             "format": "-loghistorysize=<size>",
             "desc": "Log history size(M) (default: 2048M)"
+        },
+        {
+            "name": "fAddrTxIndex",
+            "type": "bool",
+            "opt": "addrtxindex",
+            "default": false,
+            "format": "-addrtxindex",
+            "desc": "Launch server without address txindex"
         }
     ],
     "CForkConfigOption": [

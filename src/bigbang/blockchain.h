@@ -78,6 +78,8 @@ public:
     bool ListDeFiRelation(const uint256& hashFork, xengine::CForest<CDestination, CDestination>& relation) override;
     bool InitDeFiRelation(const uint256& hashFork) override;
     bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent) override;
+    bool GetAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut) override;
+    int64 GetAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx) override;
 
     /////////////    CheckPoints    /////////////////////
     typedef std::map<int, CCheckPoint> MapCheckPointsType;
@@ -113,7 +115,7 @@ protected:
 
     void InitCheckPoints();
     bool AddBlockForkContext(const CBlockEx& blockex);
-    void InitCheckPoints(const uint256& hashFork, const std::vector<CCheckPoint>& vCheckPointsIn);
+    void InitCheckPoints(const uint256& hashFork, const std::map<int, uint256>& mapCheckPointsIn);
 
     // defi
     std::list<uint256> GetDeFiSectionList(const uint256& forkid, const CBlockIndex* pIndexPrev, const int32 nHeight, uint256& nLastSection, CDeFiReward& lastReward);

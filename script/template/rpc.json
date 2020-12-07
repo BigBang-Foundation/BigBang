@@ -323,7 +323,7 @@
             "synctx": {
                 "type": "bool",
                 "desc": "sync tx or not",
-                "default": true,
+                "default": false,
                 "required": false
             }
         }
@@ -717,6 +717,11 @@
             "blockheight": {
                 "type": "int",
                 "desc": "block height",
+                "required": false
+            },
+            "txseq": {
+                "type": "uint",
+                "desc": "tx sequence",
                 "required": false
             },
             "type": {
@@ -1586,12 +1591,32 @@
                     "required": false,
                     "opt": "f"
                 },
+                "address": {
+                    "type": "string",
+                    "desc": "address",
+                    "required": false,
+                    "opt": "a"
+                },
                 "detail": {
                     "type": "bool",
                     "desc": "get detail or not",
                     "default": false,
                     "required": false,
                     "opt": "d"
+                },
+                "getoffset": {
+                    "type": "int",
+                    "desc": "get offset, If not set, from 0",
+                    "default": 0,
+                    "required": false,
+                    "opt": "o"
+                },
+                "getcount": {
+                    "type": "int",
+                    "desc": "get count, 0 is all",
+                    "default": 20,
+                    "required": false,
+                    "opt": "n"
                 }
             }
         },
@@ -1621,9 +1646,29 @@
                             "type": "object",
                             "desc": "pool struct",
                             "content": {
-                                "hex": {
+                                "txid": {
                                     "type": "string",
-                                    "desc": "tx pool hex"
+                                    "desc": "txid"
+                                },
+                                "txtype": {
+                                    "type": "string",
+                                    "desc": "tx type"
+                                },
+                                "from": {
+                                    "type": "string",
+                                    "desc": "from address"
+                                },
+                                "to": {
+                                    "type": "string",
+                                    "desc": "to address"
+                                },
+                                "amount": {
+                                    "type": "double",
+                                    "desc": "amount"
+                                },
+                                "txfee": {
+                                    "type": "double",
+                                    "desc": "tx fee"
                                 },
                                 "size": {
                                     "type": "uint",
@@ -2110,7 +2155,7 @@
                 "synctx": {
                     "type": "bool",
                     "desc": "sync tx or not",
-                    "default": true,
+                    "default": false,
                     "required": false,
                     "opt": "s"
                 }
@@ -2148,6 +2193,13 @@
                 "pubkey": {
                     "type": "string",
                     "desc": "private key"
+                },
+                "synctx": {
+                    "type": "bool",
+                    "desc": "sync tx or not",
+                    "default": false,
+                    "required": false,
+                    "opt": "s"
                 }
             }
         },
@@ -2186,7 +2238,7 @@
                 "synctx": {
                     "type": "bool",
                     "desc": "sync tx or not",
-                    "default": true,
+                    "default": false,
                     "required": false,
                     "opt": "s"
                 }
@@ -2306,7 +2358,7 @@
                 "synctx": {
                     "type": "bool",
                     "desc": "sync tx or not",
-                    "default": true,
+                    "default": false,
                     "required": false,
                     "opt": "s"
                 }
@@ -2440,47 +2492,6 @@
                 "request": "curl -d '{\"id\":3,\"method\":\"validateaddress\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"123\"}}' http://127.0.0.1:9902",
                 "response": "{\"id\":3,\"jsonrpc\":\"2.0\",\"result\":{\"isvalid\":false}}"
             }
-        ]
-    },
-    "resyncwallet": {
-        "type": "command",
-        "name": "ResyncWallet",
-        "introduction": "Resync wallet's transactions.",
-        "desc": [
-            "If (address) is not specified, resync wallet's tx for each address.",
-            "If (address) is specified, resync wallet's tx for the address."
-        ],
-        "request": {
-            "type": "object",
-            "content": {
-                "address": {
-                    "type": "string",
-                    "desc": "tx address",
-                    "required": false
-                }
-            }
-        },
-        "response": {
-            "type": "string",
-            "name": "result",
-            "desc": "resync wallet result"
-        },
-        "example": [
-            {
-                "request": "bigbang-cli resyncwallet",
-                "response": "Resync wallet successfully."
-            },
-            {
-                "request": "curl -d '{\"id\":38,\"method\":\"resyncwallet\",\"jsonrpc\":\"2.0\",\"params\":{}}' http://127.0.0.1:9902",
-                "response": "{\"id\":38,\"jsonrpc\":\"2.0\",\"result\":\"Resync wallet successfully.\"}"
-            },
-            {
-                "request": "bigbang-cli resyncwallet 1gbma6s21t4bcwymqz6h1dn1t7qy45019b1t00ywfyqymbvp90mqc1wmq"
-            }
-        ],
-        "error": [
-            "{\"code\":-6,\"message\":\"Invalid address\"}",
-            "{\"code\":-401,\"message\":\"Failed to resync wallet tx\"}"
         ]
     },
     "getdefirelation": {
@@ -2628,15 +2639,27 @@
                 },
                 "fork": {
                     "type": "string",
-                    "desc": "fork hash. If not set, return all local fork 10 tx",
+                    "desc": "fork hash. If not set, default is genesis",
                     "required": false,
                     "opt": "f"
                 },
                 "address": {
                     "type": "string",
-                    "desc": "from address or sendto address",
+                    "desc": "from address or sendto address. If not set, default is all wallet address",
                     "required": false,
                     "opt": "a"
+                },
+                "prevheight": {
+                    "type": "int",
+                    "desc": "query previous parameters: block height, if txpool is -1",
+                    "required": false,
+                    "opt": "h"
+                },
+                "prevtxseq": {
+                    "type": "uint",
+                    "desc": "query previous parameters: sequence of tx in block",
+                    "required": false,
+                    "opt": "s"
                 }
             }
         },
@@ -2728,6 +2751,12 @@
                     "required": false,
                     "opt": "ss"
                 },
+                "fromdata": {
+                    "type": "string",
+                    "desc": "If the 'from' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "fd"
+                },
                 "sendtodata": {
                     "type": "string",
                     "desc": "If the 'to' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
@@ -2746,6 +2775,12 @@
                     "desc": "mint height of DeFi fork",
                     "required": false,
                     "opt": "mintheight"
+                },
+                "signsecret": {
+                    "type": "string",
+                    "desc": "sign secret",
+                    "required": false,
+                    "opt": "sec"
                 }
             }
         },
@@ -2909,11 +2944,35 @@
                     "type": "string",
                     "desc": "transaction data(hex string)"
                 },
+                "sign_m": {
+                    "type": "string",
+                    "desc": "exchange sign m",
+                    "required": false,
+                    "opt": "sm"
+                },
+                "sign_s": {
+                    "type": "string",
+                    "desc": "exchange sign s",
+                    "required": false,
+                    "opt": "ss"
+                },
+                "fromdata": {
+                    "type": "string",
+                    "desc": "If the 'from' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "fd"
+                },
                 "sendtodata": {
                     "type": "string",
                     "desc": "If the 'to' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
                     "required": false,
                     "opt": "td"
+                },
+                "signsecret": {
+                    "type": "string",
+                    "desc": "sign secret",
+                    "required": false,
+                    "opt": "sec"
                 }
             }
         },
@@ -3767,6 +3826,13 @@
                     "default": 10,
                     "required": false
                 },
+                "amount": {
+                    "type": "double",
+                    "desc": "amount unspents(0 means unlimited)",
+                    "opt": "a",
+                    "default": 0.0,
+                    "required": false
+                },
                 "file": {
                     "type": "string",
                     "desc": "input file containing list of multiple addresses",
@@ -3824,6 +3890,96 @@
             },
             {
                 "request": "curl -d '{\"id\":0,\"method\":\"listunspent\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm\",\"fork\":\"00000000beb6f9e2a8813f4778b26820a8649894de63624e65bc0ffa9562730b\",\"max\":1}}' http://127.0.0.1:9902",
+                "response": "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":{\"unspents\":[{\"txid\":\"5dd4bb56b3d0aed9bb0e0a80d01ec1f70d7bd4d1fc200a48df330154b366ca8e\",\"out\":0,\"amount\":1000.000000,\"time\":1574222678,\"lockuntil\":0}],\"sum\":1000.000000}}"
+            }
+        ],
+        "error": [
+            "{\"code\":-401,\"message\":\"Address as an argument should be provided.\"}",
+            "{\"code\":-401,\"message\":\"Acquiring unspent list failed.\"}",
+            "{\"code\":-402,\"message\":\"Not enough funds in wallet or account.\"}"
+        ]
+    },
+    "listunspentold": {
+        "type": "command",
+        "name": "ListUnspentOld",
+        "desc": "Return a JSON object listing unspent utxo by user specifying arguments address, fork(optional, main fork by default), maximum unspents(optional, 3 by default) and an input file containing list of multiple addresses(optional, plain text file name must be absolute path, one line only contains one wallet address with maximum of 10,000 lines). You may specify one wallet address in RPC command line with or without a text file name, core wallet will return all unspent utxos in a single batch operation.",
+        "request": {
+            "type": "object",
+            "content": {
+                "address": {
+                    "type": "string",
+                    "desc": "address to receive the unspent"
+                },
+                "fork": {
+                    "type": "string",
+                    "desc": "fork hash",
+                    "opt": "f",
+                    "required": false
+                },
+                "max": {
+                    "type": "uint",
+                    "desc": "maximum unspents(0 means unlimited)",
+                    "opt": "n",
+                    "default": 10,
+                    "required": false
+                },
+                "file": {
+                    "type": "string",
+                    "desc": "input file containing list of multiple addresses",
+                    "opt": "if",
+                    "required": false
+                }
+            }
+        },
+        "response": {
+            "type": "object",
+            "name": "data",
+            "content": {
+                "addresses": {
+                    "type": "array",
+                    "content": {
+                        "addr": {
+                            "type": "object",
+                            "content": {
+                                "address": {
+                                    "type": "string",
+                                    "desc": "address to list unspent"
+                                },
+                                "unspents": {
+                                    "type": "array",
+                                    "desc": "unspent list of address owner",
+                                    "content": {
+                                        "unspent": {
+                                            "type": "unspentdata",
+                                            "desc": "unspent data"
+                                        }
+                                    }
+                                },
+                                "sum": {
+                                    "type": "double",
+                                    "desc": "sum of unspent amount"
+                                }
+                            }
+                        }
+                    }
+                },
+                "total": {
+                    "type": "double",
+                    "desc": "total of unspent amount for list of addresses"
+                }
+            }
+        },
+        "example": [
+            {
+                "request": "bigbang-cli listunspentold 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm -f=00000000beb6f9e2a8813f4778b26820a8649894de63624e65bc0ffa9562730b -n=1",
+                "response": "{\"unspents\":[{\"txid\":\"5dd4bb56b3d0aed9bb0e0a80d01ec1f70d7bd4d1fc200a48df330154b366ca8e\",\"out\":0,\"amount\":1000.000000,\"time\":1574222678,\"lockuntil\":0}],\"sum\":1000.000000}"
+            },
+            {
+                "request": "bigbang-cli listunspentold 20g075m4mh5trbkdy8vbh74n9h7t3npe7tewpnvsfb19p57jnyf3kdh45 -if=/home/oijen/addr10",
+                "response": "{\"addresses\":[{\"address\":\"1zbyhm9p0aa1wvebg3wch7xkhxsv5m9z32jsnjngpfnf7cgd778st8tds\",\"unspents\":[{\"txid\":\"5de8bcce65733bbcfff18130de6f3f10cfd46ce94aa4775070f1634777029401\",\"out\":0,\"amount\":340.999900,\"time\":1575533774,\"lockuntil\":0},{\"txid\":\"5e0423aadb07b4142abcf29e576e56d0eff594d5da18f6915155c1ece4c66309\",\"out\":0,\"amount\":11.999900,\"time\":1577329578,\"lockuntil\":0},{\"txid\":\"5df7b69db367bfc7a9b40fea36e2459f99e214db9505a44f9dfa9052e1d6f411\",\"out\":0,\"amount\":10.999900,\"time\":1576515229,\"lockuntil\":0}],\"sum\":363.999700},{\"address\":\"1z98n1sfbhtw3b5wrre69fh648e4res1g7r9bzcp0kf85hte75mv0zc01\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1tbvg7cxbqg36rph6ymws856ms4j5e4cvbd4ssy0ejxn1h869g9hfwv4c\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1j42adjfq37j9grmwsh4gnayfgg6kep59d78srpxg8zf8hdqv1yptjwzx\",\"unspents\":[{\"txid\":\"5df58dcccb52641f3b9c090ba5760181a3999370137cc6b5bbacc30b7b4b5909\",\"out\":0,\"amount\":499.999900,\"time\":1576373708,\"lockuntil\":0},{\"txid\":\"5df80dad00f53331757e19fae811308ec59d722ffb189958ecdb7cc4ad79b30d\",\"out\":0,\"amount\":499.999900,\"time\":1576537517,\"lockuntil\":0},{\"txid\":\"5df7a4344d2d887c929cf6d08bf825bfacc14d8c86cf62ab3944caa142bc6c0f\",\"out\":0,\"amount\":499.999900,\"time\":1576510516,\"lockuntil\":0}],\"sum\":1499.999700},{\"address\":\"1ztsgg3m6az2sm8t6ap6k3cw36z5ewd5sp05k7a62h6rqvpqp871aqpq6\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1ny00y8whrser450hfw3d87h1p3emdeca4fq5xetddwfz9mb4e38ndxx0\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1944eh1ysrjy1rgjyxcr9b0nvmbra2bmtm6v6kt1a3ag6wf07hfa0apgg\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1rjcyqyzsf1p8b22fxdx79qwfcr7wzkx1n2xykc5chzd905jymbfd8j4n\",\"unspents\":[{\"txid\":\"5df61f85cbe11a3ab7eedbc2929241aa10c27179ec0b4fef3cea9f803a9aad15\",\"out\":0,\"amount\":499.999900,\"time\":1576411013,\"lockuntil\":0},{\"txid\":\"5e04142090815b50bf1688e5cbd3ceca550c8f2ad6e44d690fb7a5f21b478227\",\"out\":0,\"amount\":499.999900,\"time\":1577325600,\"lockuntil\":0},{\"txid\":\"5dfa848c46ee3c4b3b468674433dad2b3d5531428e5b60ef3d827c020859f73a\",\"out\":0,\"amount\":499.999900,\"time\":1576699020,\"lockuntil\":0}],\"sum\":1499.999700},{\"address\":\"1jvy4ys1yrz3rg6te1h70mt0t89v9d0pbr038d48wmyzyzvrxk7safdg2\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1dq62d8y4fz20sfg63zzy4h4ayksswv1fgqjzvegde306bxxg5zygc27q\",\"unspents\":[{\"txid\":\"5df31decea3f149fe53062fbdbc8ca4e42d54e348f9e3c482a1edfb0c5b34100\",\"out\":0,\"amount\":499.999900,\"time\":1576213996,\"lockuntil\":0},{\"txid\":\"5df26e22ab57f87fa7f5ee931b09cdc550583ab7517afa18e5f68db1ee53fb02\",\"out\":0,\"amount\":499.999900,\"time\":1576168994,\"lockuntil\":0},{\"txid\":\"5df235df6a0d575378361ba75560ffab8ee9c786a58e604f14c037d7ec2afd05\",\"out\":0,\"amount\":499.999900,\"time\":1576154591,\"lockuntil\":0}],\"sum\":1499.999700},{\"address\":\"20g075m4mh5trbkdy8vbh74n9h7t3npe7tewpnvsfb19p57jnyf3kdh45\",\"unspents\":[{\"txid\":\"5e032143eb0c23c13f2d422144f1337ecd467c2163c7758e5a00b4d6fbe7ba00\",\"out\":0,\"amount\":1153.000000,\"time\":1577263427,\"lockuntil\":0},{\"txid\":\"5e046a5cae5ea2622a37ad737f53e9185b60ea010242191b75f276b8d50dc900\",\"out\":0,\"amount\":1153.000000,\"time\":1577347676,\"lockuntil\":0},{\"txid\":\"5e0399615cb69be399d6b6fee2bc1aca10d9d4e222467f9eef76745334b8ad01\",\"out\":0,\"amount\":1153.000000,\"time\":1577294177,\"lockuntil\":0}],\"sum\":3459.000000}],\"total\":8322.998800}"
+            },
+            {
+                "request": "curl -d '{\"id\":0,\"method\":\"listunspentold\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm\",\"fork\":\"00000000beb6f9e2a8813f4778b26820a8649894de63624e65bc0ffa9562730b\",\"max\":1}}' http://127.0.0.1:9902",
                 "response": "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":{\"unspents\":[{\"txid\":\"5dd4bb56b3d0aed9bb0e0a80d01ec1f70d7bd4d1fc200a48df330154b366ca8e\",\"out\":0,\"amount\":1000.000000,\"time\":1574222678,\"lockuntil\":0}],\"sum\":1000.000000}}"
             }
         ],
@@ -4057,6 +4213,36 @@
                 "txdata": {
                     "type": "string",
                     "desc": "raw transaction data(hex string)"
+                },
+                "sign_m": {
+                    "type": "string",
+                    "desc": "exchange sign m",
+                    "required": false,
+                    "opt": "sm"
+                },
+                "sign_s": {
+                    "type": "string",
+                    "desc": "exchange sign s",
+                    "required": false,
+                    "opt": "ss"
+                },
+                "fromdata": {
+                    "type": "string",
+                    "desc": "If the 'from' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "fd"
+                },
+                "sendtodata": {
+                    "type": "string",
+                    "desc": "If the 'to' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "td"
+                },
+                "signsecret": {
+                    "type": "string",
+                    "desc": "sign secret",
+                    "required": false,
+                    "opt": "sec"
                 }
             }
         },

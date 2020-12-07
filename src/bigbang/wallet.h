@@ -153,26 +153,12 @@ public:
     bool AddTemplate(CTemplatePtr& ptr) override;
     CTemplatePtr GetTemplate(const CTemplateId& tid) const override;
     /* Destination */
-    void GetDestinations(std::set<CDestination>& setDest);
+    void GetDestinations(std::set<CDestination>& setDest) override;
     /* Wallet Tx */
-    std::size_t GetTxCount() override;
-    bool ListTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) override;
-    bool GetBalance(const CDestination& dest, const uint256& hashFork, int nForkHeight, const uint256& hashLastBlock, CWalletBalance& balance) override;
-    bool SignTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, const uint256& hashFork, const int32 nForkHeight, bool& fCompleted) override;
-    bool ArrangeInputs(const CDestination& destIn, const uint256& hashFork, int nForkHeight, const uint256& hashLastBlock, CTransaction& tx) override;
-    bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, std::vector<CTxUnspent>& vUnspent) override;
+    bool SignTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, const uint256& hashFork, const int32 nForkHeight, bool& fCompleted) override;
     /* Update */
-    bool SynchronizeTxSet(const CTxSetChange& change) override;
-    bool AddNewTx(const uint256& hashFork, const CAssembledTx& tx) override;
-    bool UpdateTx(const uint256& hashFork, const CAssembledTx& tx);
-    bool LoadTxUnspent(const CWalletTx& wtx);
-    bool LoadTxSpent(const CWalletTx& wtx);
-    bool AddNewFork(const uint256& hashFork, const uint256& hashParent, int nOriginHeight) override;
-    /* Resync */
-    bool SynchronizeWalletTx(const CDestination& destNew) override;
-    bool ResynchronizeWalletTx() override;
-    bool CompareWithTxOrPool(const CAssembledTx& tx);
-    bool CompareWithPoolOrTx(const CWalletTx& wtx, const std::set<CDestination>& setAddr);
+    bool AddMemKey(const uint256& secret, crypto::CPubKey& pubkey) override;
+    void RemoveMemKey(const crypto::CPubKey& pubkey) override;
 
 protected:
     bool HandleInitialize() override;
@@ -181,46 +167,25 @@ protected:
     void HandleHalt() override;
     bool LoadDB();
     void Clear();
-    bool ClearTx();
     bool InsertKey(const crypto::CKey& key);
-    int64 SelectCoins(const CDestination& dest, const uint256& hashFork, int nForkHeight, int64 nTxTime,
-                      int64 nTargetValue, std::size_t nMaxInput, std::vector<CTxOutPoint>& vCoins);
-    bool IsAtTxPool(const CDestination& dest, const uint256& hashFork);
 
-    std::shared_ptr<CWalletTx> LoadWalletTx(const uint256& txid);
-    std::shared_ptr<CWalletTx> InsertWalletTx(const uint256& txid, const CAssembledTx& tx, const uint256& hashFork, bool fIsMine, bool fFromMe);
     bool SignPubKey(const crypto::CPubKey& pubkey, const uint256& hash, std::vector<uint8>& vchSig,
                     std::set<crypto::CPubKey>& setSignedKey);
     bool SignMultiPubKey(const std::set<crypto::CPubKey>& setPubKey, const uint256& hash, const uint256& hashAnchor,
                          std::vector<uint8>& vchSig, std::set<crypto::CPubKey>& setSignedKey);
-    bool SignDestination(const CDestination& destIn, const CTransaction& tx, const uint256& hash, std::vector<uint8>& vchSig,
-                         const vector<uint8>& vchSignExtraData, const uint256& hashFork, const int32 nForkHeight,
+    bool SignDestination(const CDestination& destIn, const CTransaction& tx, const vector<uint8>& vchDestInData, const uint256& hash,
+                         std::vector<uint8>& vchSig, const vector<uint8>& vchSignExtraData, const uint256& hashFork, const int32 nForkHeight,
                          std::set<crypto::CPubKey>& setSignedKey, bool& fCompleted);
     void UpdateAutoLock(const std::set<crypto::CPubKey>& setSignedKey);
-    bool UpdateFork();
-    void GetWalletTxFork(const uint256& hashFork, int nHeight, std::vector<uint256>& vFork);
-    bool AddWalletTxOut(const CTxOutPoint& txout);
-    void RemoveWalletTxOut(const CTxOutPoint& txout);
-    void AddNewWalletTx(std::shared_ptr<CWalletTx>& spWalletTx, std::vector<uint256>& vFork);
-    void RemoveWalletTx(std::shared_ptr<CWalletTx>& spWalletTx, const uint256& hashFork);
-    bool SyncWalletTx(CTxFilter& txFilter);
-    bool InspectWalletTx(int nCheckDepth);
     bool GetSendToDestRecorded(const CTransaction& tx, const int nHeight, const std::vector<uint8>& vchSendToData, std::vector<uint8>& vchDestData);
 
 protected:
     storage::CWalletDB dbWallet;
-    ICoreProtocol* pCoreProtocol;
     IBlockChain* pBlockChain;
-    ITxPool* pTxPool;
-    IForkManager* pForkManager;
     mutable boost::shared_mutex rwKeyStore;
-    mutable boost::shared_mutex rwWalletTx;
     std::map<crypto::CPubKey, CWalletKeyStore> mapKeyStore;
     std::map<CTemplateId, CTemplatePtr> mapTemplatePtr;
-    std::map<uint256, std::shared_ptr<CWalletTx>> mapWalletTx;
-    std::map<CDestination, CWalletUnspent> mapWalletUnspent;
-    std::map<uint256, CWalletFork> mapFork;
-    std::set<CTxOutPoint> setWalletTxOut;
+    std::map<crypto::CPubKey, uint256> mapMemSignKey;
 };
 
 // dummy wallet for on wallet server
@@ -301,59 +266,23 @@ public:
     {
         return nullptr;
     }
+    /* Destination */
+    virtual void GetDestinations(std::set<CDestination>& setDest) override
+    {
+    }
     /* Wallet Tx */
-    virtual std::size_t GetTxCount() override
-    {
-        return 0;
-    }
-    virtual bool ListTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, std::vector<CWalletTx>& vWalletTx) override
-    {
-        return true;
-    }
-    virtual bool GetBalance(const CDestination& dest, const uint256& hashFork,
-                            int nForkHeight, const uint256& hashLastBlock, CWalletBalance& balance) override
-    {
-        return false;
-    }
-    virtual bool SignTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData,
+    virtual bool SignTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData,
                                  const uint256& hashFork, const int32 nForkHeight, bool& fCompleted) override
     {
         return false;
     }
-    virtual bool ArrangeInputs(const CDestination& destIn,
-                               const uint256& hashFork, int nForkHeight,
-                               const uint256& hashLastBlock, CTransaction& tx) override
-    {
-        return false;
-    }
-    virtual bool ListForkUnspent(const uint256& hashFork, const CDestination& dest,
-                                 uint32 nMax, std::vector<CTxUnspent>& vUnspent) override
-    {
-        return false;
-    }
     /* Update */
-    virtual bool SynchronizeTxSet(const CTxSetChange& change) override
+    virtual bool AddMemKey(const uint256& secret, crypto::CPubKey& pubkey) override
     {
         return true;
     }
-    virtual bool AddNewTx(const uint256& hashFork, const CAssembledTx& tx) override
+    virtual void RemoveMemKey(const crypto::CPubKey& pubkey) override
     {
-        return true;
-    }
-    virtual bool AddNewFork(const uint256& hashFork, const uint256& hashParent,
-                            int nOriginHeight) override
-    {
-        return true;
-    }
-
-    virtual bool SynchronizeWalletTx(const CDestination& destNew) override
-    {
-        return true;
-    }
-
-    virtual bool ResynchronizeWalletTx() override
-    {
-        return true;
     }
 };
 
