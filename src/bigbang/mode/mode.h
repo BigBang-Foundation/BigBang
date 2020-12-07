@@ -173,6 +173,7 @@ public:
                 EModuleType::BLOCKMAKER,
                 EModuleType::DATASTAT,
                 EModuleType::RECOVERY,
+                EModuleType::PUSHER,
                 EModuleType::HTTPGET } },
             { EModeType::MODE_CONSOLE,
               { EModuleType::HTTPGET,

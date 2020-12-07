@@ -21,7 +21,7 @@ namespace bigbang
 // CService
 
 CService::CService()
-  : pCoreProtocol(nullptr), pBlockChain(nullptr), pTxPool(nullptr), pDispatcher(nullptr), pWallet(nullptr), pNetwork(nullptr), pForkManager(nullptr), pNetChannel(nullptr), pRPCMod(nullptr)
+  : pCoreProtocol(nullptr), pBlockChain(nullptr), pTxPool(nullptr), pDispatcher(nullptr), pWallet(nullptr), pNetwork(nullptr), pForkManager(nullptr), pNetChannel(nullptr), pPusher(nullptr)
 {
 }
 
@@ -79,9 +79,9 @@ bool CService::HandleInitialize()
         return false;
     }
 
-    if (!GetObject("rpcmod", pRPCMod))
+    if (!GetObject("pusher", pPusher))
     {
-        Error("Failed to request rpcmod");
+        Error("Failed to request pusher");
         return false;
     }
 
@@ -98,7 +98,7 @@ void CService::HandleDeinitialize()
     pNetwork = nullptr;
     pForkManager = nullptr;
     pNetChannel = nullptr;
-    pRPCMod = nullptr;
+    pPusher = nullptr;
 }
 
 bool CService::HandleInvoke()
@@ -163,7 +163,7 @@ void CService::NotifyBlockChainUpdate(const CBlockChainUpdate& update)
     uint64 nNonce = 0;
     CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, update.hashFork, 0);
     pUpdateNewBlockEvent->data = update.vBlockAddNew[update.vBlockAddNew.size() - 1];
-    pRPCMod->PostEvent(pUpdateNewBlockEvent);
+    pPusher->PostEvent(pUpdateNewBlockEvent);
 }
 
 void CService::NotifyNetworkPeerUpdate(const CNetworkPeerUpdate& update)

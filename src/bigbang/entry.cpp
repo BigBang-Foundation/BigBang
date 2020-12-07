@@ -400,6 +400,14 @@ bool CBbEntry::InitializeModules(const EModeType& mode)
             }
             break;
         }
+        case EModuleType::PUSHER:
+        {
+            if (!AttachModule(new CPusher()))
+            {
+                return false;
+            }
+            break;
+        }
         case EModuleType::RECOVERY:
         {
             if (!AttachModule(new CRecovery()))
