@@ -3888,8 +3888,8 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
     StdWarn("CPusher::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
     std::vector<std::string> deletes;
 
-    static uint64 nNonce = 0;
-    nNonce++;
+    static uint64 nNonce = 10;
+    // nNonce++;
     {
         boost::lock_guard<boost::mutex> lock(mMutex);
         for (const auto& client : mapRPCClient)
