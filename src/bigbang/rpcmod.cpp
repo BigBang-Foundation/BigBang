@@ -3818,20 +3818,19 @@ void CPusher::HandleDeinitialize()
     pService = nullptr;
 }
 
-bool CPusher::HandleInvoke()
-{
-    StdWarn("CPusher", "Invoking");
-    return true;
-}
+// bool CPusher::HandleInvoke()
+// {
+//     StdWarn("CPusher", "Invoking");
+//     return true;
+// }
 
-void CPusher::HandleHalt()
-{
-}
+// void CPusher::HandleHalt()
+// {
+// }
 
 void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& client)
 {
-    //std::lock_guard<std::mutex> lock(mMutex);
-
+    boost::lock_guard<boost::mutex> lock(mMutex);
     mapRPCClient[ipport] = client;
 }
 
@@ -3887,33 +3886,36 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
     StdWarn("CPusher::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
     std::vector<std::string> deletes;
 
-    //std::lock_guard<std::mutex> lock(mMutex);
-    for (const auto& client : mapRPCClient)
     {
-        const std::string& ipport = client.first;
-        int64 nTimeStamp = client.second.timestamp;
-        StdWarn("CPusher::CSH", "Update New Block ipport: %s", ipport.c_str());
-        if (GetTime() - nTimeStamp > 60)
+        boost::lock_guard<boost::mutex> lock(mMutex);
+        for (const auto& client : mapRPCClient)
         {
-            StdWarn("CPusher::CSH", "Timeout IPORT: %s", ipport.c_str());
-            deletes.push_back(ipport);
-            continue;
+            const std::string& ipport = client.first;
+            int64 nTimeStamp = client.second.timestamp;
+            StdWarn("CPusher::CSH", "Update New Block ipport: %s", ipport.c_str());
+            if (GetTime() - nTimeStamp > 60)
+            {
+                StdWarn("CPusher::CSH", "Timeout IPORT: %s", ipport.c_str());
+                deletes.push_back(ipport);
+                continue;
+            }
+
+            StdWarn("CPusher::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
+            if (client.second.registerForks.count(hashFork) == 0)
+            {
+                StdWarn("CPusher::CSH", "No register fork: %s", hashFork.ToString().c_str());
+                continue;
+            }
+            Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
+            auto spParam = MakeCPushBlockParamPtr(data);
+            StdWarn("CPusher::CSH", "Update New Block Calling: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
+            CallRPC(client.second.fSSL, client.second.strHost, client.second.nPort, client.second.strURL, client.second.nNonce, spParam, client.second.nNonce);
+            StdWarn("CPusher::CSH", "Update New Block Call Finished: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
         }
 
-        StdWarn("CPusher::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
-        if (client.second.registerForks.count(hashFork) == 0)
-        {
-            StdWarn("CPusher::CSH", "No register fork: %s", hashFork.ToString().c_str());
-            continue;
-        }
-        Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
-        auto spParam = MakeCPushBlockParamPtr(data);
-        StdWarn("CPusher::CSH", "Update New Block Calling: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
-        CallRPC(client.second.fSSL, client.second.strHost, client.second.nPort, client.second.strURL, client.second.nNonce, spParam, client.second.nNonce);
-        StdWarn("CPusher::CSH", "Update New Block Call Finished: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
+        RemoveClients(deletes);
     }
 
-    // RemoveClients(deletes);
     return true;
 }
 

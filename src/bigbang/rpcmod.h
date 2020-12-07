@@ -7,6 +7,7 @@
 
 #include "json/json_spirit.h"
 #include <boost/function.hpp>
+#include <boost/thread.hpp>
 #include <unordered_map>
 
 #include "base.h"
@@ -188,8 +189,8 @@ protected:
 
     bool HandleInitialize() override;
     void HandleDeinitialize() override;
-    bool HandleInvoke() override;
-    void HandleHalt() override;
+    //bool HandleInvoke() override;
+    //void HandleHalt() override;
 
     bool CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, rpc::CRPCParamPtr spParam, int nReqId);
     bool GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content);
@@ -204,7 +205,7 @@ protected:
     xengine::IIOProc* pHttpGet;
 
 private:
-    std::mutex mMutex;
+    boost::mutex mMutex;
     std::map<std::string, LiveClientInfo> mapRPCClient; //  IP:PORT -> LiveClientInfo
     //std::unordered_map<std::string, std::pair<uint256, uint256>> mapForkPoint; // fork point hash => (fork hash, fork point hash)
 };

@@ -164,7 +164,6 @@ void CService::NotifyBlockChainUpdate(const CBlockChainUpdate& update)
     CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, update.hashFork, 0);
     pUpdateNewBlockEvent->data = update.vBlockAddNew[update.vBlockAddNew.size() - 1];
     pPusher->PostEvent(pUpdateNewBlockEvent);
-    StdWarn("CService", "Posted Update New Block %s", update.hashFork.ToString().c_str());
 }
 
 void CService::NotifyNetworkPeerUpdate(const CNetworkPeerUpdate& update)
