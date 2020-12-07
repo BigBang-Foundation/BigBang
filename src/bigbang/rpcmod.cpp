@@ -3544,29 +3544,33 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         fIsEmptyHashes = true;
     }
 
-    CBlockEx block;
-    int nHeight = -1;
-    for (const std::string& hash : spParam->vecBlockhashes)
-    {
-        uint256 hashBlock(hash);
-        if (pService->GetBlockEx(hashBlock, block, hashFork, nHeight))
-        {
-            break;
-        }
-    }
+    // CBlockEx block;
+    // int nHeight = -1;
+    // for (const std::string& hash : spParam->vecBlockhashes)
+    // {
+    //     uint256 hashBlock(hash);
+    //     int tempHeight = -1;
+    //     tempHeight = CBlock::GetBlockHeightByHash(hashBlock);
+    //     uint256 tempHashBlock;
+    //     int64 nTime;
+    //     if (pService->GetLastBlockOfHeight(hashFork, tempHeight, tempHashBlock, nTime) && tempHashBlock == hashBlock)
+    //     {
+    //         break;
+    //     }
+    // }
 
-    if (nHeight == -1)
-    {
-        throw CRPCException(RPC_REQUEST_NOT_FOUND, "all of blocks are invalid");
-    }
+    // if (nHeight == -1)
+    // {
+    //     throw CRPCException(RPC_REQUEST_NOT_FOUND, "all of blocks are invalid");
+    // }
 
     auto spResult = MakeCGetBlocksResultPtr();
 
     std::vector<CBlockEx> blocks;
-    if (!GetBlocks(uint256(spParam->strFork), block.GetHash(), (int32)spParam->nNum, blocks))
-    {
-        throw CRPCException(RPC_INTERNAL_ERROR, "GetBlocks failed");
-    }
+    // if (!GetBlocks(uint256(spParam->strFork), block.GetHash(), (int32)spParam->nNum, blocks))
+    // {
+    //     throw CRPCException(RPC_INTERNAL_ERROR, "GetBlocks failed");
+    // }
 
     if (!fIsEmptyHashes)
     {

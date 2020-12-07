@@ -387,6 +387,11 @@ bool CService::GetLastBlockOfHeight(const uint256& hashFork, const int nHeight, 
     return pBlockChain->GetLastBlockOfHeight(hashFork, nHeight, hashBlock, nTime);
 }
 
+bool CService::GetValidBlocksFromHashes(const uint256& hashFork, const std::vector<uint256>& vBlockHashes, const int num, std::vector<CBlockEx>& blocks)
+{
+    return pBlockChain->GetValidBlocksFromHashes(hashFork, vBlockHashes, num, blocks);
+}
+
 void CService::GetTxPool(const uint256& hashFork, vector<pair<uint256, size_t>>& vTxPool)
 {
     vTxPool.clear();
