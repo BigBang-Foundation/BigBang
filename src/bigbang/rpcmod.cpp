@@ -3995,13 +3995,13 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
 
             //RemoveClient(event.nNonce);
             StdError("CPusher", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
-            return true;
+            return false;
         }
         if (rsp.nStatusCode == 401)
         {
             //RemoveClient(event.nNonce);
             StdError("CPusher", "incorrect rpcuser or rpcpassword (authorization failed)");
-            return true;
+            return false;
         }
         else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
         {
@@ -4009,12 +4009,12 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
             oss << "server returned HTTP error " << rsp.nStatusCode;
             //RemoveClient(event.nNonce);
             StdError("CPusher", oss.str().c_str());
-            return true;
+            return false;
         }
         else if (rsp.strContent.empty())
         {
             StdError("CPusher", "no response from server");
-            return true;
+            return false;
         }
 
         // Parse reply
@@ -4046,7 +4046,7 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
     catch (const std::exception& e)
     {
         StdError("CPusher", "RPC Response Exception: %s ", e.what());
-        return true;
+        return false;
     }
     //ioComplt.Completed(false);
     return true;
