@@ -3888,6 +3888,8 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
     StdWarn("CPusher::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
     std::vector<std::string> deletes;
 
+    static uint64 nNonce = 0;
+    nNonce++;
     {
         boost::lock_guard<boost::mutex> lock(mMutex);
         for (const auto& client : mapRPCClient)
@@ -3910,9 +3912,9 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
             }
             Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
             auto spParam = MakeCPushBlockParamPtr(data);
-            StdWarn("CPusher::CSH", "Update New Block Calling: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
-            CallRPC(client.second.fSSL, client.second.strHost, client.second.nPort, client.second.strURL, client.second.nNonce, spParam, client.second.nNonce);
-            StdWarn("CPusher::CSH", "Update New Block Call Finished: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
+            StdWarn("CPusher::CSH", "Update New Block Calling: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, nNonce);
+            CallRPC(client.second.fSSL, client.second.strHost, client.second.nPort, client.second.strURL, nNonce, spParam, nNonce);
+            StdWarn("CPusher::CSH", "Update New Block Call Finished: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, nNonce);
         }
 
         RemoveClients(deletes);
@@ -3993,13 +3995,13 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
 
             //RemoveClient(event.nNonce);
             StdError("CPusher", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
-            return false;
+            return true;
         }
         if (rsp.nStatusCode == 401)
         {
             //RemoveClient(event.nNonce);
             StdError("CPusher", "incorrect rpcuser or rpcpassword (authorization failed)");
-            return false;
+            return true;
         }
         else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
         {
@@ -4007,12 +4009,12 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
             oss << "server returned HTTP error " << rsp.nStatusCode;
             //RemoveClient(event.nNonce);
             StdError("CPusher", oss.str().c_str());
-            return false;
+            return true;
         }
         else if (rsp.strContent.empty())
         {
             StdError("CPusher", "no response from server");
-            return false;
+            return true;
         }
 
         // Parse reply
@@ -4044,7 +4046,7 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
     catch (const std::exception& e)
     {
         StdError("CPusher", "RPC Response Exception: %s ", e.what());
-        return false;
+        return true;
     }
     //ioComplt.Completed(false);
     return true;
