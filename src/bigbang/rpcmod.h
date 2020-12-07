@@ -17,7 +17,7 @@
 namespace bigbang
 {
 
-class CRPCMod : public xengine::IIOModule, virtual public xengine::CHttpEventListener, virtual public CRPCModEventListener
+class CRPCMod : public xengine::IIOModule, virtual public xengine::CHttpEventListener //, virtual public CRPCModEventListener
 {
 public:
     typedef rpc::CRPCResultPtr (CRPCMod::*RPCFunc)(rpc::CRPCParamPtr param);
@@ -26,8 +26,8 @@ public:
     bool HandleEvent(xengine::CEventHttpReq& eventHttpReq) override;
     bool HandleEvent(xengine::CEventHttpBroken& eventHttpBroken) override;
     bool HandleEvent(xengine::CEventHttpGetRsp& event) override;
-    bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
-    bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
+    // bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
+    // bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
 
 protected:
     bool HandleInitialize() override;

@@ -3712,40 +3712,40 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
     return MakeCPushBlockResultPtr(spParam->block.strHash);
 }
 
-bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
-{
-    const CBlockEx& block = event.data;
-    const uint256& hashFork = event.hashFork;
-    StdWarn("CRPCMod::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
-    std::vector<std::string> deletes;
-    for (const auto& client : mapRPCClient)
-    {
-        const std::string& ipport = client.first;
-        int64 nTimeStamp = client.second.timestamp;
-        StdWarn("CRPCMod::CSH", "Update New Block ipport: %s", ipport.c_str());
-        if (GetTime() - nTimeStamp > 60)
-        {
-            StdWarn("CRPCMod::CSH", "Timeout IPORT: %s", ipport.c_str());
-            deletes.push_back(ipport);
-            continue;
-        }
+// bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
+// {
+//     // const CBlockEx& block = event.data;
+//     // const uint256& hashFork = event.hashFork;
+//     // StdWarn("CRPCMod::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
+//     // std::vector<std::string> deletes;
+//     // for (const auto& client : mapRPCClient)
+//     // {
+//     //     const std::string& ipport = client.first;
+//     //     int64 nTimeStamp = client.second.timestamp;
+//     //     StdWarn("CRPCMod::CSH", "Update New Block ipport: %s", ipport.c_str());
+//     //     if (GetTime() - nTimeStamp > 60)
+//     //     {
+//     //         StdWarn("CRPCMod::CSH", "Timeout IPORT: %s", ipport.c_str());
+//     //         deletes.push_back(ipport);
+//     //         continue;
+//     //     }
 
-        StdWarn("CRPCMod::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
-        if (client.second.registerForks.count(hashFork) == 0)
-        {
-            StdWarn("CRPCMod::CSH", "No register fork: %s", hashFork.ToString().c_str());
-            continue;
-        }
-        Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
-        auto spParam = MakeCPushBlockParamPtr(data);
-        StdWarn("CRPCMod::CSH", "Update New Block Calling: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
-        CallRPC(client.second.fSSL, client.second.strHost, client.second.nPort, client.second.strURL, client.second.nNonce, spParam, client.second.nNonce);
-        StdWarn("CRPCMod::CSH", "Update New Block Call Finished: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
-    }
+//     //     StdWarn("CRPCMod::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
+//     //     if (client.second.registerForks.count(hashFork) == 0)
+//     //     {
+//     //         StdWarn("CRPCMod::CSH", "No register fork: %s", hashFork.ToString().c_str());
+//     //         continue;
+//     //     }
+//     //     Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
+//     //     auto spParam = MakeCPushBlockParamPtr(data);
+//     //     StdWarn("CRPCMod::CSH", "Update New Block Calling: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
+//     //     CallRPC(client.second.fSSL, client.second.strHost, client.second.nPort, client.second.strURL, client.second.nNonce, spParam, client.second.nNonce);
+//     //     StdWarn("CRPCMod::CSH", "Update New Block Call Finished: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
+//     // }
 
-    RemoveClients(deletes);
-    return true;
-}
+//     // RemoveClients(deletes);
+//     return true;
+// }
 
 void CRPCMod::RemoveClient(const std::string& client)
 {
@@ -3776,11 +3776,11 @@ void CRPCMod::RemoveClient(uint64 nNonce)
     }
 }
 
-bool CRPCMod::HandleEvent(CRPCModEventUpdateNewTx& event)
-{
-    (void)event;
-    return true;
-}
+// bool CRPCMod::HandleEvent(CRPCModEventUpdateNewTx& event)
+// {
+//     (void)event;
+//     return true;
+// }
 
 bool CRPCMod::CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, CRPCParamPtr spParam, int nReqId)
 {
