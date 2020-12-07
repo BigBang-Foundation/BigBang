@@ -188,6 +188,7 @@ public:
     bool CheckDbValidFork(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork);
     bool AddDbValidForkHash(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork);
     bool AddDbForkContext(const CForkContext& ctxt);
+    bool GetDbForkContext(const uint256& hashFork, CForkContext& ctxt);
     bool UpdateDbForkLast(const uint256& hashFork, const uint256& hashLastBlock);
 
     bool GetValidForkContext(const uint256& hashPrimaryLastBlock, const uint256& hashFork, CForkContext& ctxt);

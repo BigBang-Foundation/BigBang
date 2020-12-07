@@ -662,6 +662,11 @@ bool CCheckForkManager::AddDbForkContext(const CForkContext& ctxt)
     return dbFork.AddNewForkContext(ctxt);
 }
 
+bool CCheckForkManager::GetDbForkContext(const uint256& hashFork, CForkContext& ctxt)
+{
+    return dbFork.RetrieveForkContext(hashFork, ctxt);
+}
+
 bool CCheckForkManager::UpdateDbForkLast(const uint256& hashFork, const uint256& hashLastBlock)
 {
     return dbFork.UpdateFork(hashFork, hashLastBlock);
@@ -2147,24 +2152,34 @@ bool CCheckBlockWalker::UpdateMintHeightTx()
         if (fork.second.nMintHeight > 0)
         {
             CForkContext ctxt;
-            if (!pCheckForkManager->GetForkContext(fork.first, ctxt))
+            if (!pCheckForkManager->GetDbForkContext(fork.first, ctxt))
             {
                 StdError("check", "UpdateMintHeightTx get fork context error, fork: %s", fork.first.ToString().c_str());
-                return false;
+                return fOnlyCheck ? true : false;
             }
 
             CProfile profile = ctxt.GetProfile();
-            profile.defi.nMintHeight = fork.second.nMintHeight;
-            ctxt.vchDeFi.clear();
-            profile.defi.Save(ctxt.vchDeFi);
-
-            if (!pCheckForkManager->UpdateForkContext(fork.first, ctxt))
+            if (profile.defi.nMintHeight != fork.second.nMintHeight)
             {
-                StdError("check", "UpdateMintHeightTx update fork context error, fork: %s", fork.first.ToString().c_str());
-                return false;
-            }
+                if (!fOnlyCheck)
+                {
+                    profile.defi.nMintHeight = fork.second.nMintHeight;
+                    ctxt.vchDeFi.clear();
+                    profile.defi.Save(ctxt.vchDeFi);
 
-            StdLog("check", "Update DeFi fork mint height, fork: %s, height: %d", fork.first.ToString().c_str(), profile.defi.nMintHeight);
+                    if (!pCheckForkManager->UpdateForkContext(fork.first, ctxt))
+                    {
+                        StdError("check", "UpdateMintHeightTx update fork context error, fork: %s", fork.first.ToString().c_str());
+                        return false;
+                    }
+                    StdLog("check", "Update DeFi fork mint height, fork: %s, height: %d", fork.first.ToString().c_str(), profile.defi.nMintHeight);
+                }
+                else
+                {
+                    StdError("check", "UpdateMintHeightTx mint height of fork context error, fork: %s, mint height: %d, should be: %d",
+                             fork.first.ToString().c_str(), profile.defi.nMintHeight, fork.second.nMintHeight);
+                }
+            }
         }
     }
     return true;
