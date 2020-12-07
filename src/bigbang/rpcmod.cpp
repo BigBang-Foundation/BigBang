@@ -3701,6 +3701,7 @@ bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
         StdWarn("CRPCMod::CSH", "Update New Block ipport: %s", ipport.c_str());
         if (GetTime() - nTimeStamp > 60)
         {
+            StdWarn("CRPCMod::CSH", "Timeout IPORT: %s", ipport.c_str());
             deletes.push_back(ipport);
             continue;
         }
@@ -3708,6 +3709,7 @@ bool CRPCMod::HandleEvent(CRPCModEventUpdateNewBlock& event)
         StdWarn("CRPCMod::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
         if (client.second.registerForks.count(hashFork) == 0)
         {
+            StdWarn("CRPCMod::CSH", "No register fork: %s", hashFork.ToString().c_str());
             continue;
         }
         Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
@@ -3791,13 +3793,13 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
                                      "disconnected", "no response", "resolve failed",
                                      "internal failure", "aborted" };
 
-            RemoveClient(event.nNonce);
+            //RemoveClient(event.nNonce);
             StdError("CRPCMod", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
             return false;
         }
         if (rsp.nStatusCode == 401)
         {
-            RemoveClient(event.nNonce);
+            //RemoveClient(event.nNonce);
             StdError("CRPCMod", "incorrect rpcuser or rpcpassword (authorization failed)");
             return false;
         }
@@ -3805,7 +3807,7 @@ bool CRPCMod::HandleEvent(xengine::CEventHttpGetRsp& event)
         {
             ostringstream oss;
             oss << "server returned HTTP error " << rsp.nStatusCode;
-            RemoveClient(event.nNonce);
+            //RemoveClient(event.nNonce);
             StdError("CRPCMod", oss.str().c_str());
             return false;
         }
