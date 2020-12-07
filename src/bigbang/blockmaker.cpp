@@ -916,6 +916,7 @@ void CBlockMaker::BlockMakerThreadFunc()
                 Error("Block maker error: %s", e.what());
                 break;
             }
+            break;
         }
         case NODE_TYPE_FORK:
         {
@@ -959,6 +960,7 @@ void CBlockMaker::BlockMakerThreadFunc()
                     }
                 }
             }
+            break;
         }
         default:
             break;
