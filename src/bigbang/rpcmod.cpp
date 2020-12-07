@@ -3963,13 +3963,13 @@ bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const st
     }
     catch (const std::exception& e)
     {
-        cerr << e.what() << endl;
+        //cerr << e.what() << endl;
         StdError("CPusher", "CallRPC Exception: %s", e.what());
         return false;
     }
     catch (...)
     {
-        cerr << "Unknown error" << endl;
+        //cerr << "Unknown error" << endl;
         StdError("CPusher", "CallRPC Exception: Unknown error");
         return false;
     }
