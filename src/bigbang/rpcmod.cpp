@@ -3566,6 +3566,8 @@ CRPCResultPtr CRPCMod::RPCGetBlocks(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INTERNAL_ERROR, "GetBlocks failed");
     }
 
+    blocks.erase(blocks.begin());
+
     for (const CBlockEx& block : blocks)
     {
         Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
@@ -3644,7 +3646,7 @@ bool CRPCMod::GetBlocks(const uint256& forkHash, const uint256& startHash, int32
         return false;
     }
 
-    const std::size_t nonExtendBlockMaxNum = n;
+    const std::size_t nonExtendBlockMaxNum = n + 1;
     std::size_t nonExtendBlockCount = 0;
 
     pService->GetBlockLocation(blockHash, tempForkHash, blockHeight);
