@@ -284,6 +284,7 @@ public:
     {
         setTxLinkIndex.clear();
         mapSpent.clear();
+        mapAddressUnspent.clear();
     }
     void SetLastBlock(const uint256& hash, int64 nTime)
     {
@@ -444,7 +445,7 @@ public:
     void ListTx(const uint256& hashFork, std::vector<std::pair<uint256, std::size_t>>& vTxPool) override;
     void ListTx(const uint256& hashFork, std::vector<uint256>& vTxPool) override;
     bool ListTx(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const int64 nGetOffset = 0, const int64 nGetCount = 0) override;
-    bool ListTxOfSeq(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const uint64 nTxSeq, const int64 nGetCount = 0) override;
+    bool ListTxOfSeq(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const uint64 nPrevTxSeq, const int64 nGetCount = 0) override;
     bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, const std::vector<CTxUnspent>& vUnspentOnChain, std::vector<CTxUnspent>& vUnspent) override;
     bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, const std::map<CDestination, std::vector<CTxUnspent>>& mapUnspentOnChain, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent) override;
     bool FilterTx(const uint256& hashFork, CTxFilter& filter) override;

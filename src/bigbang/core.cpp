@@ -166,7 +166,7 @@ static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
 #ifdef BIGBANG_TESTNET
 static const int32 CHANGE_MINT_RATE_HEIGHT = 0;
 #else
-static const int32 CHANGE_MINT_RATE_HEIGHT = 525230;
+static const int32 CHANGE_MINT_RATE_HEIGHT = 580000;
 #endif
 
 namespace bigbang
@@ -193,9 +193,7 @@ CCoreProtocol::~CCoreProtocol()
 
 bool CCoreProtocol::HandleInitialize()
 {
-    CBlock block;
-    GetGenesisBlock(block);
-    hashGenesisBlock = block.GetHash();
+    InitializeGenesisBlock();
     if (!GetObject("blockchain", pBlockChain))
     {
         return false;
@@ -216,6 +214,13 @@ Errno CCoreProtocol::Debug(const Errno& err, const char* pszFunc, const char* ps
     VDebug(strFormat.c_str(), ap);
     va_end(ap);
     return err;
+}
+
+void CCoreProtocol::InitializeGenesisBlock()
+{
+    CBlock block;
+    GetGenesisBlock(block);
+    hashGenesisBlock = block.GetHash();
 }
 
 const uint256& CCoreProtocol::GetGenesisBlockHash()
@@ -1476,7 +1481,7 @@ int64 CCoreProtocol::GetPrimaryMintWorkReward(const CBlockIndex* pIndexPrev)
 #endif
 }
 
-void CCoreProtocol::GetDelegatedBallot(const uint256& nAgreement, size_t nWeight, const map<CDestination, size_t>& mapBallot,
+void CCoreProtocol::GetDelegatedBallot(const uint256& nAgreement, const size_t nWeight, const map<CDestination, size_t>& mapBallot,
                                        const vector<pair<CDestination, int64>>& vecAmount, int64 nMoneySupply, vector<CDestination>& vBallot, size_t& nEnrollTrust, int nBlockHeight)
 {
     vBallot.clear();
@@ -1527,7 +1532,7 @@ void CCoreProtocol::GetDelegatedBallot(const uint256& nAgreement, size_t nWeight
     // new DPoS & PoW mint rate
     if (nBlockHeight >= CHANGE_MINT_RATE_HEIGHT)
     {
-        nWeight /= 10;
+        nWeightWork /= 10;
     }
     StdTrace("Core", "Get delegated ballot: weight height: %d, nRandomDelegate: %llu, nRandomWork: %llu, nWeightDelegate: %llu, nWeightWork: %llu",
              nBlockHeight, nSelected, (nWeightWork * 256 / (nWeightWork + nEnrollWeight)), nEnrollWeight, nWeightWork);
@@ -1934,8 +1939,9 @@ void CTestNetCoreProtocol::GetGenesisBlock(CBlock& block)
 ///////////////////////////////
 // CProofOfWorkParam
 
-CProofOfWorkParam::CProofOfWorkParam(bool fTestnet)
+CProofOfWorkParam::CProofOfWorkParam(const bool fTestnetIn)
 {
+    fTestnet = fTestnetIn;
     nProofOfWorkLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
     nProofOfWorkUpperLimit = PROOF_OF_WORK_BITS_UPPER_LIMIT;
     nProofOfWorkUpperTarget = PROOF_OF_WORK_TARGET_SPACING + PROOF_OF_WORK_ADJUST_DEBOUNCE;
@@ -1955,20 +1961,33 @@ CProofOfWorkParam::CProofOfWorkParam(bool fTestnet)
     nDelegateProofOfStakeEnrollMaximumAmount = DELEGATE_PROOF_OF_STAKE_ENROLL_MAXIMUM_AMOUNT;
     nDelegateProofOfStakeHeight = DELEGATE_PROOF_OF_STAKE_HEIGHT;
 
-    CBlock block;
     if (fTestnet)
     {
-        CTestNetCoreProtocol* pCore = new CTestNetCoreProtocol();
-        pCore->GetGenesisBlock(block);
-        delete pCore;
+        pCoreProtocol = (ICoreProtocol*)new CTestNetCoreProtocol();
     }
     else
     {
-        CCoreProtocol* pCore = new CCoreProtocol();
-        pCore->GetGenesisBlock(block);
-        delete pCore;
+        pCoreProtocol = (ICoreProtocol*)new CCoreProtocol();
     }
-    hashGenesisBlock = block.GetHash();
+    pCoreProtocol->InitializeGenesisBlock();
+
+    hashGenesisBlock = pCoreProtocol->GetGenesisBlockHash();
+}
+
+CProofOfWorkParam::~CProofOfWorkParam()
+{
+    if (pCoreProtocol)
+    {
+        if (fTestnet)
+        {
+            delete (CTestNetCoreProtocol*)pCoreProtocol;
+        }
+        else
+        {
+            delete (CCoreProtocol*)pCoreProtocol;
+        }
+        pCoreProtocol = nullptr;
+    }
 }
 
 bool CProofOfWorkParam::IsDposHeight(int height)
@@ -1992,6 +2011,11 @@ bool CProofOfWorkParam::IsRefVacantHeight(int height)
         return false;
     }
     return true;
+}
+
+Errno CProofOfWorkParam::ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile) const
+{
+    return pCoreProtocol->ValidateOrigin(block, parentProfile, forkProfile);
 }
 
 } // namespace bigbang

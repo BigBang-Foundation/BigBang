@@ -69,7 +69,8 @@ enum RPCErrorCode
     RPC_WALLET_ENCRYPTION_FAILED = -408,    //!< Failed to encrypt the wallet
     RPC_WALLET_ALREADY_UNLOCKED = -409,     //!< Wallet is already unlocked
     RPC_WALLET_INVALID_LABEL_NAME = -410,   //!< Invalid label name
-    RPC_WALLET_INVALID_PASSPHRASE = -411    //!< Invalid passphrase
+    RPC_WALLET_INVALID_PASSPHRASE = -411,   //!< Invalid passphrase
+    RPC_WALLET_REMOVE_KEY_ERROR = -412      //!< Error remove key
 };
 
 /**

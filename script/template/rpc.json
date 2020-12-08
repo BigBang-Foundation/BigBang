@@ -1188,6 +1188,18 @@
                             "type": "string",
                             "desc": "owner's address"
                         },
+                        "createtxid": {
+                            "type": "string",
+                            "desc": "create fork txid"
+                        },
+                        "forkheight": {
+                            "type": "int",
+                            "desc": "fork height"
+                        },
+                        "parentfork": {
+                            "type": "string",
+                            "desc": "parent fork"
+                        },
                         "forktype": {
                             "type": "string",
                             "desc": "fork params, a json object"
@@ -1290,11 +1302,11 @@
         "example": [
             {
                 "request": "bigbang-cli listfork",
-                "response": "[{\"fork\":\"a63d6f9d8055dc1bd7799593fb46ddc1b4e4519bd049e8eba1a0806917dcafc0\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\"}]"
+                "response": "[{\"fork\":\"00000023e3f9ba506f2ee2f96869f54eb4f23f3141471d57cad55b78ace699ff\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\",\"createtxid\":\"5fcef9b220f234b1b1356d545877e55551728bae8484e4a68d425d9242c6860c\",\"forkheight\":34,\"parentfork\":\"0000000006854ebdc236f48dbbe5c87312ea0abd7398888374b5ee9a5eb1d291\",\"forktype\":\"common\"}]"
             },
             {
                 "request": "{\"id\":69,\"method\":\"listfork\",\"jsonrpc\":\"2.0\",\"params\":{}}",
-                "response": "{\"id\":69,\"jsonrpc\":\"2.0\",\"result\":[{\"fork\":\"a63d6f9d8055dc1bd7799593fb46ddc1b4e4519bd049e8eba1a0806917dcafc0\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\"}]}"
+                "response": "{\"id\":69,\"jsonrpc\":\"2.0\",\"result\":[{\"fork\":\"00000023e3f9ba506f2ee2f96869f54eb4f23f3141471d57cad55b78ace699ff\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\",\"createtxid\":\"5fcef9b220f234b1b1356d545877e55551728bae8484e4a68d425d9242c6860c\",\"forkheight\":34,\"parentfork\":\"0000000006854ebdc236f48dbbe5c87312ea0abd7398888374b5ee9a5eb1d291\",\"forktype\":\"common\"}]}"
             }
         ]
     },
@@ -1996,6 +2008,51 @@
             "{\"code\":-401,\"message\":\"Failed add new key.\"}"
         ]
     },
+    "removekey": {
+        "type": "command",
+        "name": "RemoveKey",
+        "desc": "Remove Key in Wallet.",
+        "request": {
+            "type": "object",
+            "content": {
+                "pubkey": {
+                    "type": "string",
+                    "desc": "public key or pubkey address"
+                },
+                "passphrase": {
+                    "type": "string",
+                    "desc": "passphrase",
+                    "required": false
+                },
+                "synctx": {
+                    "type": "bool",
+                    "desc": "sync tx or not",
+                    "default": true,
+                    "required": false,
+                    "opt": "s"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "pubkey",
+            "desc": "public key"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli removekey f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9 123",
+                "response": "f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9"
+            },
+            {
+                "request": "curl -d '{\"id\":7,\"method\":\"removekey\",\"jsonrpc\":\"2.0\",\"params\":{\"pubkey\":\"f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9\",\"passphrase\":\"123\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":7,\"jsonrpc\":\"2.0\",\"result\":\"f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-6,\"message\":\"Passphrase must be nonempty\"}",
+            "{\"code\":-401,\"message\":\"Failed remove key.\"}"
+        ]
+    },
     "encryptkey": {
         "type": "command",
         "name": "EncryptKey",
@@ -2418,6 +2475,38 @@
             "{\"code\":-401,\"message\":\"Unkown template\"}"
         ]
     },
+    "removetemplate": {
+        "type": "command",
+        "name": "RemoveTemplate",
+        "desc": "Remove template in Wallet.",
+        "request": {
+            "type": "object",
+            "content": {
+                "address": {
+                    "type": "string",
+                    "desc": "template address"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "result",
+            "desc": "remove result"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli removetemplate 20m01gbqzmw3nvndx684nsxp1z3tcy4rg0715tgc9sraxd7m56ydttama",
+                "response": "Success"
+            },
+            {
+                "request": "curl -d '{\"id\":7,\"method\":\"removetemplate\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"20m01gbqzmw3nvndx684nsxp1z3tcy4rg0715tgc9sraxd7m56ydttama\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":7,\"jsonrpc\":\"2.0\",\"result\":\"Success\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-401,\"message\":\"Failed remove template.\"}"
+        ]
+    },
     "validateaddress": {
         "type": "command",
         "name": "ValidateAddress",
@@ -2770,17 +2859,17 @@
                     "required": false,
                     "opt": "type"
                 },
-                "mintheight": {
-                    "type": "int",
-                    "desc": "mint height of DeFi fork",
-                    "required": false,
-                    "opt": "mintheight"
-                },
                 "signsecret": {
                     "type": "string",
                     "desc": "sign secret",
                     "required": false,
                     "opt": "sec"
+                },
+                "mintheight": {
+                    "type": "int",
+                    "desc": "mint height of DeFi fork",
+                    "required": false,
+                    "opt": "mintheight"
                 }
             }
         },

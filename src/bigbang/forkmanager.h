@@ -79,6 +79,7 @@ public:
     bool GetSubline(const uint256& hashFork, std::vector<std::pair<int, uint256>>& vSubline) const override;
     int64 ForkLockedCoin(const uint256& hashFork, const uint256& hashBlock) override;
     int GetForkCreatedHeight(const uint256& hashFork) override;
+    bool GetForkContext(const uint256& hashFork, CForkContext& forkContext) override;
 
 protected:
     bool HandleInitialize() override;

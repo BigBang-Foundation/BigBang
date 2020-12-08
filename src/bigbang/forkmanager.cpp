@@ -380,6 +380,18 @@ int CForkManager::GetForkCreatedHeight(const uint256& hashFork)
     return GetValidForkCreatedHeight(hashPrimaryLastBlock, hashFork);
 }
 
+bool CForkManager::GetForkContext(const uint256& hashFork, CForkContext& forkContext)
+{
+    boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
+    map<uint256, CForkSchedule>::iterator it = mapForkSched.find(hashFork);
+    if (it != mapForkSched.end())
+    {
+        forkContext = it->second.ctxtFork;
+        return true;
+    }
+    return false;
+}
+
 //-----------------------------------------------------------------------------------------------
 bool CForkManager::IsAllowedFork(const uint256& hashFork, const uint256& hashParent) const
 {

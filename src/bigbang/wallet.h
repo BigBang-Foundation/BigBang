@@ -130,6 +130,7 @@ public:
     bool IsMine(const CDestination& dest);
     /* Key store */
     boost::optional<std::string> AddKey(const crypto::CKey& key) override;
+    boost::optional<std::string> RemoveKey(const crypto::CPubKey& pubkey) override;
     bool LoadKey(const crypto::CKey& key);
     void GetPubKeys(std::set<crypto::CPubKey>& setPubKey) const override;
     bool Have(const crypto::CPubKey& pubkey, const int32 nVersion = -1) const override;
@@ -152,6 +153,7 @@ public:
     bool Have(const CTemplateId& tid) const override;
     bool AddTemplate(CTemplatePtr& ptr) override;
     CTemplatePtr GetTemplate(const CTemplateId& tid) const override;
+    bool RemoveTemplate(const CTemplateId& tid) override;
     /* Destination */
     void GetDestinations(std::set<CDestination>& setDest) override;
     /* Wallet Tx */
@@ -196,6 +198,10 @@ public:
     ~CDummyWallet() {}
     /* Key store */
     virtual boost::optional<std::string> AddKey(const crypto::CKey& key) override
+    {
+        return std::string();
+    }
+    virtual boost::optional<std::string> RemoveKey(const crypto::CPubKey& pubkey) override
     {
         return std::string();
     }
@@ -265,6 +271,10 @@ public:
     virtual CTemplatePtr GetTemplate(const CTemplateId& tid) const override
     {
         return nullptr;
+    }
+    virtual bool RemoveTemplate(const CTemplateId& tid) override
+    {
+        return false;
     }
     /* Destination */
     virtual void GetDestinations(std::set<CDestination>& setDest) override

@@ -159,15 +159,10 @@ CCheckForkManager::~CCheckForkManager()
     dbFork.Deinitialize();
 }
 
-bool CCheckForkManager::Initialize(const string& strDataPathIn, bool fTestnetIn, bool fOnlyCheckIn, const uint256& hashGenesisBlockIn)
+bool CCheckForkManager::Initialize()
 {
-    strDataPath = strDataPathIn;
-    fTestnet = fTestnetIn;
-    fOnlyCheck = fOnlyCheckIn;
-    hashGenesisBlock = hashGenesisBlockIn;
-
 #ifdef BIGBANG_TESTNET
-    mapCheckPoints[hashGenesisBlockIn].insert(make_pair(0, hashGenesisBlockIn));
+    mapCheckPoints[objParam.hashGenesisBlock].insert(make_pair(0, objParam.hashGenesisBlock));
 #else
     for (const auto& vd : mapCheckPointsList)
     {
@@ -185,15 +180,21 @@ bool CCheckForkManager::Initialize(const string& strDataPathIn, bool fTestnetIn,
 
 bool CCheckForkManager::FetchForkStatus()
 {
+    if (!Initialize())
+    {
+        StdLog("check", "Fetch fork status: Initialize fail");
+        return false;
+    }
+
     uint256 hashGetGenesisBlock;
-    if (!dbFork.GetGenesisBlockHash(hashGetGenesisBlock) || hashGetGenesisBlock != hashGenesisBlock)
+    if (!dbFork.GetGenesisBlockHash(hashGetGenesisBlock) || hashGetGenesisBlock != objParam.hashGenesisBlock)
     {
         StdError("check", "Fetch fork status: Get genesis block hash fail");
         if (fOnlyCheck)
         {
             return false;
         }
-        if (!dbFork.WriteGenesisBlockHash(hashGenesisBlock))
+        if (!dbFork.WriteGenesisBlockHash(objParam.hashGenesisBlock))
         {
             StdError("check", "Fetch fork status: Write genesis block hash fail");
             return false;
@@ -203,7 +204,7 @@ bool CCheckForkManager::FetchForkStatus()
     bool fCheckGenesisRet = true;
     uint256 hashRefFdBlock;
     map<uint256, int> mapValidFork;
-    if (!dbFork.RetrieveValidForkHash(hashGenesisBlock, hashRefFdBlock, mapValidFork))
+    if (!dbFork.RetrieveValidForkHash(objParam.hashGenesisBlock, hashRefFdBlock, mapValidFork))
     {
         fCheckGenesisRet = false;
     }
@@ -215,7 +216,7 @@ bool CCheckForkManager::FetchForkStatus()
         }
         else
         {
-            const auto it = mapValidFork.find(hashGenesisBlock);
+            const auto it = mapValidFork.find(objParam.hashGenesisBlock);
             if (it == mapValidFork.end() || it->second != 0)
             {
                 fCheckGenesisRet = false;
@@ -229,8 +230,8 @@ bool CCheckForkManager::FetchForkStatus()
         {
             return false;
         }
-        mapValidFork.insert(make_pair(hashGenesisBlock, 0));
-        if (!dbFork.AddValidForkHash(hashGenesisBlock, uint256(), mapValidFork))
+        mapValidFork.insert(make_pair(objParam.hashGenesisBlock, 0));
+        if (!dbFork.AddValidForkHash(objParam.hashGenesisBlock, uint256(), mapValidFork))
         {
             StdError("check", "Fetch fork status: Add valid fork fail");
             return false;
@@ -252,19 +253,19 @@ bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
     uint256 hashRefFdBlock;
     map<uint256, int> mapValidFork;
 
-    if (hashBlock == hashGenesisBlock)
+    if (hashBlock == objParam.hashGenesisBlock)
     {
         vector<pair<CDestination, CForkContext>> vForkCtxt;
         CProfile profile;
         if (!profile.Load(blockex.vchProof))
         {
-            StdLog("check", "Add block fork context: Load genesis %s block Proof failed", hashGenesisBlock.ToString().c_str());
+            StdLog("check", "Add block fork context: Load genesis %s block Proof failed", objParam.hashGenesisBlock.ToString().c_str());
             return false;
         }
-        vForkCtxt.push_back(make_pair(profile.destOwner, CForkContext(hashGenesisBlock, uint64(0), uint64(0), profile)));
+        vForkCtxt.push_back(make_pair(profile.destOwner, CForkContext(objParam.hashGenesisBlock, uint64(0), uint64(0), profile)));
 
-        mapValidFork.insert(make_pair(hashGenesisBlock, 0));
-        if (!AddForkContext(uint256(), hashGenesisBlock, vForkCtxt, true, hashRefFdBlock, mapValidFork))
+        mapValidFork.insert(make_pair(objParam.hashGenesisBlock, 0));
+        if (!AddForkContext(uint256(), objParam.hashGenesisBlock, vForkCtxt, true, hashRefFdBlock, mapValidFork))
         {
             StdLog("check", "Add block fork context: Add fork context fail, block: %s", hashBlock.ToString().c_str());
             return false;
@@ -304,7 +305,7 @@ bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
             }
         }
 
-        if (!AddForkContext(blockex.hashPrev, hashBlock, vForkCtxt, IsCheckPoint(hashGenesisBlock, hashBlock), hashRefFdBlock, mapValidFork))
+        if (!AddForkContext(blockex.hashPrev, hashBlock, vForkCtxt, IsCheckPoint(objParam.hashGenesisBlock, hashBlock), hashRefFdBlock, mapValidFork))
         {
             StdLog("check", "Add block fork context: Add fork context fail, block: %s", hashBlock.ToString().c_str());
             return false;
@@ -383,7 +384,7 @@ bool CCheckForkManager::VerifyBlockForkTx(const uint256& hashPrev, const CTransa
         }
 
         CProfile forkProfile;
-        if (!ValidateOrigin(block, ctxtParent.GetProfile(), forkProfile))
+        if (objParam.ValidateOrigin(block, ctxtParent.GetProfile(), forkProfile) != OK)
         {
             StdLog("check", "Verify block fork tx: Validate origin, tx: %s", tx.GetHash().ToString().c_str());
             break;
@@ -418,37 +419,6 @@ bool CCheckForkManager::VerifyBlockForkTx(const uint256& hashPrev, const CTransa
 bool CCheckForkManager::AddForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<pair<CDestination, CForkContext>>& vForkCtxt,
                                        bool fCheckPointBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork)
 {
-    for (const auto& vd : vForkCtxt)
-    {
-        const CForkContext& ctxt = vd.second;
-        const uint256& hashFork = ctxt.hashFork;
-
-        bool fCheckRet = true;
-        CForkContext ctxtDb;
-        if (!dbFork.RetrieveForkContext(hashFork, ctxtDb))
-        {
-            StdLog("check", "Add fork context: Find fork context fail, fork: %s", hashFork.GetHex().c_str());
-            fCheckRet = false;
-        }
-        else if (ctxt != ctxtDb)
-        {
-            StdLog("check", "Add fork context: Fork context error, fork: %s", hashFork.GetHex().c_str());
-            fCheckRet = false;
-        }
-        if (!fCheckRet)
-        {
-            if (fOnlyCheck)
-            {
-                return false;
-            }
-            if (!dbFork.AddNewForkContext(ctxt))
-            {
-                StdLog("check", "Add fork context: Add new fork context fail, fork: %s", hashFork.GetHex().c_str());
-                return false;
-            }
-        }
-    }
-
     CCheckValidFdForkId& fd = mapBlockValidFork[hashNewBlock];
     if (fCheckPointBlock)
     {
@@ -511,61 +481,6 @@ bool CCheckForkManager::GetForkContext(const uint256& hashFork, CForkContext& ct
         return true;
     }
     return false;
-}
-
-bool CCheckForkManager::UpdateForkContext(const uint256& hashFork, const CForkContext& ctxt)
-{
-    const auto it = mapBlockForkSched.find(hashFork);
-    if (it != mapBlockForkSched.end())
-    {
-        it->second.ctxtFork = ctxt;
-
-        if (!dbFork.AddNewForkContext(ctxt))
-        {
-            StdLog("check", "Add fork context: Add new fork context fail, fork: %s", hashFork.GetHex().c_str());
-            return false;
-        }
-        return true;
-    }
-    return false;
-}
-
-bool CCheckForkManager::ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile)
-{
-    if (!forkProfile.Load(block.vchProof))
-    {
-        StdLog("check", "Validate origin: load profile error");
-        return false;
-    }
-    if (forkProfile.IsNull())
-    {
-        StdLog("check", "Validate origin: invalid profile");
-        return false;
-    }
-    if (!MoneyRange(forkProfile.nAmount))
-    {
-        StdLog("check", "Validate origin: invalid fork amount");
-        return false;
-    }
-    if (!RewardRange(forkProfile.nMintReward))
-    {
-        StdLog("check", "Validate origin: invalid fork reward");
-        return false;
-    }
-    if (block.txMint.sendTo != forkProfile.destOwner)
-    {
-        StdLog("check", "Validate origin: invalid fork sendTo");
-        return false;
-    }
-    if (parentProfile.IsPrivate())
-    {
-        if (!forkProfile.IsPrivate() || parentProfile.destOwner != forkProfile.destOwner)
-        {
-            StdLog("check", "Validate origin: permission denied");
-            return false;
-        }
-    }
-    return true;
 }
 
 bool CCheckForkManager::VerifyValidFork(const uint256& hashPrevBlock, const uint256& hashFork, const string& strForkName)
@@ -650,7 +565,7 @@ bool CCheckForkManager::CheckDbValidFork(const uint256& hashBlock, const uint256
         StdLog("check", "CheckDbValidFork: hashRefFdBlock or mapValidFork error, block: %s", hashBlock.GetHex().c_str());
         return false;
     }
-    for (const auto vd : mapValidForkGet)
+    for (const auto& vd : mapValidForkGet)
     {
         const auto it = mapValidFork.find(vd.first);
         if (it == mapValidFork.end() || it->second != vd.second)
@@ -665,6 +580,16 @@ bool CCheckForkManager::CheckDbValidFork(const uint256& hashBlock, const uint256
 bool CCheckForkManager::AddDbValidForkHash(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork)
 {
     return dbFork.AddValidForkHash(hashBlock, hashRefFdBlock, mapValidFork);
+}
+
+bool CCheckForkManager::GetDbForkContext(const uint256& hashFork, CForkContext& ctxt)
+{
+    return dbFork.RetrieveForkContext(hashFork, ctxt);
+}
+
+bool CCheckForkManager::UpdateDbForkContext(const CForkContext& ctxt)
+{
+    return dbFork.AddNewForkContext(ctxt);
 }
 
 bool CCheckForkManager::UpdateDbForkLast(const uint256& hashFork, const uint256& hashLastBlock)
@@ -1222,6 +1147,7 @@ bool CCheckBlockFork::AddBlockTx(const CTransaction& txIn, const CTxContxt& cont
         {
             CIDataStream is(txIn.vchData);
             is >> nMintHeight;
+            txidMintHeight = txid;
         }
     }
     return true;
@@ -1300,6 +1226,10 @@ bool CCheckBlockFork::RemoveBlockTx(const CTransaction& txIn, const CTxContxt& c
         }
     }
 
+    if (txIn.nType == CTransaction::TX_DEFI_MINT_HEIGHT && txid == txidMintHeight)
+    {
+        nMintHeight = -1;
+    }
     return true;
 }
 
@@ -2118,6 +2048,42 @@ bool CCheckBlockWalker::UpdateBlockNext()
 
 bool CCheckBlockWalker::CheckRepairFork()
 {
+    for (auto it = objForkManager.mapBlockForkSched.begin(); it != objForkManager.mapBlockForkSched.end(); ++it)
+    {
+        CForkContext& ctxt = it->second.ctxtFork;
+        const uint256& hashFork = ctxt.hashFork;
+
+        auto mt = mapCheckFork.find(hashFork);
+        if (mt != mapCheckFork.end() && mt->second.nMintHeight >= -1)
+        {
+            CProfile profile = ctxt.GetProfile();
+            profile.defi.nMintHeight = mt->second.nMintHeight;
+            ctxt.vchDeFi.clear();
+            profile.defi.Save(ctxt.vchDeFi);
+        }
+
+        bool fCheckRet = true;
+        CForkContext ctxtDb;
+        if (!objForkManager.GetDbForkContext(hashFork, ctxtDb))
+        {
+            StdLog("check", "Check repair fork: Find fork context fail, fork: %s", hashFork.GetHex().c_str());
+            fCheckRet = false;
+        }
+        else if (ctxt != ctxtDb)
+        {
+            StdLog("check", "Check repair fork: Fork context error, fork: %s", hashFork.GetHex().c_str());
+            fCheckRet = false;
+        }
+        if (!fCheckRet && !fOnlyCheck)
+        {
+            if (!objForkManager.UpdateDbForkContext(ctxt))
+            {
+                StdLog("check", "Check repair fork: Add new fork context fail, fork: %s", hashFork.GetHex().c_str());
+                return false;
+            }
+        }
+    }
+
     set<uint256> setLastFork;
     map<uint256, CCheckBlockFork>::iterator it = mapCheckFork.begin();
     while (it != mapCheckFork.end())
@@ -2126,7 +2092,7 @@ bool CCheckBlockWalker::CheckRepairFork()
         CCheckBlockFork& checkFork = it->second;
         if (checkFork.pLast == nullptr)
         {
-            StdLog("check", "Check Repair Fork: pLast is null, fork: %s", hashFork.GetHex().c_str());
+            StdLog("check", "Check repair fork: pLast is null, fork: %s", hashFork.GetHex().c_str());
             return false;
         }
         if (checkFork.fInvalidFork)
@@ -2134,7 +2100,7 @@ bool CCheckBlockWalker::CheckRepairFork()
             auto mt = objForkManager.mapActiveFork.find(hashFork);
             if (mt != objForkManager.mapActiveFork.end())
             {
-                StdLog("check", "Check Repair Fork: Joint block is non long chain, fork: %s", hashFork.GetHex().c_str());
+                StdLog("check", "Check repair fork: Joint block is non long chain, fork: %s", hashFork.GetHex().c_str());
                 if (fOnlyCheck)
                 {
                     return false;
@@ -2150,13 +2116,13 @@ bool CCheckBlockWalker::CheckRepairFork()
             auto mt = objForkManager.mapActiveFork.find(hashFork);
             if (mt == objForkManager.mapActiveFork.end())
             {
-                StdLog("check", "Check Repair Fork: Find fork fail, fork: %s", hashFork.GetHex().c_str());
+                StdLog("check", "Check repair fork: Find fork fail, fork: %s", hashFork.GetHex().c_str());
                 objForkManager.mapActiveFork.insert(make_pair(hashFork, hashLastBlock));
                 fCheckRet = false;
             }
             else if (mt->second != hashLastBlock)
             {
-                StdLog("check", "Check Repair Fork: last block error, fork: %s, db last: %s, block last: %s",
+                StdLog("check", "Check repair fork: last block error, fork: %s, db last: %s, block last: %s",
                        hashFork.GetHex().c_str(), mt->second.GetHex().c_str(), hashLastBlock.GetHex().c_str());
                 mt->second = hashLastBlock;
                 fCheckRet = false;
@@ -2169,7 +2135,7 @@ bool CCheckBlockWalker::CheckRepairFork()
                 }
                 if (!objForkManager.UpdateDbForkLast(hashFork, hashLastBlock))
                 {
-                    StdLog("check", "Check Repair Fork: Update db fork last fail, fork: %s", hashFork.GetHex().c_str());
+                    StdLog("check", "Check repair fork: Update db fork last fail, fork: %s", hashFork.GetHex().c_str());
                     return false;
                 }
             }
@@ -2183,7 +2149,7 @@ bool CCheckBlockWalker::CheckRepairFork()
         const uint256& hashFork = it->first;
         if (!setLastFork.count(hashFork))
         {
-            StdLog("check", "Check Repair Fork: Invalid last fork, fork: %s", hashFork.GetHex().c_str());
+            StdLog("check", "Check repair fork: Invalid last fork, fork: %s", hashFork.GetHex().c_str());
             if (fOnlyCheck)
             {
                 return false;
@@ -2194,36 +2160,6 @@ bool CCheckBlockWalker::CheckRepairFork()
         else
         {
             ++it;
-        }
-    }
-    return true;
-}
-
-bool CCheckBlockWalker::UpdateMintHeightTx()
-{
-    for (auto& fork : mapCheckFork)
-    {
-        if (fork.second.nMintHeight > 0)
-        {
-            CForkContext ctxt;
-            if (!objForkManager.GetForkContext(fork.first, ctxt))
-            {
-                StdError("check", "UpdateMintHeightTx get fork context error, fork: %s", fork.first.ToString().c_str());
-                return false;
-            }
-
-            CProfile profile = ctxt.GetProfile();
-            profile.defi.nMintHeight = fork.second.nMintHeight;
-            ctxt.vchDeFi.clear();
-            profile.defi.Save(ctxt.vchDeFi);
-
-            if (!objForkManager.UpdateForkContext(fork.first, ctxt))
-            {
-                StdError("check", "UpdateMintHeightTx update fork context error, fork: %s", fork.first.ToString().c_str());
-                return false;
-            }
-
-            StdLog("check", "Update DeFi fork mint height, fork: %s, height: %d", fork.first.ToString().c_str(), profile.defi.nMintHeight);
         }
     }
     return true;
@@ -2577,14 +2513,6 @@ bool CCheckRepairData::FetchBlockData()
             return false;
         }
         StdLog("check", "Check block index complete, count: %lu", objBlockWalker.mapBlockIndex.size());
-
-        StdLog("check", "Update mint height tx......");
-        if (!objBlockWalker.UpdateMintHeightTx())
-        {
-            StdError("check", "Fetch block and tx, update mint height tx fail");
-            return false;
-        }
-        StdLog("check", "Update mint height tx success.");
     }
     objBlockWalker.Uninitialize();
     return true;
@@ -2814,11 +2742,6 @@ bool CCheckRepairData::CheckRepairData()
 {
     StdLog("check", "Start check and repair, path: %s", strDataPath.c_str());
 
-    if (!objForkManager.Initialize(strDataPath, fTestnet, fOnlyCheck, objProofOfWorkParam.hashGenesisBlock))
-    {
-        StdLog("check", "Fork manager set param fail");
-        return false;
-    }
     if (!objForkManager.FetchForkStatus())
     {
         StdLog("check", "Fetch fork status fail");

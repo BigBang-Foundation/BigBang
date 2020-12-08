@@ -37,6 +37,7 @@ class ICoreProtocol : public xengine::IBase
 public:
     ICoreProtocol()
       : IBase("coreprotocol") {}
+    virtual void InitializeGenesisBlock() = 0;
     virtual const uint256& GetGenesisBlockHash() = 0;
     virtual void GetGenesisBlock(CBlock& block) = 0;
     virtual Errno ValidateTransaction(const CTransaction& tx, int nHeight) = 0;
@@ -62,7 +63,7 @@ public:
     virtual bool IsDposHeight(int height) = 0;
     virtual bool DPoSConsensusCheckRepeated(int height) = 0;
     virtual int64 GetPrimaryMintWorkReward(const CBlockIndex* pIndexPrev) = 0;
-    virtual void GetDelegatedBallot(const uint256& nAgreement, std::size_t nWeight, const std::map<CDestination, size_t>& mapBallot,
+    virtual void GetDelegatedBallot(const uint256& nAgreement, const std::size_t nWeight, const std::map<CDestination, size_t>& mapBallot,
                                     const std::vector<std::pair<CDestination, int64>>& vecAmount, int64 nMoneySupply, std::vector<CDestination>& vBallot, std::size_t& nEnrollTrust, int nBlockHeight)
         = 0;
     virtual int64 MinEnrollAmount() = 0;
@@ -209,7 +210,7 @@ public:
     virtual void ListTx(const uint256& hashFork, std::vector<std::pair<uint256, std::size_t>>& vTxPool) = 0;
     virtual void ListTx(const uint256& hashFork, std::vector<uint256>& vTxPool) = 0;
     virtual bool ListTx(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const int64 nGetOffset = 0, const int64 nGetCount = 0) = 0;
-    virtual bool ListTxOfSeq(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const uint64 nTxSeq, const int64 nGetCount = 0) = 0;
+    virtual bool ListTxOfSeq(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const uint64 nPrevTxSeq, const int64 nGetCount = 0) = 0;
     virtual bool ListForkUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, const std::vector<CTxUnspent>& vUnpsentOnChain, std::vector<CTxUnspent>& vUnspent) = 0;
     virtual bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, const std::map<CDestination, std::vector<CTxUnspent>>& mapUnspentOnChain, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent) = 0;
     virtual bool FilterTx(const uint256& hashFork, CTxFilter& filter) = 0;
@@ -247,6 +248,7 @@ public:
     virtual bool GetSubline(const uint256& hashFork, std::vector<std::pair<int, uint256>>& vSubline) const = 0;
     virtual int64 ForkLockedCoin(const uint256& hashFork, const uint256& hashBlock) = 0;
     virtual int GetForkCreatedHeight(const uint256& hashFork) = 0;
+    virtual bool GetForkContext(const uint256& hashFork, CForkContext& forkContext) = 0;
     const CForkConfig* ForkConfig()
     {
         return dynamic_cast<const CForkConfig*>(xengine::IBase::Config());
@@ -290,6 +292,7 @@ public:
       : IBase("wallet") {}
     /* Key store */
     virtual boost::optional<std::string> AddKey(const crypto::CKey& key) = 0;
+    virtual boost::optional<std::string> RemoveKey(const crypto::CPubKey& pubkey) = 0;
     virtual void GetPubKeys(std::set<crypto::CPubKey>& setPubKey) const = 0;
     virtual bool Have(const crypto::CPubKey& pubkey, const int32 nVersion = -1) const = 0;
     virtual bool Export(const crypto::CPubKey& pubkey, std::vector<unsigned char>& vchKey) const = 0;
@@ -309,6 +312,7 @@ public:
     virtual bool Have(const CTemplateId& tid) const = 0;
     virtual bool AddTemplate(CTemplatePtr& ptr) = 0;
     virtual CTemplatePtr GetTemplate(const CTemplateId& tid) const = 0;
+    virtual bool RemoveTemplate(const CTemplateId& tid) = 0;
     /* Destination */
     virtual void GetDestinations(std::set<CDestination>& setDest) = 0;
     /* Wallet Tx */
@@ -394,6 +398,7 @@ public:
     virtual bool GetKeyStatus(const crypto::CPubKey& pubkey, int& nVersion, bool& fLocked, int64& nAutoLockTime, bool& fPublic) = 0;
     virtual boost::optional<std::string> MakeNewKey(const crypto::CCryptoString& strPassphrase, crypto::CPubKey& pubkey) = 0;
     virtual boost::optional<std::string> AddKey(const crypto::CKey& key) = 0;
+    virtual boost::optional<std::string> RemoveKey(const crypto::CPubKey& pubkey) = 0;
     virtual bool ImportKey(const std::vector<unsigned char>& vchKey, crypto::CPubKey& pubkey) = 0;
     virtual bool ExportKey(const crypto::CPubKey& pubkey, std::vector<unsigned char>& vchKey) = 0;
     virtual bool EncryptKey(const crypto::CPubKey& pubkey, const crypto::CCryptoString& strPassphrase,
@@ -407,6 +412,7 @@ public:
     virtual void GetTemplateIds(std::set<CTemplateId>& setTid) = 0;
     virtual bool AddTemplate(CTemplatePtr& ptr) = 0;
     virtual CTemplatePtr GetTemplate(const CTemplateId& tid) = 0;
+    virtual bool RemoveTemplate(const CTemplateId& tid) = 0;
     virtual bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent) = 0;
     virtual bool GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) = 0;
     virtual bool ListTransaction(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx) = 0;
