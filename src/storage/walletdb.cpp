@@ -55,6 +55,11 @@ bool CWalletAddrDB::UpdateKey(const crypto::CPubKey& pubkey, int version, const 
     return Write(CDestination(pubkey), vch);
 }
 
+bool CWalletAddrDB::RemoveKey(const crypto::CPubKey& pubkey)
+{
+    return Erase(CDestination(pubkey));
+}
+
 bool CWalletAddrDB::UpdateTemplate(const CTemplateId& tid, const vector<unsigned char>& vchData)
 {
     return Write(CDestination(tid), vchData);
@@ -140,9 +145,19 @@ bool CWalletDB::UpdateKey(const crypto::CPubKey& pubkey, int version, const cryp
     return dbAddr.UpdateKey(pubkey, version, cipher);
 }
 
+bool CWalletDB::RemoveKey(const crypto::CPubKey& pubkey)
+{
+    return dbAddr.RemoveKey(pubkey);
+}
+
 bool CWalletDB::UpdateTemplate(const CTemplateId& tid, const vector<unsigned char>& vchData)
 {
     return dbAddr.UpdateTemplate(tid, vchData);
+}
+
+bool CWalletDB::RemoveTemplate(const CTemplateId& tid)
+{
+    return dbAddr.EraseAddress(CDestination(tid));
 }
 
 bool CWalletDB::WalkThroughAddress(CWalletDBAddrWalker& walker)

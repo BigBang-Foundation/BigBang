@@ -95,6 +95,13 @@
             "opt": "addgroup",
             "format": "-addgroup=<forkid of group leader>",
             "desc": "Add a supported fork group"
+        },
+        {
+            "name": "vExcludeFork",
+            "type": "vector<string>",
+            "opt": "excludefork",
+            "format": "-excludefork=<forkid>",
+            "desc": "Exclude a fork"
         }
     ],
     "CMintConfigOption": [
@@ -129,6 +136,14 @@
             "opt": "cryptonightkey",
             "format": "-cryptonightkey=<key>",
             "desc": "POW cryptonight key"
+        },
+        {
+            "name": "strPeerType",
+            "type": "string",
+            "opt": "peertype",
+            "default": "common",
+            "format": "-peertype=<type>",
+            "desc": "Node type: 'super' means super node, it will make main fork block. 'fork' means fork node, it will make other fork block. 'common' is not specific node"
         }
     ],
     "CRPCBasicConfigOption": [

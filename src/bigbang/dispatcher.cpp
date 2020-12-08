@@ -118,11 +118,8 @@ void CDispatcher::HandleDeinitialize()
 
 bool CDispatcher::HandleInvoke()
 {
-    uint256 hashPrimaryLastBlock;
-    int nTempHeight;
-    int64 nTempTime;
-    uint16 nTempMintType;
-    if (!pBlockChain->GetLastBlock(pCoreProtocol->GetGenesisBlockHash(), hashPrimaryLastBlock, nTempHeight, nTempTime, nTempMintType))
+    CBlockStatus status;
+    if (!pBlockChain->GetLastBlockStatus(pCoreProtocol->GetGenesisBlockHash(), status))
     {
         Error("Failed to get last block");
         return false;
@@ -137,7 +134,7 @@ bool CDispatcher::HandleInvoke()
     }
 
     vector<uint256> vActive;
-    if (!pForkManager->LoadForkContext(hashPrimaryLastBlock, vForkCtxt, mapValidForkId, vActive))
+    if (!pForkManager->LoadForkContext(status.hashBlock, vForkCtxt, mapValidForkId, vActive))
     {
         Error("Failed to load for context");
         return false;
@@ -246,17 +243,14 @@ Errno CDispatcher::AddNewBlock(const CBlock& block, uint64 nNonce)
 Errno CDispatcher::AddNewTx(const CTransaction& tx, uint64 nNonce)
 {
     Errno err = OK;
-    uint256 hashBlock;
-    int nHeight = 0;
-    int64 nTime = 0;
-    uint16 nMintType = 0;
-    if (!pBlockChain->GetLastBlock(pCoreProtocol->GetGenesisBlockHash(), hashBlock, nHeight, nTime, nMintType))
+    CBlockStatus status;
+    if (!pBlockChain->GetLastBlockStatus(pCoreProtocol->GetGenesisBlockHash(), status))
     {
         StdError("CDispatcher", "AddNewTx: GetLastBlock fail, fork: %s", pCoreProtocol->GetGenesisBlockHash().GetHex().c_str());
         return ERR_NOT_FOUND;
     }
 
-    err = pCoreProtocol->ValidateTransaction(tx, nHeight);
+    err = pCoreProtocol->ValidateTransaction(tx, status.nBlockHeight);
     if (err != OK)
     {
         StdError("CDispatcher", "AddNewTx: ValidateTransaction fail, txid: %s", tx.GetHash().GetHex().c_str());
@@ -384,6 +378,7 @@ void CDispatcher::UpdatePrimaryBlock(const CBlock& block, const CBlockChainUpdat
         proof.Load(block.vchProof);
         pBlockMakerUpdate->data.hashParent = updateBlockChain.hashParent;
         pBlockMakerUpdate->data.nOriginHeight = updateBlockChain.nOriginHeight;
+        pBlockMakerUpdate->data.hashPrevBlock = updateBlockChain.hashPrevBlock;
         pBlockMakerUpdate->data.hashBlock = updateBlockChain.hashLastBlock;
         pBlockMakerUpdate->data.nBlockTime = updateBlockChain.nLastBlockTime;
         pBlockMakerUpdate->data.nBlockHeight = updateBlockChain.nLastBlockHeight;

@@ -354,6 +354,15 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
                 return true;
             }
         }
+        if (ptx->nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+        {
+            if (pCorePro->VerifyMintHeightTx(tx, ptx->destIn, hashFork, nHeight, profile) != OK)
+            {
+                setUnTx.insert(ptx->GetHash());
+                vTxRemove.push_back(make_pair(ptx->GetHash(), ptx->vInput));
+                return true;
+            }
+        }
         CTemplateId tid;
         if (ptx->destIn.GetTemplateId(tid))
         {
@@ -727,10 +736,8 @@ Errno CTxPool::Push(const CTransaction& tx, uint256& hashFork, CDestination& des
         return ERR_TRANSACTION_INVALID;
     }
 
-    uint256 hashLast;
-    int64 nTime;
-    uint16 nMintType;
-    if (!pBlockChain->GetLastBlock(hashFork, hashLast, nHeight, nTime, nMintType))
+    CBlockStatus status;
+    if (!pBlockChain->GetLastBlockStatus(hashFork, status))
     {
         StdError("CTxPool", "Push: GetLastBlock fail, txid: %s, hashFork: %s",
                  txid.GetHex().c_str(), hashFork.GetHex().c_str());
@@ -738,7 +745,7 @@ Errno CTxPool::Push(const CTransaction& tx, uint256& hashFork, CDestination& des
     }
 
     CTxPoolView& txView = mapPoolView[hashFork];
-    Errno err = AddNew(txView, txid, tx, hashFork, nHeight);
+    Errno err = AddNew(txView, txid, tx, hashFork, status.nBlockHeight);
     if (err == OK)
     {
         CPooledTx* pPooledTx = txView.Get(txid);
@@ -1001,6 +1008,11 @@ bool CTxPool::FetchArrangeBlockTx(const uint256& hashFork, const uint256& hashPr
 {
     boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
 
+    // if (hashFork == uint256("00000001aeababf13e5fb76897130a0c659ce9fefdf49db65b0c72569abfa16c"))
+    // {
+    //     return true;
+    // }
+
     const CTxPoolView& viewTx = mapPoolView[hashFork];
     if (hashPrev == viewTx.hashLastBlock)
     {
@@ -1150,6 +1162,14 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                 change.vTxAddNew.push_back(CAssembledTx(tx, nBlockHeight));
                 continue;
             }
+            else if (tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+            {
+                if (!pBlockChain->GetForkProfile(update.hashFork, txView.profile))
+                {
+                    Error("SynchronizeBlockChain Get fork profile error, fork: %s", update.hashFork.ToString().c_str());
+                    return false;
+                }
+            }
 
             uint256 txid = tx.GetHash();
             if (!update.setTxUpdate.count(txid))
@@ -1198,6 +1218,14 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                 txView.InvalidateSpent(CTxOutPoint(txid, 0), viewInvolvedTx);
                 vTxRemove.push_back(make_pair(txid, tx.vInput));
                 continue;
+            }
+            else if (tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+            {
+                if (!pBlockChain->GetForkProfile(update.hashFork, txView.profile))
+                {
+                    Error("SynchronizeBlockChain Get fork profile error, fork: %s", update.hashFork.ToString().c_str());
+                    return false;
+                }
             }
 
             if (!update.setTxUpdate.count(txid))
@@ -1328,18 +1356,15 @@ bool CTxPool::LoadData()
         auto it = mapForkHeight.find(hashFork);
         if (it == mapForkHeight.end())
         {
-            uint256 hashLast;
-            int64 nTime;
-            uint16 nMintType;
-            int nHeight;
-            if (!pBlockChain->GetLastBlock(hashFork, hashLast, nHeight, nTime, nMintType))
+            CBlockStatus status;
+            if (!pBlockChain->GetLastBlockStatus(hashFork, status))
             {
                 Error("LoadData: GetLastBlock fail, txid: %s, hashFork: %s",
                       txid.GetHex().c_str(), hashFork.GetHex().c_str());
                 continue;
             }
 
-            it = mapForkHeight.insert(make_pair(hashFork, nHeight)).first;
+            it = mapForkHeight.insert(make_pair(hashFork, status.nBlockHeight)).first;
         }
 
         if (AddNew(mapPoolView[hashFork], txid, mi->second, hashFork, it->second) != OK)
@@ -1362,11 +1387,8 @@ bool CTxPool::LoadData()
         const uint256& hashFork = kv.first;
         mapTxCache.insert(make_pair(hashFork, CTxCache(CACHE_HEIGHT_INTERVAL)));
 
-        uint256 hashBlock;
-        int nHeight = 0;
-        int64 nTime = 0;
-        uint16 nMintType = 0;
-        if (!pBlockChain->GetLastBlock(hashFork, hashBlock, nHeight, nTime, nMintType))
+        CBlockStatus status;
+        if (!pBlockChain->GetLastBlockStatus(hashFork, status))
         {
             return false;
         }
@@ -1374,10 +1396,10 @@ bool CTxPool::LoadData()
         std::vector<CTransaction> vtx;
         vector<pair<uint256, vector<CTxIn>>> vTxRemove;
         int64 nTotalFee = 0;
-        CacheArrangeBlockTx(hashFork, nTime, hashBlock, MAX_BLOCK_SIZE, vtx, nTotalFee, nHeight + 1, vTxRemove);
-        mapTxCache[hashFork].AddNew(hashBlock, vtx);
+        CacheArrangeBlockTx(hashFork, status.nBlockTime, status.hashBlock, MAX_BLOCK_SIZE, vtx, nTotalFee, status.nBlockHeight + 1, vTxRemove);
+        mapTxCache[hashFork].AddNew(status.hashBlock, vtx);
 
-        mapPoolView[hashFork].SetLastBlock(hashBlock, nTime);
+        mapPoolView[hashFork].SetLastBlock(status.hashBlock, status.nBlockTime);
     }
     return true;
 }
@@ -1451,18 +1473,16 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     }
 
     //init fork type and DeFi relation
-    if (txView.nForkType < 0)
+    if (txView.profile.IsNull())
     {
-        CProfile profile;
-        if (!pBlockChain->GetForkProfile(hashFork, profile))
+        if (!pBlockChain->GetForkProfile(hashFork, txView.profile))
         {
             Error("AddNew Get fork profile error, fork: %s", hashFork.ToString().c_str());
             return ERR_SYS_STORAGE_ERROR;
         }
-        txView.nForkType = profile.nForkType;
     }
 
-    Errno err = pCoreProtocol->VerifyTransaction(tx, vPrevOutput, nForkHeight, hashFork, txView.nForkType);
+    Errno err = pCoreProtocol->VerifyTransaction(tx, vPrevOutput, nForkHeight, hashFork, txView.profile);
     if (err != OK)
     {
         StdTrace("CTxPool", "AddNew: VerifyTransaction fail, txid: %s", txid.GetHex().c_str());
@@ -1477,14 +1497,27 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
             return ERR_TRANSACTION_TOO_MANY_CERTTX;
         }
     }
+    else if (tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+    {
+        // check mint height tx uniqueness
+        if (!txView.Exists(txView.mintHeightTxid))
+        {
+            txView.mintHeightTxid = txid;
+        }
+        else
+        {
+            StdTrace("CTxPool", "AddNew: mint height Tx must be unique, txid: %s, fork: %s", txid.GetHex().c_str(), hashFork.ToString().c_str());
+            return ERR_TRANSACTION_TOO_MANY_MINTHEIGHT_TX;
+        }
+    }
 
     CDestination destIn = vPrevOutput[0].destTo;
-    if (txView.nForkType != FORK_TYPE_DEFI && tx.IsDeFiRelation())
+    if (txView.profile.nForkType != FORK_TYPE_DEFI && tx.IsDeFiRelation())
     {
         return ERR_TRANSACTION_INVALID_RELATION_TX;
     }
 
-    if (txView.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
+    if (txView.profile.nForkType == FORK_TYPE_DEFI && tx.IsDeFiRelation())
     {
         CDestination root;
         if (!txView.relation.CheckInsert(tx.sendTo, destIn, root))

@@ -32,6 +32,20 @@ bool CMintConfig::PostLoad()
     ExtractMintParamPair(strAddressMpvss, strKeyMpvss, destMpvss, keyMpvss);
     ExtractMintParamPair(strAddressCryptonight, strkeyCryptonight, destCryptonight,
                          keyCryptonight);
+
+    if (strPeerType == "super")
+    {
+        nPeerType = NODE_TYPE_SUPER;
+    }
+    else if (strPeerType == "fork")
+    {
+        nPeerType = NODE_TYPE_FORK;
+    }
+    else
+    {
+        nPeerType = NODE_TYPE_COMMON;
+    }
+
     return true;
 }
 

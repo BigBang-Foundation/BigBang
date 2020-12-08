@@ -1211,7 +1211,7 @@
                             "content": {
                                 "mintheight": {
                                     "type": "int",
-                                    "desc": "beginning mint height of DeFi, -1 means the first block after origin"
+                                    "desc": "beginning mint height of DeFi, 0 means the first block after origin, -1 means not confirmed mint height(mint height depends on confirm tx of owner)"
                                 },
                                 "maxsupply": {
                                     "type": "double",
@@ -2008,6 +2008,51 @@
             "{\"code\":-401,\"message\":\"Failed add new key.\"}"
         ]
     },
+    "removekey": {
+        "type": "command",
+        "name": "RemoveKey",
+        "desc": "Remove Key in Wallet.",
+        "request": {
+            "type": "object",
+            "content": {
+                "pubkey": {
+                    "type": "string",
+                    "desc": "public key or pubkey address"
+                },
+                "passphrase": {
+                    "type": "string",
+                    "desc": "passphrase",
+                    "required": false
+                },
+                "synctx": {
+                    "type": "bool",
+                    "desc": "sync tx or not",
+                    "default": true,
+                    "required": false,
+                    "opt": "s"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "pubkey",
+            "desc": "public key"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli removekey f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9 123",
+                "response": "f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9"
+            },
+            {
+                "request": "curl -d '{\"id\":7,\"method\":\"removekey\",\"jsonrpc\":\"2.0\",\"params\":{\"pubkey\":\"f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9\",\"passphrase\":\"123\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":7,\"jsonrpc\":\"2.0\",\"result\":\"f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-6,\"message\":\"Passphrase must be nonempty\"}",
+            "{\"code\":-401,\"message\":\"Failed remove key.\"}"
+        ]
+    },
     "encryptkey": {
         "type": "command",
         "name": "EncryptKey",
@@ -2430,6 +2475,38 @@
             "{\"code\":-401,\"message\":\"Unkown template\"}"
         ]
     },
+    "removetemplate": {
+        "type": "command",
+        "name": "RemoveTemplate",
+        "desc": "Remove template in Wallet.",
+        "request": {
+            "type": "object",
+            "content": {
+                "address": {
+                    "type": "string",
+                    "desc": "template address"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "result",
+            "desc": "remove result"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli removetemplate 20m01gbqzmw3nvndx684nsxp1z3tcy4rg0715tgc9sraxd7m56ydttama",
+                "response": "Success"
+            },
+            {
+                "request": "curl -d '{\"id\":7,\"method\":\"removetemplate\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"20m01gbqzmw3nvndx684nsxp1z3tcy4rg0715tgc9sraxd7m56ydttama\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":7,\"jsonrpc\":\"2.0\",\"result\":\"Success\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-401,\"message\":\"Failed remove template.\"}"
+        ]
+    },
     "validateaddress": {
         "type": "command",
         "name": "ValidateAddress",
@@ -2777,7 +2854,7 @@
                 },
                 "type": {
                     "type": "uint",
-                    "desc": "0: common token tx, 2: defi relation tx",
+                    "desc": "0(default): common token tx, 2: defi relation tx, 3: defi mint height tx",
                     "default": 0,
                     "required": false,
                     "opt": "type"
@@ -2787,6 +2864,12 @@
                     "desc": "sign secret",
                     "required": false,
                     "opt": "sec"
+                },
+                "mintheight": {
+                    "type": "int",
+                    "desc": "mint height of DeFi fork",
+                    "required": false,
+                    "opt": "mintheight"
                 }
             }
         },
@@ -2827,6 +2910,10 @@
             {
                 "request": "curl -d '{\"id\":9,\"method\":\"sendfrom\",\"jsonrpc\":\"2.0\",\"params\":{\"from\":\"1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm\",\"to\":\"12pseg2t39s5v8z7cqeyj4f09vcxy4jn0dge8q86bkmkr284bm7gx4dy4\",\"amount\":1.000000,\"type\":2}}' http://127.0.0.1:9902",
                 "response": "{\"id\":9,\"jsonrpc\":\"2.0\",\"result\":\"5f43336e0c300c03491c65d0f79ded0d864a4442f6c3eb9af3b736bf123d5aff\"}"
+            },
+            {
+                "request": "bigbang-cli sendfrom 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1 -f=00000001aeb53fd1f94825d758ee130f3de63ac235a3744240af15200a6fe07b -type=3 -mintheight=20",
+                "response": "5f43336e0c300c03491c65d0f79ded0d864a4442f6c3eb9af3b736bf123d5aff"
             }
         ],
         "error": [
@@ -2882,10 +2969,16 @@
                 },
                 "type": {
                     "type": "uint",
-                    "desc": "0: common token tx, 2: defi relation tx",
+                    "desc": "0(default): common token tx, 2: defi relation tx, 3: defi mint height tx",
                     "default": 0,
                     "required": false,
                     "opt": "type"
+                },
+                "mintheight": {
+                    "type": "int",
+                    "desc": "mint height of DeFi fork",
+                    "required": false,
+                    "opt": "mintheight"
                 }
             }
         },
@@ -2910,6 +3003,10 @@
             {
                 "request": "curl -d '{\"id\":17,\"method\":\"createtransaction\",\"jsonrpc\":\"2.0\",\"params\":{\"from\":\"1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm\",\"to\":\"12pseg2t39s5v8z7cqeyj4f09vcxy4jn0dge8q86bkmkr284bm7gx4dy4\",\"amount\":1.000000,\"type\":2}}' http://127.0.0.1:9902",
                 "response": "{\"id\":17,\"jsonrpc\":\"2.0\",\"result\":\"010002006334435f0000000091d2b15e9aeeb57483889873bd0aea1273c8e5bb8df436c2bd4e85060000000001ff5a3d12bf36b7f39aebc3f642444a860ded9df7d0651c49030c300c6e33435f010115b2e80b434e4bb47cecbbbd223c09db3be24aa06c1c8ba0cb9d2781208ba1e140420f000000000010270000000000000000\"}"
+            },
+            {
+                "request": "createtransaction 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1 -f=00000001ba93ccb7402df70b511637223a08ebbe33c7504eda28235028130d32 -type=3 -mintheight=3000",
+                "response": "01000300b0abc05f00000000320d1328502328da4e50c733beeb083a223716510bf72d40b7cc93ba010000000136824ad81f09da9e47fde50e5e2bb228b25ae289966e305c04c25babca6dbf5f0001498b63009dfb70f7ee0902ba95cc171f7d7a97ff16d89fd96e1f1b9e7d5f91da40420f0000000000307500000000000004b80b000000"
             }
         ],
         "error": [
@@ -3224,7 +3321,7 @@
                     "content": {
                         "mintheight": {
                             "type": "int",
-                            "desc": "beginning mint height of DeFi, -1 means the first block after origin",
+                            "desc": "beginning mint height of DeFi, 0 means the first block after origin, -1 means not confirmed mint height(mint height depends on mint height tx of owner)",
                             "default": -1,
                             "required": false
                         },

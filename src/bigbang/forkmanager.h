@@ -100,6 +100,7 @@ protected:
     uint256 hashPrimaryLastBlock;
     std::set<uint256> setForkAllowed;
     std::set<uint256> setGroupAllowed;
+    std::set<uint256> setForkExcluded;
     std::map<uint256, CForkSchedule> mapForkSched;
     std::map<uint256, CValidForkId> mapBlockValidFork;
     std::set<uint256> setCurValidFork;

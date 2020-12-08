@@ -323,6 +323,10 @@ public:
     {
         return (!pOrigin->pPrev ? uint64(0) : pOrigin->pPrev->GetOriginHash());
     }
+    uint256 GetPrevHash() const
+    {
+        return (!pPrev ? uint64(0) : pPrev->GetBlockHash());
+    }
     int64 GetMoneySupply() const
     {
         return nMoneySupply;

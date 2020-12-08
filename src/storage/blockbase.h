@@ -69,6 +69,10 @@ public:
     {
         return forkProfile;
     }
+    void SetProfile(const CProfile& forkProfileIn)
+    {
+        forkProfile = forkProfileIn;
+    }
     CBlockIndex* GetLast() const
     {
         return pIndexLast;
@@ -359,10 +363,11 @@ public:
     }
 
     bool ListForkAllAddressAmount(const uint256& hashFork, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount);
-    bool AddDeFiRelation(const uint256& hashFork, CBlockView& view, boost::shared_ptr<CBlockFork> spFork);
+    bool AddDeFiRelation(const uint256& hashFork, boost::shared_ptr<CBlockFork> spFork, const std::vector<CBlockEx>& vAdd, const std::vector<CBlockEx>& vRemove);
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CAddrInfo& addrInfo);
     bool InitDeFiRelation(const uint256& hashFork);
     bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent);
+    bool UpdateDeFiMintHeight(const uint256& hashFork, boost::shared_ptr<CBlockFork> spFork, const std::vector<CBlockEx>& vAdd, const std::vector<CBlockEx>& vRemove);
 
     bool GetVotes(const uint256& hashGenesis, const CDestination& destDelegate, int64& nVotes);
     bool GetDelegateList(const uint256& hashGenesis, uint32 nCount, std::multimap<int64, CDestination>& mapVotes);

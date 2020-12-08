@@ -301,7 +301,7 @@ BOOST_AUTO_TEST_CASE(reward)
     profile1.nAmount = 21000000 * COIN;
     profile1.nJointHeight = 150;
     profile1.nForkType = FORK_TYPE_DEFI;
-    profile1.defi.nMintHeight = -1;
+    profile1.defi.nMintHeight = 0;
     profile1.defi.nMaxSupply = 2100000000 * COIN;
     profile1.defi.nCoinbaseType = FIXED_DEFI_COINBASE_TYPE;
     profile1.defi.nDecayCycle = 1036800;
@@ -546,10 +546,10 @@ BOOST_AUTO_TEST_CASE(reward2)
     profile.defi.nMaxSupply = 1000000000 * COIN;
     profile.defi.nCoinbaseType = SPECIFIC_DEFI_COINBASE_TYPE;
     profile.defi.mapCoinbasePercent = { { 259200, 10 }, { 777600, 8 }, { 1814400, 5 }, { 3369600, 3 }, { 5184000, 2 } };
-    profile.defi.nRewardCycle = 5;                                                                                       // every 5 height once reward
-    profile.defi.nSupplyCycle = 150;                                                                                     // every 150  once supply
-    profile.defi.nStakeMinToken = 100 * COIN;                                                                            // min token required, >= 100, can be required to join this defi game
-    profile.defi.nStakeRewardPercent = 50;                                                                               // 50% of supply amount per day
+    profile.defi.nRewardCycle = 5;            // every 5 height once reward
+    profile.defi.nSupplyCycle = 150;          // every 150  once supply
+    profile.defi.nStakeMinToken = 100 * COIN; // min token required, >= 100, can be required to join this defi game
+    profile.defi.nStakeRewardPercent = 50;    // 50% of supply amount per day
     profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));
     r.AddFork(forkid, profile);
 
@@ -786,9 +786,9 @@ BOOST_AUTO_TEST_CASE(reward_fixed)
     profile.defi.nDecayCycle = 3600;
     profile.defi.nCoinbaseDecayPercent = 50;
     profile.defi.nInitCoinbasePercent = 10;
-    profile.defi.nStakeMinToken = 100 * COIN;                              // min token required, >= 100, can be required to join this defi game
-    profile.defi.nStakeRewardPercent = 50;                                 // 50% of supply amount per day
-    profile.defi.nPromotionRewardPercent = 50;                             // 50% of supply amount per day
+    profile.defi.nStakeMinToken = 100 * COIN;  // min token required, >= 100, can be required to join this defi game
+    profile.defi.nStakeRewardPercent = 50;     // 50% of supply amount per day
+    profile.defi.nPromotionRewardPercent = 50; // 50% of supply amount per day
     profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));
     r.AddFork(forkid, profile);
 
@@ -996,9 +996,9 @@ BOOST_AUTO_TEST_CASE(reward_specific)
     // profile.defi.nCoinbaseDecayPercent = 50;
     // profile.defi.nInitCoinbasePercent = 10;
     profile.defi.mapCoinbasePercent = { { 900, 10 }, { 2700, 8 }, { 6300, 5 }, { 11700, 3 }, { 18000, 2 } };
-    profile.defi.nStakeMinToken = 100 * COIN;                                                                // min token required, >= 100, can be required to join this defi game
-    profile.defi.nStakeRewardPercent = 50;                                                                   // 50% of supply amount per day
-    profile.defi.nPromotionRewardPercent = 50;                                                               // 50% of supply amount per day
+    profile.defi.nStakeMinToken = 100 * COIN;  // min token required, >= 100, can be required to join this defi game
+    profile.defi.nStakeRewardPercent = 50;     // 50% of supply amount per day
+    profile.defi.nPromotionRewardPercent = 50; // 50% of supply amount per day
     profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));
     r.AddFork(forkid, profile);
 

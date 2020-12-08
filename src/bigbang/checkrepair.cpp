@@ -514,6 +514,22 @@ bool CCheckForkManager::GetForkContext(const uint256& hashFork, CForkContext& ct
     return false;
 }
 
+bool CCheckForkManager::UpdateForkContext(const uint256& hashFork, const CForkContext& ctxt)
+{
+    const auto it = mapBlockForkSched.find(hashFork);
+    if (it != mapBlockForkSched.end())
+    {
+        if (!dbFork.AddNewForkContext(ctxt))
+        {
+            StdError("check", "UpdateForkContext: AddNewForkContext fail, fork: %s", hashFork.GetHex().c_str());
+            return false;
+        }
+        it->second.ctxtFork = ctxt;
+        return true;
+    }
+    return false;
+}
+
 bool CCheckForkManager::VerifyValidFork(const uint256& hashPrevBlock, const uint256& hashFork, const string& strForkName)
 {
     map<uint256, int> mapValidFork;
@@ -1162,6 +1178,14 @@ bool CCheckBlockFork::AddBlockTx(const CTransaction& txIn, const CTxContxt& cont
             mapBlockAddress.insert(make_pair(txIn.sendTo, make_pair(txid, CAddrInfo(CDestination(), contxtIn.destIn))));
         }
     }
+    if (txIn.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+    {
+        if (txIn.vchData.size() >= sizeof(int32))
+        {
+            CIDataStream is(txIn.vchData);
+            is >> nMintHeight;
+        }
+    }
     return true;
 }
 
@@ -1238,6 +1262,20 @@ bool CCheckBlockFork::RemoveBlockTx(const CTransaction& txIn, const CTxContxt& c
         }
     }
 
+    if (txIn.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+    {
+        if (txIn.vchData.size() >= sizeof(int32))
+        {
+            int32 nMintHeightTemp = 0;
+            CIDataStream is(txIn.vchData);
+            is >> nMintHeight;
+
+            if (nMintHeightTemp == nMintHeight)
+            {
+                nMintHeight = -1;
+            }
+        }
+    }
     return true;
 }
 
@@ -2137,6 +2175,46 @@ bool CCheckBlockWalker::CheckRepairFork()
     return true;
 }
 
+bool CCheckBlockWalker::UpdateMintHeightTx()
+{
+    for (auto& fork : mapCheckFork)
+    {
+        if (fork.second.nMintHeight >= -1)
+        {
+            CForkContext ctxt;
+            if (!objForkManager.GetForkContext(fork.first, ctxt))
+            {
+                StdError("check", "UpdateMintHeightTx get fork context error, fork: %s", fork.first.ToString().c_str());
+                return fOnlyCheck ? true : false;
+            }
+
+            CProfile profile = ctxt.GetProfile();
+            if (profile.defi.nMintHeight != fork.second.nMintHeight)
+            {
+                if (!fOnlyCheck)
+                {
+                    profile.defi.nMintHeight = fork.second.nMintHeight;
+                    ctxt.vchDeFi.clear();
+                    profile.defi.Save(ctxt.vchDeFi);
+
+                    if (!objForkManager.UpdateForkContext(fork.first, ctxt))
+                    {
+                        StdError("check", "UpdateMintHeightTx update fork context error, fork: %s", fork.first.ToString().c_str());
+                        return false;
+                    }
+                    StdLog("check", "Update DeFi fork mint height, fork: %s, height: %d", fork.first.ToString().c_str(), profile.defi.nMintHeight);
+                }
+                else
+                {
+                    StdError("check", "UpdateMintHeightTx mint height of fork context error, fork: %s, mint height: %d, should be: %d",
+                             fork.first.ToString().c_str(), profile.defi.nMintHeight, fork.second.nMintHeight);
+                }
+            }
+        }
+    }
+    return true;
+}
+
 CBlockIndex* CCheckBlockWalker::AddNewIndex(const uint256& hash, const CBlock& block, uint32 nFile, uint32 nOffset, uint256 nChainTrust)
 {
     CBlockIndex* pIndexNew = new CBlockIndex(block, nFile, nOffset);
@@ -2485,6 +2563,14 @@ bool CCheckRepairData::FetchBlockData()
             return false;
         }
         StdLog("check", "Check block index complete, count: %lu", objBlockWalker.mapBlockIndex.size());
+
+        StdLog("check", "Update mint height tx......");
+        if (!objBlockWalker.UpdateMintHeightTx())
+        {
+            StdError("check", "Fetch block and tx, update mint height tx fail");
+            return false;
+        }
+        StdLog("check", "Update mint height tx success.");
     }
     objBlockWalker.Uninitialize();
     return true;

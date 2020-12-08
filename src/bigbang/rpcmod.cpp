@@ -227,6 +227,8 @@ CRPCMod::CRPCMod()
         //
         ("unlockkey", &CRPCMod::RPCUnlockKey)
         //
+        ("removekey", &CRPCMod::RPCRemoveKey)
+        //
         ("importprivkey", &CRPCMod::RPCImportPrivKey)
         //
         ("importpubkey", &CRPCMod::RPCImportPubKey)
@@ -240,6 +242,8 @@ CRPCMod::CRPCMod()
         ("importtemplate", &CRPCMod::RPCImportTemplate)
         //
         ("exporttemplate", &CRPCMod::RPCExportTemplate)
+        //
+        ("removetemplate", &CRPCMod::RPCRemoveTemplate)
         //
         ("validateaddress", &CRPCMod::RPCValidateAddress)
         //
@@ -1305,6 +1309,48 @@ CRPCResultPtr CRPCMod::RPCUnlockKey(CRPCParamPtr param)
     return MakeCUnlockKeyResultPtr(string("Unlock key successfully: ") + spParam->strPubkey);
 }
 
+CRPCResultPtr CRPCMod::RPCRemoveKey(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CRemoveKeyParam>(param);
+    CAddress address(spParam->strPubkey);
+    if (address.IsTemplate())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "This method only accepts pubkey or pubkey address as parameter rather than template address you supplied.");
+    }
+
+    crypto::CPubKey pubkey;
+    if (address.IsPubKey())
+    {
+        address.GetPubKey(pubkey);
+    }
+    else
+    {
+        pubkey.SetHex(spParam->strPubkey);
+    }
+
+    int nVersion;
+    bool fLocked, fPublic;
+    int64 nAutoLockTime;
+    if (!pService->GetKeyStatus(pubkey, nVersion, fLocked, nAutoLockTime, fPublic))
+    {
+        throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Unknown key");
+    }
+
+    crypto::CCryptoString strPassphrase = spParam->strPassphrase.c_str();
+    if (!fPublic && !pService->Unlock(pubkey, strPassphrase, UNLOCKKEY_RELEASE_DEFAULT_TIME))
+    {
+        throw CRPCException(RPC_WALLET_PASSPHRASE_INCORRECT, "Can't remove key with incorrect passphrase");
+    }
+
+    auto strErr = pService->RemoveKey(pubkey);
+    if (strErr)
+    {
+        throw CRPCException(RPC_WALLET_REMOVE_KEY_ERROR, *strErr);
+    }
+
+    return MakeCRemoveKeyResultPtr(string("Remove key successfully: ") + spParam->strPubkey);
+}
+
 CRPCResultPtr CRPCMod::RPCImportPrivKey(CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CImportPrivKeyParam>(param);
@@ -1489,6 +1535,23 @@ CRPCResultPtr CRPCMod::RPCExportTemplate(CRPCParamPtr param)
 
     vector<unsigned char> vchTemplate = ptr->Export();
     return MakeCExportTemplateResultPtr(ToHexString(vchTemplate));
+}
+
+CRPCResultPtr CRPCMod::RPCRemoveTemplate(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CRemoveTemplateParam>(param);
+    CAddress address(spParam->strAddress);
+    if (address.IsNull() || !address.IsTemplate())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid template address");
+    }
+
+    if (!pService->RemoveTemplate(address.GetTemplateId()))
+    {
+        throw CRPCException(RPC_WALLET_ERROR, "Rempve template address fail");
+    }
+
+    return MakeCRemoveTemplateResultPtr("Success");
 }
 
 CRPCResultPtr CRPCMod::RPCValidateAddress(CRPCParamPtr param)
@@ -1779,7 +1842,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
     }
 
     uint16 nType = (uint16)spParam->nType;
-    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION)
+    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION && nType != CTransaction::TX_DEFI_MINT_HEIGHT)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid tx type");
     }
@@ -1809,6 +1872,20 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         {
             vchData = ParseHexString(strDataTmp);
         }
+    }
+    if (nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+    {
+        if (vchData.size() > 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "mint height tx can't set customized data");
+        }
+        if (!spParam->nMintheight.IsValid())
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "mint height tx must set mint height param");
+        }
+        int32 nMintHeight = spParam->nMintheight;
+        CODataStream os(vchData);
+        os << nMintHeight;
     }
 
     int64 nTxFee = CalcMinTxFee(vchData.size(), NEW_MIN_TX_FEE);
@@ -1979,7 +2056,7 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     uint16 nType = (uint16)spParam->nType;
-    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION)
+    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION && nType != CTransaction::TX_DEFI_MINT_HEIGHT)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid tx type");
     }
@@ -2001,6 +2078,20 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     if (spParam->strData.IsValid())
     {
         vchData = ParseHexString(spParam->strData);
+    }
+    if (nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+    {
+        if (vchData.size() > 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "mint height tx can't set customized data");
+        }
+        if (!spParam->nMintheight.IsValid())
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "mint height tx must set mint height param");
+        }
+        int32 nMintHeight = spParam->nMintheight;
+        CODataStream os(vchData);
+        os << nMintHeight;
     }
 
     int64 nTxFee = CalcMinTxFee(vchData.size(), NEW_MIN_TX_FEE);
@@ -2526,17 +2617,8 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
             throw CRPCException(RPC_INVALID_PARAMETER, "DeFi fork mint halvecycle must be zero");
         }
 
-        if (hashParent != pCoreProtocol->GetGenesisBlockHash())
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "DeFi fork must be the direct child fork of main fork");
-        }
-        if (!profile.IsIsolated())
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "DeFi fork must be the isolated fork");
-        }
-
         profile.defi.nMintHeight = spParam->defi.nMintheight;
-        if (profile.defi.nMintHeight >= 0 && profile.defi.nMintHeight < nJointHeight + 2)
+        if (profile.defi.nMintHeight > 0 && profile.defi.nMintHeight < nJointHeight + 2)
         {
             throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param mintheight should be -1 or larger than fork genesis block height");
         }

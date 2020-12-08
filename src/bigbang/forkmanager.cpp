@@ -76,6 +76,14 @@ bool CForkManager::HandleInvoke()
             }
         }
     }
+    for (const string& strFork : ForkConfig()->vExcludeFork)
+    {
+        uint256 hashFork(strFork);
+        if (hashFork != 0 && hashFork != pCoreProtocol->GetGenesisBlockHash())
+        {
+            setForkExcluded.insert(hashFork);
+        }
+    }
 
     return true;
 }
@@ -85,6 +93,7 @@ void CForkManager::HandleHalt()
     mapForkSched.clear();
     setForkAllowed.clear();
     setGroupAllowed.clear();
+    setForkExcluded.clear();
     fAllowAnyFork = false;
 }
 
@@ -386,6 +395,10 @@ bool CForkManager::GetForkContext(const uint256& hashFork, CForkContext& forkCon
 //-----------------------------------------------------------------------------------------------
 bool CForkManager::IsAllowedFork(const uint256& hashFork, const uint256& hashParent) const
 {
+    if (setForkExcluded.count(hashFork))
+    {
+        return false;
+    }
     if (fAllowAnyFork || setForkAllowed.count(hashFork) || setGroupAllowed.count(hashFork))
     {
         return true;

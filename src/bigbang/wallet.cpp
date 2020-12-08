@@ -135,6 +135,28 @@ boost::optional<std::string> CWallet::AddKey(const crypto::CKey& key)
     return boost::optional<std::string>{};
 }
 
+boost::optional<std::string> CWallet::RemoveKey(const crypto::CPubKey& pubkey)
+{
+    boost::unique_lock<boost::shared_mutex> wlock(rwKeyStore);
+    map<crypto::CPubKey, CWalletKeyStore>::const_iterator it = mapKeyStore.find(pubkey);
+    if (it == mapKeyStore.end())
+    {
+        Warn("RemoveKey: failed to find key");
+        return std::string("RemoveKey: failed to find key");
+    }
+
+    const crypto::CKey& key = it->second.key;
+    if (!dbWallet.RemoveKey(key.GetPubKey()))
+    {
+        Warn("RemoveKey: failed to remove key from dbWallet");
+        return std::string("RemoveKey: failed to remove key from dbWallet");
+    }
+
+    mapKeyStore.erase(key.GetPubKey());
+
+    return boost::optional<std::string>{};
+}
+
 bool CWallet::LoadKey(const crypto::CKey& key)
 {
     if (!InsertKey(key))
@@ -417,6 +439,22 @@ CTemplatePtr CWallet::GetTemplate(const CTemplateId& tid) const
         return (*it).second;
     }
     return nullptr;
+}
+
+bool CWallet::RemoveTemplate(const CTemplateId& tid)
+{
+    boost::unique_lock<boost::shared_mutex> wlock(rwKeyStore);
+    map<CTemplateId, CTemplatePtr>::const_iterator it = mapTemplatePtr.find(tid);
+    if (it != mapTemplatePtr.end())
+    {
+        if (!dbWallet.RemoveTemplate(tid))
+        {
+            return false;
+        }
+        mapTemplatePtr.erase(it);
+        return true;
+    }
+    return false;
 }
 
 void CWallet::GetDestinations(set<CDestination>& setDest)
