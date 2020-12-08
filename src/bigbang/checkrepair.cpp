@@ -162,7 +162,7 @@ CCheckForkManager::~CCheckForkManager()
 bool CCheckForkManager::Initialize()
 {
 #ifdef BIGBANG_TESTNET
-    mapCheckPoints[hashGenesisBlockIn].insert(make_pair(0, hashGenesisBlockIn));
+    mapCheckPoints[objParam.hashGenesisBlock].insert(make_pair(0, objParam.hashGenesisBlock));
 #else
     for (const auto& vd : mapCheckPointsList)
     {

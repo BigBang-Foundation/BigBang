@@ -1188,6 +1188,18 @@
                             "type": "string",
                             "desc": "owner's address"
                         },
+                        "createtxid": {
+                            "type": "string",
+                            "desc": "create fork txid"
+                        },
+                        "forkheight": {
+                            "type": "int",
+                            "desc": "fork height"
+                        },
+                        "parentfork": {
+                            "type": "string",
+                            "desc": "parent fork"
+                        },
                         "forktype": {
                             "type": "string",
                             "desc": "fork params, a json object"
@@ -1290,11 +1302,11 @@
         "example": [
             {
                 "request": "bigbang-cli listfork",
-                "response": "[{\"fork\":\"a63d6f9d8055dc1bd7799593fb46ddc1b4e4519bd049e8eba1a0806917dcafc0\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\"}]"
+                "response": "[{\"fork\":\"00000023e3f9ba506f2ee2f96869f54eb4f23f3141471d57cad55b78ace699ff\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\",\"createtxid\":\"5fcef9b220f234b1b1356d545877e55551728bae8484e4a68d425d9242c6860c\",\"forkheight\":34,\"parentfork\":\"0000000006854ebdc236f48dbbe5c87312ea0abd7398888374b5ee9a5eb1d291\",\"forktype\":\"common\"}]"
             },
             {
                 "request": "{\"id\":69,\"method\":\"listfork\",\"jsonrpc\":\"2.0\",\"params\":{}}",
-                "response": "{\"id\":69,\"jsonrpc\":\"2.0\",\"result\":[{\"fork\":\"a63d6f9d8055dc1bd7799593fb46ddc1b4e4519bd049e8eba1a0806917dcafc0\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\"}]}"
+                "response": "{\"id\":69,\"jsonrpc\":\"2.0\",\"result\":[{\"fork\":\"00000023e3f9ba506f2ee2f96869f54eb4f23f3141471d57cad55b78ace699ff\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\",\"createtxid\":\"5fcef9b220f234b1b1356d545877e55551728bae8484e4a68d425d9242c6860c\",\"forkheight\":34,\"parentfork\":\"0000000006854ebdc236f48dbbe5c87312ea0abd7398888374b5ee9a5eb1d291\",\"forktype\":\"common\"}]}"
             }
         ]
     },

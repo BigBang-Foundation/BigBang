@@ -700,6 +700,13 @@ CRPCResultPtr CRPCMod::RPCListFork(CRPCParamPtr param)
         CProfile& profile = vFork[i].second;
         if (spParam->fAll || pForkManager->IsAllowed(vFork[i].first))
         {
+            CForkContext forkContext;
+            if (!pForkManager->GetForkContext(vFork[i].first, forkContext))
+            {
+                StdError("CRPCMod", "RPCListFork: Get fork context fail, fork: %s", vFork[i].first.GetHex().c_str());
+                continue;
+            }
+
             CListForkResult::CProfile displayProfile;
             displayProfile.strFork = vFork[i].first.GetHex();
             displayProfile.strName = profile.strName;
@@ -711,6 +718,9 @@ CRPCResultPtr CRPCMod::RPCListFork(CRPCParamPtr param)
             displayProfile.fPrivate = profile.IsPrivate();
             displayProfile.fEnclosed = profile.IsEnclosed();
             displayProfile.strOwner = CAddress(profile.destOwner).ToString();
+            displayProfile.strCreatetxid = forkContext.txidEmbedded.GetHex();
+            displayProfile.nForkheight = forkContext.nJointHeight;
+            displayProfile.strParentfork = forkContext.hashParent.GetHex();
             displayProfile.strForktype = profile.nForkType == FORK_TYPE_DEFI ? "defi" : "common";
             if (profile.nForkType == FORK_TYPE_DEFI)
             {

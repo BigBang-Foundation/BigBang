@@ -245,6 +245,7 @@ public:
     virtual bool GetSubline(const uint256& hashFork, std::vector<std::pair<int, uint256>>& vSubline) const = 0;
     virtual int64 ForkLockedCoin(const uint256& hashFork, const uint256& hashBlock) = 0;
     virtual int GetForkCreatedHeight(const uint256& hashFork) = 0;
+    virtual bool GetForkContext(const uint256& hashFork, CForkContext& forkContext) = 0;
     const CForkConfig* ForkConfig()
     {
         return dynamic_cast<const CForkConfig*>(xengine::IBase::Config());
