@@ -3918,28 +3918,27 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
     StdWarn("CPusher::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
     std::vector<std::string> deletes;
 
-    static uint64 nNonce = 10;
-    // nNonce++;
+    static uint64 nNonce = 0;
     {
         boost::lock_guard<boost::mutex> lock(mMutex);
         for (const auto& client : mapRPCClient)
         {
             const std::string& ipport = client.first;
-            // int64 nTimeStamp = client.second.timestamp;
+            int64 nTimeStamp = client.second.timestamp;
             StdWarn("CPusher::CSH", "Update New Block ipport: %s", ipport.c_str());
-            // if (GetTime() - nTimeStamp > 60)
-            // {
-            //     StdWarn("CPusher::CSH", "Timeout IPORT: %s", ipport.c_str());
-            //     deletes.push_back(ipport);
-            //     continue;
-            // }
+            if (GetTime() - nTimeStamp > 60 * 2)
+            {
+                StdWarn("CPusher::CSH", "Timeout IPORT: %s", ipport.c_str());
+                deletes.push_back(ipport);
+                continue;
+            }
 
             StdWarn("CPusher::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
-            // if (client.second.registerForks.count(hashFork) == 0)
-            // {
-            //     StdWarn("CPusher::CSH", "No register fork: %s", hashFork.ToString().c_str());
-            //     continue;
-            // }
+            if (client.second.registerForks.count(hashFork) == 0)
+            {
+                StdWarn("CPusher::CSH", "No register fork: %s", hashFork.ToString().c_str());
+                continue;
+            }
 
             StdWarn("CPusher::CSH", "Pushed Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
             DisPatchMessage message;
@@ -3996,18 +3995,18 @@ void CPusher::RemoveClient(uint64 nNonce)
 void CPusher::PushDispatchMessage(const DisPatchMessage& message)
 {
     boost::mutex::scoped_lock lock(mMutexReady);
-    // if (queueDispatch.size() >= 5)
-    // {
-    //     condNewPush.notify_one();
-    //     return;
-    // }
+    if (!queueDispatch.empty())
+    {
+        condNewPush.notify_one();
+        return;
+    }
     queueDispatch.push(message);
     condNewPush.notify_one();
 }
 
 void CPusher::LaunchPushTask()
 {
-    StdWarn("CPusher::CSH", "LaunchedPushTask");
+    //StdWarn("CPusher::CSH", "LaunchedPushTask");
     while (fIsDispatchRunning)
     {
         DisPatchMessage message;
@@ -4017,7 +4016,7 @@ void CPusher::LaunchPushTask()
             while (queueDispatch.empty() || fStopWait)
             {
                 condNewPush.wait(lock);
-                StdWarn("CPusher::CSH", "wait finished queue empty %s", queueDispatch.empty() ? "true" : "false");
+                //StdWarn("CPusher::CSH", "wait finished queue empty %s", queueDispatch.empty() ? "true" : "false");
             }
 
             message = queueDispatch.front();
@@ -4159,8 +4158,8 @@ bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, cons
 
     CNetHost host(strHost, nPort);
     httpReqData.mapHeader["host"] = host.ToString();
-    httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
-    //httpReqData.mapHeader["url"] = "/" + strURL;
+    //httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
+    httpReqData.mapHeader["url"] = "/" + strURL;
     httpReqData.mapHeader["method"] = "POST";
     httpReqData.mapHeader["accept"] = "application/json";
     httpReqData.mapHeader["content-type"] = "application/json";
