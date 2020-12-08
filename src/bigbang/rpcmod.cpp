@@ -245,6 +245,8 @@ CRPCMod::CRPCMod()
         //
         ("exporttemplate", &CRPCMod::RPCExportTemplate)
         //
+        ("removetemplate", &CRPCMod::RPCRemoveTemplate)
+        //
         ("validateaddress", &CRPCMod::RPCValidateAddress)
         //
         ("resyncwallet", &CRPCMod::RPCResyncWallet)
@@ -1530,6 +1532,23 @@ CRPCResultPtr CRPCMod::RPCExportTemplate(CRPCParamPtr param)
 
     vector<unsigned char> vchTemplate = ptr->Export();
     return MakeCExportTemplateResultPtr(ToHexString(vchTemplate));
+}
+
+CRPCResultPtr CRPCMod::RPCRemoveTemplate(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CRemoveTemplateParam>(param);
+    CAddress address(spParam->strAddress);
+    if (address.IsNull() || !address.IsTemplate())
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid template address");
+    }
+
+    if (!pService->RemoveTemplate(address.GetTemplateId()))
+    {
+        throw CRPCException(RPC_WALLET_ERROR, "Rempve template address fail");
+    }
+
+    return MakeCRemoveTemplateResultPtr("Success");
 }
 
 CRPCResultPtr CRPCMod::RPCValidateAddress(CRPCParamPtr param)

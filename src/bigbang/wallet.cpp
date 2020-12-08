@@ -567,6 +567,22 @@ CTemplatePtr CWallet::GetTemplate(const CTemplateId& tid) const
     return nullptr;
 }
 
+bool CWallet::RemoveTemplate(const CTemplateId& tid)
+{
+    boost::unique_lock<boost::shared_mutex> wlock(rwKeyStore);
+    map<CTemplateId, CTemplatePtr>::const_iterator it = mapTemplatePtr.find(tid);
+    if (it != mapTemplatePtr.end())
+    {
+        if (!dbWallet.RemoveTemplate(tid))
+        {
+            return false;
+        }
+        mapTemplatePtr.erase(it);
+        return true;
+    }
+    return false;
+}
+
 void CWallet::GetDestinations(set<CDestination>& setDest)
 {
     boost::shared_lock<boost::shared_mutex> rlock(rwKeyStore);

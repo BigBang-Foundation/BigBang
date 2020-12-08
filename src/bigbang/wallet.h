@@ -153,6 +153,7 @@ public:
     bool Have(const CTemplateId& tid) const override;
     bool AddTemplate(CTemplatePtr& ptr) override;
     CTemplatePtr GetTemplate(const CTemplateId& tid) const override;
+    bool RemoveTemplate(const CTemplateId& tid) override;
     /* Destination */
     void GetDestinations(std::set<CDestination>& setDest);
     /* Wallet Tx */
@@ -305,6 +306,10 @@ public:
     virtual CTemplatePtr GetTemplate(const CTemplateId& tid) const override
     {
         return nullptr;
+    }
+    virtual bool RemoveTemplate(const CTemplateId& tid) override
+    {
+        return false;
     }
     /* Wallet Tx */
     virtual std::size_t GetTxCount() override

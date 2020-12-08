@@ -662,6 +662,11 @@ CTemplatePtr CService::GetTemplate(const CTemplateId& tid)
     return pWallet->GetTemplate(tid);
 }
 
+bool CService::RemoveTemplate(const CTemplateId& tid)
+{
+    return pWallet->RemoveTemplate(tid);
+}
+
 bool CService::GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent)
 {
     return pBlockChain->GetDeFiRelation(hashFork, destIn, parent);

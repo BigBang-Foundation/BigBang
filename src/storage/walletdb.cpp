@@ -495,6 +495,11 @@ bool CWalletDB::UpdateTemplate(const CTemplateId& tid, const vector<unsigned cha
     return dbAddr.UpdateTemplate(tid, vchData);
 }
 
+bool CWalletDB::RemoveTemplate(const CTemplateId& tid)
+{
+    return dbAddr.EraseAddress(CDestination(tid));
+}
+
 bool CWalletDB::WalkThroughAddress(CWalletDBAddrWalker& walker)
 {
     return dbAddr.WalkThroughAddress(walker);

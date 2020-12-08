@@ -205,6 +205,7 @@ public:
     bool UpdateKey(const crypto::CPubKey& pubkey, int version, const crypto::CCryptoCipher& cipher);
     bool RemoveKey(const crypto::CPubKey& pubkey);
     bool UpdateTemplate(const CTemplateId& tid, const std::vector<unsigned char>& vchData);
+    bool RemoveTemplate(const CTemplateId& tid);
     bool WalkThroughAddress(CWalletDBAddrWalker& walker);
 
     bool AddNewTx(const CWalletTx& wtx);

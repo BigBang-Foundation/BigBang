@@ -108,6 +108,7 @@ private:
     rpc::CRPCResultPtr RPCAddNewTemplate(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCImportTemplate(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCExportTemplate(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCRemoveTemplate(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCValidateAddress(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCResyncWallet(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetBalance(rpc::CRPCParamPtr param);
