@@ -860,7 +860,7 @@ void CBlockMaker::BlockMakerThreadFunc()
         hashLastBlock = lastStatus.hashBlock;
     }
     bool fCachePow = false;
-    int64 nWaitTime = (MintConfig()->nPeerType == NODE_TYPE_FORK) ? BLOCK_TARGET_SPACING : 1;
+    int64 nWaitTime = 1;
     while (!fExit)
     {
         if (nWaitTime < 1)
