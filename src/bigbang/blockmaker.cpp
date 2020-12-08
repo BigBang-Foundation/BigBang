@@ -860,7 +860,7 @@ void CBlockMaker::BlockMakerThreadFunc()
         hashLastBlock = lastStatus.hashBlock;
     }
     bool fCachePow = false;
-    int64 nWaitTime = (MintConfig()->nPeerType == NODE_TYPE_FORK) ? BLOCK_TARGET_SPACING : 1;
+    int64 nWaitTime = 1;
     while (!fExit)
     {
         if (nWaitTime < 1)
@@ -948,14 +948,17 @@ void CBlockMaker::BlockMakerThreadFunc()
             {
                 if (!agreement.IsProofOfWork())
                 {
+                    Log("BlockMakerThreadFunc fork node deal DPoS height: %d, block: %s", CBlock::GetBlockHeightByHash(hashLastBlock), hashLastBlock.ToString().c_str());
                     map<CDestination, CBlockMakerProfile>::iterator it = mapDelegatedProfile.find(agreement.vBallot[0]);
                     if (it != mapDelegatedProfile.end())
                     {
                         CBlockStatus status;
                         if (pBlockChain->GetBlockStatus(hashPrevBlock, status))
                         {
+                            Log("BlockMakerThreadFunc fork node create sub fork blocks begin, ref block: %s", hashLastBlock.ToString().c_str());
                             // create sub fork blocks
                             ProcessSubFork(it->second, agreement, hashLastBlock, nLastTime, status.nBlockHeight, status.nMintType);
+                            Log("BlockMakerThreadFunc fork node create sub fork blocks end, ref block: %s", hashLastBlock.ToString().c_str());
                         }
                     }
                 }
