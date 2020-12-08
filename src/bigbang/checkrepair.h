@@ -247,14 +247,15 @@ public:
     bool AddForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<pair<CDestination, CForkContext>>& vForkCtxt,
                         bool fCheckPointBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork);
     bool GetForkContext(const uint256& hashFork, CForkContext& ctxt);
-
-    bool UpdateForkContext(const uint256& hashFork, const CForkContext& ctxt);
     bool VerifyValidFork(const uint256& hashPrevBlock, const uint256& hashFork, const string& strForkName);
     bool GetValidFdForkId(const uint256& hashBlock, map<uint256, int>& mapFdForkIdOut);
     int GetValidForkCreatedHeight(const uint256& hashBlock, const uint256& hashFork);
 
     bool CheckDbValidFork(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork);
     bool AddDbValidForkHash(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork);
+
+    bool GetDbForkContext(const uint256& hashFork, CForkContext& ctxt);
+    bool UpdateDbForkContext(const CForkContext& ctxt);
 
     bool UpdateDbForkLast(const uint256& hashFork, const uint256& hashLastBlock);
     bool RemoveDbForkLast(const uint256& hashFork);
@@ -414,6 +415,7 @@ public:
     map<CDestination, pair<uint256, CAddrInfo>> mapBlockAddress;
     uint64 nCacheTxInfoBlockCount;
     int32 nMintHeight;
+    uint256 txidMintHeight;
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -443,7 +445,6 @@ public:
 
     bool UpdateBlockNext();
     bool CheckRepairFork();
-    bool UpdateMintHeightTx();
     CBlockIndex* AddNewIndex(const uint256& hash, const CBlock& block, uint32 nFile, uint32 nOffset, uint256 nChainTrust);
     CBlockIndex* AddNewIndex(const uint256& hash, const CBlockOutline& objBlockOutline);
     void ClearBlockIndex();
