@@ -21,11 +21,11 @@ namespace storage
 //////////////////////////////
 // CPurger
 
-bool CPurger::ResetDB(const boost::filesystem::path& pathDataLocation) const
+bool CPurger::ResetDB(const boost::filesystem::path& pathDataLocation, const uint256& hashGenesisBlockIn) const
 {
     {
         CBlockDB dbBlock;
-        if (dbBlock.Initialize(pathDataLocation, true))
+        if (dbBlock.Initialize(pathDataLocation, hashGenesisBlockIn, true))
         {
             if (!dbBlock.RemoveAll())
             {

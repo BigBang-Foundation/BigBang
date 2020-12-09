@@ -20,10 +20,8 @@ class CForkDB : public xengine::CKVDB
 {
 public:
     CForkDB() {}
-    bool Initialize(const boost::filesystem::path& pathData);
+    bool Initialize(const boost::filesystem::path& pathData, const uint256& hashGenesisBlockIn);
     void Deinitialize();
-    bool WriteGenesisBlockHash(const uint256& hashGenesisBlockIn);
-    bool GetGenesisBlockHash(uint256& hashGenesisBlockOut);
     bool AddNewForkContext(const CForkContext& ctxt);
     bool RemoveForkContext(const uint256& hashFork);
     bool RetrieveForkContext(const uint256& hashFork, CForkContext& ctxt);
@@ -41,6 +39,9 @@ protected:
     bool LoadCtxtWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::vector<CForkContext>& vForkCtxt);
     bool LoadActiveForkWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::map<uint256, uint256>& mapFork);
     bool LoadValidForkWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::map<uint256, CValidForkId>& mapBlockForkId);
+
+protected:
+    uint256 hashGenesisBlock;
 };
 
 } // namespace storage

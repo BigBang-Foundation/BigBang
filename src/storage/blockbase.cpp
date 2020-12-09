@@ -452,7 +452,7 @@ bool CBlockBase::Initialize(const path& pathDataLocation, const uint256& hashGen
 
     Log("B", "Initializing... (Path : %s)", pathDataLocation.string().c_str());
 
-    if (!dbBlock.Initialize(pathDataLocation, fAddrTxIndexIn))
+    if (!dbBlock.Initialize(pathDataLocation, hashGenesisBlockIn, fAddrTxIndexIn))
     {
         Error("B", "Failed to initialize block db");
         return false;
@@ -463,12 +463,6 @@ bool CBlockBase::Initialize(const path& pathDataLocation, const uint256& hashGen
         dbBlock.Deinitialize();
         Error("B", "Failed to initialize block tsfile");
         return false;
-    }
-
-    uint256 hashDbGenesisBlockHash;
-    if (!dbBlock.GetGenesisBlockHash(hashDbGenesisBlockHash) || hashDbGenesisBlockHash != hashGenesisBlockIn)
-    {
-        dbBlock.WriteGenesisBlockHash(hashGenesisBlockIn);
     }
 
     if (fRenewDB)

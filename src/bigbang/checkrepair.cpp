@@ -170,7 +170,7 @@ bool CCheckForkManager::Initialize()
     }
 #endif
 
-    if (!dbFork.Initialize(path(strDataPath)))
+    if (!dbFork.Initialize(path(strDataPath), objParam.hashGenesisBlock))
     {
         StdError("check", "Fork manager set param: Initialize fail");
         return false;
@@ -184,21 +184,6 @@ bool CCheckForkManager::FetchForkStatus()
     {
         StdLog("check", "Fetch fork status: Initialize fail");
         return false;
-    }
-
-    uint256 hashGetGenesisBlock;
-    if (!dbFork.GetGenesisBlockHash(hashGetGenesisBlock) || hashGetGenesisBlock != objParam.hashGenesisBlock)
-    {
-        StdError("check", "Fetch fork status: Get genesis block hash fail");
-        if (fOnlyCheck)
-        {
-            return false;
-        }
-        if (!dbFork.WriteGenesisBlockHash(objParam.hashGenesisBlock))
-        {
-            StdError("check", "Fetch fork status: Write genesis block hash fail");
-            return false;
-        }
     }
 
     bool fCheckGenesisRet = true;

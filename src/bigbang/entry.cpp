@@ -445,8 +445,10 @@ void CBbEntry::PurgeStorage()
         return;
     }
 
+    CProofOfWorkParam param(config.GetConfig()->fTestNet);
+
     storage::CPurger purger;
-    if (purger(pathData))
+    if (purger(pathData, param.hashGenesisBlock))
     {
         cout << "Reset database and removed blockfiles\n";
     }

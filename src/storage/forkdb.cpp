@@ -19,8 +19,10 @@ namespace storage
 //////////////////////////////
 // CForkDB
 
-bool CForkDB::Initialize(const boost::filesystem::path& pathData)
+bool CForkDB::Initialize(const boost::filesystem::path& pathData, const uint256& hashGenesisBlockIn)
 {
+    hashGenesisBlock = hashGenesisBlockIn;
+
     CLevelDBArguments args;
     args.path = (pathData / "fork").string();
     args.syncwrite = false;
@@ -41,16 +43,6 @@ bool CForkDB::Initialize(const boost::filesystem::path& pathData)
 void CForkDB::Deinitialize()
 {
     Close();
-}
-
-bool CForkDB::WriteGenesisBlockHash(const uint256& hashGenesisBlockIn)
-{
-    return Write(make_pair(string("GenesisBlock"), uint256()), hashGenesisBlockIn);
-}
-
-bool CForkDB::GetGenesisBlockHash(uint256& hashGenesisBlockOut)
-{
-    return Read(make_pair(string("GenesisBlock"), uint256()), hashGenesisBlockOut);
 }
 
 bool CForkDB::AddNewForkContext(const CForkContext& ctxt)
@@ -106,13 +98,6 @@ bool CForkDB::RetrieveFork(const uint256& hashFork, uint256& hashLastBlock)
 
 bool CForkDB::ListFork(vector<pair<uint256, uint256>>& vFork)
 {
-    uint256 hashGenesisBlock;
-    if (!GetGenesisBlockHash(hashGenesisBlock))
-    {
-        StdError("CForkDB", "ListFork: GetGenesisBlockHash fail");
-        return false;
-    }
-
     uint256 hashLastBlock;
     if (!RetrieveFork(hashGenesisBlock, hashLastBlock))
     {
