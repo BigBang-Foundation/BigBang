@@ -3946,11 +3946,11 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
             DisPatchMessage message;
             message.client = client.second;
             message.hashFork = hashFork;
-            message.nNonce = nNonce++;
+            message.nNonce = nNonce;
             message.nReqId = client.second.nNonce;
             message.block = block;
             PushDispatchMessage(message);
-            StdWarn("CPusher::CSH", "Pushed Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
+            StdWarn("CPusher::CSH", "Pushed Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, 1);
         }
 
         RemoveClients(deletes);
