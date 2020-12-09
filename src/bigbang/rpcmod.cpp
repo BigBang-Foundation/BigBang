@@ -4103,7 +4103,7 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
             StdDebug("CPusher", "response: ", rsp.strContent.c_str());
         }
 
-        std::string content = rsp.strContent;
+        // std::string content = rsp.strContent;
         // auto spResp = DeserializeCRPCResp("", content);
         // if (spResp->IsError())
         // {
@@ -4127,13 +4127,13 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
         //     return true;
         // }
 
-        auto jsonObj = nlohmann::json::parse(content);
-        if (!jsonObj.is_object())
-        {
-            StdError("CPusher", "server error: neither error nor result. resp:  %s", content.c_str());
-            ioComplt.Completed(false);
-            return true;
-        }
+        // auto jsonObj = nlohmann::json::parse(content);
+        // if (!jsonObj.is_object())
+        // {
+        //     StdError("CPusher", "server error: neither error nor result. resp:  %s", content.c_str());
+        //     ioComplt.Completed(false);
+        //     return true;
+        // }
     }
     catch (const std::exception& e)
     {
