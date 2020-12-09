@@ -3924,7 +3924,7 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
         for (const auto& client : mapRPCClient)
         {
             const std::string& ipport = client.first;
-            int64 nTimeStamp = client.second.timestamp;
+            //int64 nTimeStamp = client.second.timestamp;
             StdWarn("CPusher::CSH", "Update New Block ipport: %s", ipport.c_str());
             // if (GetTime() - nTimeStamp > 60 * 2)
             // {
