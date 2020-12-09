@@ -1604,17 +1604,17 @@ CRPCResultPtr CRPCMod::RPCGetBalance(CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CGetBalanceParam>(param);
 
-    //uint64 nNonce = 0;
+    uint64 nNonce = 0;
 
-    // for (int i = 0; i < 100000; ++i)
-    // {
-    //     CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, pCoreProtocol->GetGenesisBlockHash(), 0);
+    for (int i = 0; i < 100000; ++i)
+    {
+        CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, pCoreProtocol->GetGenesisBlockHash(), 0);
 
-    //     CBlockEx block;
-    //     pCoreProtocol->GetGenesisBlock(block);
-    //     pUpdateNewBlockEvent->data = block;
-    //     pPusher->PostEvent(pUpdateNewBlockEvent);
-    // }
+        CBlockEx block;
+        pCoreProtocol->GetGenesisBlock(block);
+        pUpdateNewBlockEvent->data = block;
+        pPusher->PostEvent(pUpdateNewBlockEvent);
+    }
 
     //getbalance (-f="fork") (-a="address")
     uint256 hashFork;
@@ -3927,21 +3927,21 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
         for (const auto& client : mapRPCClient)
         {
             const std::string& ipport = client.first;
-            int64 nTimeStamp = client.second.timestamp;
+            //int64 nTimeStamp = client.second.timestamp;
             StdWarn("CPusher::CSH", "Update New Block ipport: %s", ipport.c_str());
-            if (GetTime() - nTimeStamp > 60 * 2)
-            {
-                StdWarn("CPusher::CSH", "Timeout IPORT: %s", ipport.c_str());
-                deletes.push_back(ipport);
-                continue;
-            }
+            // if (GetTime() - nTimeStamp > 60 * 2)
+            // {
+            //     StdWarn("CPusher::CSH", "Timeout IPORT: %s", ipport.c_str());
+            //     deletes.push_back(ipport);
+            //     continue;
+            // }
 
-            StdWarn("CPusher::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
-            if (client.second.registerForks.count(hashFork) == 0)
-            {
-                StdWarn("CPusher::CSH", "No register fork: %s", hashFork.ToString().c_str());
-                continue;
-            }
+            // StdWarn("CPusher::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
+            // if (client.second.registerForks.count(hashFork) == 0)
+            // {
+            //     StdWarn("CPusher::CSH", "No register fork: %s", hashFork.ToString().c_str());
+            //     continue;
+            // }
 
             StdWarn("CPusher::CSH", "Pushed Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
             DisPatchMessage message;
@@ -4143,7 +4143,16 @@ bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, cons
     // httpReqData.strIOModule = GetOwnKey();
     // httpReqData.nTimeout = /*Config()->nRPCConnectTimeout*/ 1;
 
-    // if (fSSL)
+    // CNetHost host(strHost, nPort);
+    // httpReqData.mapHeader["host"] = host.ToString();
+    // httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
+    // //httpReqData.mapHeader["url"] = "/" + strURL;
+    // httpReqData.mapHeader["method"] = "POST";
+    // httpReqData.mapHeader["accept"] = "application/json";
+    // httpReqData.mapHeader["content-type"] = "application/json";
+    // httpReqData.mapHeader["user-agent"] = string("bigbang-json-rpc/");
+    // httpReqData.mapHeader["connection"] = "Keep-Alive";
+    // if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
     // {
     //     httpReqData.strProtocol = "https";
     //     // httpReqData.fVerifyPeer = Config()->fRPCSSLVerify;
