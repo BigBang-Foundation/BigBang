@@ -202,29 +202,28 @@ protected:
     void HandleHalt() override;
 
     bool CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CBlockEx& block, int nReqId);
-    bool GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content);
+    bool GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content, std::string& response);
     rpc::Cblockdatadetail BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block);
     void RemoveClients(const std::vector<std::string>& clients);
     void RemoveClient(const std::string& client);
     void RemoveClient(uint64 nNonce);
 
-    void LaunchPushTask();
     void PushDispatchMessage(const DisPatchMessage& message);
 
 protected:
     ICoreProtocol* pCoreProtocol;
     IService* pService;
     xengine::IIOProc* pHttpGet;
-    xengine::CThread thrDispatch;
-    std::atomic<bool> fIsDispatchRunning;
+    //xengine::CThread thrDispatch;
+    //std::atomic<bool> fIsDispatchRunning;
 
 private:
     boost::mutex mMutex;
-    boost::mutex mMutexReady;
-    bool fStopWait;
-    boost::condition_variable condNewPush;
-    xengine::CIOCompletion ioComplt;
-    std::queue<DisPatchMessage> queueDispatch;
+    //boost::mutex mMutexReady;
+    //bool fStopWait;
+    //boost::condition_variable condNewPush;
+    //xengine::CIOCompletion ioComplt;
+    //std::queue<DisPatchMessage> queueDispatch;
     std::map<std::string, LiveClientInfo> mapRPCClient; //  IP:PORT -> LiveClientInfo
     //std::unordered_map<std::string, std::pair<uint256, uint256>> mapForkPoint; // fork point hash => (fork hash, fork point hash)
 };

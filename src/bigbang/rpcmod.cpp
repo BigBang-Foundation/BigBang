@@ -15,6 +15,7 @@
 #include <regex>
 //#include <algorithm>
 
+#include "json/httplib.h"
 #include "json/json.hpp"
 
 #include "address.h"
@@ -3785,13 +3786,13 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
 }
 
 CPusher::CPusher()
-  : thrDispatch("pushtask", boost::bind(&CPusher::LaunchPushTask, this))
+// : thrDispatch("pushtask", boost::bind(&CPusher::LaunchPushTask, this))
 {
     pHttpGet = nullptr;
     pCoreProtocol = nullptr;
     pService = nullptr;
-    fIsDispatchRunning = false;
-    fStopWait = false;
+    // fIsDispatchRunning = false;
+    // fStopWait = false;
 }
 
 CPusher::~CPusher()
@@ -3839,11 +3840,11 @@ void CPusher::HandleDeinitialize()
 
 bool CPusher::HandleInvoke()
 {
-    fIsDispatchRunning = true;
-    if (!ThreadStart(thrDispatch))
-    {
-        return false;
-    }
+    // fIsDispatchRunning = true;
+    // if (!ThreadStart(thrDispatch))
+    // {
+    //     return false;
+    // }
 
     return IIOModule::HandleInvoke();
 }
@@ -3851,15 +3852,15 @@ bool CPusher::HandleInvoke()
 void CPusher::HandleHalt()
 {
     IIOModule::HandleHalt();
-    if (thrDispatch.IsRunning())
-    {
-        thrDispatch.Interrupt();
-    }
-    thrDispatch.Interrupt();
-    fIsDispatchRunning = false;
-    fStopWait = true;
-    condNewPush.notify_all();
-    ThreadExit(thrDispatch);
+    // if (thrDispatch.IsRunning())
+    // {
+    //     thrDispatch.Interrupt();
+    // }
+    // thrDispatch.Interrupt();
+    // fIsDispatchRunning = false;
+    // fStopWait = true;
+    // condNewPush.notify_all();
+    // ThreadExit(thrDispatch);
 }
 
 void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& client)
@@ -3996,38 +3997,16 @@ void CPusher::RemoveClient(uint64 nNonce)
 
 void CPusher::PushDispatchMessage(const DisPatchMessage& message)
 {
-    boost::mutex::scoped_lock lock(mMutexReady);
+    // boost::mutex::scoped_lock lock(mMutexReady);
     // if (!queueDispatch.empty())
     // {
     //     condNewPush.notify_one();
     //     return;
     // }
-    queueDispatch.push(message);
-    condNewPush.notify_one();
-}
+    // queueDispatch.push(message);
+    // condNewPush.notify_one();
 
-void CPusher::LaunchPushTask()
-{
-    //StdWarn("CPusher::CSH", "LaunchedPushTask");
-    while (fIsDispatchRunning)
-    {
-        DisPatchMessage message;
-        {
-            boost::unique_lock<boost::mutex> lock(mMutexReady);
-
-            while (queueDispatch.empty() || fStopWait)
-            {
-                condNewPush.wait(lock);
-                //StdWarn("CPusher::CSH", "wait finished queue empty %s", queueDispatch.empty() ? "true" : "false");
-            }
-
-            message = queueDispatch.front();
-            queueDispatch.pop();
-        }
-        StdWarn("CPusher::CSH", "Calling  Queue New Block: Host: %s, Port: %d, Nonce: %d", message.client.strHost.c_str(), message.client.nPort, message.client.nNonce);
-        CallRPC(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strURL, message.client.nNonce, message.hashFork, message.block, message.client.nNonce);
-        StdWarn("CPusher::CSH", "Called Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", message.client.strHost.c_str(), message.client.nPort, message.client.nNonce);
-    }
+    CallRPC(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strURL, message.client.nNonce, message.hashFork, message.block, message.client.nNonce);
 }
 
 bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CBlockEx& block, int nReqId)
@@ -4037,7 +4016,8 @@ bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const st
         Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
         auto spParam = MakeCPushBlockParamPtr(data);
         CRPCReqPtr spReq = MakeCRPCReqPtr(nReqId, spParam->Method(), spParam);
-        return GetResponse(fSSL, strHost, nPort, strURL, nNonce, spReq->Serialize());
+        std::string response;
+        return GetResponse(fSSL, strHost, nPort, strURL, nNonce, spReq->Serialize(), response);
     }
     catch (const std::exception& e)
     {
@@ -4056,153 +4036,183 @@ bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const st
 
 bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
 {
-    try
-    {
-        CHttpRsp& rsp = event.data;
+    // try
+    // {
+    //     CHttpRsp& rsp = event.data;
 
-        StdWarn("CPusher", "Response Content %s", rsp.strContent.c_str());
-        if (rsp.nStatusCode < 0)
-        {
+    //     StdWarn("CPusher", "Response Content %s", rsp.strContent.c_str());
+    //     if (rsp.nStatusCode < 0)
+    //     {
 
-            const char* strErr[] = { "", "connect failed", "invalid nonce", "activate failed",
-                                     "disconnected", "no response", "resolve failed",
-                                     "internal failure", "aborted" };
+    //         const char* strErr[] = { "", "connect failed", "invalid nonce", "activate failed",
+    //                                  "disconnected", "no response", "resolve failed",
+    //                                  "internal failure", "aborted" };
 
-            //RemoveClient(event.nNonce);
-            StdError("CPusher", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
+    //         //RemoveClient(event.nNonce);
+    //         StdError("CPusher", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
 
-            if (pHttpGet && rsp.nStatusCode == HTTPGET_CONNECT_FAILED)
-            {
-                CEventHttpAbort eventAbort(event.nNonce);
-                CHttpAbort& httpAbort = eventAbort.data;
-                httpAbort.strIOModule = GetOwnKey();
-                httpAbort.vNonce.push_back(event.nNonce);
-                pHttpGet->DispatchEvent(&eventAbort);
-            }
+    //         if (pHttpGet && rsp.nStatusCode == HTTPGET_CONNECT_FAILED)
+    //         {
+    //             CEventHttpAbort eventAbort(event.nNonce);
+    //             CHttpAbort& httpAbort = eventAbort.data;
+    //             httpAbort.strIOModule = GetOwnKey();
+    //             httpAbort.vNonce.push_back(event.nNonce);
+    //             pHttpGet->DispatchEvent(&eventAbort);
+    //         }
 
-            ioComplt.Completed(false);
-            return true;
-        }
-        if (rsp.nStatusCode == 401)
-        {
-            //RemoveClient(event.nNonce);
-            StdError("CPusher", "incorrect rpcuser or rpcpassword (authorization failed)");
-            ioComplt.Completed(false);
-            return true;
-        }
-        else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
-        {
-            ostringstream oss;
-            oss << "server returned HTTP error " << rsp.nStatusCode;
-            //RemoveClient(event.nNonce);
-            StdError("CPusher", oss.str().c_str());
-            ioComplt.Completed(false);
-            return true;
-        }
-        else if (rsp.strContent.empty())
-        {
-            StdError("CPusher", "no response from server");
-            ioComplt.Completed(false);
-            return true;
-        }
+    //         ioComplt.Completed(false);
+    //         return true;
+    //     }
+    //     if (rsp.nStatusCode == 401)
+    //     {
+    //         //RemoveClient(event.nNonce);
+    //         StdError("CPusher", "incorrect rpcuser or rpcpassword (authorization failed)");
+    //         ioComplt.Completed(false);
+    //         return true;
+    //     }
+    //     else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
+    //     {
+    //         ostringstream oss;
+    //         oss << "server returned HTTP error " << rsp.nStatusCode;
+    //         //RemoveClient(event.nNonce);
+    //         StdError("CPusher", oss.str().c_str());
+    //         ioComplt.Completed(false);
+    //         return true;
+    //     }
+    //     else if (rsp.strContent.empty())
+    //     {
+    //         StdError("CPusher", "no response from server");
+    //         ioComplt.Completed(false);
+    //         return true;
+    //     }
 
-        // Parse reply
-        if (Config()->fDebug)
-        {
-            //cout << "response: " << rsp.strContent;
-            StdDebug("CPusher", "response: ", rsp.strContent.c_str());
-        }
+    //     // Parse reply
+    //     if (Config()->fDebug)
+    //     {
+    //         //cout << "response: " << rsp.strContent;
+    //         StdDebug("CPusher", "response: ", rsp.strContent.c_str());
+    //     }
 
-        std::string content = rsp.strContent;
-        // auto spResp = DeserializeCRPCResp("", content);
-        // if (spResp->IsError())
-        // {
-        //     // Error
-        //     //cerr << spResp->spError->Serialize(true) << endl;
-        //     //cerr << strServerHelpTips << endl;
-        //     StdError("CPusher", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
-        //     StdError("CPusher", "RPC Response error tips: %s", strServerHelpTips.c_str());
-        //     ioComplt.Completed(false);
-        //     return true;
-        // }
-        // else if (spResp->IsSuccessful())
-        // {
-        //     //cout << spResp->spResult->Serialize(true) << endl;
-        // }
-        // else
-        // {
-        //     //cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
-        //     StdError("CPusher", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
-        //     ioComplt.Completed(false);
-        //     return true;
-        // }
+    //     std::string content = rsp.strContent;
+    //     // auto spResp = DeserializeCRPCResp("", content);
+    //     // if (spResp->IsError())
+    //     // {
+    //     //     // Error
+    //     //     //cerr << spResp->spError->Serialize(true) << endl;
+    //     //     //cerr << strServerHelpTips << endl;
+    //     //     StdError("CPusher", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
+    //     //     StdError("CPusher", "RPC Response error tips: %s", strServerHelpTips.c_str());
+    //     //     ioComplt.Completed(false);
+    //     //     return true;
+    //     // }
+    //     // else if (spResp->IsSuccessful())
+    //     // {
+    //     //     //cout << spResp->spResult->Serialize(true) << endl;
+    //     // }
+    //     // else
+    //     // {
+    //     //     //cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
+    //     //     StdError("CPusher", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
+    //     //     ioComplt.Completed(false);
+    //     //     return true;
+    //     // }
 
-        auto jsonObj = nlohmann::json::parse(content);
-        if (!jsonObj.is_object())
-        {
-            StdError("CPusher", "server error: neither error nor result. resp:  %s", content.c_str());
-            ioComplt.Completed(false);
-            return true;
-        }
-    }
-    catch (const std::exception& e)
-    {
-        StdError("CPusher", "RPC Response Exception: %s ", e.what());
-        ioComplt.Completed(false);
-        return true;
-    }
-    ioComplt.Completed(false);
+    //     auto jsonObj = nlohmann::json::parse(content);
+    //     if (!jsonObj.is_object())
+    //     {
+    //         StdError("CPusher", "server error: neither error nor result. resp:  %s", content.c_str());
+    //         ioComplt.Completed(false);
+    //         return true;
+    //     }
+    // }
+    // catch (const std::exception& e)
+    // {
+    //     StdError("CPusher", "RPC Response Exception: %s ", e.what());
+    //     ioComplt.Completed(false);
+    //     return true;
+    // }
+    // ioComplt.Completed(false);
     return true;
 }
 
-bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content)
+bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content, std::string& response)
 {
 
-    CEventHttpGet eventHttpGet(nNonce);
-    CHttpReqData& httpReqData = eventHttpGet.data;
-    httpReqData.strIOModule = GetOwnKey();
-    httpReqData.nTimeout = /*Config()->nRPCConnectTimeout*/ 1;
+    // CEventHttpGet eventHttpGet(nNonce);
+    // CHttpReqData& httpReqData = eventHttpGet.data;
+    // httpReqData.strIOModule = GetOwnKey();
+    // httpReqData.nTimeout = /*Config()->nRPCConnectTimeout*/ 1;
 
-    if (fSSL)
+    // if (fSSL)
+    // {
+    //     httpReqData.strProtocol = "https";
+    //     // httpReqData.fVerifyPeer = Config()->fRPCSSLVerify;
+    //     // httpReqData.strPathCA = Config()->strRPCCAFile;
+    //     // httpReqData.strPathCert = Config()->strRPCCertFile;
+    //     // httpReqData.strPathPK = Config()->strRPCPKFile;
+    // }
+    // else
+    // {
+    //     httpReqData.strProtocol = "http";
+    // }
+
+    // CNetHost host(strHost, nPort);
+    // httpReqData.mapHeader["host"] = host.ToString();
+    // //httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
+    // httpReqData.mapHeader["url"] = "/" + strURL;
+    // httpReqData.mapHeader["method"] = "POST";
+    // httpReqData.mapHeader["accept"] = "application/json";
+    // httpReqData.mapHeader["content-type"] = "application/json";
+    // httpReqData.mapHeader["user-agent"] = string("bigbang-json-rpc/");
+    // httpReqData.mapHeader["connection"] = "Keep-Alive";
+    // // if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
+    // // {
+    // //     string strAuth;
+    // //     CHttpUtil().Base64Encode(Config()->strRPCUser + ":" + Config()->strRPCPass, strAuth);
+    // //     httpReqData.mapHeader["authorization"] = string("Basic ") + strAuth;
+    // // }
+
+    // httpReqData.strContent = content + "\n";
+
+    // ioComplt.Reset();
+
+    // if (!pHttpGet->DispatchEvent(&eventHttpGet))
+    // {
+    //     return false;
+    // }
+    // bool fResult = false;
+    // return (ioComplt.WaitForComplete(fResult) && fResult);
+    //return true;
+
+    httplib::Client cli(strHost, nPort);
+    std::string path = std::string("/") + strURL;
+    httplib::Headers headers = {
+        { "Accept-Encoding", "gzip, deflate" },
+        { "Connection", "Keep-Alive" },
+        { "Accept", "application/json" },
+        { "User-Agent", "bigbang-json-rpc/" }
+    };
+    if (auto res = cli.Post(path.c_str(), headers, content, "application/json"))
     {
-        httpReqData.strProtocol = "https";
-        // httpReqData.fVerifyPeer = Config()->fRPCSSLVerify;
-        // httpReqData.strPathCA = Config()->strRPCCAFile;
-        // httpReqData.strPathCert = Config()->strRPCCertFile;
-        // httpReqData.strPathPK = Config()->strRPCPKFile;
+        if (res->status == 200)
+        {
+            response = res->body;
+            StdDebug("CPusher", "status 200 with body: %s", res->body.c_str());
+            return true;
+        }
+        else
+        {
+            response = res->body;
+            StdDebug("CPusher", "status not 200 with body: %s", res->body.c_str());
+            return false;
+        }
     }
     else
     {
-        httpReqData.strProtocol = "http";
-    }
-
-    CNetHost host(strHost, nPort);
-    httpReqData.mapHeader["host"] = host.ToString();
-    //httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
-    httpReqData.mapHeader["url"] = "/" + strURL;
-    httpReqData.mapHeader["method"] = "POST";
-    httpReqData.mapHeader["accept"] = "application/json";
-    httpReqData.mapHeader["content-type"] = "application/json";
-    httpReqData.mapHeader["user-agent"] = string("bigbang-json-rpc/");
-    httpReqData.mapHeader["connection"] = "Keep-Alive";
-    // if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
-    // {
-    //     string strAuth;
-    //     CHttpUtil().Base64Encode(Config()->strRPCUser + ":" + Config()->strRPCPass, strAuth);
-    //     httpReqData.mapHeader["authorization"] = string("Basic ") + strAuth;
-    // }
-
-    httpReqData.strContent = content + "\n";
-
-    ioComplt.Reset();
-
-    if (!pHttpGet->DispatchEvent(&eventHttpGet))
-    {
+        auto err = res.error();
+        StdWarn("CPusher", "httpclient returned error %d", (int)err);
         return false;
     }
-    bool fResult = false;
-    return (ioComplt.WaitForComplete(fResult) && fResult);
-    //return true;
 }
 
 } // namespace bigbang
