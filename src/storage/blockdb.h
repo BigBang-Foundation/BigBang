@@ -27,11 +27,9 @@ class CBlockDB
 public:
     CBlockDB();
     ~CBlockDB();
-    bool Initialize(const boost::filesystem::path& pathData, const bool fAddrTxIndexIn);
+    bool Initialize(const boost::filesystem::path& pathData, const uint256& hashGenesisBlockIn, const bool fAddrTxIndexIn);
     void Deinitialize();
     bool RemoveAll();
-    bool WriteGenesisBlockHash(const uint256& hashGenesisBlockIn);
-    bool GetGenesisBlockHash(uint256& hashGenesisBlockOut);
     bool AddNewForkContext(const CForkContext& ctxt);
     bool RetrieveForkContext(const uint256& hash, CForkContext& ctxt);
     bool ListForkContext(std::vector<CForkContext>& vForkCtxt, std::map<uint256, CValidForkId>& mapValidForkId);

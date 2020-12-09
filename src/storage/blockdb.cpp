@@ -25,10 +25,10 @@ CBlockDB::~CBlockDB()
 {
 }
 
-bool CBlockDB::Initialize(const boost::filesystem::path& pathData, const bool fAddrTxIndexIn)
+bool CBlockDB::Initialize(const boost::filesystem::path& pathData, const uint256& hashGenesisBlockIn, const bool fAddrTxIndexIn)
 {
     fDbCfgAddrTxIndex = fAddrTxIndexIn;
-    if (!dbFork.Initialize(pathData))
+    if (!dbFork.Initialize(pathData, hashGenesisBlockIn))
     {
         return false;
     }
@@ -103,16 +103,6 @@ bool CBlockDB::RemoveAll()
     dbFork.Clear();
 
     return true;
-}
-
-bool CBlockDB::WriteGenesisBlockHash(const uint256& hashGenesisBlockIn)
-{
-    return dbFork.WriteGenesisBlockHash(hashGenesisBlockIn);
-}
-
-bool CBlockDB::GetGenesisBlockHash(uint256& hashGenesisBlockOut)
-{
-    return dbFork.GetGenesisBlockHash(hashGenesisBlockOut);
 }
 
 bool CBlockDB::AddNewForkContext(const CForkContext& ctxt)
