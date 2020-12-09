@@ -4101,29 +4101,29 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
             StdDebug("CPusher", "response: ", rsp.strContent.c_str());
         }
 
-        std::string content = rsp.strContent;
-        auto spResp = DeserializeCRPCResp("", content);
-        if (spResp->IsError())
-        {
-            // Error
-            //cerr << spResp->spError->Serialize(true) << endl;
-            //cerr << strServerHelpTips << endl;
-            StdError("CPusher", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
-            StdError("CPusher", "RPC Response error tips: %s", strServerHelpTips.c_str());
-            ioComplt.Completed(false);
-            return true;
-        }
-        else if (spResp->IsSuccessful())
-        {
-            //cout << spResp->spResult->Serialize(true) << endl;
-        }
-        else
-        {
-            //cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
-            StdError("CPusher", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
-            ioComplt.Completed(false);
-            return true;
-        }
+        // std::string content = rsp.strContent;
+        // auto spResp = DeserializeCRPCResp("", content);
+        // if (spResp->IsError())
+        // {
+        //     // Error
+        //     //cerr << spResp->spError->Serialize(true) << endl;
+        //     //cerr << strServerHelpTips << endl;
+        //     StdError("CPusher", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
+        //     StdError("CPusher", "RPC Response error tips: %s", strServerHelpTips.c_str());
+        //     ioComplt.Completed(false);
+        //     return true;
+        // }
+        // else if (spResp->IsSuccessful())
+        // {
+        //     //cout << spResp->spResult->Serialize(true) << endl;
+        // }
+        // else
+        // {
+        //     //cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
+        //     StdError("CPusher", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
+        //     ioComplt.Completed(false);
+        //     return true;
+        // }
     }
     catch (const std::exception& e)
     {
