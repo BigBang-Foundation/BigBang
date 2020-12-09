@@ -15,6 +15,8 @@
 #include <regex>
 //#include <algorithm>
 
+#include "json/json.hpp"
+
 #include "address.h"
 #include "rpc/auto_protocol.h"
 #include "template/fork.h"
@@ -3995,11 +3997,11 @@ void CPusher::RemoveClient(uint64 nNonce)
 void CPusher::PushDispatchMessage(const DisPatchMessage& message)
 {
     boost::mutex::scoped_lock lock(mMutexReady);
-    if (!queueDispatch.empty())
-    {
-        condNewPush.notify_one();
-        return;
-    }
+    // if (!queueDispatch.empty())
+    // {
+    //     condNewPush.notify_one();
+    //     return;
+    // }
     queueDispatch.push(message);
     condNewPush.notify_one();
 }
@@ -4102,25 +4104,33 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
         }
 
         std::string content = rsp.strContent;
-        auto spResp = DeserializeCRPCResp("", content);
-        if (spResp->IsError())
+        // auto spResp = DeserializeCRPCResp("", content);
+        // if (spResp->IsError())
+        // {
+        //     // Error
+        //     //cerr << spResp->spError->Serialize(true) << endl;
+        //     //cerr << strServerHelpTips << endl;
+        //     StdError("CPusher", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
+        //     StdError("CPusher", "RPC Response error tips: %s", strServerHelpTips.c_str());
+        //     ioComplt.Completed(false);
+        //     return true;
+        // }
+        // else if (spResp->IsSuccessful())
+        // {
+        //     //cout << spResp->spResult->Serialize(true) << endl;
+        // }
+        // else
+        // {
+        //     //cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
+        //     StdError("CPusher", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
+        //     ioComplt.Completed(false);
+        //     return true;
+        // }
+
+        auto jsonObj = nlohmann::json::parse(content);
+        if (!jsonObj.is_object())
         {
-            // Error
-            //cerr << spResp->spError->Serialize(true) << endl;
-            //cerr << strServerHelpTips << endl;
-            StdError("CPusher", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
-            StdError("CPusher", "RPC Response error tips: %s", strServerHelpTips.c_str());
-            ioComplt.Completed(false);
-            return true;
-        }
-        else if (spResp->IsSuccessful())
-        {
-            //cout << spResp->spResult->Serialize(true) << endl;
-        }
-        else
-        {
-            //cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
-            StdError("CPusher", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
+            StdError("CPusher", "server error: neither error nor result. resp:  %s", content.c_str());
             ioComplt.Completed(false);
             return true;
         }
