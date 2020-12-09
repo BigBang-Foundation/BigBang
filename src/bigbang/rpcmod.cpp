@@ -3920,7 +3920,7 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
     StdWarn("CPusher::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
     std::vector<std::string> deletes;
 
-    static uint64 nNonce = 0;
+    static uint64 nNonce = 10;
     {
         boost::lock_guard<boost::mutex> lock(mMutex);
         for (const auto& client : mapRPCClient)
@@ -3946,11 +3946,11 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
             DisPatchMessage message;
             message.client = client.second;
             message.hashFork = hashFork;
-            message.nNonce = nNonce++;
+            message.nNonce = nNonce;
             message.nReqId = client.second.nNonce;
             message.block = block;
             PushDispatchMessage(message);
-            StdWarn("CPusher::CSH", "Pushed Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
+            StdWarn("CPusher::CSH", "Pushed Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, 1);
         }
 
         RemoveClients(deletes);
