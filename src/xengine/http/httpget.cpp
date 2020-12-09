@@ -233,6 +233,11 @@ void CHttpGet::HandleClientCompleted(CHttpGetClient* pGetClient)
         }
         else if (strcasecmp(rsp.mapHeader["connection"].c_str(), "Close") == 0)
         {
+            for (const auto& kv : rsp.mapHeader)
+            {
+                StdWarn("CHttpGet::CSH", "Key: %s Value: %s", kv.first.c_str(), kv.second.c_str());
+            }
+
             CloseConn(pGetClient);
         }
     }

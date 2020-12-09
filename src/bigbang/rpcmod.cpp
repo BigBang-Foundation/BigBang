@@ -4070,6 +4070,16 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
 
             //RemoveClient(event.nNonce);
             StdError("CPusher", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
+
+            if (pHttpGet && rsp.nStatusCode == HTTPGET_CONNECT_FAILED)
+            {
+                CEventHttpAbort eventAbort(event.nNonce);
+                CHttpAbort& httpAbort = eventAbort.data;
+                httpAbort.strIOModule = GetOwnKey();
+                httpAbort.vNonce.push_back(event.nNonce);
+                pHttpGet->DispatchEvent(&eventAbort);
+            }
+
             ioComplt.Completed(false);
             return true;
         }
