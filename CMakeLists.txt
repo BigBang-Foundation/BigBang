@@ -137,8 +137,8 @@ endif()
 
 # use _1 instead of boost::placeholders::_1
 add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
-add_definitions(-DBOOST_SPIRIT_SINGLE_GRAMMAR_INSTANCE)
-#add_definitions(-DBOOST_SPIRIT_THREADSAFE)
+#add_definitions(-DBOOST_SPIRIT_SINGLE_GRAMMAR_INSTANCE)
+add_definitions(-DBOOST_SPIRIT_THREADSAFE)
 
 if(CYGWIN)
     add_definitions(-DBOOST_LOG_DYN_LINK)
