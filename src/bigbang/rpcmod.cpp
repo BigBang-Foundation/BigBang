@@ -3995,11 +3995,11 @@ void CPusher::RemoveClient(uint64 nNonce)
 void CPusher::PushDispatchMessage(const DisPatchMessage& message)
 {
     boost::mutex::scoped_lock lock(mMutexReady);
-    if (!queueDispatch.empty())
-    {
-        condNewPush.notify_one();
-        return;
-    }
+    // if (!queueDispatch.empty())
+    // {
+    //     condNewPush.notify_one();
+    //     return;
+    // }
     queueDispatch.push(message);
     condNewPush.notify_one();
 }
