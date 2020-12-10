@@ -353,7 +353,6 @@ int64 CForkManager::ForkLockedCoin(const uint256& hashFork, const uint256& hashB
         int nHeight = GetValidForkCreatedHeight(hashBlock, hashFork);
         if (nHeight < 0)
         {
-            StdWarn("ForkManager::CSH", "GetValidForkCreatedHeight failed");
             return -1;
         }
         int nForkValidHeight = CBlock::GetBlockHeightByHash(hashBlock) - nHeight;
@@ -363,7 +362,6 @@ int64 CForkManager::ForkLockedCoin(const uint256& hashFork, const uint256& hashB
         }
         return CTemplateFork::LockedCoin(nForkValidHeight);
     }
-    StdWarn("ForkManager::CSH", "mapForkSched find failed");
     return -1;
 }
 
@@ -427,7 +425,6 @@ int CForkManager::GetValidForkCreatedHeight(const uint256& hashBlock, const uint
     const auto it = mapBlockValidFork.find(hashBlock);
     if (it != mapBlockValidFork.end())
     {
-        StdWarn("ForkManager::CSH", "mapBlockValidFork finded");
         int nCreatedHeight = it->second.GetCreatedHeight(hashFork);
         if (nCreatedHeight >= 0)
         {
@@ -435,16 +432,13 @@ int CForkManager::GetValidForkCreatedHeight(const uint256& hashBlock, const uint
         }
         if (it->second.hashRefFdBlock != 0)
         {
-            StdWarn("ForkManager::CSH", "second.hashRefFdBlock != 0");
             const auto mt = mapBlockValidFork.find(it->second.hashRefFdBlock);
             if (mt != mapBlockValidFork.end())
             {
-                StdWarn("ForkManager::CSH", "mapBlockValidFork finded.");
                 return mt->second.GetCreatedHeight(hashFork);
             }
         }
     }
-    StdWarn("ForkManager::CSH", "return -1");
     return -1;
 }
 
