@@ -1329,7 +1329,6 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
                 nAlgo = pIndex->nProofAlgo;
             }
 
-            // DPoS difficulty = weight * (2 ^ nBits)
             int nBits;
             int64 nReward;
             if (GetProofOfWorkTarget(pIndexPrev, nAlgo, nBits, nReward))
@@ -1347,10 +1346,12 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
 
                 if (!IsDPoSNewTrustHeight(nHeight))
                 {
+                    // DPoS difficulty = weight * (2 ^ nBits)
                     nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
                 }
                 else
                 {
+                    // DPoS difficulty = 2 ^ (nBits + weight)
                     nChainTrust = uint256(1) << (int(nEnrollTrust) + nBits);
                 }
             }
