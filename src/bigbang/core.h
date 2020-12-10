@@ -38,6 +38,7 @@ public:
     virtual bool GetBlockTrust(const CBlock& block, uint256& nChainTrust, const CBlockIndex* pIndexPrev = nullptr, const CDelegateAgreement& agreement = CDelegateAgreement(), const CBlockIndex* pIndexRef = nullptr, std::size_t nEnrollTrust = 0) override;
     virtual bool GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlgo, int& nBits, int64& nReward) override;
     virtual bool IsDposHeight(int height) override;
+    virtual bool IsDPoSNewTrustHeight(int height) override;
     virtual bool DPoSConsensusCheckRepeated(int height) override;
     virtual int64 GetPrimaryMintWorkReward(const CBlockIndex* pIndexPrev) override;
     virtual void GetDelegatedBallot(const uint256& nAgreement, const std::size_t nWeight, const std::map<CDestination, size_t>& mapBallot,
@@ -105,6 +106,7 @@ protected:
 
 public:
     bool IsDposHeight(int height);
+    bool IsDPoSNewTrustHeight(int height);
     bool DPoSConsensusCheckRepeated(int height);
     bool IsRefVacantHeight(int height);
     Errno ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile) const;
