@@ -42,7 +42,6 @@ protected:
     ITxPool* pTxPool;
     IForkManager* pForkManager;
     IConsensus* pConsensus;
-    IWallet* pWallet;
     IService* pService;
     IBlockMaker* pBlockMaker;
     network::INetChannel* pNetChannel;

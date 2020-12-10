@@ -62,18 +62,18 @@ CKey& CKey::operator=(const CKey& key)
 {
     nVersion = key.nVersion;
     cipher = key.cipher;
-    
-    if(IsLocked())
+
+    if (IsLocked())
     {
-        if(!key.IsLocked())
+        if (!key.IsLocked())
         {
             NormalFree(pCryptoKey);
-            pCryptoKey =  CryptoAlloc<CCryptoKey>();
-        } 
+            pCryptoKey = CryptoAlloc<CCryptoKey>();
+        }
     }
     else
     {
-        if(key.IsLocked())
+        if (key.IsLocked())
         {
             CryptoFree(pCryptoKey);
             pCryptoKey = NormalAlloc<CCryptoKey>();
@@ -81,7 +81,7 @@ CKey& CKey::operator=(const CKey& key)
     }
 
     *pCryptoKey = *key.pCryptoKey;
-    
+
     return *this;
 }
 
@@ -320,20 +320,20 @@ bool CKey::Unlock(const CCryptoString& strPassphrase)
 
     try
     {
-        bool isSuccess = CryptoDecryptSecret(nVersion, strPassphrase, cipher, *pCryptoKey); 
-        if(!isSuccess)
+        bool isSuccess = CryptoDecryptSecret(nVersion, strPassphrase, cipher, *pCryptoKey);
+        if (!isSuccess)
         {
             // Restore origin state
-            if(IsLocked())
+            if (IsLocked())
             {
-               CryptoToNormalAlloc();
+                CryptoToNormalAlloc();
             }
         }
         return isSuccess;
     }
     catch (std::exception& e)
     {
-        if(IsLocked())
+        if (IsLocked())
         {
             CryptoToNormalAlloc();
         }
@@ -359,6 +359,14 @@ bool CKey::UpdateCipher(uint32 nVersionIn, const CCryptoString& strPassphrase)
         StdError(__PRETTY_FUNCTION__, e.what());
     }
     return false;
+}
+
+void CKey::MemSign(const uint256& secret, const uint256& pubkey, const uint256& hash, std::vector<uint8>& vchSig)
+{
+    CCryptoKey key;
+    key.secret = secret;
+    key.pubkey = pubkey;
+    CryptoSign(key, &hash, sizeof(hash), vchSig);
 }
 
 void CKey::NormalToCryptoAlloc()

@@ -80,6 +80,7 @@ public:
     int64 ForkLockedCoin(const uint256& hashFork, const uint256& hashBlock) override;
     int GetForkNextMortgageDecayHeight(const uint256& hashFork, const uint256& hashBlock) override;
     int GetForkCreatedHeight(const uint256& hashFork) override;
+    bool GetForkContext(const uint256& hashFork, CForkContext& forkContext) override;
 
 protected:
     bool HandleInitialize() override;
@@ -100,6 +101,7 @@ protected:
     uint256 hashPrimaryLastBlock;
     std::set<uint256> setForkAllowed;
     std::set<uint256> setGroupAllowed;
+    std::set<uint256> setForkExcluded;
     std::map<uint256, CForkSchedule> mapForkSched;
     std::map<uint256, CValidForkId> mapBlockValidFork;
     std::set<uint256> setCurValidFork;

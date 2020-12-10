@@ -164,6 +164,11 @@ class CCTSDB
         int nIdxUpper;
     };
 
+    enum
+    {
+        CACHE_UPPER_DURATION = 600
+    };
+
 public:
     bool Initialize(const boost::filesystem::path& pathCTSDB)
     {
@@ -212,9 +217,8 @@ public:
 
         GetUpdateMap(nTime).erase(key);
     }
-    bool Retrieve(const int64 nTime, const K& key, V& value)
+    bool Retrieve(const int64 nTime, const K& key, V& value, const bool fSaveLoad = false)
     {
-        
         xengine::CReadLock rlock(rwMap);
         MapType& mapUpper = dblMeta.GetUpperMap();
         typename MapType::iterator it = mapUpper.find(nTime);
@@ -229,10 +233,24 @@ public:
             }
             return false;
         }
-        
+
         C chunk;
         if (LoadFromFile(nTime, chunk))
         {
+            if (fSaveLoad)
+            {
+                mapUpper[nTime].insert(chunk.begin(), chunk.end());
+
+                int64 nDelStartTime = nTime - CACHE_UPPER_DURATION;
+                for (auto it = mapUpper.begin(); it != mapUpper.end();)
+                {
+                    if (it->first > nDelStartTime)
+                    {
+                        break;
+                    }
+                    mapUpper.erase(it++);
+                }
+            }
             return chunk.Find(key, value);
         }
 
@@ -284,10 +302,9 @@ public:
 
         ulock.Upgrade();
         flushMap.clear();
-       
+
         return true;
     }
-
 
 protected:
     std::map<K, V>& GetUpdateMap(const int64 nTime)
@@ -307,7 +324,7 @@ protected:
         }
         return mapUpdate[nTime];
     }
-    
+
     bool LoadFromFile(const int64 nTime, C& chunk)
     {
         CDiskPos pos;

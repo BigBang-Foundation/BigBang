@@ -43,6 +43,7 @@ enum RPCErrorCode
     RPC_IN_WARMUP = -12,               //!< Client still warming up
     RPC_REQUEST_ID_NOT_FOUND = -13,    //!< Request id is missing when get response
     RPC_VERSION_OUT_OF_DATE = -14,     //!< Request version is out of date
+    RPC_REQUEST_FUNC_OBSOLETE = -15,   //!< Requested function is obsolete
 
     //! Aliases for backward compatibility
     RPC_TRANSACTION_ERROR = RPC_VERIFY_ERROR,
@@ -69,7 +70,8 @@ enum RPCErrorCode
     RPC_WALLET_ENCRYPTION_FAILED = -408,    //!< Failed to encrypt the wallet
     RPC_WALLET_ALREADY_UNLOCKED = -409,     //!< Wallet is already unlocked
     RPC_WALLET_INVALID_LABEL_NAME = -410,   //!< Invalid label name
-    RPC_WALLET_INVALID_PASSPHRASE = -411    //!< Invalid passphrase
+    RPC_WALLET_INVALID_PASSPHRASE = -411,   //!< Invalid passphrase
+    RPC_WALLET_REMOVE_KEY_ERROR = -412      //!< Error remove key
 };
 
 /**

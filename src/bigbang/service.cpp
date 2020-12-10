@@ -7,6 +7,9 @@
 #include "defs.h"
 #include "event.h"
 #include "template/delegate.h"
+#include "template/exchange.h"
+#include "template/fork.h"
+#include "template/payment.h"
 #include "template/vote.h"
 
 using namespace std;
@@ -141,6 +144,7 @@ void CService::NotifyBlockChainUpdate(const CBlockChainUpdate& update)
         }
 
         CForkStatus& status = (*it).second;
+        status.hashPrevBlock = update.hashPrevBlock;
         status.hashLastBlock = update.hashLastBlock;
         status.nLastBlockTime = update.nLastBlockTime;
         status.nLastBlockHeight = update.nLastBlockHeight;
@@ -398,6 +402,12 @@ void CService::GetTxPool(const uint256& hashFork, vector<pair<uint256, size_t>>&
     pTxPool->ListTx(hashFork, vTxPool);
 }
 
+void CService::ListTxPool(const uint256& hashFork, const CDestination& dest, vector<CTxInfo>& vTxPool, const int64 nGetOffset, const int64 nGetCount)
+{
+    vTxPool.clear();
+    pTxPool->ListTx(hashFork, dest, vTxPool, nGetOffset, nGetCount);
+}
+
 bool CService::GetTransaction(const uint256& txid, CTransaction& tx, uint256& hashFork, int& nHeight, uint256& hashBlock, CDestination& destIn)
 {
     CAssembledTx txTemp;
@@ -494,6 +504,60 @@ bool CService::ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::m
     return false;
 }
 
+Errno CService::ListForkAddressUnspent(const uint256& hashFork, const CDestination& dest, uint32 nMax, int64 nAmount, vector<CTxUnspent>& vUnspent, string& strErr)
+{
+    if (nAmount <= 0)
+    {
+        map<CTxOutPoint, CUnspentOut> mapUnspent;
+        if (!pTxPool->FetchAddressUnspent(hashFork, dest, mapUnspent))
+        {
+            StdError("CService", "ListForkAddressUnspent: Fetch address unspent fail, fork: %s", hashFork.GetHex().c_str());
+            strErr = "Fetch address unspent fail";
+            return ERR_WALLET_NOT_FOUND;
+        }
+
+        vUnspent.reserve(mapUnspent.size());
+        for (const auto& vd : mapUnspent)
+        {
+            vUnspent.push_back(CTxUnspent(vd.first, CTxOut(dest, vd.second.nAmount, vd.second.nTxTime, vd.second.nLockUntil)));
+            if (nMax != 0 && vUnspent.size() >= nMax)
+            {
+                break;
+            }
+        }
+        return OK;
+    }
+
+    int nForkHeight = 0;
+    uint256 hashLastBlock;
+    {
+        boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
+        map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
+        if (it == mapForkStatus.end())
+        {
+            StdError("CService", "ListForkAddressUnspent: Find fork fail, fork: %s", hashFork.GetHex().c_str());
+            strErr = "Find fork fail";
+            return ERR_BLOCK_INVALID_FORK;
+        }
+        nForkHeight = it->second.nLastBlockHeight;
+        hashLastBlock = it->second.hashLastBlock;
+    }
+
+    int64 nTxTime = GetNetTime();
+    int64 nTargetValue = nAmount;
+    size_t nMaxTxCount = 0;
+    if (nMax == 0 || nMax > MAX_TX_INPUT_COUNT)
+    {
+        nMaxTxCount = MAX_TX_INPUT_COUNT;
+    }
+    else
+    {
+        nMaxTxCount = nMax;
+    }
+
+    return SelectCoinsByUnspent(dest, hashFork, nForkHeight, hashLastBlock, nTxTime, nTargetValue, nMaxTxCount, vUnspent, strErr);
+}
+
 bool CService::GetVotes(const CDestination& destDelegate, int64& nVotes, string& strFailCause)
 {
     CTemplateId tid;
@@ -580,6 +644,11 @@ boost::optional<std::string> CService::AddKey(const crypto::CKey& key)
     return pWallet->AddKey(key);
 }
 
+boost::optional<std::string> CService::RemoveKey(const crypto::CPubKey& pubkey)
+{
+    return pWallet->RemoveKey(pubkey);
+}
+
 bool CService::ImportKey(const vector<unsigned char>& vchKey, crypto::CPubKey& pubkey)
 {
     return pWallet->Import(vchKey, pubkey);
@@ -611,19 +680,19 @@ bool CService::SignSignature(const crypto::CPubKey& pubkey, const uint256& hash,
     return pWallet->Sign(pubkey, hash, vchSig);
 }
 
-bool CService::SignTransaction(CTransaction& tx, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, bool& fCompleted)
+bool CService::SignTransaction(CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, bool& fCompleted)
 {
     uint256 hashFork;
     int nHeight;
     if (!pBlockChain->GetBlockLocation(tx.hashAnchor, hashFork, nHeight))
     {
-        StdError("CService", "SignTransaction: GetBlockLocation fail, txid: %s, hashAnchor: %s", tx.GetHash().GetHex().c_str(), tx.hashAnchor.GetHex().c_str());
+        StdError("CService", "Sign Transaction: GetBlockLocation fail, txid: %s, hashAnchor: %s", tx.GetHash().GetHex().c_str(), tx.hashAnchor.GetHex().c_str());
         return false;
     }
     vector<CTxOut> vUnspent;
     if (!pTxPool->FetchInputs(hashFork, tx, vUnspent) || vUnspent.empty())
     {
-        StdError("CService", "SignTransaction: FetchInputs fail or vUnspent is empty, txid: %s", tx.GetHash().GetHex().c_str());
+        StdError("CService", "Sign Transaction: FetchInputs fail or vUnspent is empty, txid: %s", tx.GetHash().GetHex().c_str());
         return false;
     }
 
@@ -645,21 +714,12 @@ bool CService::SignTransaction(CTransaction& tx, const vector<uint8>& vchSendToD
             return false;
         }
     }
-    if (!pWallet->SignTransaction(destIn, tx, vchSendToData, vchSignExtraData, hashFork, nForkHeight, fCompleted))
+    if (!pWallet->SignTransaction(destIn, tx, vchDestInData, vchSendToData, vchSignExtraData, hashFork, nForkHeight, fCompleted))
     {
-        StdError("CService", "SignTransaction: SignTransaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
+        StdError("CService", "Sign ransaction: Sign Transaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), CAddress(destIn).ToString().c_str());
         return false;
     }
-
-    int32 nForkType = GetForkType(hashFork);
-    if (!fCompleted
-        || (pCoreProtocol->ValidateTransaction(tx, nForkHeight) == OK
-            && pCoreProtocol->VerifyTransaction(tx, vUnspent, nForkHeight, hashFork, nForkType) == OK))
-    {
-        return true;
-    }
-    StdError("CService", "SignTransaction: ValidateTransaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
-    return false;
+    return true;
 }
 
 bool CService::HaveTemplate(const CTemplateId& tid)
@@ -682,38 +742,187 @@ CTemplatePtr CService::GetTemplate(const CTemplateId& tid)
     return pWallet->GetTemplate(tid);
 }
 
+bool CService::RemoveTemplate(const CTemplateId& tid)
+{
+    return pWallet->RemoveTemplate(tid);
+}
+
 bool CService::GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CDestination& parent)
 {
     return pBlockChain->GetDeFiRelation(hashFork, destIn, parent);
 }
 
-bool CService::GetBalance(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
+bool CService::GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance)
 {
     int32 nForkHeight;
     uint256 hashLastBlock;
     if (!GetForkLastBlock(hashFork, nForkHeight, hashLastBlock))
     {
+        StdError("CService", "GetBalanceByUnspent: GetForkLastBlock fail, fork: %s", hashFork.GetHex().c_str());
         return false;
     }
-    return pWallet->GetBalance(dest, hashFork, nForkHeight, hashLastBlock, balance);
-}
 
-bool CService::ListWalletTx(const uint256& hashFork, const CDestination& dest, int nOffset, int nCount, vector<CWalletTx>& vWalletTx)
-{
-    if (nOffset < 0)
+    map<CTxOutPoint, CUnspentOut> mapUnspent;
+    if (!pTxPool->FetchAddressUnspent(hashFork, dest, mapUnspent))
     {
-        nOffset = pWallet->GetTxCount() - nCount;
-        if (nOffset < 0)
+        StdError("CService", "GetBalanceByUnspent: Fetch address unspent fail, fork: %s", hashFork.GetHex().c_str());
+        return false;
+    }
+
+    balance.SetNull();
+    int64 nTotalValue = 0;
+    for (const auto& vd : mapUnspent)
+    {
+        nTotalValue += vd.second.nAmount;
+        if (vd.second.IsLocked(nForkHeight))
         {
-            nOffset = 0;
+            balance.nLocked += vd.second.nAmount;
+        }
+        else if (vd.second.nHeight < 0)
+        {
+            balance.nUnconfirmed += vd.second.nAmount;
         }
     }
-    return pWallet->ListTx(hashFork, dest, nOffset, nCount, vWalletTx);
+
+    // locked fork template
+    if (dest.IsTemplate() && dest.GetTemplateId().GetType() == TEMPLATE_FORK
+        && hashFork == pCoreProtocol->GetGenesisBlockHash())
+    {
+        int64 nLockedCoin = 0;
+        CTemplatePtr ptr = GetTemplate(dest.GetTemplateId());
+        if (!ptr)
+        {
+            StdLog("CService", "GetBalanceByUnspent: GetTemplate fail, destIn: %s", dest.ToString().c_str());
+            nLockedCoin = CTemplateFork::CreatedCoin();
+        }
+        else
+        {
+            CDestination destRedeemLocked;
+            uint256 hashForkLocked;
+            boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
+            nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashLastBlock);
+            if (nLockedCoin < 0)
+            {
+                nLockedCoin = 0;
+                for (const auto& vd : mapUnspent)
+                {
+                    if (vd.second.nHeight < 0)
+                    {
+                        nLockedCoin = CTemplateFork::CreatedCoin();
+                        break;
+                    }
+                }
+            }
+        }
+        balance.nLocked += nLockedCoin;
+        if (balance.nLocked > nTotalValue)
+        {
+            balance.nLocked = nTotalValue;
+        }
+    }
+
+    balance.nAvailable = nTotalValue - balance.nLocked;
+    return true;
 }
 
-boost::optional<std::string> CService::CreateTransaction(const uint256& hashFork, const CDestination& destFrom,
-                                                         const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
-                                                         const vector<unsigned char>& vchData, CTransaction& txNew)
+bool CService::ListTransaction(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, vector<CTxInfo>& vTx)
+{
+    if (nPrevHeight < -1 || nPrevTxSeq == -1)
+    {
+        // nOffset is valid
+        if (nOffset == -1)
+        {
+            // last count transactions
+            if (dest.IsNull())
+            {
+                return false;
+            }
+            vector<CTxInfo> vTxCache;
+            if (!pTxPool->ListTx(hashFork, dest, vTxCache, -1, nCount))
+            {
+                return false;
+            }
+            if (nCount <= 0 || vTxCache.size() < nCount)
+            {
+                if (pBlockChain->GetAddressTxList(hashFork, dest, -2, -1, -1, ((nCount > 0) ? (nCount - vTxCache.size()) : 0), vTx) < 0)
+                {
+                    return false;
+                }
+                if (!vTxCache.empty())
+                {
+                    vTx.insert(vTx.end(), vTxCache.begin(), vTxCache.end());
+                }
+            }
+            else
+            {
+                vTx.assign(vTxCache.begin(), vTxCache.end());
+            }
+        }
+        else
+        {
+            // positive sequence
+            int64 nGetEndOffset = pBlockChain->GetAddressTxList(hashFork, dest, -2, -1, nOffset, nCount, vTx);
+            if (nGetEndOffset < 0)
+            {
+                return false;
+            }
+            if (vTx.size() == 0)
+            {
+                int64 nTxPoolOffset = nOffset - nGetEndOffset;
+                if (nTxPoolOffset < 0)
+                {
+                    nTxPoolOffset = 0;
+                }
+                if (!pTxPool->ListTx(hashFork, dest, vTx, nTxPoolOffset, nCount))
+                {
+                    return false;
+                }
+            }
+            else if (nCount <= 0 || vTx.size() < nCount)
+            {
+                if (!pTxPool->ListTx(hashFork, dest, vTx, 0, ((nCount > 0) ? (nCount - vTx.size()) : 0)))
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    else if (nPrevHeight == -1)
+    {
+        // nPrevHeight at txpool
+        if (!pTxPool->ListTxOfSeq(hashFork, dest, vTx, nPrevTxSeq, nCount))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        // nPrevHeight and nPrevTxSeq is valid
+        if (pBlockChain->GetAddressTxList(hashFork, dest, nPrevHeight, nPrevTxSeq, nOffset, nCount, vTx) < 0)
+        {
+            return false;
+        }
+        if (vTx.size() == 0)
+        {
+            if (!pTxPool->ListTx(hashFork, dest, vTx, 0, nCount))
+            {
+                return false;
+            }
+        }
+        else if (nCount <= 0 || vTx.size() < nCount)
+        {
+            if (!pTxPool->ListTx(hashFork, dest, vTx, 0, ((nCount > 0) ? (nCount - vTx.size()) : 0)))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
+                                                                  const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
+                                                                  const vector<unsigned char>& vchData, CTransaction& txNew)
 {
     int nForkHeight = 0;
     uint256 hashLastBlock;
@@ -723,7 +932,7 @@ boost::optional<std::string> CService::CreateTransaction(const uint256& hashFork
         map<uint256, CForkStatus>::iterator it = mapForkStatus.find(hashFork);
         if (it == mapForkStatus.end())
         {
-            StdError("CService", "CreateTransaction: find fork fail, fork: %s", hashFork.GetHex().c_str());
+            StdError("CService", "CreateTransactionByUnspent: find fork fail, fork: %s", hashFork.GetHex().c_str());
             return std::string("find fork fail, fork: ") + hashFork.GetHex();
         }
         nForkHeight = it->second.nLastBlockHeight;
@@ -738,20 +947,186 @@ boost::optional<std::string> CService::CreateTransaction(const uint256& hashFork
     txNew.nTxFee = nTxFee;
     txNew.vchData = vchData;
 
-    return pWallet->ArrangeInputs(destFrom, hashFork, nForkHeight, hashLastBlock, txNew) ? boost::optional<std::string>{} : std::string("CWallet::ArrangeInputs failed.");
+    if (txNew.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+    {
+        CProfile profile;
+        if (!pBlockChain->GetForkProfile(hashFork, profile))
+        {
+            return std::string("Get fork profile failed");
+        }
+        if (pCoreProtocol->VerifyMintHeightTx(txNew, destFrom, hashFork, nForkHeight + 1, profile) != OK)
+        {
+            return std::string("Mint height Tx failed. Attention: "
+                               "1. Fork must be DeFi; "
+                               "2. From dest & to dest must be fork owner; "
+                               "3. Not set mint height or set -1 when creating fork; "
+                               "4. This tx is the first mint height tx; "
+                               "5. Param mintheight must be larger than block height; ");
+        }
+    }
+
+    string strErr;
+    vector<CTxUnspent> vCoins;
+    Errno err = SelectCoinsByUnspent(destFrom, hashFork, nForkHeight, hashLastBlock, txNew.GetTxTime(), txNew.nAmount + txNew.nTxFee, MAX_TX_INPUT_COUNT, vCoins, strErr);
+    if (err != OK)
+    {
+        StdError("CService", "CreateTransactionByUnspent: Select coin not enough, destIn: %s", CAddress(destFrom).ToString().c_str());
+        return strErr;
+    }
+
+    txNew.vInput.clear();
+    txNew.vInput.reserve(vCoins.size());
+    for (const CTxUnspent& unspent : vCoins)
+    {
+        txNew.vInput.emplace_back(CTxIn(static_cast<const CTxOutPoint&>(unspent)));
+    }
+
+    return boost::optional<std::string>{};
 }
 
-bool CService::SynchronizeWalletTx(const CDestination& destNew)
+Errno CService::SelectCoinsByUnspent(const CDestination& dest, const uint256& hashFork, int nForkHeight, const uint256& hashLastBlock,
+                                     int64 nTxTime, int64 nTargetValue, size_t nMaxInput, vector<CTxUnspent>& vCoins, string& strErr)
 {
-    return pWallet->SynchronizeWalletTx(destNew);
+    map<CTxOutPoint, CUnspentOut> mapUnspent;
+    if (!pTxPool->FetchAddressUnspent(hashFork, dest, mapUnspent))
+    {
+        StdError("CService", "SelectCoinsByUnspent: Fetch address unspent fail, dest: %s", CAddress(dest).ToString().c_str());
+        strErr = "Fetch address unspent fail";
+        return ERR_WALLET_NOT_FOUND;
+    }
+
+    // locked fork template
+    CTemplateId tid;
+    if (dest.GetTemplateId(tid) && tid.GetType() == TEMPLATE_FORK
+        && hashFork == pCoreProtocol->GetGenesisBlockHash())
+    {
+        int64 nLockedCoin = 0;
+        CTemplatePtr ptr = GetTemplate(tid);
+        if (!ptr)
+        {
+            StdLog("CService", "SelectCoinsByUnspent: GetTemplate fail, dest: %s", CAddress(dest).ToString().c_str());
+            nLockedCoin = CTemplateFork::CreatedCoin();
+        }
+        else
+        {
+            CDestination destRedeemLocked;
+            uint256 hashForkLocked;
+            boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
+            nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashLastBlock);
+            if (nLockedCoin < 0)
+            {
+                nLockedCoin = 0;
+                for (const auto& vd : mapUnspent)
+                {
+                    if (vd.second.nHeight < 0)
+                    {
+                        nLockedCoin = CTemplateFork::CreatedCoin();
+                        break;
+                    }
+                }
+            }
+        }
+        nTargetValue += nLockedCoin;
+    }
+
+    vCoins.clear();
+
+    pair<int64, CTxUnspent> coinLowestLarger;
+    coinLowestLarger.first = std::numeric_limits<int64>::max();
+    int64 nTotalLower = 0;
+    uint16 nDestTemplateType = 0;
+    if (dest.IsTemplate())
+    {
+        nDestTemplateType = dest.GetTemplateId().GetType();
+    }
+
+    multimap<int64, CTxUnspent> mapValue;
+
+    for (const auto& vd : mapUnspent)
+    {
+        const CUnspentOut& out = vd.second;
+        if (out.IsLocked(nForkHeight) || out.GetTxTime() > nTxTime
+            || (out.nTxType == CTransaction::TX_CERT && vd.first.n == 0))
+        {
+            continue;
+        }
+        if (out.nTxType == CTransaction::TX_DEFI_REWARD && nDestTemplateType == TEMPLATE_DEXMATCH)
+        {
+            continue;
+        }
+
+        int64 nValue = out.nAmount;
+        pair<int64, CTxUnspent> coin = make_pair(nValue, CTxUnspent(vd.first, CTxOut(dest, out.nAmount, out.nTxTime, out.nLockUntil), vd.second.nTxType, vd.second.nHeight));
+
+        if (nValue == nTargetValue)
+        {
+            vCoins.push_back(coin.second);
+            return OK;
+        }
+        else if (nValue < nTargetValue)
+        {
+            mapValue.insert(coin);
+            nTotalLower += nValue;
+            while (mapValue.size() > nMaxInput)
+            {
+                multimap<int64, CTxUnspent>::iterator mi = mapValue.begin();
+                nTotalLower -= (*mi).first;
+                mapValue.erase(mi);
+            }
+            if (nTotalLower >= nTargetValue)
+            {
+                break;
+            }
+        }
+        else if (nValue < coinLowestLarger.first)
+        {
+            coinLowestLarger = coin;
+        }
+    }
+
+    int64 nValueRet = 0;
+    if (nTotalLower >= nTargetValue)
+    {
+        while (nValueRet < nTargetValue)
+        {
+            int64 nShortage = nTargetValue - nValueRet;
+            multimap<int64, CTxUnspent>::iterator it = mapValue.lower_bound(nShortage);
+            if (it == mapValue.end())
+            {
+                --it;
+            }
+            vCoins.push_back(it->second);
+            nValueRet += (*it).first;
+            mapValue.erase(it);
+        }
+    }
+    else if (!coinLowestLarger.second.IsNull())
+    {
+        vCoins.push_back(coinLowestLarger.second);
+        nValueRet += coinLowestLarger.first;
+        multimap<int64, CTxUnspent>::iterator it = mapValue.begin();
+        for (int i = 0; i < 3 && it != mapValue.end(); i++, ++it)
+        {
+            vCoins.push_back(it->second);
+            nValueRet += (*it).first;
+        }
+    }
+
+    if (nValueRet < nTargetValue)
+    {
+        StdLog("CService", "SelectCoinsByUnspent: Not enough funds in wallet or account, balance: %lu, need: %lu, dest: %s",
+               nValueRet, nTargetValue, CAddress(dest).ToString().c_str());
+        strErr = string("Not enough funds in wallet or account, balance: ")
+                 + to_string(nValueRet)
+                 + string(", need: ")
+                 + to_string(nTargetValue);
+        return ERR_WALLET_INSUFFICIENT_FUNDS;
+    }
+
+    return OK;
 }
 
-bool CService::ResynchronizeWalletTx()
-{
-    return pWallet->ResynchronizeWalletTx();
-}
-
-bool CService::SignOfflineTransaction(const CDestination& destIn, CTransaction& tx, bool& fCompleted)
+bool CService::SignOfflineTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, bool& fCompleted)
 {
     uint256 hashFork;
     int nHeight;
@@ -762,9 +1137,9 @@ bool CService::SignOfflineTransaction(const CDestination& destIn, CTransaction& 
     }
 
     int32 nForkHeight = GetForkHeight(hashFork);
-    if (!pWallet->SignTransaction(destIn, tx, vector<uint8>(), vector<uint8>(), hashFork, nForkHeight, fCompleted))
+    if (!pWallet->SignTransaction(destIn, tx, vchDestInData, vchSendToData, vchSignExtraData, hashFork, nForkHeight, fCompleted))
     {
-        StdError("CService", "SignOfflineTransaction: SignTransaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
+        StdError("CService", "SignOfflineTransaction: Sign Transaction fail, txid: %s, destIn: %s", tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
         return false;
     }
 
@@ -773,55 +1148,6 @@ bool CService::SignOfflineTransaction(const CDestination& destIn, CTransaction& 
 
 Errno CService::SendOfflineSignedTransaction(CTransaction& tx)
 {
-    uint256 hashFork;
-    int nHeight;
-    if (!pBlockChain->GetBlockLocation(tx.hashAnchor, hashFork, nHeight))
-    {
-        StdError("CService", "SendOfflineSignedTransaction: GetBlockLocation fail,"
-                             " txid: %s, hashAnchor: %s",
-                 tx.GetHash().GetHex().c_str(), tx.hashAnchor.GetHex().c_str());
-        return FAILED;
-    }
-
-    vector<CTxOut> vUnspent;
-    if (!pTxPool->FetchInputs(hashFork, tx, vUnspent) || vUnspent.empty())
-    {
-        StdError("CService", "SendOfflineSignedTransaction: FetchInputs fail or vUnspent"
-                             " is empty, txid: %s",
-                 tx.GetHash().GetHex().c_str());
-        return FAILED;
-    }
-
-    const CDestination& destIn = vUnspent[0].destTo;
-    int32 nForkHeight;
-    uint256 hashLastBlock;
-    if (!GetForkLastBlock(hashFork, nForkHeight, hashLastBlock))
-    {
-        StdError("CService", "SendOfflineSignedTransaction: GetForkLastBlock fail, txid: %s", tx.GetHash().GetHex().c_str());
-        return FAILED;
-    }
-    if (hashFork == pCoreProtocol->GetGenesisBlockHash()
-        && tx.sendTo.IsTemplate() && tx.sendTo.GetTemplateId().GetType() == TEMPLATE_FORK)
-    {
-        vector<pair<CDestination, CForkContext>> vForkCtxt;
-        if (!pBlockChain->VerifyBlockForkTx(hashLastBlock, tx, vForkCtxt) || vForkCtxt.empty())
-        {
-            StdError("CService", "SendOfflineSignedTransaction: Verify block fork tx fail, txid: %s", tx.GetHash().GetHex().c_str());
-            return FAILED;
-        }
-    }
-
-    //int32 nForkHeight = GetForkHeight(hashFork);
-    //const CDestination& destIn = vUnspent[0].destTo;
-    int nForkType = GetForkType(hashFork);
-    if (OK != pCoreProtocol->VerifyTransaction(tx, vUnspent, nForkHeight, hashFork, nForkType))
-    {
-        StdError("CService", "SendOfflineSignedTransaction: ValidateTransaction fail,"
-                             " txid: %s, destIn: %s",
-                 tx.GetHash().GetHex().c_str(), destIn.ToString().c_str());
-        return FAILED;
-    }
-
     return pDispatcher->AddNewTx(tx, 0);
 }
 
@@ -833,6 +1159,21 @@ bool CService::AesEncrypt(const crypto::CPubKey& pubkeyLocal, const crypto::CPub
 bool CService::AesDecrypt(const crypto::CPubKey& pubkeyLocal, const crypto::CPubKey& pubkeyRemote, const std::vector<uint8>& vCiphertext, std::vector<uint8>& vMessage)
 {
     return pWallet->AesDecrypt(pubkeyLocal, pubkeyRemote, vCiphertext, vMessage);
+}
+
+bool CService::AddMemKey(const uint256& secret, crypto::CPubKey& pubkey)
+{
+    return pWallet->AddMemKey(secret, pubkey);
+}
+
+void CService::RemoveMemKey(const crypto::CPubKey& pubkey)
+{
+    return pWallet->RemoveMemKey(pubkey);
+}
+
+void CService::GetWalletDestinations(std::set<CDestination>& setDest)
+{
+    pWallet->GetDestinations(setDest);
 }
 
 bool CService::GetWork(vector<unsigned char>& vchWorkData, int& nPrevBlockHeight,

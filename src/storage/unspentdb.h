@@ -148,10 +148,10 @@ public:
     }
     bool Walk(const CTxOutPoint& txout, const CTxOut& output) override
     {
-        if(setRemove.count(txout) == 0)
+        if (setRemove.count(txout) == 0)
         {
             mapAddressAmount[output.destTo] += output.nAmount;
-        }   
+        }
         return true; //continue walk through processing
     }
 
@@ -201,7 +201,7 @@ public:
     CForkUnspentDB(const boost::filesystem::path& pathDB);
     ~CForkUnspentDB();
     bool RemoveAll();
-    bool UpdateUnspent(const std::vector<CTxUnspent>& vAddNew, const std::vector<CTxOutPoint>& vRemove);
+    bool UpdateUnspent(const std::vector<CTxUnspent>& vAddNew, const std::vector<CTxUnspent>& vRemove);
     bool RepairUnspent(const std::vector<CTxUnspent>& vAddUpdate, const std::vector<CTxOutPoint>& vRemove);
     bool WriteUnspent(const CTxOutPoint& txout, const CTxOut& output);
     bool ReadUnspent(const CTxOutPoint& txout, CTxOut& output);
@@ -229,7 +229,7 @@ class CUnspentDB
 {
 public:
     CUnspentDB();
-    bool Initialize(const boost::filesystem::path& pathData);
+    bool Initialize(const boost::filesystem::path& pathData, const bool fFlush = true);
     void Deinitialize();
     bool Exists(const uint256& hashFork)
     {
@@ -239,7 +239,7 @@ public:
     bool RemoveFork(const uint256& hashFork);
     void Clear();
     bool Update(const uint256& hashFork,
-                const std::vector<CTxUnspent>& vAddNew, const std::vector<CTxOutPoint>& vRemove);
+                const std::vector<CTxUnspent>& vAddNew, const std::vector<CTxUnspent>& vRemove);
     bool RepairUnspent(const uint256& hashFork, const std::vector<CTxUnspent>& vAddUpdate, const std::vector<CTxOutPoint>& vRemove);
     bool Retrieve(const uint256& hashFork, const CTxOutPoint& txout, CTxOut& output);
     bool Copy(const uint256& srcFork, const uint256& destFork);

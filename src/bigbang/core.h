@@ -15,6 +15,7 @@ class CCoreProtocol : public ICoreProtocol
 public:
     CCoreProtocol();
     virtual ~CCoreProtocol();
+    virtual void InitializeGenesisBlock() override;
     virtual const uint256& GetGenesisBlockHash() override;
     virtual void GetGenesisBlock(CBlock& block) override;
     virtual Errno ValidateTransaction(const CTransaction& tx, int nHeight) override;
@@ -25,8 +26,9 @@ public:
     virtual Errno ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile) override;
 
     virtual Errno VerifyBlock(const CBlock& block, CBlockIndex* pIndexPrev) override;
-    virtual Errno VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev, int nBlockHeight, const uint256& fork, int nForkType) override;
-    virtual Errno VerifyTransaction(const CTransaction& tx, const std::vector<CTxOut>& vPrevOutput, int nForkHeight, const uint256& fork, int nForkType) override;
+    virtual Errno VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev, int nBlockHeight, const uint256& fork, const CProfile& profile) override;
+    virtual Errno VerifyTransaction(const CTransaction& tx, const std::vector<CTxOut>& vPrevOutput, int nForkHeight, const uint256& fork, const CProfile& profile) override;
+    virtual Errno VerifyMintHeightTx(const CTransaction& tx, const CDestination& destIn, const uint256& hashFork, const int nHeight, const CProfile& profile) override;
 
     virtual Errno VerifyProofOfWork(const CBlock& block, const CBlockIndex* pIndexPrev) override;
     virtual Errno VerifyDelegatedProofOfStake(const CBlock& block, const CBlockIndex* pIndexPrev,
@@ -38,7 +40,7 @@ public:
     virtual bool IsDposHeight(int height) override;
     virtual bool DPoSConsensusCheckRepeated(int height) override;
     virtual int64 GetPrimaryMintWorkReward(const CBlockIndex* pIndexPrev) override;
-    virtual void GetDelegatedBallot(const uint256& nAgreement, std::size_t nWeight, const std::map<CDestination, size_t>& mapBallot,
+    virtual void GetDelegatedBallot(const uint256& nAgreement, const std::size_t nWeight, const std::map<CDestination, size_t>& mapBallot,
                                     const std::vector<std::pair<CDestination, int64>>& vecAmount, int64 nMoneySupply, std::vector<CDestination>& vBallot, std::size_t& nEnrollTrust, int nBlockHeight) override;
     virtual int64 MinEnrollAmount() override;
     virtual uint32 DPoSTimestamp(const CBlockIndex* pIndexPrev) override;
@@ -80,9 +82,11 @@ public:
 class CProofOfWorkParam
 {
 public:
-    CProofOfWorkParam(bool fTestnet);
+    CProofOfWorkParam(const bool fTestnetIn);
+    ~CProofOfWorkParam();
 
 public:
+    bool fTestnet;
     int nProofOfWorkLowerLimit;
     int nProofOfWorkUpperLimit;
     int nProofOfWorkInit;
@@ -96,10 +100,14 @@ public:
     uint32 nDelegateProofOfStakeHeight;
     uint256 hashGenesisBlock;
 
+protected:
+    ICoreProtocol* pCoreProtocol;
+
 public:
     bool IsDposHeight(int height);
     bool DPoSConsensusCheckRepeated(int height);
     bool IsRefVacantHeight(int height);
+    Errno ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile) const;
 };
 
 } // namespace bigbang

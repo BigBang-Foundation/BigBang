@@ -161,7 +161,7 @@ bool CBbEntry::Initialize(int argc, char* argv[])
     if (config.GetModeType() == EModeType::MODE_SERVER
         && (config.GetConfig()->fCheckRepair || config.GetConfig()->fOnlyCheck))
     {
-        CCheckRepairData check(pathData.string(), config.GetConfig()->fTestNet, config.GetConfig()->fOnlyCheck);
+        CCheckRepairData check(pathData.string(), config.GetConfig()->fTestNet, config.GetConfig()->fOnlyCheck, config.GetConfig()->fAddrTxIndex);
         if (!check.CheckRepairData())
         {
             if (config.GetConfig()->fOnlyCheck)
@@ -453,8 +453,10 @@ void CBbEntry::PurgeStorage()
         return;
     }
 
+    CProofOfWorkParam param(config.GetConfig()->fTestNet);
+
     storage::CPurger purger;
-    if (purger(pathData))
+    if (purger(pathData, param.hashGenesisBlock))
     {
         cout << "Reset database and removed blockfiles\n";
     }

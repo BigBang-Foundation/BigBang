@@ -76,6 +76,14 @@ bool CForkManager::HandleInvoke()
             }
         }
     }
+    for (const string& strFork : ForkConfig()->vExcludeFork)
+    {
+        uint256 hashFork(strFork);
+        if (hashFork != 0 && hashFork != pCoreProtocol->GetGenesisBlockHash())
+        {
+            setForkExcluded.insert(hashFork);
+        }
+    }
 
     return true;
 }
@@ -85,6 +93,7 @@ void CForkManager::HandleHalt()
     mapForkSched.clear();
     setForkAllowed.clear();
     setGroupAllowed.clear();
+    setForkExcluded.clear();
     fAllowAnyFork = false;
 }
 
@@ -393,9 +402,25 @@ int CForkManager::GetForkCreatedHeight(const uint256& hashFork)
     return GetValidForkCreatedHeight(hashPrimaryLastBlock, hashFork);
 }
 
+bool CForkManager::GetForkContext(const uint256& hashFork, CForkContext& forkContext)
+{
+    boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
+    map<uint256, CForkSchedule>::iterator it = mapForkSched.find(hashFork);
+    if (it != mapForkSched.end())
+    {
+        forkContext = it->second.ctxtFork;
+        return true;
+    }
+    return false;
+}
+
 //-----------------------------------------------------------------------------------------------
 bool CForkManager::IsAllowedFork(const uint256& hashFork, const uint256& hashParent) const
 {
+    if (setForkExcluded.count(hashFork))
+    {
+        return false;
+    }
     if (fAllowAnyFork || setForkAllowed.count(hashFork) || setGroupAllowed.count(hashFork))
     {
         return true;
