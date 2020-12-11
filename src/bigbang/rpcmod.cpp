@@ -1865,7 +1865,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         nLockHeight = (int)(spParam->nLockheight);
         if (nLockHeight < 0)
         {
-            nLockHeight = 0;
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid lockheight");
         }
     }
 
@@ -2090,7 +2090,7 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
         nLockHeight = (int)(spParam->nLockheight);
         if (nLockHeight < 0)
         {
-            nLockHeight = 0;
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid lockheight");
         }
     }
 

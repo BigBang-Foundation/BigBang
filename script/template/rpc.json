@@ -2931,6 +2931,7 @@
             "{\"code\":-6,\"message\":\"Invalid to address\"}",
             "{\"code\":-6,\"message\":\"Invalid fork\"}",
             "{\"code\":-6,\"message\":\"Unknown fork\"}",
+            "{\"code\":-6,\"message\":\"Invalid lockheight\"}",
             "{\"code\":-401,\"message\":\"Failed to create transaction\"}",
             "{\"code\":-401,\"message\":\"Failed to sign transaction\"}",
             "{\"code\":-401,\"message\":\"The signature is not completed\"}",
@@ -3034,6 +3035,7 @@
             "{\"code\":-6,\"message\":\"Invalid to address\"}",
             "{\"code\":-6,\"message\":\"Invalid fork\"}",
             "{\"code\":-6,\"message\":\"Unknown fork\"}",
+            "{\"code\":-6,\"message\":\"Invalid lockheight\"}",
             "{\"code\":-401,\"message\":\"Failed to create transaction\"}"
         ]
     },
