@@ -141,6 +141,12 @@ static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
         uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"),
         {
             {
+                0,
+                {
+                    bigbang::CAddress("100000000000000000000000000000000000000000000000000000000"),
+                },
+            },
+            {
                 500824,
                 {
                     bigbang::CAddress("103vf0z8f5kry0937ar3ac864cbhkfh8efmmy8mxxy27kaq5sf3svbare"),
