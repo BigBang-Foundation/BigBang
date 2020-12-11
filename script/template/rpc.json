@@ -2870,6 +2870,12 @@
                     "desc": "mint height of DeFi fork",
                     "required": false,
                     "opt": "mintheight"
+                },
+                "lockheight": {
+                    "type": "int",
+                    "desc": "lock height",
+                    "required": false,
+                    "opt": "lh"
                 }
             }
         },
@@ -2914,6 +2920,10 @@
             {
                 "request": "bigbang-cli sendfrom 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1 -f=00000001aeb53fd1f94825d758ee130f3de63ac235a3744240af15200a6fe07b -type=3 -mintheight=20",
                 "response": "5f43336e0c300c03491c65d0f79ded0d864a4442f6c3eb9af3b736bf123d5aff"
+            },
+            {
+                "request": "bigbang-cli sendfrom 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1ae0mjxfcw0vn90r4y1fnd0qw7rkhha7w9smkaf5n9td48zpkjcwdyv5q 8000 -lh=13",
+                "response": "5fd32be9996a4a7d0282135d93ad519d9f237da6f0b025e5bd3139272c733ec9"
             }
         ],
         "error": [
@@ -2979,6 +2989,12 @@
                     "desc": "mint height of DeFi fork",
                     "required": false,
                     "opt": "mintheight"
+                },
+                "lockheight": {
+                    "type": "int",
+                    "desc": "lock height",
+                    "required": false,
+                    "opt": "lh"
                 }
             }
         },
@@ -3005,8 +3021,12 @@
                 "response": "{\"id\":17,\"jsonrpc\":\"2.0\",\"result\":\"010002006334435f0000000091d2b15e9aeeb57483889873bd0aea1273c8e5bb8df436c2bd4e85060000000001ff5a3d12bf36b7f39aebc3f642444a860ded9df7d0651c49030c300c6e33435f010115b2e80b434e4bb47cecbbbd223c09db3be24aa06c1c8ba0cb9d2781208ba1e140420f000000000010270000000000000000\"}"
             },
             {
-                "request": "createtransaction 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1 -f=00000001ba93ccb7402df70b511637223a08ebbe33c7504eda28235028130d32 -type=3 -mintheight=3000",
+                "request": "bigbang-cli createtransaction 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1 -f=00000001ba93ccb7402df70b511637223a08ebbe33c7504eda28235028130d32 -type=3 -mintheight=3000",
                 "response": "01000300b0abc05f00000000320d1328502328da4e50c733beeb083a223716510bf72d40b7cc93ba010000000136824ad81f09da9e47fde50e5e2bb228b25ae289966e305c04c25babca6dbf5f0001498b63009dfb70f7ee0902ba95cc171f7d7a97ff16d89fd96e1f1b9e7d5f91da40420f0000000000307500000000000004b80b000000"
+            },
+            {
+                "request": "bigbang-cli createtransaction 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1ae0mjxfcw0vn90r4y1fnd0qw7rkhha7w9smkaf5n9td48zpkjcwdyv5q 3000 -lh=16",
+                "response": "01000000af2cd35f1000000091d2b15e9aeeb57483889873bd0aea1273c8e5bb8df436c2bd4e85060000000001c3acca171f8703848537280e0a19676cb31f9379b99e069082ab706a862cd35f000153814975ece037548304f05f5682fc3e2718a8fc4e69353cb54e9a447ed39338005ed0b20000000010270000000000000000"
             }
         ],
         "error": [

@@ -1859,6 +1859,16 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
+    int nLockHeight = 0;
+    if (spParam->nLockheight.IsValid())
+    {
+        nLockHeight = (int)(spParam->nLockheight);
+        if (nLockHeight < 0)
+        {
+            nLockHeight = 0;
+        }
+    }
+
     vector<unsigned char> vchData;
     if (spParam->strData.IsValid())
     {
@@ -1919,7 +1929,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, nLockHeight, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
@@ -2074,6 +2084,16 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
+    int nLockHeight = 0;
+    if (spParam->nLockheight.IsValid())
+    {
+        nLockHeight = (int)(spParam->nLockheight);
+        if (nLockHeight < 0)
+        {
+            nLockHeight = 0;
+        }
+    }
+
     vector<unsigned char> vchData;
     if (spParam->strData.IsValid())
     {
@@ -2128,7 +2148,7 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, nLockHeight, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;

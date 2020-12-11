@@ -896,7 +896,7 @@ bool CService::ListTransaction(const uint256& hashFork, const CDestination& dest
 }
 
 boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
-                                                                  const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
+                                                                  const CDestination& destSendTo, const uint16 nType, const int64 nAmount, const int64 nTxFee, const int nLockHeight,
                                                                   const vector<unsigned char>& vchData, CTransaction& txNew)
 {
     int nForkHeight = 0;
@@ -921,6 +921,11 @@ boost::optional<std::string> CService::CreateTransactionByUnspent(const uint256&
     txNew.nAmount = nAmount;
     txNew.nTxFee = nTxFee;
     txNew.vchData = vchData;
+
+    if (nLockHeight > 0)
+    {
+        txNew.SetLockUntil(nLockHeight);
+    }
 
     if (txNew.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
     {
