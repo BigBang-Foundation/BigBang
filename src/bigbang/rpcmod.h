@@ -187,14 +187,14 @@ private:
 class CPusher : public IPusher, virtual public xengine::CHttpEventListener, virtual public CRPCModEventListener
 {
 public:
-    typedef struct _DisPatchMessage
+    typedef struct _PushBlockMessage
     {
         LiveClientInfo client;
         uint64 nNonce;
         int nReqId;
         uint256 hashFork;
         CBlockEx block;
-    } DisPatchMessage;
+    } PushBlockMessage;
 
     CPusher();
     ~CPusher();
@@ -218,7 +218,7 @@ protected:
     void RemoveClient(const std::string& client);
     void RemoveClient(uint64 nNonce);
 
-    void PushDispatchMessage(const DisPatchMessage& message);
+    void PushBlock(const PushBlockMessage& message);
 
 protected:
     ICoreProtocol* pCoreProtocol;

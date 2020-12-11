@@ -4320,13 +4320,13 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
                 continue;
             }
 
-            DisPatchMessage message;
+            PushBlockMessage message;
             message.client = client.second;
             message.hashFork = hashFork;
             message.nNonce = nNonce;
             message.nReqId = client.second.nNonce;
             message.block = block;
-            PushDispatchMessage(message);
+            PushBlock(message);
             StdDebug("CPusher", "Pushed New Block: Host: %s, Port: %d, blockheight: %d, blockHash: %s, type: %d, fork: %s",
                      client.second.strHost.c_str(), client.second.nPort, block.GetBlockHeight(), block.GetHash().ToString().c_str(), block.nType, hashFork.ToString().c_str());
         }
@@ -4372,17 +4372,8 @@ void CPusher::RemoveClient(uint64 nNonce)
 //     return true;
 // }
 
-void CPusher::PushDispatchMessage(const DisPatchMessage& message)
+void CPusher::PushBlock(const PushBlockMessage& message)
 {
-    // boost::mutex::scoped_lock lock(mMutexReady);
-    // if (!queueDispatch.empty())
-    // {
-    //     condNewPush.notify_one();
-    //     return;
-    // }
-    // queueDispatch.push(message);
-    // condNewPush.notify_one();
-
     CallRPC(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strURL, message.client.nNonce, message.hashFork, message.block, message.client.nNonce);
 }
 
