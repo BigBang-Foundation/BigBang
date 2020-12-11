@@ -1209,14 +1209,18 @@ BOOST_AUTO_TEST_CASE(defi_relation_tx)
 
     string sub_sign_str = string("DeFiRelation") + forkid.ToString() + shared_key.pubkey.ToString();
     cout << "sub_sign_str: " << sub_sign_str << endl;
+    uint256 sub_sign_hash_str = CryptoHash(sub_sign_str.data(), sub_sign_str.size());
+    cout << "sub_sign_hash_str: " << ToHexString(sub_sign_hash_str.begin(), sub_sign_hash_str.size()) << endl;
     vector<uint8> sub_sign;
-    CryptoSign(sub_key, sub_sign_str.data(), sub_sign_str.size(), sub_sign);
+    CryptoSign(sub_key, sub_sign_hash_str.begin(), sub_sign_hash_str.size(), sub_sign);
     cout << "sub_sign: " << ToHexString(sub_sign) << endl;
 
-    string parent_sign_str = parent_address.ToString();
+    string parent_sign_str = string("DeFiRelation") + parent_key.pubkey.ToString();
     cout << "parent_sign_str: " << parent_sign_str << endl;
+    uint256 parent_sign_hash_str = CryptoHash(parent_sign_str.data(), parent_sign_str.size());
+    cout << "parent_sign_hash_str: " << ToHexString(parent_sign_hash_str.begin(), parent_sign_hash_str.size()) << endl;
     vector<uint8> parent_sign;
-    CryptoSign(shared_key, parent_sign_str.data(), parent_sign_str.size(), parent_sign);
+    CryptoSign(shared_key, parent_sign_hash_str.begin(), parent_sign_hash_str.size(), parent_sign);
     cout << "parent_sign: " << ToHexString(parent_sign) << endl;
 
     vector<uint8> vchData;
@@ -1235,8 +1239,8 @@ BOOST_AUTO_TEST_CASE(defi_relation_tx)
     vector<uint8> verify_parent_sign(vchData.begin() + 96, vchData.end());
     BOOST_CHECK(verify_parent_sign == parent_sign);
 
-    BOOST_CHECK(CryptoVerify(sub_key.pubkey, sub_sign_str.data(), sub_sign_str.size(), verify_sub_sign));
-    BOOST_CHECK(CryptoVerify(verify_shared_pubKey, parent_sign_str.data(), parent_sign_str.size(), verify_parent_sign));
+    BOOST_CHECK(CryptoVerify(sub_key.pubkey, sub_sign_hash_str.begin(), sub_sign_hash_str.size(), verify_sub_sign));
+    BOOST_CHECK(CryptoVerify(verify_shared_pubKey, parent_sign_hash_str.begin(), parent_sign_hash_str.size(), verify_parent_sign));
 
     uint256 invalidKey("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
     cout << crypto_core_ed25519_is_valid_point(invalidKey.begin()) << endl;
