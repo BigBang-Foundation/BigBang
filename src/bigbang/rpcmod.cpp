@@ -4159,7 +4159,7 @@ Cblockdatadetail CRPCMod::BlockDetailToJSON(const uint256& hashFork, const CBloc
 CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CPushBlockParam>(param);
-    StdWarn("CRPCMod::CSH", "Push Block called hash: %s", spParam->block.strHash.c_str());
+    StdDebug("CRPCMod::CSH", "Push Block called hash: %s", spParam->block.strHash.c_str());
     return MakeCPushBlockResultPtr(spParam->block.strHash);
 }
 
@@ -4296,7 +4296,7 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
 {
     const CBlockEx& block = event.data;
     const uint256& hashFork = event.hashFork;
-    StdWarn("CPusher::CSH", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
+    StdDebug("CPusher", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
     std::vector<std::string> deletes;
 
     static uint64 nNonce = 10;
@@ -4306,22 +4306,20 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
         {
             const std::string& ipport = client.first;
             int64 nTimeStamp = client.second.timestamp;
-            StdWarn("CPusher::CSH", "Update New Block ipport: %s", ipport.c_str());
+            StdDebug("CPusher", "Update New Block ipport: %s", ipport.c_str());
             if (GetTime() - nTimeStamp > 60 * 2)
             {
-                StdWarn("CPusher::CSH", "Timeout IPORT: %s", ipport.c_str());
+                StdDebug("CPusher", "Timeout IPORT: %s", ipport.c_str());
                 deletes.push_back(ipport);
                 continue;
             }
 
-            StdWarn("CPusher::CSH", "Update New Block hashFork: %s", hashFork.ToString().c_str());
             if (client.second.registerForks.count(hashFork) == 0)
             {
-                StdWarn("CPusher::CSH", "No register fork: %s", hashFork.ToString().c_str());
+                StdDebug("CPusher", "No register fork: %s", hashFork.ToString().c_str());
                 continue;
             }
 
-            StdWarn("CPusher::CSH", "Pushed Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, client.second.nNonce);
             DisPatchMessage message;
             message.client = client.second;
             message.hashFork = hashFork;
@@ -4329,7 +4327,8 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
             message.nReqId = client.second.nNonce;
             message.block = block;
             PushDispatchMessage(message);
-            StdWarn("CPusher::CSH", "Pushed Dispatch Queue New Block: Host: %s, Port: %d, Nonce: %d", client.second.strHost.c_str(), client.second.nPort, 1);
+            StdDebug("CPusher", "Pushed New Block: Host: %s, Port: %d, blockheight: %d, blockHash: %s, type: %d, fork: %s",
+                     client.second.strHost.c_str(), client.second.nPort, block.GetBlockHeight(), block.GetHash().ToString().c_str(), block.nType, hashFork.ToString().c_str());
         }
 
         RemoveClients(deletes);
