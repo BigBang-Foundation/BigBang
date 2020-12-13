@@ -170,7 +170,7 @@ bool CTxPoolView::AddNew(const uint256& txid, CPooledTx& tx)
 
     for (std::size_t i = 0; i < tx.vInput.size(); i++)
     {
-        mapSpent[tx.vInput[i].prevout].SetSpent(txid);
+        mapSpent[tx.vInput[i].prevout].SetSpent(tx.destIn, txid);
     }
 
     CTxOut output;
