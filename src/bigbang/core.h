@@ -58,6 +58,7 @@ protected:
     Errno VerifyVoteTx(const CTransaction& tx, const CDestination& destIn, const uint256& fork);
     Errno VerifyDexOrderTx(const CTransaction& tx, const CDestination& destIn, int64 nValueIn, int nHeight);
     Errno VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, int nHeight);
+    Errno VerifyDeFiRelationTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const uint256& fork);
 
 protected:
     uint256 hashGenesisBlock;
