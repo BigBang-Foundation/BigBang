@@ -134,9 +134,32 @@ static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 340935;
 
 // DeFi fork blacklist
 #ifdef BIGBANG_TESTNET
-static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {};
+static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
+    {
+        uint256(),
+        {
+            {
+                0,
+                {
+                    bigbang::CAddress("100000000000000000000000000000000000000000000000000000000"),
+                },
+            },
+        },
+    },
+};
 #else
 static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
+    {
+        uint256(),
+        {
+            {
+                0,
+                {
+                    bigbang::CAddress("100000000000000000000000000000000000000000000000000000000"),
+                },
+            },
+        },
+    },
     {
         uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"),
         {
@@ -907,7 +930,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
             return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable");
         }
 
-        const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nBlockHeight);
+        const set<CDestination> setBlacklist = GetDeFiBlacklist(fork, nBlockHeight);
         if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist");
@@ -1087,7 +1110,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
             return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable");
         }
 
-        const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nForkHeight);
+        const set<CDestination> setBlacklist = GetDeFiBlacklist(fork, nForkHeight);
         if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist");
@@ -1603,23 +1626,32 @@ int CCoreProtocol::GetRefVacantHeight()
     return REF_VACANT_HEIGHT;
 }
 
-const std::set<CDestination>& CCoreProtocol::GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight)
+const std::set<CDestination> CCoreProtocol::GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight)
 {
-    static set<CDestination> null;
-
-    auto it = mapDeFiBlacklist.find(hashFork);
-    if (it != mapDeFiBlacklist.end())
-    {
-        for (auto& list : boost::adaptors::reverse(it->second))
+    auto f = [](const uint256& hashFork, const int32 nHeight, const map<uint256, map<int, set<CDestination>>>& mapDeFiBlacklist) -> set<CDestination> {
+        auto it = mapDeFiBlacklist.find(hashFork);
+        if (it != mapDeFiBlacklist.end())
         {
-            if (nHeight >= list.first)
+            for (auto& list : boost::adaptors::reverse(it->second))
             {
-                return list.second;
+                if (nHeight >= list.first)
+                {
+                    return list.second;
+                }
             }
         }
+        return set<CDestination>();
+    };
+
+    set<CDestination> commonBlacklist = f(uint256(), nHeight, mapDeFiBlacklist);
+    set<CDestination> forkBlacklist = f(hashFork, nHeight, mapDeFiBlacklist);
+
+    for (auto& dest : commonBlacklist)
+    {
+        forkBlacklist.insert(dest);
     }
 
-    return null;
+    return forkBlacklist;
 }
 
 bool CCoreProtocol::CheckBlockSignature(const CBlock& block)

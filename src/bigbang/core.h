@@ -47,7 +47,7 @@ public:
     virtual uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight) override;
     virtual bool IsRefVacantHeight(uint32 nBlockHeight) override;
     virtual int GetRefVacantHeight() override;
-    virtual const std::set<CDestination>& GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) override;
+    virtual const std::set<CDestination> GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) override;
 
 protected:
     bool HandleInitialize() override;
