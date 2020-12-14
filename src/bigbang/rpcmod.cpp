@@ -2224,24 +2224,47 @@ CRPCResultPtr CRPCMod::RPCSignMessage(CRPCParamPtr param)
     auto spParam = CastParamPtr<CSignMessageParam>(param);
 
     crypto::CPubKey pubkey;
-    pubkey.SetHex(spParam->strPubkey);
+    crypto::CKey privkey;
+    if (spParam->strPubkey.IsValid())
+    {
+        if (pubkey.SetHex(spParam->strPubkey) != spParam->strPubkey.size())
+        {
+            throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Invalid pubkey error");
+        }
+    }
+    else if (spParam->strPrivkey.IsValid())
+    {
+        uint256 nPriv;
+        if (nPriv.SetHex(spParam->strPrivkey) != spParam->strPrivkey.size())
+        {
+            throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+        }
+        privkey.SetSecret(crypto::CCryptoKeyData(nPriv.begin(), nPriv.end()));
+    }
+    else
+    {
+        throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "no pubkey or privkey");
+    }
 
     string strMessage = spParam->strMessage;
 
-    int nVersion;
-    bool fLocked, fPublic;
-    int64 nAutoLockTime;
-    if (!pService->GetKeyStatus(pubkey, nVersion, fLocked, nAutoLockTime, fPublic))
+    if (!!pubkey)
     {
-        throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Unknown key");
-    }
-    if (fPublic)
-    {
-        throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Can't sign message by public key");
-    }
-    if (fLocked)
-    {
-        throw CRPCException(RPC_WALLET_UNLOCK_NEEDED, "Key is locked");
+        int nVersion;
+        bool fLocked, fPublic;
+        int64 nAutoLockTime;
+        if (!pService->GetKeyStatus(pubkey, nVersion, fLocked, nAutoLockTime, fPublic))
+        {
+            throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Unknown key");
+        }
+        if (fPublic)
+        {
+            throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Can't sign message by public key");
+        }
+        if (fLocked)
+        {
+            throw CRPCException(RPC_WALLET_UNLOCK_NEEDED, "Key is locked");
+        }
     }
 
     vector<unsigned char> vchSig;
@@ -2253,20 +2276,50 @@ CRPCResultPtr CRPCMod::RPCSignMessage(CRPCParamPtr param)
         {
             throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address parameters");
         }
-        if (!pService->SignSignature(pubkey, addr.GetTemplateId(), vchSig))
+        if (!!pubkey)
         {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            if (!pService->SignSignature(pubkey, addr.GetTemplateId(), vchSig))
+            {
+                throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            }
+        }
+        else
+        {
+            if (!privkey.Sign(addr.GetTemplateId(), vchSig))
+            {
+                throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            }
         }
     }
     else
     {
-        const string strMessageMagic = "Bigbang Signed Message:\n";
-        CBufStream ss;
-        ss << strMessageMagic;
-        ss << strMessage;
-        if (!pService->SignSignature(pubkey, crypto::CryptoHash(ss.GetData(), ss.GetSize()), vchSig))
+        uint256 hashStr;
+        if (spParam->fHasprefix)
         {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            CBufStream ss;
+            const string strMessageMagic = "Bigbang Signed Message:\n";
+            ss << strMessageMagic;
+            ss << strMessage;
+            hashStr = crypto::CryptoHash(ss.GetData(), ss.GetSize());
+        }
+        else
+        {
+            hashStr = crypto::CryptoHash(strMessage.data(), strMessage.size());
+        }
+
+        if (!!pubkey)
+        {
+            if (!pService->SignSignature(pubkey, hashStr, vchSig))
+            {
+                throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            }
+        }
+        else
+        {
+            if (!privkey.Sign(hashStr, vchSig))
+            {
+                throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            }
         }
     }
     return MakeCSignMessageResultPtr(ToHexString(vchSig));
@@ -2980,12 +3033,20 @@ CRPCResultPtr CRPCMod::RPCVerifyMessage(CRPCParamPtr param)
     }
     else
     {
-        const string strMessageMagic = "Bigbang Signed Message:\n";
-        CBufStream ss;
-        ss << strMessageMagic;
-        ss << strMessage;
-        return MakeCVerifyMessageResultPtr(
-            pubkey.Verify(crypto::CryptoHash(ss.GetData(), ss.GetSize()), vchSig));
+        uint256 hashStr;
+        if (spParam->fHasprefix)
+        {
+            CBufStream ss;
+            const string strMessageMagic = "Bigbang Signed Message:\n";
+            ss << strMessageMagic;
+            ss << strMessage;
+            hashStr = crypto::CryptoHash(ss.GetData(), ss.GetSize());
+        }
+        else
+        {
+            hashStr = crypto::CryptoHash(strMessage.data(), strMessage.size());
+        }
+        return MakeCVerifyMessageResultPtr(pubkey.Verify(hashStr, vchSig));
     }
 }
 
