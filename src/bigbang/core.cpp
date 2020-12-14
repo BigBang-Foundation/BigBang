@@ -1908,12 +1908,12 @@ Errno CCoreProtocol::VerifyDeFiRelationTx(const CTransaction& tx, const CDestina
             return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sub signature in vchData is not currect");
         }
 
-        // parent_sign: sign blake2b(“DeFiRelation” + parent_pubkey) with destIn
+        // parent_sign: sign blake2b(“DeFiRelation” + parent_pubkey) with sharedPubKey
         crypto::CPubKey parentKey = destIn.GetPubKey();
         string parentSignStr = string("DeFiRelation") + parentKey.ToString();
         uint256 parentSignHashStr = crypto::CryptoHash(parentSignStr.data(), parentSignStr.size());
         StdTrace("CCoreProtocol", "parentSignStr: %s, parentSignHashStr: %s", parentSignStr.c_str(), ToHexString(parentSignHashStr.begin(), parentSignHashStr.size()).c_str());
-        if (!crypto::CryptoVerify(parentKey, parentSignHashStr.begin(), parentSignHashStr.size(), parentSign))
+        if (!crypto::CryptoVerify(sharedPubKey, parentSignHashStr.begin(), parentSignHashStr.size(), parentSign))
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx parent signature in vchData is not currect");
         }
