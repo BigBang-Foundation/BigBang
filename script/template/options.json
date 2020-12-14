@@ -1,6 +1,5 @@
 {
-    "CBasicConfigOption": [
-        {
+    "CBasicConfigOption": [{
             "name": "fTestNet",
             "type": "bool",
             "opt": "testnet",
@@ -81,8 +80,7 @@
             "desc": "Launch server without address txindex"
         }
     ],
-    "CForkConfigOption": [
-        {
+    "CForkConfigOption": [{
             "name": "vFork",
             "type": "vector<string>",
             "opt": "addfork",
@@ -104,8 +102,7 @@
             "desc": "Exclude a fork"
         }
     ],
-    "CMintConfigOption": [
-        {
+    "CMintConfigOption": [{
             "access": "protected",
             "name": "strAddressMpvss",
             "type": "string",
@@ -146,8 +143,7 @@
             "desc": "Node type: 'super' means super node, it will make main fork block. 'fork' means fork node, it will make other fork block. 'common' is not specific node"
         }
     ],
-    "CRPCBasicConfigOption": [
-        {
+    "CRPCBasicConfigOption": [{
             "access": "protected",
             "name": "nRPCPortInt",
             "type": "int",
@@ -155,6 +151,14 @@
             "default": 0,
             "format": "-rpcport=port",
             "desc": "Listen for JSON-RPC connections on <port> (default: 9902 or testnet: 9904))"
+        },
+        {
+            "name": "nHTTPPortInt",
+            "type": "int",
+            "opt": "httpserverport",
+            "default": 0,
+            "format": "-httpserverport=port",
+            "desc": "Listen for JSON-RPC Http Server connections on <port> (default: 9906 or testnet: 9908))"
         },
         {
             "name": "fRPCListen",
@@ -259,8 +263,7 @@
             "desc": "Enable write RPC log (default true)"
         }
     ],
-    "CRPCClientConfigOption": [
-        {
+    "CRPCClientConfigOption": [{
             "name": "strRPCConnect",
             "type": "string",
             "opt": "rpchost",
@@ -277,8 +280,7 @@
             "desc": "Connection timeout <time> seconds (default: 120)"
         }
     ],
-    "CRPCServerConfigOption": [
-        {
+    "CRPCServerConfigOption": [{
             "name": "nRPCMaxConnections",
             "type": "unsigned int",
             "opt": "rpcmaxconnections",
@@ -294,8 +296,7 @@
             "desc": "Allow JSON-RPC connections from specified <ip> address"
         }
     ],
-    "CStorageConfigOption": [
-        {
+    "CStorageConfigOption": [{
             "name": "nCheckLevel",
             "type": "int",
             "opt": "chklvl",
@@ -320,8 +321,7 @@
             "desc": "Set block data directory to recovery from it. It will clear all <-datadir> database except wallet address, so <-recoverydir> must be not equal <-datadir/block>"
         }
     ],
-    "CNetworkConfigOption": [
-        {
+    "CNetworkConfigOption": [{
             "name": "fListen",
             "type": "bool",
             "opt": "listen",
