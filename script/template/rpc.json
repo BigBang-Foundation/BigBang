@@ -3621,6 +3621,46 @@
             }
         ]
     },
+    "getpubkey": {
+        "type": "command",
+        "name": "GetPubkey",
+        "desc": "Return public key by address or private key.",
+        "request": {
+            "type": "object",
+            "content": {
+                "info": {
+                    "type": "string",
+                    "desc": "address or private key"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "pubkey",
+            "desc": "public key"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli getpubkey 15c02b5f9eb6e516159c230011a87e57757645b53d3534958f910c08feb5c203",
+                "response": "06c4246621002576ec70545f04f2cb75378e3f1a16eca2c596fc1c64f52e122b"
+            },
+            {
+                "request": "curl -d '{\"id\":44,\"method\":\"getpubkey\",\"jsonrpc\":\"2.0\",\"params\":{\"privkey\":\"15c02b5f9eb6e516159c230011a87e57757645b53d3534958f910c08feb5c203\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":44,\"jsonrpc\":\"2.0\",\"result\":\"06c4246621002576ec70545f04f2cb75378e3f1a16eca2c596fc1c64f52e122b\"}"
+            },
+            {
+                "request": "bigbang-cli getpubkey 1z6taz5dyrv2xa11pc92y0ggbrf2wf36gbtk8wjprb96qe3kqwfm3ayc1",
+                "response": "e8e3770e774d5ad84a8ea65ed08cc7c5c30b42e045623604d5c5c6be95afb4f9"
+            },
+            {
+                "request": "curl -d '{\"id\":44,\"method\":\"getpubkey\",\"jsonrpc\":\"2.0\",\"params\":{\"privkey\":\"1z6taz5dyrv2xa11pc92y0ggbrf2wf36gbtk8wjprb96qe3kqwfm3ayc1\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":44,\"jsonrpc\":\"2.0\",\"result\":\"e8e3770e774d5ad84a8ea65ed08cc7c5c30b42e045623604d5c5c6be95afb4f9\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-6,\"message\":\"Invalid pubkey\"}"
+        ]
+    },
     "getpubkeyaddress": {
         "type": "command",
         "name": "GetPubkeyAddress",
@@ -3631,12 +3671,6 @@
                 "pubkey": {
                     "type": "string",
                     "desc": "public key"
-                },
-                "reversal": {
-                    "type": "string",
-                    "desc": "reversal get address pubkey",
-                    "required": false,
-                    "opt": "r"
                 }
             }
         },

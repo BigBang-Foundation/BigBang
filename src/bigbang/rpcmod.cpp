@@ -275,6 +275,8 @@ CRPCMod::CRPCMod()
         //
         ("makekeypair", &CRPCMod::RPCMakeKeyPair)
         //
+        ("getpubkey", &CRPCMod::RPCGetPubKey)
+        //
         ("getpubkeyaddress", &CRPCMod::RPCGetPubKeyAddress)
         //
         ("gettemplateaddress", &CRPCMod::RPCGetTemplateAddress)
@@ -511,24 +513,6 @@ bool CRPCMod::CheckWalletError(Errno err)
         break;
     }
     return (err == OK);
-}
-
-crypto::CPubKey CRPCMod::GetPubKey(const string& addr)
-{
-    crypto::CPubKey pubkey;
-    CAddress address(addr);
-    if (!address.IsNull())
-    {
-        if (!address.GetPubKey(pubkey))
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address, should be pubkey address");
-        }
-    }
-    else
-    {
-        pubkey.SetHex(addr);
-    }
-    return pubkey;
 }
 
 void CRPCMod::ListDestination(vector<CDestination>& vDestination)
@@ -3061,6 +3045,37 @@ CRPCResultPtr CRPCMod::RPCMakeKeyPair(CRPCParamPtr param)
     spResult->strPrivkey = key.secret.GetHex();
     spResult->strPubkey = key.pubkey.GetHex();
     return spResult;
+}
+
+CRPCResultPtr CRPCMod::RPCGetPubKey(CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CGetPubkeyParam>(param);
+    crypto::CPubKey pubkey;
+    {
+        CAddress address(spParam->strInfo);
+        if (!address.IsNull())
+        {
+            if (!address.GetPubKey(pubkey))
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "Invalid pubkey address");
+            }
+            return MakeCGetPubkeyResultPtr(pubkey.ToString());
+        }
+    }
+    {
+        uint256 nPriv;
+        if (nPriv.SetHex(spParam->strInfo) == spParam->strInfo.size())
+        {
+            crypto::CKey key;
+            if (!key.SetSecret(crypto::CCryptoKeyData(nPriv.begin(), nPriv.end())))
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "Get pubkey by privkey error");
+            }
+            return MakeCGetPubkeyResultPtr(key.GetPubKey().ToString());
+        }
+    }
+
+    throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address or privkey");
 }
 
 CRPCResultPtr CRPCMod::RPCGetPubKeyAddress(CRPCParamPtr param)
