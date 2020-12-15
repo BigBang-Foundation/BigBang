@@ -2622,6 +2622,10 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
         {
             throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param mintheight should be -1 or larger than fork genesis block height");
         }
+        else if (profile.defi.nMintHeight < -1)
+        {
+            profile.defi.nMintHeight = -1;
+        }
 
         profile.defi.nMaxSupply = spParam->defi.nMaxsupply;
         if (profile.defi.nMaxSupply >= 0)

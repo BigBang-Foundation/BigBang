@@ -627,9 +627,9 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
         }
 
         const CDeFiProfile& defi = forkProfile.defi;
-        if (defi.nMintHeight > 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2)
+        if ((defi.nMintHeight < -1) || (defi.nMintHeight > 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2))
         {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mintheight should be -1 or larger than fork genesis block height");
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mintheight should be -1 or 0 or larger than fork genesis block height");
         }
         if (defi.nMaxSupply >= 0 && !MoneyRange(defi.nMaxSupply))
         {
