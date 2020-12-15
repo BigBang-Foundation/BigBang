@@ -3628,7 +3628,7 @@
         "request": {
             "type": "object",
             "content": {
-                "info": {
+                "privkeyaddress": {
                     "type": "string",
                     "desc": "address or private key"
                 }

@@ -363,7 +363,7 @@ bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
         // or passphrass from log content
 
         //log for debug mode
-        boost::regex ptnSec(R"raw(("privkey"|"passphrase"|"oldpassphrase"|"signsecret")(\s*:\s*)(".*?"))raw", boost::regex::perl);
+        boost::regex ptnSec(R"raw(("privkey"|"passphrase"|"oldpassphrase"|"signsecret"|"privkeyaddress")(\s*:\s*)(".*?"))raw", boost::regex::perl);
         return boost::regex_replace(data, ptnSec, string(R"raw($1$2"***")raw"));
     };
 
@@ -3052,7 +3052,7 @@ CRPCResultPtr CRPCMod::RPCGetPubKey(CRPCParamPtr param)
     auto spParam = CastParamPtr<CGetPubkeyParam>(param);
     crypto::CPubKey pubkey;
     {
-        CAddress address(spParam->strInfo);
+        CAddress address(spParam->strPrivkeyaddress);
         if (!address.IsNull())
         {
             if (!address.GetPubKey(pubkey))
@@ -3064,7 +3064,7 @@ CRPCResultPtr CRPCMod::RPCGetPubKey(CRPCParamPtr param)
     }
     {
         uint256 nPriv;
-        if (nPriv.SetHex(spParam->strInfo) == spParam->strInfo.size())
+        if (nPriv.SetHex(spParam->strPrivkeyaddress) == spParam->strPrivkeyaddress.size())
         {
             crypto::CKey key;
             if (!key.SetSecret(crypto::CCryptoKeyData(nPriv.begin(), nPriv.end())))
