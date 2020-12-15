@@ -4224,6 +4224,7 @@ void CRPCMod::HttpServerThreadFunc()
 
     svr.Get("/stop", [&](const Request& req, Response& res) {
         svr.stop();
+        res.set_content("Stopped Http Server", "text/plain");
     });
 
     svr.listen("0.0.0.0", pConfig->nHttpPort);
