@@ -1902,7 +1902,7 @@ Errno CCoreProtocol::VerifyDeFiRelationTx(const CTransaction& tx, const CDestina
         crypto::CPubKey subKey = tx.sendTo.GetPubKey();
         string subSignStr = string("DeFiRelation") + fork.ToString() + sharedPubKey.ToString();
         uint256 subSignHashStr = crypto::CryptoHash(subSignStr.data(), subSignStr.size());
-        StdTrace("CCoreProtocol", "subSignStr: %s, subSignHashStr: %s", subSignStr.c_str(), ToHexString(subSignHashStr.begin(), subSignHashStr.size()).c_str());
+        StdTrace("CCoreProtocol", "VerifyDeFiRelationTx subSignStr: %s, subSignHashStr: %s", subSignStr.c_str(), ToHexString(subSignHashStr.begin(), subSignHashStr.size()).c_str());
         if (!crypto::CryptoVerify(subKey, subSignHashStr.begin(), subSignHashStr.size(), subSign))
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sub signature in vchData is not currect");
@@ -1912,7 +1912,7 @@ Errno CCoreProtocol::VerifyDeFiRelationTx(const CTransaction& tx, const CDestina
         crypto::CPubKey parentKey = destIn.GetPubKey();
         string parentSignStr = string("DeFiRelation") + parentKey.ToString();
         uint256 parentSignHashStr = crypto::CryptoHash(parentSignStr.data(), parentSignStr.size());
-        StdTrace("CCoreProtocol", "parentSignStr: %s, parentSignHashStr: %s", parentSignStr.c_str(), ToHexString(parentSignHashStr.begin(), parentSignHashStr.size()).c_str());
+        StdTrace("CCoreProtocol", "VerifyDeFiRelationTx parentSignStr: %s, parentSignHashStr: %s", parentSignStr.c_str(), ToHexString(parentSignHashStr.begin(), parentSignHashStr.size()).c_str());
         if (!crypto::CryptoVerify(sharedPubKey, parentSignHashStr.begin(), parentSignHashStr.size(), parentSign))
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx parent signature in vchData is not currect");
