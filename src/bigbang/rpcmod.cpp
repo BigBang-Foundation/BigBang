@@ -4455,153 +4455,11 @@ bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const st
 
 bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
 {
-    // try
-    // {
-    //     CHttpRsp& rsp = event.data;
-
-    //     StdWarn("CPusher", "Response Content %s", rsp.strContent.c_str());
-    //     if (rsp.nStatusCode < 0)
-    //     {
-
-    //         const char* strErr[] = { "", "connect failed", "invalid nonce", "activate failed",
-    //                                  "disconnected", "no response", "resolve failed",
-    //                                  "internal failure", "aborted" };
-
-    //         //RemoveClient(event.nNonce);
-    //         StdError("CPusher", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
-
-    //         if (pHttpGet && rsp.nStatusCode == HTTPGET_CONNECT_FAILED)
-    //         {
-    //             CEventHttpAbort eventAbort(event.nNonce);
-    //             CHttpAbort& httpAbort = eventAbort.data;
-    //             httpAbort.strIOModule = GetOwnKey();
-    //             httpAbort.vNonce.push_back(event.nNonce);
-    //             pHttpGet->DispatchEvent(&eventAbort);
-    //         }
-
-    //         ioComplt.Completed(false);
-    //         return true;
-    //     }
-    //     if (rsp.nStatusCode == 401)
-    //     {
-    //         //RemoveClient(event.nNonce);
-    //         StdError("CPusher", "incorrect rpcuser or rpcpassword (authorization failed)");
-    //         ioComplt.Completed(false);
-    //         return true;
-    //     }
-    //     else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
-    //     {
-    //         ostringstream oss;
-    //         oss << "server returned HTTP error " << rsp.nStatusCode;
-    //         //RemoveClient(event.nNonce);
-    //         StdError("CPusher", oss.str().c_str());
-    //         ioComplt.Completed(false);
-    //         return true;
-    //     }
-    //     else if (rsp.strContent.empty())
-    //     {
-    //         StdError("CPusher", "no response from server");
-    //         ioComplt.Completed(false);
-    //         return true;
-    //     }
-
-    //     // Parse reply
-    //     if (Config()->fDebug)
-    //     {
-    //         //cout << "response: " << rsp.strContent;
-    //         StdDebug("CPusher", "response: ", rsp.strContent.c_str());
-    //     }
-
-    //     std::string content = rsp.strContent;
-    //     // auto spResp = DeserializeCRPCResp("", content);
-    //     // if (spResp->IsError())
-    //     // {
-    //     //     // Error
-    //     //     //cerr << spResp->spError->Serialize(true) << endl;
-    //     //     //cerr << strServerHelpTips << endl;
-    //     //     StdError("CPusher", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
-    //     //     StdError("CPusher", "RPC Response error tips: %s", strServerHelpTips.c_str());
-    //     //     ioComplt.Completed(false);
-    //     //     return true;
-    //     // }
-    //     // else if (spResp->IsSuccessful())
-    //     // {
-    //     //     //cout << spResp->spResult->Serialize(true) << endl;
-    //     // }
-    //     // else
-    //     // {
-    //     //     //cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
-    //     //     StdError("CPusher", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
-    //     //     ioComplt.Completed(false);
-    //     //     return true;
-    //     // }
-
-    //     auto jsonObj = nlohmann::json::parse(content);
-    //     if (!jsonObj.is_object())
-    //     {
-    //         StdError("CPusher", "server error: neither error nor result. resp:  %s", content.c_str());
-    //         ioComplt.Completed(false);
-    //         return true;
-    //     }
-    // }
-    // catch (const std::exception& e)
-    // {
-    //     StdError("CPusher", "RPC Response Exception: %s ", e.what());
-    //     ioComplt.Completed(false);
-    //     return true;
-    // }
-    // ioComplt.Completed(false);
     return true;
 }
 
 bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content, std::string& response)
 {
-
-    // CEventHttpGet eventHttpGet(nNonce);
-    // CHttpReqData& httpReqData = eventHttpGet.data;
-    // httpReqData.strIOModule = GetOwnKey();
-    // httpReqData.nTimeout = /*Config()->nRPCConnectTimeout*/ 1;
-
-    // if (fSSL)
-    // {
-    //     httpReqData.strProtocol = "https";
-    //     // httpReqData.fVerifyPeer = Config()->fRPCSSLVerify;
-    //     // httpReqData.strPathCA = Config()->strRPCCAFile;
-    //     // httpReqData.strPathCert = Config()->strRPCCertFile;
-    //     // httpReqData.strPathPK = Config()->strRPCPKFile;
-    // }
-    // else
-    // {
-    //     httpReqData.strProtocol = "http";
-    // }
-
-    // CNetHost host(strHost, nPort);
-    // httpReqData.mapHeader["host"] = host.ToString();
-    // //httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
-    // httpReqData.mapHeader["url"] = "/" + strURL;
-    // httpReqData.mapHeader["method"] = "POST";
-    // httpReqData.mapHeader["accept"] = "application/json";
-    // httpReqData.mapHeader["content-type"] = "application/json";
-    // httpReqData.mapHeader["user-agent"] = string("bigbang-json-rpc/");
-    // httpReqData.mapHeader["connection"] = "Keep-Alive";
-    // // if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
-    // // {
-    // //     string strAuth;
-    // //     CHttpUtil().Base64Encode(Config()->strRPCUser + ":" + Config()->strRPCPass, strAuth);
-    // //     httpReqData.mapHeader["authorization"] = string("Basic ") + strAuth;
-    // // }
-
-    // httpReqData.strContent = content + "\n";
-
-    // ioComplt.Reset();
-
-    // if (!pHttpGet->DispatchEvent(&eventHttpGet))
-    // {
-    //     return false;
-    // }
-    // bool fResult = false;
-    // return (ioComplt.WaitForComplete(fResult) && fResult);
-    //return true;
 
     httplib::Client cli(strHost, nPort);
     std::string path = std::string("/") + strURL;
@@ -4609,7 +4467,7 @@ bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, cons
         { "Accept-Encoding", "gzip, deflate" },
         { "Connection", "Keep-Alive" },
         { "Accept", "application/json" },
-        { "User-Agent", "bigbang-json-rpc/" }
+        { "User-Agent", "bigbang-data-sync-rpc/" }
     };
     if (auto res = cli.Post(path.c_str(), headers, content, "application/json"))
     {
