@@ -33,6 +33,8 @@ public:
 protected:
     bool HandleInitialize() override;
     void HandleDeinitialize() override;
+    bool HandleInvoke() override;
+    void HandleHalt() override;
     const CBasicConfig* BasicConfig()
     {
         return dynamic_cast<const CBasicConfig*>(xengine::IBase::Config());
@@ -167,6 +169,7 @@ protected:
     // void TrySwitchFork(const uint256& blockHash, uint256& forkHash);
     // bool GetBlocks(const uint256& forkHash, const uint256& startHash, int32 n, std::vector<CBlockEx>& blocks);
     rpc::Cblockdatadetail BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block);
+    void HttpServerThreadFunc();
 
 protected:
     xengine::IIOProc* pHttpServer;
@@ -175,8 +178,8 @@ protected:
     IDataStat* pDataStat;
     IForkManager* pForkManager;
     IPusher* pPusher;
-    //xengine::IIOProc* pHttpGet;
     xengine::CIOCompletion ioComplt;
+    xengine::CThread thrHttpServer;
 
 private:
     std::map<std::string, RPCFunc> mapRPCFunc;
@@ -223,19 +226,10 @@ protected:
 protected:
     ICoreProtocol* pCoreProtocol;
     IService* pService;
-    xengine::IIOProc* pHttpGet;
-    //xengine::CThread thrDispatch;
-    //std::atomic<bool> fIsDispatchRunning;
 
 private:
     boost::mutex mMutex;
-    //boost::mutex mMutexReady;
-    //bool fStopWait;
-    //boost::condition_variable condNewPush;
-    //xengine::CIOCompletion ioComplt;
-    //std::queue<DisPatchMessage> queueDispatch;
     std::map<std::string, LiveClientInfo> mapRPCClient; //  IP:PORT -> LiveClientInfo
-    //std::unordered_map<std::string, std::pair<uint256, uint256>> mapForkPoint; // fork point hash => (fork hash, fork point hash)
 };
 
 } // namespace bigbang

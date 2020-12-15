@@ -26,6 +26,7 @@ public:
 
 public:
     unsigned int nRPCPort;
+    unsigned int nHttpPort;
 };
 
 class CRPCServerConfig : virtual public CRPCBasicConfig, virtual public CRPCServerConfigOption

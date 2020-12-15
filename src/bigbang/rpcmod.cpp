@@ -168,7 +168,8 @@ namespace bigbang
 // CRPCMod
 
 CRPCMod::CRPCMod()
-  : IIOModule("rpcmod")
+  : IIOModule("rpcmod"),
+    thrHttpServer("3rdhttpserver", boost::bind(&CRPCMod::HttpServerThreadFunc, this))
 {
     pHttpServer = nullptr;
     pCoreProtocol = nullptr;
@@ -353,11 +354,7 @@ bool CRPCMod::HandleInitialize()
         Error("Failed to request forkmanager");
         return false;
     }
-    // if (!GetObject("httpget", pHttpGet))
-    // {
-    //     cerr << "Failed to request httpget\n";
-    //     return false;
-    // }
+
     if (!GetObject("pusher", pPusher))
     {
         cerr << "Failed to request pusher\n";
@@ -375,8 +372,29 @@ void CRPCMod::HandleDeinitialize()
     pService = nullptr;
     pDataStat = nullptr;
     pForkManager = nullptr;
-    //pHttpGet = nullptr;
     pPusher = nullptr;
+}
+
+bool CRPCMod::HandleInvoke()
+{
+    if (!IIOModule::HandleInvoke())
+    {
+        return false;
+    }
+
+    if (!ThreadDelayStart(thrHttpServer))
+    {
+        return false;
+    }
+    return true;
+}
+
+void CRPCMod::HandleHalt()
+{
+    thrHttpServer.Interrupt();
+    ThreadExit(thrHttpServer);
+
+    IIOModule::HandleHalt();
 }
 
 bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
@@ -4163,19 +4181,20 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
     return MakeCPushBlockResultPtr(spParam->block.strHash);
 }
 
-CPusher::CPusher()
-// : thrDispatch("pushtask", boost::bind(&CPusher::LaunchPushTask, this))
+void CRPCMod::HttpServerThreadFunc()
 {
-    pHttpGet = nullptr;
+    auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
+    (void)pConfig->nHttpPort;
+}
+
+CPusher::CPusher()
+{
     pCoreProtocol = nullptr;
     pService = nullptr;
-    // fIsDispatchRunning = false;
-    // fStopWait = false;
 }
 
 CPusher::~CPusher()
 {
-    pHttpGet = nullptr;
     pCoreProtocol = nullptr;
     pService = nullptr;
 }
@@ -4200,45 +4219,23 @@ bool CPusher::HandleInitialize()
         return false;
     }
 
-    if (!GetObject("httpget", pHttpGet))
-    {
-        Error("Failed to request httpget");
-        return false;
-    }
-
     return true;
 }
 
 void CPusher::HandleDeinitialize()
 {
-    pHttpGet = nullptr;
     pCoreProtocol = nullptr;
     pService = nullptr;
 }
 
 bool CPusher::HandleInvoke()
 {
-    // fIsDispatchRunning = true;
-    // if (!ThreadStart(thrDispatch))
-    // {
-    //     return false;
-    // }
-
     return IIOModule::HandleInvoke();
 }
 
 void CPusher::HandleHalt()
 {
     IIOModule::HandleHalt();
-    // if (thrDispatch.IsRunning())
-    // {
-    //     thrDispatch.Interrupt();
-    // }
-    // thrDispatch.Interrupt();
-    // fIsDispatchRunning = false;
-    // fStopWait = true;
-    // condNewPush.notify_all();
-    // ThreadExit(thrDispatch);
 }
 
 void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& client)

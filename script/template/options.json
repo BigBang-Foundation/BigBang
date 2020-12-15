@@ -158,7 +158,7 @@
             "opt": "httpserverport",
             "default": 0,
             "format": "-httpserverport=port",
-            "desc": "Listen for JSON-RPC Http Server connections on <port> (default: 9906 or testnet: 9908))"
+            "desc": "Listen for JSON-RPC Http Server connections on <port> (default: 9908 or testnet: 9910))"
         },
         {
             "name": "fRPCListen",
