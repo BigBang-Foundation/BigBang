@@ -419,6 +419,70 @@ void CRPCMod::HandleHalt()
     IIOModule::HandleHalt();
 }
 
+std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask)
+{
+    bool fArray;
+    std::string strResult;
+    CRPCReqVec vecReq = DeserializeCRPCReq(content, fArray);
+    CRPCRespVec vecResp;
+    for (auto& spReq : vecReq)
+    {
+        CRPCErrorPtr spError;
+        CRPCResultPtr spResult;
+        try
+        {
+            map<string, RPCFunc>::iterator it = mapRPCFunc.find(spReq->strMethod);
+            if (it == mapRPCFunc.end())
+            {
+                throw CRPCException(RPC_METHOD_NOT_FOUND, "Method not found");
+            }
+
+            if (fWriteRPCLog)
+            {
+                Debug("request : %s ", lmdMask(spReq->Serialize()).c_str());
+            }
+
+            spResult = (this->*(*it).second)(spReq->spParam);
+        }
+        catch (CRPCException& e)
+        {
+            spError = CRPCErrorPtr(new CRPCError(e));
+        }
+        catch (exception& e)
+        {
+            spError = CRPCErrorPtr(new CRPCError(RPC_MISC_ERROR, e.what()));
+        }
+
+        if (spError)
+        {
+            vecResp.push_back(MakeCRPCRespPtr(spReq->valID, spError));
+        }
+        else if (spResult)
+        {
+            vecResp.push_back(MakeCRPCRespPtr(spReq->valID, spResult));
+        }
+        else
+        {
+            // no result means no return
+        }
+    }
+
+    if (fArray)
+    {
+        strResult = SerializeCRPCResp(vecResp);
+    }
+    else if (vecResp.size() > 0)
+    {
+        strResult = vecResp[0]->Serialize();
+    }
+    else
+    {
+        // no result means no return
+    }
+
+    return strResult;
+}
+
 bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
 {
     auto lmdMask = [](const string& data) -> string {
@@ -447,64 +511,7 @@ bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
             }
         }
 
-        bool fArray;
-        std::string content = eventHttpReq.data.strContent;
-        CRPCReqVec vecReq = DeserializeCRPCReq(content, fArray);
-        CRPCRespVec vecResp;
-        for (auto& spReq : vecReq)
-        {
-            CRPCErrorPtr spError;
-            CRPCResultPtr spResult;
-            try
-            {
-                map<string, RPCFunc>::iterator it = mapRPCFunc.find(spReq->strMethod);
-                if (it == mapRPCFunc.end())
-                {
-                    throw CRPCException(RPC_METHOD_NOT_FOUND, "Method not found");
-                }
-
-                if (fWriteRPCLog)
-                {
-                    Debug("request : %s ", lmdMask(spReq->Serialize()).c_str());
-                }
-
-                spResult = (this->*(*it).second)(spReq->spParam);
-            }
-            catch (CRPCException& e)
-            {
-                spError = CRPCErrorPtr(new CRPCError(e));
-            }
-            catch (exception& e)
-            {
-                spError = CRPCErrorPtr(new CRPCError(RPC_MISC_ERROR, e.what()));
-            }
-
-            if (spError)
-            {
-                vecResp.push_back(MakeCRPCRespPtr(spReq->valID, spError));
-            }
-            else if (spResult)
-            {
-                vecResp.push_back(MakeCRPCRespPtr(spReq->valID, spResult));
-            }
-            else
-            {
-                // no result means no return
-            }
-        }
-
-        if (fArray)
-        {
-            strResult = SerializeCRPCResp(vecResp);
-        }
-        else if (vecResp.size() > 0)
-        {
-            strResult = vecResp[0]->Serialize();
-        }
-        else
-        {
-            // no result means no return
-        }
+        strResult = CallRPCFromJSON(eventHttpReq.data.strContent, lmdMask);
     }
     catch (CRPCException& e)
     {

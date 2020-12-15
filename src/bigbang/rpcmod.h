@@ -84,6 +84,8 @@ protected:
     std::string GetWidthString(const std::string& strIn, int nWidth);
     std::string GetWidthString(uint64 nCount, int nWidth);
 
+    std::string CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask);
+
 private:
     /* System */
     rpc::CRPCResultPtr RPCHelp(rpc::CRPCParamPtr param);
