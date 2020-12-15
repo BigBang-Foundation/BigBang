@@ -198,6 +198,13 @@ static const int32 CHANGE_MINT_RATE_HEIGHT = 0;
 static const int32 CHANGE_MINT_RATE_HEIGHT = 580000;
 #endif
 
+// new DeFi relation tx type
+#ifdef BIGBANG_TESTNET
+static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 0;
+#else
+static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 580000;
+#endif
+
 namespace bigbang
 {
 ///////////////////////////////
@@ -918,23 +925,9 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && VerifyDeFiRelationTx(tx, destIn, nBlockHeight, fork) != OK)
     {
-        if (destIn == tx.sendTo)
-        {
-            return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "DeFi relation tx from address must be not equal to sendto address");
-        }
-
-        if (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable");
-        }
-
-        const set<CDestination> setBlacklist = GetDeFiBlacklist(fork, nBlockHeight);
-        if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist");
-        }
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid DeFi relation tx");
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -1098,23 +1091,9 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && VerifyDeFiRelationTx(tx, destIn, nForkHeight, fork) != OK)
     {
-        if (destIn == tx.sendTo)
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address");
-        }
-
-        if ((!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable");
-        }
-
-        const set<CDestination> setBlacklist = GetDeFiBlacklist(fork, nForkHeight);
-        if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist");
-        }
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid DeFi relation tx");
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -1922,6 +1901,69 @@ Errno CCoreProtocol::VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, in
             return ERR_TRANSACTION_SIGNATURE_INVALID;
         }
     }
+    return OK;
+}
+
+Errno CCoreProtocol::VerifyDeFiRelationTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const uint256& fork)
+{
+    if (destIn == tx.sendTo)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address");
+    }
+
+    const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nHeight);
+    if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist");
+    }
+
+    // new relation type
+    if (nHeight >= NEW_DEFI_RELATION_TX_HEIGHT)
+    {
+        if (!tx.sendTo.IsPubKey() || !destIn.IsPubKey())
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be public key address");
+        }
+
+        // vchData: shared_pubkey + sub_sig + parent_sig
+        if (tx.vchData.size() != 160)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx length of vchData is not 160");
+        }
+        uint256 sharedPubKey(vector<uint8>(tx.vchData.begin(), tx.vchData.begin() + 32));
+        vector<uint8> subSign(tx.vchData.begin() + 32, tx.vchData.begin() + 96);
+        vector<uint8> parentSign(tx.vchData.begin() + 96, tx.vchData.end());
+        StdTrace("CCoreProtocol", "VerifyDeFiRelationTx sharedPubKey: %s, subSign: %s, parentSign: %s",
+                 sharedPubKey.ToString().c_str(), ToHexString(subSign).c_str(), ToHexString(parentSign).c_str());
+
+        // sub_sign: sign blake2b(“DeFiRelation” + forkid + shared_pubkey) with sendto
+        crypto::CPubKey subKey = tx.sendTo.GetPubKey();
+        string subSignStr = string("DeFiRelation") + fork.ToString() + sharedPubKey.ToString();
+        uint256 subSignHashStr = crypto::CryptoHash(subSignStr.data(), subSignStr.size());
+        StdTrace("CCoreProtocol", "VerifyDeFiRelationTx subSignStr: %s, subSignHashStr: %s", subSignStr.c_str(), ToHexString(subSignHashStr.begin(), subSignHashStr.size()).c_str());
+        if (!crypto::CryptoVerify(subKey, subSignHashStr.begin(), subSignHashStr.size(), subSign))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sub signature in vchData is not currect");
+        }
+
+        // parent_sign: sign blake2b(“DeFiRelation” + parent_pubkey) with sharedPubKey
+        crypto::CPubKey parentKey = destIn.GetPubKey();
+        string parentSignStr = string("DeFiRelation") + parentKey.ToString();
+        uint256 parentSignHashStr = crypto::CryptoHash(parentSignStr.data(), parentSignStr.size());
+        StdTrace("CCoreProtocol", "VerifyDeFiRelationTx parentSignStr: %s, parentSignHashStr: %s", parentSignStr.c_str(), ToHexString(parentSignHashStr.begin(), parentSignHashStr.size()).c_str());
+        if (!crypto::CryptoVerify(sharedPubKey, parentSignHashStr.begin(), parentSignHashStr.size(), parentSign))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx parent signature in vchData is not currect");
+        }
+    }
+    else
+    {
+        if ((!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable");
+        }
+    }
+
     return OK;
 }
 

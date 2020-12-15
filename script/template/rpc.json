@@ -3101,19 +3101,34 @@
         "request": {
             "type": "object",
             "content": {
-                "pubkey": {
-                    "type": "string",
-                    "desc": "public key"
-                },
                 "message": {
                     "type": "string",
-                    "desc": "message to be signed"
+                    "desc": "message to be signed. It will be hash(blake2b) before sign"
+                },
+                "pubkey": {
+                    "type": "string",
+                    "desc": "public key",
+                    "required": false,
+                    "opt": "pubkey"
+                },
+                "privkey": {
+                    "type": "string",
+                    "desc": "private key",
+                    "required": false,
+                    "opt": "privkey"
                 },
                 "addr": {
                     "type": "string",
                     "desc": "address signed",
                     "required": false,
                     "opt": "a"
+                },
+                "hasprefix": {
+                    "type": "bool",
+                    "desc": "If add magic string(Bigbang Signed Message:\\n) before message or not",
+                    "required": false,
+                    "default": true,
+                    "opt": "p"
                 }
             }
         },
@@ -3130,6 +3145,18 @@
             {
                 "request": "curl -d '{\"id\":4,\"method\":\"signmessage\",\"jsonrpc\":\"2.0\",\"params\":{\"pubkey\":\"2e05c9ee45fdf58f7b007458298042fc3d3ad416a2f9977ace16d14164a3e882\",\"message\":\"123456\"}}' http://127.0.0.1:9902",
                 "response": "{\"id\":4,\"jsonrpc\":\"2.0\",\"result\":\"045977f8c07e6d846d6055357f36a70c16c071cb85115e3ffb498e171a9ac3f4aed1292203a0c8e42c4becafad3ced0d9874abd2a8b788fda9f07099a1e71707\"}"
+            },
+            {
+                "request": "bigbang-cli signmessage dc7547feed1d145c21915a739f1fcc75f7b9f88ebe4dba176628844d6916803e 3bdc5190cd3283c81d6b7a186610ce4ada5e81c4f7fcb153b379afc6154d0014",
+                "response": "98235a42178cf985dfcb58c9e3f728d38b9c60a92107084adc4ce40e391c51593e57ee109ee7c65aca24627219da8fc8e632a57a013967213630e33b17b4b209"
+            },
+            {
+                "request": "bigbang-cli signmessage dc7547feed1d145c21915a739f1fcc75f7b9f88ebe4dba176628844d6916803e -pubkey=3bdc5190cd3283c81d6b7a186610ce4ada5e81c4f7fcb153b379afc6154d0014 -nop",
+                "response": "d73de744d34b4e15dbc790638b65692325adddc4723125139a21e53eee282b79095db38ba27d732d41ad00f5fa2071b3290f8ec77ba69fd8f34537786ae10d07"
+            },
+            {
+                "request": "signmessage DeFiRelation00000000b0a9be545f022309e148894d1e1c853ccac3ef04cb6f5e5c70f41a7006c4246621002576ec70545f04f2cb75378e3f1a16eca2c596fc1c64f52e122b -privkey=1dc5a5956c2de69f597cf20da70523b024470ae789e1d2bfc157c9605f17a33a -nop",
+                "response": "eb3540abf61b9cf57caef4a7c24054a5b8dfcb382de053b5377fcd76f05409f120d61b501c17745a676bc78197f456bc303be3d64a89aad69c587ba6ac86cf0c"
             }
         ],
         "error": [
@@ -3522,6 +3549,13 @@
                     "desc": "address signed",
                     "required": false,
                     "opt": "a"
+                },
+                "hasprefix": {
+                    "type": "bool",
+                    "desc": "If add magic string(Bigbang Signed Message:\\n) before message or not",
+                    "required": false,
+                    "default": true,
+                    "opt": "p"
                 }
             }
         },
@@ -3587,6 +3621,46 @@
             }
         ]
     },
+    "getpubkey": {
+        "type": "command",
+        "name": "GetPubkey",
+        "desc": "Return public key by address or private key.",
+        "request": {
+            "type": "object",
+            "content": {
+                "info": {
+                    "type": "string",
+                    "desc": "address or private key"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "pubkey",
+            "desc": "public key"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli getpubkey 15c02b5f9eb6e516159c230011a87e57757645b53d3534958f910c08feb5c203",
+                "response": "06c4246621002576ec70545f04f2cb75378e3f1a16eca2c596fc1c64f52e122b"
+            },
+            {
+                "request": "curl -d '{\"id\":44,\"method\":\"getpubkey\",\"jsonrpc\":\"2.0\",\"params\":{\"privkey\":\"15c02b5f9eb6e516159c230011a87e57757645b53d3534958f910c08feb5c203\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":44,\"jsonrpc\":\"2.0\",\"result\":\"06c4246621002576ec70545f04f2cb75378e3f1a16eca2c596fc1c64f52e122b\"}"
+            },
+            {
+                "request": "bigbang-cli getpubkey 1z6taz5dyrv2xa11pc92y0ggbrf2wf36gbtk8wjprb96qe3kqwfm3ayc1",
+                "response": "e8e3770e774d5ad84a8ea65ed08cc7c5c30b42e045623604d5c5c6be95afb4f9"
+            },
+            {
+                "request": "curl -d '{\"id\":44,\"method\":\"getpubkey\",\"jsonrpc\":\"2.0\",\"params\":{\"privkey\":\"1z6taz5dyrv2xa11pc92y0ggbrf2wf36gbtk8wjprb96qe3kqwfm3ayc1\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":44,\"jsonrpc\":\"2.0\",\"result\":\"e8e3770e774d5ad84a8ea65ed08cc7c5c30b42e045623604d5c5c6be95afb4f9\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-6,\"message\":\"Invalid pubkey\"}"
+        ]
+    },
     "getpubkeyaddress": {
         "type": "command",
         "name": "GetPubkeyAddress",
@@ -3597,12 +3671,6 @@
                 "pubkey": {
                     "type": "string",
                     "desc": "public key"
-                },
-                "reversal": {
-                    "type": "string",
-                    "desc": "reversal get address pubkey",
-                    "required": false,
-                    "opt": "r"
                 }
             }
         },
