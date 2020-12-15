@@ -391,6 +391,28 @@ bool CRPCMod::HandleInvoke()
 
 void CRPCMod::HandleHalt()
 {
+
+    auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
+
+    httplib::Client cli("127.0.0.1", pConfig->nHttpPort);
+    std::string path = std::string("/") + "stop";
+    if (auto res = cli.Get(path.c_str()))
+    {
+        if (res->status == 200)
+        {
+            StdDebug("CRPCMod", "HandleHalt status 200 with body: %s", res->body.c_str());
+        }
+        else
+        {
+            StdDebug("CRPCMod", "HandleHalt status not 200 with body: %s", res->body.c_str());
+        }
+    }
+    else
+    {
+        auto err = res.error();
+        StdWarn("CRPCMod", "HandleHalt httpclient returned error %d", (int)err);
+    }
+
     thrHttpServer.Interrupt();
     ThreadExit(thrHttpServer);
 
@@ -4184,7 +4206,27 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
 void CRPCMod::HttpServerThreadFunc()
 {
     auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
-    (void)pConfig->nHttpPort;
+
+    using namespace httplib;
+    Server svr;
+
+    svr.Post("/getfork", [](const Request& req, Response& res) {
+        res.set_content("Hello World!", "text/plain");
+    });
+
+    svr.Post("/getblocks", [](const Request& req, Response& res) {
+        res.set_content("Hello World!", "text/plain");
+    });
+
+    svr.Post("/report", [](const Request& req, Response& res) {
+        res.set_content("Hello World!", "text/plain");
+    });
+
+    svr.Get("/stop", [&](const Request& req, Response& res) {
+        svr.stop();
+    });
+
+    svr.listen("0.0.0.0", pConfig->nHttpPort);
 }
 
 CPusher::CPusher()
