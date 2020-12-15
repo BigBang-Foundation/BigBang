@@ -4233,6 +4233,7 @@ void CRPCMod::HttpServerThreadFunc()
 
     svr.Get("/stop", [&svr](const Request& req, Response& res) {
         svr.stop();
+        res.set_header("Server", "bigbang-data-sync-rpc");
         res.set_content("Stopped Http Server", "text/plain");
     });
 
