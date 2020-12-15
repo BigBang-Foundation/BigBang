@@ -168,7 +168,8 @@ namespace bigbang
 // CRPCMod
 
 CRPCMod::CRPCMod()
-  : IIOModule("rpcmod")
+  : IIOModule("rpcmod"),
+    thrHttpServer("3rdhttpserver", boost::bind(&CRPCMod::HttpServerThreadFunc, this))
 {
     pHttpServer = nullptr;
     pCoreProtocol = nullptr;
@@ -353,11 +354,7 @@ bool CRPCMod::HandleInitialize()
         Error("Failed to request forkmanager");
         return false;
     }
-    // if (!GetObject("httpget", pHttpGet))
-    // {
-    //     cerr << "Failed to request httpget\n";
-    //     return false;
-    // }
+
     if (!GetObject("pusher", pPusher))
     {
         cerr << "Failed to request pusher\n";
@@ -375,8 +372,118 @@ void CRPCMod::HandleDeinitialize()
     pService = nullptr;
     pDataStat = nullptr;
     pForkManager = nullptr;
-    //pHttpGet = nullptr;
     pPusher = nullptr;
+}
+
+bool CRPCMod::HandleInvoke()
+{
+    if (!IIOModule::HandleInvoke())
+    {
+        return false;
+    }
+
+    if (!ThreadDelayStart(thrHttpServer))
+    {
+        return false;
+    }
+    return true;
+}
+
+void CRPCMod::HandleHalt()
+{
+
+    auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
+
+    httplib::Client cli(pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
+    std::string path = std::string("/") + "stop";
+    if (auto res = cli.Get(path.c_str()))
+    {
+        if (res->status == 200)
+        {
+            StdDebug("CRPCMod", "HandleHalt status 200 with body: %s", res->body.c_str());
+        }
+        else
+        {
+            StdDebug("CRPCMod", "HandleHalt status not 200 with body: %s", res->body.c_str());
+        }
+    }
+    else
+    {
+        auto err = res.error();
+        StdWarn("CRPCMod", "HandleHalt httpclient returned error %d", (int)err);
+    }
+
+    thrHttpServer.Interrupt();
+    ThreadExit(thrHttpServer);
+
+    IIOModule::HandleHalt();
+}
+
+std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask, bool fNewHttp)
+{
+    bool fArray;
+    std::string strResult;
+    CRPCReqVec vecReq = DeserializeCRPCReq(content, fArray);
+    CRPCRespVec vecResp;
+    for (auto& spReq : vecReq)
+    {
+        CRPCErrorPtr spError;
+        CRPCResultPtr spResult;
+        try
+        {
+            map<string, RPCFunc>::iterator it = mapRPCFunc.find(spReq->strMethod);
+            if (it == mapRPCFunc.end())
+            {
+                throw CRPCException(RPC_METHOD_NOT_FOUND, "Method not found");
+            }
+
+            if (!fNewHttp)
+            {
+                if (fWriteRPCLog)
+                {
+                    Debug("request : %s ", lmdMask(spReq->Serialize()).c_str());
+                }
+            }
+
+            spResult = (this->*(*it).second)(spReq->spParam);
+        }
+        catch (CRPCException& e)
+        {
+            spError = CRPCErrorPtr(new CRPCError(e));
+        }
+        catch (exception& e)
+        {
+            spError = CRPCErrorPtr(new CRPCError(RPC_MISC_ERROR, e.what()));
+        }
+
+        if (spError)
+        {
+            vecResp.push_back(MakeCRPCRespPtr(spReq->valID, spError));
+        }
+        else if (spResult)
+        {
+            vecResp.push_back(MakeCRPCRespPtr(spReq->valID, spResult));
+        }
+        else
+        {
+            // no result means no return
+        }
+    }
+
+    if (fArray)
+    {
+        strResult = SerializeCRPCResp(vecResp);
+    }
+    else if (vecResp.size() > 0)
+    {
+        strResult = vecResp[0]->Serialize();
+    }
+    else
+    {
+        // no result means no return
+    }
+
+    return strResult;
 }
 
 bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
@@ -407,64 +514,7 @@ bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
             }
         }
 
-        bool fArray;
-        std::string content = eventHttpReq.data.strContent;
-        CRPCReqVec vecReq = DeserializeCRPCReq(content, fArray);
-        CRPCRespVec vecResp;
-        for (auto& spReq : vecReq)
-        {
-            CRPCErrorPtr spError;
-            CRPCResultPtr spResult;
-            try
-            {
-                map<string, RPCFunc>::iterator it = mapRPCFunc.find(spReq->strMethod);
-                if (it == mapRPCFunc.end())
-                {
-                    throw CRPCException(RPC_METHOD_NOT_FOUND, "Method not found");
-                }
-
-                if (fWriteRPCLog)
-                {
-                    Debug("request : %s ", lmdMask(spReq->Serialize()).c_str());
-                }
-
-                spResult = (this->*(*it).second)(spReq->spParam);
-            }
-            catch (CRPCException& e)
-            {
-                spError = CRPCErrorPtr(new CRPCError(e));
-            }
-            catch (exception& e)
-            {
-                spError = CRPCErrorPtr(new CRPCError(RPC_MISC_ERROR, e.what()));
-            }
-
-            if (spError)
-            {
-                vecResp.push_back(MakeCRPCRespPtr(spReq->valID, spError));
-            }
-            else if (spResult)
-            {
-                vecResp.push_back(MakeCRPCRespPtr(spReq->valID, spResult));
-            }
-            else
-            {
-                // no result means no return
-            }
-        }
-
-        if (fArray)
-        {
-            strResult = SerializeCRPCResp(vecResp);
-        }
-        else if (vecResp.size() > 0)
-        {
-            strResult = vecResp[0]->Serialize();
-        }
-        else
-        {
-            // no result means no return
-        }
+        strResult = CallRPCFromJSON(eventHttpReq.data.strContent, lmdMask);
     }
     catch (CRPCException& e)
     {
@@ -4163,19 +4213,42 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
     return MakeCPushBlockResultPtr(spParam->block.strHash);
 }
 
-CPusher::CPusher()
-// : thrDispatch("pushtask", boost::bind(&CPusher::LaunchPushTask, this))
+void CRPCMod::HttpServerThreadFunc()
 {
-    pHttpGet = nullptr;
+    auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
+
+    using namespace httplib;
+    Server svr;
+
+    svr.Post("/sync/rpc", [this](const Request& req, Response& res) {
+        auto lmdMask = [](const std::string& data) -> std::string {
+            return data;
+        };
+        std::string content = this->CallRPCFromJSON(req.body, lmdMask, true);
+        content.append("\n");
+        res.set_header("Connection", "Keep-Alive");
+        res.set_header("Server", "bigbang-data-sync-rpc");
+        res.set_content(content.c_str(), "application/json");
+    });
+
+    svr.Get("/stop", [&svr](const Request& req, Response& res) {
+        svr.stop();
+        res.set_header("Server", "bigbang-data-sync-rpc");
+        res.set_content("Stopped Http Server", "text/plain");
+    });
+
+    StdLog("CRPCMod::HttpServerThreadFunc", "Http Server started: %s:%d", pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
+    svr.listen(pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
+}
+
+CPusher::CPusher()
+{
     pCoreProtocol = nullptr;
     pService = nullptr;
-    // fIsDispatchRunning = false;
-    // fStopWait = false;
 }
 
 CPusher::~CPusher()
 {
-    pHttpGet = nullptr;
     pCoreProtocol = nullptr;
     pService = nullptr;
 }
@@ -4200,45 +4273,23 @@ bool CPusher::HandleInitialize()
         return false;
     }
 
-    if (!GetObject("httpget", pHttpGet))
-    {
-        Error("Failed to request httpget");
-        return false;
-    }
-
     return true;
 }
 
 void CPusher::HandleDeinitialize()
 {
-    pHttpGet = nullptr;
     pCoreProtocol = nullptr;
     pService = nullptr;
 }
 
 bool CPusher::HandleInvoke()
 {
-    // fIsDispatchRunning = true;
-    // if (!ThreadStart(thrDispatch))
-    // {
-    //     return false;
-    // }
-
     return IIOModule::HandleInvoke();
 }
 
 void CPusher::HandleHalt()
 {
     IIOModule::HandleHalt();
-    // if (thrDispatch.IsRunning())
-    // {
-    //     thrDispatch.Interrupt();
-    // }
-    // thrDispatch.Interrupt();
-    // fIsDispatchRunning = false;
-    // fStopWait = true;
-    // condNewPush.notify_all();
-    // ThreadExit(thrDispatch);
 }
 
 void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& client)

@@ -44,6 +44,24 @@ bool CRPCBasicConfig::PostLoad()
         nRPCPort = (unsigned short)nRPCPortInt;
     }
 
+    if (strHTTPHost.empty())
+    {
+        strHttpHost = (fTestNet ? DEFAULT_TESTNET_HTTP_HOST : DEFAULT_HTTP_HOST);
+    }
+    else
+    {
+        strHttpHost = strHTTPHost;
+    }
+
+    if (nHTTPPortInt <= 0 || nHTTPPortInt > 0xFFFF)
+    {
+        nHttpPort = (fTestNet ? DEFAULT_TESTNET_HTTP_PORT : DEFAULT_HTTP_PORT);
+    }
+    else
+    {
+        nHttpPort = (unsigned short)nHTTPPortInt;
+    }
+
     if (!strRPCCAFile.empty())
     {
         if (!fs::path(strRPCCAFile).is_complete())

@@ -89,7 +89,7 @@ endif()
 if(UNIX AND NOT APPLE)
     string(APPEND CMAKE_CXX_FLAGS " -lrt")
     if(NOT CYGWIN)
-        link_libraries(-ldl)
+        link_libraries(-ldl -lz)
     endif()
 endif()
 
@@ -137,8 +137,9 @@ endif()
 
 # use _1 instead of boost::placeholders::_1
 add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
-remove_definitions(-DBOOST_SPIRIT_SINGLE_GRAMMAR_INSTANCE)
-#add_definitions(-DBOOST_SPIRIT_THREADSAFE)
+add_definitions(-DBOOST_SPIRIT_SINGLE_GRAMMAR_INSTANCE)
+add_definitions(-DBOOST_SPIRIT_THREADSAFE)
+add_definitions(-DCPPHTTPLIB_ZLIB_SUPPORT)
 
 if(CYGWIN)
     add_definitions(-DBOOST_LOG_DYN_LINK)
