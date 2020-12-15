@@ -29,6 +29,7 @@ public:
     //bool HandleEvent(xengine::CEventHttpGetRsp& event) override;
     // bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
     // bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
+    std::string CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask, bool fNewHttp = false);
 
 protected:
     bool HandleInitialize() override;
@@ -83,8 +84,6 @@ protected:
     bool CheckVersion(std::string& strVersion);
     std::string GetWidthString(const std::string& strIn, int nWidth);
     std::string GetWidthString(uint64 nCount, int nWidth);
-
-    std::string CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask);
 
 private:
     /* System */

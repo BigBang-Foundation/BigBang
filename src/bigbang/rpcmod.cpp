@@ -419,7 +419,7 @@ void CRPCMod::HandleHalt()
     IIOModule::HandleHalt();
 }
 
-std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask)
+std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask, bool fNewHttp)
 {
     bool fArray;
     std::string strResult;
@@ -437,9 +437,12 @@ std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::func
                 throw CRPCException(RPC_METHOD_NOT_FOUND, "Method not found");
             }
 
-            if (fWriteRPCLog)
+            if (!fNewHttp)
             {
-                Debug("request : %s ", lmdMask(spReq->Serialize()).c_str());
+                if (fWriteRPCLog)
+                {
+                    Debug("request : %s ", lmdMask(spReq->Serialize()).c_str());
+                }
             }
 
             spResult = (this->*(*it).second)(spReq->spParam);
@@ -4214,34 +4217,41 @@ void CRPCMod::HttpServerThreadFunc()
 {
     auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
 
-    ICoreProtocol* pTempCoreProtocol = nullptr;
-    IService* pTempService = nullptr;
-    if (!GetObject("coreprotocol", pTempCoreProtocol))
-    {
-        StdError("CRPCMod::HttpServerThreadFunc", "Failed to request coreprotocol");
-        return;
-    }
+    // ICoreProtocol* pTempCoreProtocol = nullptr;
+    // IService* pTempService = nullptr;
+    // if (!GetObject("coreprotocol", pTempCoreProtocol))
+    // {
+    //     StdError("CRPCMod::HttpServerThreadFunc", "Failed to request coreprotocol");
+    //     return;
+    // }
 
-    if (!GetObject("service", pTempService))
-    {
-        StdError("CRPCMod::HttpServerThreadFunc", "Failed to request service");
-        return;
-    }
+    // if (!GetObject("service", pTempService))
+    // {
+    //     StdError("CRPCMod::HttpServerThreadFunc", "Failed to request service");
+    //     return;
+    // }
 
     using namespace httplib;
     Server svr;
 
-    svr.Post("/getfork", [&](const Request& req, Response& res) {
-        res.set_content("Hello World!", "text/plain");
+    svr.Post("/rpc", [this](const Request& req, Response& res) {
+        auto lmdMask = [](const std::string& data) -> std::string {
+            return data;
+        };
+        std::string content = this->CallRPCFromJSON(req.body, lmdMask, true);
+
+        res.set_header("Connection", "Keep-Alive");
+        res.set_header("Server", "bigbang-data-sync-rpc");
+        res.set_content(content.c_str(), "application/json");
     });
 
-    svr.Post("/getblocks", [&](const Request& req, Response& res) {
-        res.set_content("Hello World!", "text/plain");
-    });
+    // svr.Post("/getblocks", [&](const Request& req, Response& res) {
+    //     res.set_content("Hello World!", "text/plain");
+    // });
 
-    svr.Post("/report", [&](const Request& req, Response& res) {
-        res.set_content("Hello World!", "text/plain");
-    });
+    // svr.Post("/report", [&](const Request& req, Response& res) {
+    //     res.set_content("Hello World!", "text/plain");
+    // });
 
     svr.Get("/stop", [&svr](const Request& req, Response& res) {
         svr.stop();
