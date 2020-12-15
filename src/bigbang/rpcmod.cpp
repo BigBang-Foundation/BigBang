@@ -4207,22 +4207,36 @@ void CRPCMod::HttpServerThreadFunc()
 {
     auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
 
+    ICoreProtocol* pTempCoreProtocol = nullptr;
+    IService* pTempService = nullptr;
+    if (!GetObject("coreprotocol", pTempCoreProtocol))
+    {
+        StdError("CRPCMod::HttpServerThreadFunc", "Failed to request coreprotocol");
+        return;
+    }
+
+    if (!GetObject("service", pTempService))
+    {
+        StdError("CRPCMod::HttpServerThreadFunc", "Failed to request service");
+        return;
+    }
+
     using namespace httplib;
     Server svr;
 
-    svr.Post("/getfork", [](const Request& req, Response& res) {
+    svr.Post("/getfork", [&](const Request& req, Response& res) {
         res.set_content("Hello World!", "text/plain");
     });
 
-    svr.Post("/getblocks", [](const Request& req, Response& res) {
+    svr.Post("/getblocks", [&](const Request& req, Response& res) {
         res.set_content("Hello World!", "text/plain");
     });
 
-    svr.Post("/report", [](const Request& req, Response& res) {
+    svr.Post("/report", [&](const Request& req, Response& res) {
         res.set_content("Hello World!", "text/plain");
     });
 
-    svr.Get("/stop", [&](const Request& req, Response& res) {
+    svr.Get("/stop", [&svr](const Request& req, Response& res) {
         svr.stop();
         res.set_content("Stopped Http Server", "text/plain");
     });
