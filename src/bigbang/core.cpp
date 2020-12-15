@@ -1062,7 +1062,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION && VerifyDeFiRelationTx(tx, destIn, nForkHeight, fork) != OK)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && VerifyDeFiRelationTx(tx, destIn, nForkHeight + 1, fork) != OK)
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "invalid DeFi relation tx");
     }
