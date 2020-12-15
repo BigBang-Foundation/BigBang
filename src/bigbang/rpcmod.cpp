@@ -4227,6 +4227,7 @@ void CRPCMod::HttpServerThreadFunc()
         res.set_content("Stopped Http Server", "text/plain");
     });
 
+    StdLog("CRPCMod::HttpServerThreadFunc", "Http Server started: %s:%d", pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
     svr.listen(pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
 }
 
