@@ -1,3 +1,28 @@
+# Version 2.3.0 (2020-12-16)
+
+### Features
+
+- Support ubuntu 20.04 LTS build
+- Change fork created coin from 100000 to 10000
+- Add launch option "excludefork" to exclude some forks subscribed
+- Remove restriction: parent of DeFi fork must be genesis fork, and DeFi fork can't inherit parent fork unspent
+- Add Remove key and RemoveTemplate RPC
+- DeFi: Add new Tx type for mint height
+- Add separating making block function of super node
+- Add address index, remove wallettx and optimize checkrepair for performance
+- Change DPoS trust from weight * (2^bits) to 2^(weight + bits)
+- DeFi: Add black hole address: 100000000000000000000000000000000000000000000000000000000
+- Add dex bbc map template
+- RPC: Add lock height parameter of transaction
+- DeFi: Add New DeFi relation tx
+
+### Fixs
+
+- Fix PoW & DPoS mint rate
+- Fix super node bug
+- Fix txpool remove tx bug
+- Fix some bugs for DeFi 
+
 # Version 2.2.4 (2020-11-18)
 
 ### Fixs
@@ -8,9 +33,6 @@
 - Change DPoS & PoW mint rate
 - Reduce secure memory in Wallet Key
 - Optimize the functions of fork management, mortgage redemption and fork repair
-
-
-
 # Version 2.2.3 (2020-11-04)
 
 ### Fixs
