@@ -1843,6 +1843,16 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
+    int nLockHeight = 0;
+    if (spParam->nLockheight.IsValid())
+    {
+        nLockHeight = (int)(spParam->nLockheight);
+        if (nLockHeight < 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid lockheight");
+        }
+    }
+
     vector<unsigned char> vchData;
     if (spParam->strData.IsValid())
     {
@@ -1903,7 +1913,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, nLockHeight, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
@@ -2058,6 +2068,16 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
+    int nLockHeight = 0;
+    if (spParam->nLockheight.IsValid())
+    {
+        nLockHeight = (int)(spParam->nLockheight);
+        if (nLockHeight < 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid lockheight");
+        }
+    }
+
     vector<unsigned char> vchData;
     if (spParam->strData.IsValid())
     {
@@ -2112,7 +2132,7 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, nLockHeight, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
@@ -2658,6 +2678,10 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
         if (profile.defi.nMintHeight > 0 && profile.defi.nMintHeight < nJointHeight + 2)
         {
             throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param mintheight should be -1 or larger than fork genesis block height");
+        }
+        else if (profile.defi.nMintHeight < -1)
+        {
+            profile.defi.nMintHeight = -1;
         }
 
         profile.defi.nMaxSupply = spParam->defi.nMaxsupply;

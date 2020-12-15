@@ -134,9 +134,32 @@ static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 340935;
 
 // DeFi fork blacklist
 #ifdef BIGBANG_TESTNET
-static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {};
+static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
+    {
+        uint256(),
+        {
+            {
+                0,
+                {
+                    bigbang::CAddress("100000000000000000000000000000000000000000000000000000000"),
+                },
+            },
+        },
+    },
+};
 #else
 static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
+    {
+        uint256(),
+        {
+            {
+                0,
+                {
+                    bigbang::CAddress("100000000000000000000000000000000000000000000000000000000"),
+                },
+            },
+        },
+    },
     {
         uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"),
         {
@@ -174,6 +197,13 @@ static const int32 CHANGE_MINT_RATE_HEIGHT = 580000;
 static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 0;
 #else
 static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 580000;
+#endif
+
+// Change DPoS chain trust
+#ifdef BIGBANG_TESTNET
+static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 0;
+#else
+static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 580000;
 #endif
 
 namespace bigbang
@@ -634,9 +664,9 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
         }
 
         const CDeFiProfile& defi = forkProfile.defi;
-        if (defi.nMintHeight > 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2)
+        if ((defi.nMintHeight < -1) || (defi.nMintHeight > 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2))
         {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mintheight should be -1 or larger than fork genesis block height");
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mintheight should be -1 or 0 or larger than fork genesis block height");
         }
         if (defi.nMaxSupply >= 0 && !MoneyRange(defi.nMaxSupply))
         {
@@ -1258,6 +1288,7 @@ Errno CCoreProtocol::VerifyMintHeightTx(const CTransaction& tx, const CDestinati
 
 bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, const CBlockIndex* pIndexPrev, const CDelegateAgreement& agreement, const CBlockIndex* pIndexRef, size_t nEnrollTrust)
 {
+    int32 nHeight = block.GetBlockHeight();
     if (block.IsGenesis())
     {
         nChainTrust = uint64(0);
@@ -1278,9 +1309,9 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
         }
         else if (pIndexPrev != nullptr)
         {
-            if (!IsDposHeight(block.GetBlockHeight()))
+            if (!IsDposHeight(nHeight))
             {
-                StdError("CCoreProtocol", "GetBlockTrust: not dpos height, height: %d", block.GetBlockHeight());
+                StdError("CCoreProtocol", "GetBlockTrust: not dpos height, height: %d", nHeight);
                 return false;
             }
 
@@ -1300,7 +1331,6 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
                 nAlgo = pIndex->nProofAlgo;
             }
 
-            // DPoS difficulty = weight * (2 ^ nBits)
             int nBits;
             int64 nReward;
             if (GetProofOfWorkTarget(pIndexPrev, nAlgo, nBits, nReward))
@@ -1315,7 +1345,17 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
                     StdError("CCoreProtocol", "GetBlockTrust: nEnrollTrust error, nEnrollTrust: %lu", nEnrollTrust);
                     return false;
                 }
-                nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+
+                if (!IsDPoSNewTrustHeight(nHeight))
+                {
+                    // DPoS difficulty = weight * (2 ^ nBits)
+                    nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+                }
+                else
+                {
+                    // DPoS difficulty = 2 ^ (nBits + weight)
+                    nChainTrust = uint256(1) << (int(nEnrollTrust) + nBits);
+                }
             }
             else
             {
@@ -1432,6 +1472,15 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
 bool CCoreProtocol::IsDposHeight(int height)
 {
     if (height < DELEGATE_PROOF_OF_STAKE_HEIGHT)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CCoreProtocol::IsDPoSNewTrustHeight(int height)
+{
+    if (height < CHANGE_DPOS_CHAIN_TRUST_HEIGHT)
     {
         return false;
     }
@@ -1576,23 +1625,32 @@ int CCoreProtocol::GetRefVacantHeight()
     return REF_VACANT_HEIGHT;
 }
 
-const std::set<CDestination>& CCoreProtocol::GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight)
+const std::set<CDestination> CCoreProtocol::GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight)
 {
-    static set<CDestination> null;
-
-    auto it = mapDeFiBlacklist.find(hashFork);
-    if (it != mapDeFiBlacklist.end())
-    {
-        for (auto& list : boost::adaptors::reverse(it->second))
+    auto f = [](const uint256& hashFork, const int32 nHeight, const map<uint256, map<int, set<CDestination>>>& mapDeFiBlacklist) -> set<CDestination> {
+        auto it = mapDeFiBlacklist.find(hashFork);
+        if (it != mapDeFiBlacklist.end())
         {
-            if (nHeight >= list.first)
+            for (auto& list : boost::adaptors::reverse(it->second))
             {
-                return list.second;
+                if (nHeight >= list.first)
+                {
+                    return list.second;
+                }
             }
         }
+        return set<CDestination>();
+    };
+
+    set<CDestination> commonBlacklist = f(uint256(), nHeight, mapDeFiBlacklist);
+    set<CDestination> forkBlacklist = f(hashFork, nHeight, mapDeFiBlacklist);
+
+    for (auto& dest : commonBlacklist)
+    {
+        forkBlacklist.insert(dest);
     }
 
-    return null;
+    return forkBlacklist;
 }
 
 bool CCoreProtocol::CheckBlockSignature(const CBlock& block)
@@ -2035,6 +2093,15 @@ CProofOfWorkParam::~CProofOfWorkParam()
 bool CProofOfWorkParam::IsDposHeight(int height)
 {
     if (height < nDelegateProofOfStakeHeight)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CProofOfWorkParam::IsDPoSNewTrustHeight(int height)
+{
+    if (height < CHANGE_DPOS_CHAIN_TRUST_HEIGHT)
     {
         return false;
     }

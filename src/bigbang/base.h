@@ -61,6 +61,7 @@ public:
     virtual bool GetBlockTrust(const CBlock& block, uint256& nChainTrust, const CBlockIndex* pIndexPrev = nullptr, const CDelegateAgreement& agreement = CDelegateAgreement(), const CBlockIndex* pIndexRef = nullptr, std::size_t nEnrollTrust = 0) = 0;
     virtual bool GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlgo, int& nBits, int64& nReward) = 0;
     virtual bool IsDposHeight(int height) = 0;
+    virtual bool IsDPoSNewTrustHeight(int height) = 0;
     virtual bool DPoSConsensusCheckRepeated(int height) = 0;
     virtual int64 GetPrimaryMintWorkReward(const CBlockIndex* pIndexPrev) = 0;
     virtual void GetDelegatedBallot(const uint256& nAgreement, const std::size_t nWeight, const std::map<CDestination, size_t>& mapBallot,
@@ -71,7 +72,7 @@ public:
     virtual uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight) = 0;
     virtual bool IsRefVacantHeight(uint32 nBlockHeight) = 0;
     virtual int GetRefVacantHeight() = 0;
-    virtual const std::set<CDestination>& GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) = 0;
+    virtual const std::set<CDestination> GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) = 0;
 };
 
 class IBlockChain : public xengine::IBase
@@ -417,7 +418,7 @@ public:
     virtual bool GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) = 0;
     virtual bool ListTransaction(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx) = 0;
     virtual boost::optional<std::string> CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
-                                                                    const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
+                                                                    const CDestination& destSendTo, const uint16 nType, const int64 nAmount, const int64 nTxFee, const int nLockHeight,
                                                                     const std::vector<unsigned char>& vchData, CTransaction& txNew)
         = 0;
     virtual bool SignOfflineTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, bool& fCompleted) = 0;

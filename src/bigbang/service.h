@@ -78,7 +78,7 @@ public:
     bool GetBalanceByUnspent(const CDestination& dest, const uint256& hashFork, CWalletBalance& balance) override;
     bool ListTransaction(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx) override;
     boost::optional<std::string> CreateTransactionByUnspent(const uint256& hashFork, const CDestination& destFrom,
-                                                            const CDestination& destSendTo, const uint16 nType, int64 nAmount, int64 nTxFee,
+                                                            const CDestination& destSendTo, const uint16 nType, const int64 nAmount, const int64 nTxFee, const int nLockHeight,
                                                             const std::vector<unsigned char>& vchData, CTransaction& txNew) override;
     bool SignOfflineTransaction(const CDestination& destIn, CTransaction& tx, const vector<uint8>& vchDestInData, const vector<uint8>& vchSendToData, const vector<uint8>& vchSignExtraData, bool& fCompleted) override;
     Errno SendOfflineSignedTransaction(CTransaction& tx) override;
