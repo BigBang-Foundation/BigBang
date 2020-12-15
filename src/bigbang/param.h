@@ -98,7 +98,7 @@ static const std::map<uint256, std::map<int, uint256>> mapCheckPointsList = {
         { { 447532, uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805") },
           { 450000, uint256("0006ddd04452bce958ba78a1e044108fb4e9eac31751151b01b236cd2041b9eb") },
           { 521000, uint256("0007f32802af9cccea6de77fe80d8ce4c81d6c2db887b62e15a2ddf637198362") },
-          { 562880, uint256("000896c0a6d9832422162d67ba560b93967c106d04733bd7d97fe5fa235990b1") } },
+          { 562880, uint256("000896c0cf669ca3375a505f14fed8da59e2f86d90d80b02149487b9282c6a4d") } },
     },
     {
         uint256("00068fb1bad4194126b0d1c1fb46b9860d4e899730825bd9511de4b14277d136"), // BBCC
