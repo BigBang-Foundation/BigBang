@@ -4234,12 +4234,12 @@ void CRPCMod::HttpServerThreadFunc()
     using namespace httplib;
     Server svr;
 
-    svr.Post("/rpc", [this](const Request& req, Response& res) {
+    svr.Post("/sync/rpc", [this](const Request& req, Response& res) {
         auto lmdMask = [](const std::string& data) -> std::string {
             return data;
         };
         std::string content = this->CallRPCFromJSON(req.body, lmdMask, true);
-
+        content.append("\n");
         res.set_header("Connection", "Keep-Alive");
         res.set_header("Server", "bigbang-data-sync-rpc");
         res.set_content(content.c_str(), "application/json");
