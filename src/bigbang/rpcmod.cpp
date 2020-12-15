@@ -394,7 +394,7 @@ void CRPCMod::HandleHalt()
 
     auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
 
-    httplib::Client cli("127.0.0.1", pConfig->nHttpPort);
+    httplib::Client cli(pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
     std::string path = std::string("/") + "stop";
     if (auto res = cli.Get(path.c_str()))
     {
@@ -4227,7 +4227,7 @@ void CRPCMod::HttpServerThreadFunc()
         res.set_content("Stopped Http Server", "text/plain");
     });
 
-    svr.listen("0.0.0.0", pConfig->nHttpPort);
+    svr.listen(pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
 }
 
 CPusher::CPusher()

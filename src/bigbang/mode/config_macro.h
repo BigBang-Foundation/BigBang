@@ -20,6 +20,8 @@
 // http port
 #define DEFAULT_HTTP_PORT 9908
 #define DEFAULT_TESTNET_HTTP_PORT 9910
+#define DEFAULT_HTTP_HOST "0.0.0.0"
+#define DEFAULT_TESTNET_HTTP_HOST "0.0.0.0"
 
 // network config
 #define DEFAULT_P2PPORT 9901
