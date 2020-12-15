@@ -189,21 +189,21 @@ static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
 #ifdef BIGBANG_TESTNET
 static const int32 CHANGE_MINT_RATE_HEIGHT = 0;
 #else
-static const int32 CHANGE_MINT_RATE_HEIGHT = 580000;
+static const int32 CHANGE_MINT_RATE_HEIGHT = 565419;
 #endif
 
 // new DeFi relation tx type
 #ifdef BIGBANG_TESTNET
 static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 0;
 #else
-static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 580000;
+static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 565419;
 #endif
 
 // Change DPoS chain trust
 #ifdef BIGBANG_TESTNET
 static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 0;
 #else
-static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 580000;
+static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 565419;
 #endif
 
 namespace bigbang
