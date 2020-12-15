@@ -127,11 +127,9 @@ static const std::map<uint256, std::map<int, uint256>> mapCheckPointsList = {
     },
     {
         uint256("000809d17b026c65a61112dcbbf3ef16cec1c59c6ae8b7cb7027947923a5eb2c"), // USDT BTCAlly
-        { 
-          { 526801, uint256("000809d17b026c65a61112dcbbf3ef16cec1c59c6ae8b7cb7027947923a5eb2c") },
-          { 511112, uint256("0007cc882cde060dc125c0d879b7c3a3f0bf0ab93dcf13b793cf5aa4b64eb793") },
-          { 521000, uint256("0007f3287379c169e8a2a771667c0cbc95f04c8a88536c8cfb58da2df6aa0c7b") },
-          { 562880, uint256("000896c038b2f7b58fe2bb9ff5f7b36cdbad84e156609bb70301186d551b6fae") } },
+        {
+            { 526801, uint256("000809d17b026c65a61112dcbbf3ef16cec1c59c6ae8b7cb7027947923a5eb2c") },
+            { 562880, uint256("000896c038b2f7b58fe2bb9ff5f7b36cdbad84e156609bb70301186d551b6fae") } },
     },
     // {
     //     uint256("00084392ffd16a91e7f66e6271a6b3921c78b37c831470648d441f240afda9a9"), // DEFI
