@@ -7,6 +7,8 @@ import sys
 import re
 import codecs
 
+pattern = r'[\u4e00-\u9fff]+|[\uff01-\uff5e]+'
+
 
 def check_files(path):
     for fpathe, dirs, fs in os.walk(path):
@@ -15,8 +17,8 @@ def check_files(path):
             print(file)
             with codecs.open(file, 'r', encoding='utf8') as fd:
                 content = fd.read()
-            if re.search(r'[\u4e00-\u9fff]+|[\uff01-\uff5e]+', content):
-                print(re.search(r'[\u4e00-\u9fff]+|[\uff01-\uff5e]+', content))
+            if re.search(pattern, content):
+                print(re.search(pattern, content))
                 return False
             else:
                 continue
