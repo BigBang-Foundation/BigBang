@@ -252,7 +252,7 @@ public:
     {
         SetNull();
     }
-    CTxOut(const CDestination destToIn, int64 nAmountIn, uint32 nTxTimeIn, uint32 nLockUntilIn)
+    CTxOut(const CDestination& destToIn, int64 nAmountIn, uint32 nTxTimeIn, uint32 nLockUntilIn)
       : destTo(destToIn), nAmount(nAmountIn), nTxTime(nTxTimeIn), nLockUntil(nLockUntilIn) {}
     CTxOut(const CTransaction& tx)
       : destTo(tx.sendTo)

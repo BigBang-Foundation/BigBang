@@ -320,6 +320,17 @@
                     }
                 }
             },
+            "dexbbcmap": {
+                "type": "object",
+                "desc": "a dex bbc map template",
+                "condition": "type=dexbbcmap",
+                "content": {
+                    "owner": {
+                        "type": "string",
+                        "desc": "owner address"
+                    }
+                }
+            },
             "synctx": {
                 "type": "bool",
                 "desc": "sync tx or not",
@@ -589,6 +600,17 @@
                     "buyer_valid_height": {
                         "type": "int",
                         "desc": "buyer valid height"
+                    }
+                }
+            },
+            "dexbbcmap": {
+                "type": "object",
+                "desc": "a dex bbc map template",
+                "condition": "type=dexbbcmap",
+                "content": {
+                    "owner": {
+                        "type": "string",
+                        "desc": "owner address"
                     }
                 }
             },
@@ -2643,7 +2665,8 @@
             "bigbang-cli addnewtemplate weighted '{\"required\": 1, \"pubkeys\": [{\"key\":\"2e05c9ee45fdf58f7b007458298042fc3d3ad416a2f9977ace16d14164a3e882\", \"weight\": 1},{\"key\": \"f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9\", \"weight\": 2}]}'",
             "bigbang-cli addnewtemplate vote '{\"delegate\": \"20m01802pgptaswc5b2dq09kmj10ns88bn69q0msrnz64mtypx4xm5sff\", \"owner\": \"1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda\"}'",
             "bigbang-cli addnewtemplate dexorder '{\"seller_address\":\"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"coinpair\":\"BBC/MKF\",\"price\":10,\"fee\": 0.002,\"recv_address\":\"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"valid_height\": 300,\"match_address\": \"15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd\",\"deal_address\": \"1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb\",\"timestamp\":1234}'",
-            "bigbang-cli addnewtemplate dexmatch '{\"match_address\": \"15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd\",\"coinpair\":\"BBC/MKF\",\"final_price\":10,\"match_amount\": 15,\"fee\": 0.002,\"secret_hash\":\"41f73534701f620ee8f48ecd61bb422fa9243ccc6ddda5e806f5858121c47268\",\"secret_enc\": \"42f30c39231e1a518e437df6a71e26535ef65f852fb879157bf9903b7d8065edc66eacec81eaef841c1052978b01340e\",\"seller_order_address\": \"2140c6rd39hpdmgv9m1m80h738gz4f2c0kmpvn707p04c7x1kcb8gawj6\",\"seller_address\": \"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"seller_deal_address\": \"1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb\",\"seller_valid_height\": 300,\"buyer_address\": \"1njqk8wmenyvqs4cz7d8b9pjc6tsdhxtzza050a2n02eqpfcr22ggqg47\",\"buyer_amount\": \"150\",\"buyer_secret_hash\":\"dfa313257be0216a498d2eb6e5a1939eb6168d4a9e3356cc20fb957d030b1ac5\",\"buyer_valid_height\":320}'"
+            "bigbang-cli addnewtemplate dexmatch '{\"match_address\": \"15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd\",\"coinpair\":\"BBC/MKF\",\"final_price\":10,\"match_amount\": 15,\"fee\": 0.002,\"secret_hash\":\"41f73534701f620ee8f48ecd61bb422fa9243ccc6ddda5e806f5858121c47268\",\"secret_enc\": \"42f30c39231e1a518e437df6a71e26535ef65f852fb879157bf9903b7d8065edc66eacec81eaef841c1052978b01340e\",\"seller_order_address\": \"2140c6rd39hpdmgv9m1m80h738gz4f2c0kmpvn707p04c7x1kcb8gawj6\",\"seller_address\": \"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"seller_deal_address\": \"1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb\",\"seller_valid_height\": 300,\"buyer_address\": \"1njqk8wmenyvqs4cz7d8b9pjc6tsdhxtzza050a2n02eqpfcr22ggqg47\",\"buyer_amount\": \"150\",\"buyer_secret_hash\":\"dfa313257be0216a498d2eb6e5a1939eb6168d4a9e3356cc20fb957d030b1ac5\",\"buyer_valid_height\":320}'",
+            "bigbang-cli addnewtemplate dexbbcmap '{\"owner\": \"1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda\"}'"
         ],
         "error": [
             "{\"code\":-6,\"message\":\"Invalid parameters,failed to make template\"}",
@@ -3117,6 +3140,12 @@
                     "desc": "mint height of DeFi fork",
                     "required": false,
                     "opt": "mintheight"
+                },
+                "lockheight": {
+                    "type": "int",
+                    "desc": "lock height",
+                    "required": false,
+                    "opt": "lh"
                 }
             }
         },
@@ -3160,6 +3189,10 @@
             {
                 "request": "bigbang-cli sendfrom 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1 -f=00000001aeb53fd1f94825d758ee130f3de63ac235a3744240af15200a6fe07b -type=3 -mintheight=20",
                 "response": "5f43336e0c300c03491c65d0f79ded0d864a4442f6c3eb9af3b736bf123d5aff"
+            },
+            {
+                "request": "bigbang-cli sendfrom 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1ae0mjxfcw0vn90r4y1fnd0qw7rkhha7w9smkaf5n9td48zpkjcwdyv5q 8000 -lh=13",
+                "response": "5fd32be9996a4a7d0282135d93ad519d9f237da6f0b025e5bd3139272c733ec9"
             }
         ],
         "error": [
@@ -3167,6 +3200,7 @@
             "{\"code\":-6,\"message\":\"Invalid to address\"}",
             "{\"code\":-6,\"message\":\"Invalid fork\"}",
             "{\"code\":-6,\"message\":\"Unknown fork\"}",
+            "{\"code\":-6,\"message\":\"Invalid lockheight\"}",
             "{\"code\":-401,\"message\":\"Failed to create transaction\"}",
             "{\"code\":-401,\"message\":\"Failed to sign transaction\"}",
             "{\"code\":-401,\"message\":\"The signature is not completed\"}",
@@ -3225,6 +3259,12 @@
                     "desc": "mint height of DeFi fork",
                     "required": false,
                     "opt": "mintheight"
+                },
+                "lockheight": {
+                    "type": "int",
+                    "desc": "lock height",
+                    "required": false,
+                    "opt": "lh"
                 }
             }
         },
@@ -3250,8 +3290,12 @@
                 "response": "{\"id\":17,\"jsonrpc\":\"2.0\",\"result\":\"010002006334435f0000000091d2b15e9aeeb57483889873bd0aea1273c8e5bb8df436c2bd4e85060000000001ff5a3d12bf36b7f39aebc3f642444a860ded9df7d0651c49030c300c6e33435f010115b2e80b434e4bb47cecbbbd223c09db3be24aa06c1c8ba0cb9d2781208ba1e140420f000000000010270000000000000000\"}"
             },
             {
-                "request": "createtransaction 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1 -f=00000001ba93ccb7402df70b511637223a08ebbe33c7504eda28235028130d32 -type=3 -mintheight=3000",
+                "request": "bigbang-cli createtransaction 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1 -f=00000001ba93ccb7402df70b511637223a08ebbe33c7504eda28235028130d32 -type=3 -mintheight=3000",
                 "response": "01000300b0abc05f00000000320d1328502328da4e50c733beeb083a223716510bf72d40b7cc93ba010000000136824ad81f09da9e47fde50e5e2bb228b25ae289966e305c04c25babca6dbf5f0001498b63009dfb70f7ee0902ba95cc171f7d7a97ff16d89fd96e1f1b9e7d5f91da40420f0000000000307500000000000004b80b000000"
+            },
+            {
+                "request": "bigbang-cli createtransaction 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1ae0mjxfcw0vn90r4y1fnd0qw7rkhha7w9smkaf5n9td48zpkjcwdyv5q 3000 -lh=16",
+                "response": "01000000af2cd35f1000000091d2b15e9aeeb57483889873bd0aea1273c8e5bb8df436c2bd4e85060000000001c3acca171f8703848537280e0a19676cb31f9379b99e069082ab706a862cd35f000153814975ece037548304f05f5682fc3e2718a8fc4e69353cb54e9a447ed39338005ed0b20000000010270000000000000000"
             }
         ],
         "error": [
@@ -3259,6 +3303,7 @@
             "{\"code\":-6,\"message\":\"Invalid to address\"}",
             "{\"code\":-6,\"message\":\"Invalid fork\"}",
             "{\"code\":-6,\"message\":\"Unknown fork\"}",
+            "{\"code\":-6,\"message\":\"Invalid lockheight\"}",
             "{\"code\":-401,\"message\":\"Failed to create transaction\"}"
         ]
     },
@@ -3345,19 +3390,34 @@
         "request": {
             "type": "object",
             "content": {
-                "pubkey": {
-                    "type": "string",
-                    "desc": "public key"
-                },
                 "message": {
                     "type": "string",
-                    "desc": "message to be signed"
+                    "desc": "message to be signed. It will be hash(blake2b) before sign"
+                },
+                "pubkey": {
+                    "type": "string",
+                    "desc": "public key",
+                    "required": false,
+                    "opt": "pubkey"
+                },
+                "privkey": {
+                    "type": "string",
+                    "desc": "private key",
+                    "required": false,
+                    "opt": "privkey"
                 },
                 "addr": {
                     "type": "string",
                     "desc": "address signed",
                     "required": false,
                     "opt": "a"
+                },
+                "hasprefix": {
+                    "type": "bool",
+                    "desc": "If add magic string(Bigbang Signed Message:\\n) before message or not",
+                    "required": false,
+                    "default": true,
+                    "opt": "p"
                 }
             }
         },
@@ -3373,6 +3433,18 @@
             {
                 "request": "curl -d '{\"id\":4,\"method\":\"signmessage\",\"jsonrpc\":\"2.0\",\"params\":{\"pubkey\":\"2e05c9ee45fdf58f7b007458298042fc3d3ad416a2f9977ace16d14164a3e882\",\"message\":\"123456\"}}' http://127.0.0.1:9902",
                 "response": "{\"id\":4,\"jsonrpc\":\"2.0\",\"result\":\"045977f8c07e6d846d6055357f36a70c16c071cb85115e3ffb498e171a9ac3f4aed1292203a0c8e42c4becafad3ced0d9874abd2a8b788fda9f07099a1e71707\"}"
+            },
+            {
+                "request": "bigbang-cli signmessage dc7547feed1d145c21915a739f1fcc75f7b9f88ebe4dba176628844d6916803e 3bdc5190cd3283c81d6b7a186610ce4ada5e81c4f7fcb153b379afc6154d0014",
+                "response": "98235a42178cf985dfcb58c9e3f728d38b9c60a92107084adc4ce40e391c51593e57ee109ee7c65aca24627219da8fc8e632a57a013967213630e33b17b4b209"
+            },
+            {
+                "request": "bigbang-cli signmessage dc7547feed1d145c21915a739f1fcc75f7b9f88ebe4dba176628844d6916803e -pubkey=3bdc5190cd3283c81d6b7a186610ce4ada5e81c4f7fcb153b379afc6154d0014 -nop",
+                "response": "d73de744d34b4e15dbc790638b65692325adddc4723125139a21e53eee282b79095db38ba27d732d41ad00f5fa2071b3290f8ec77ba69fd8f34537786ae10d07"
+            },
+            {
+                "request": "signmessage DeFiRelation00000000b0a9be545f022309e148894d1e1c853ccac3ef04cb6f5e5c70f41a7006c4246621002576ec70545f04f2cb75378e3f1a16eca2c596fc1c64f52e122b -privkey=1dc5a5956c2de69f597cf20da70523b024470ae789e1d2bfc157c9605f17a33a -nop",
+                "response": "eb3540abf61b9cf57caef4a7c24054a5b8dfcb382de053b5377fcd76f05409f120d61b501c17745a676bc78197f456bc303be3d64a89aad69c587ba6ac86cf0c"
             }
         ],
         "error": [
@@ -3761,6 +3833,13 @@
                     "desc": "address signed",
                     "required": false,
                     "opt": "a"
+                },
+                "hasprefix": {
+                    "type": "bool",
+                    "desc": "If add magic string(Bigbang Signed Message:\\n) before message or not",
+                    "required": false,
+                    "default": true,
+                    "opt": "p"
                 }
             }
         },
@@ -3824,6 +3903,46 @@
             }
         ]
     },
+    "getpubkey": {
+        "type": "command",
+        "name": "GetPubkey",
+        "desc": "Return public key by address or private key.",
+        "request": {
+            "type": "object",
+            "content": {
+                "privkeyaddress": {
+                    "type": "string",
+                    "desc": "address or private key"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "pubkey",
+            "desc": "public key"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli getpubkey 15c02b5f9eb6e516159c230011a87e57757645b53d3534958f910c08feb5c203",
+                "response": "06c4246621002576ec70545f04f2cb75378e3f1a16eca2c596fc1c64f52e122b"
+            },
+            {
+                "request": "curl -d '{\"id\":44,\"method\":\"getpubkey\",\"jsonrpc\":\"2.0\",\"params\":{\"privkey\":\"15c02b5f9eb6e516159c230011a87e57757645b53d3534958f910c08feb5c203\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":44,\"jsonrpc\":\"2.0\",\"result\":\"06c4246621002576ec70545f04f2cb75378e3f1a16eca2c596fc1c64f52e122b\"}"
+            },
+            {
+                "request": "bigbang-cli getpubkey 1z6taz5dyrv2xa11pc92y0ggbrf2wf36gbtk8wjprb96qe3kqwfm3ayc1",
+                "response": "e8e3770e774d5ad84a8ea65ed08cc7c5c30b42e045623604d5c5c6be95afb4f9"
+            },
+            {
+                "request": "curl -d '{\"id\":44,\"method\":\"getpubkey\",\"jsonrpc\":\"2.0\",\"params\":{\"privkey\":\"1z6taz5dyrv2xa11pc92y0ggbrf2wf36gbtk8wjprb96qe3kqwfm3ayc1\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":44,\"jsonrpc\":\"2.0\",\"result\":\"e8e3770e774d5ad84a8ea65ed08cc7c5c30b42e045623604d5c5c6be95afb4f9\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-6,\"message\":\"Invalid pubkey\"}"
+        ]
+    },
     "getpubkeyaddress": {
         "type": "command",
         "name": "GetPubkeyAddress",
@@ -3834,12 +3953,6 @@
                 "pubkey": {
                     "type": "string",
                     "desc": "public key"
-                },
-                "reversal": {
-                    "type": "string",
-                    "desc": "reversal get address pubkey",
-                    "required": false,
-                    "opt": "r"
                 }
             }
         },

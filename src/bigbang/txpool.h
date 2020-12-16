@@ -131,11 +131,11 @@ public:
           : txidNextTx(uint64(0)) {}
         CSpent(const CTxOut& output)
           : CTxOut(output), txidNextTx(uint64(0)) {}
-        CSpent(const uint256& txidNextTxIn)
-          : txidNextTx(txidNextTxIn) {}
-        void SetSpent(const uint256& txidNextTxIn)
+        CSpent(const CDestination& destToIn, const uint256& txidNextTxIn)
+          : CTxOut(destToIn, 0, 0, 0), txidNextTx(txidNextTxIn) {}
+        void SetSpent(const CDestination& destToIn, const uint256& txidNextTxIn)
         {
-            *this = CSpent(txidNextTxIn);
+            *this = CSpent(destToIn, txidNextTxIn);
         }
         void SetUnspent(const CTxOut& output)
         {
@@ -257,7 +257,7 @@ public:
     }
     void SetSpent(const CTxOutPoint& out, const CDestination& destIn, const uint256& txidNextTxIn)
     {
-        mapSpent[out].SetSpent(txidNextTxIn);
+        mapSpent[out].SetSpent(destIn, txidNextTxIn);
         if (!destIn.IsNull())
         {
             mapAddressUnspent[destIn].SetTxSpent(out);

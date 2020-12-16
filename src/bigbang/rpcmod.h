@@ -79,7 +79,6 @@ protected:
         return true;
     }
     bool CheckWalletError(Errno err);
-    bigbang::crypto::CPubKey GetPubKey(const std::string& addr);
     void ListDestination(std::vector<CDestination>& vDestination);
     bool CheckVersion(std::string& strVersion);
     std::string GetWidthString(const std::string& strIn, int nWidth);
@@ -142,6 +141,7 @@ private:
     /* Util */
     rpc::CRPCResultPtr RPCVerifyMessage(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCMakeKeyPair(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCGetPubKey(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetPubKeyAddress(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetTemplateAddress(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCMakeTemplate(rpc::CRPCParamPtr param);

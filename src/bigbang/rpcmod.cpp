@@ -289,6 +289,8 @@ CRPCMod::CRPCMod()
         //
         ("makekeypair", &CRPCMod::RPCMakeKeyPair)
         //
+        ("getpubkey", &CRPCMod::RPCGetPubKey)
+        //
         ("getpubkeyaddress", &CRPCMod::RPCGetPubKeyAddress)
         //
         ("gettemplateaddress", &CRPCMod::RPCGetTemplateAddress)
@@ -493,7 +495,7 @@ bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
         // or passphrass from log content
 
         //log for debug mode
-        boost::regex ptnSec(R"raw(("privkey"|"passphrase"|"oldpassphrase"|"signsecret")(\s*:\s*)(".*?"))raw", boost::regex::perl);
+        boost::regex ptnSec(R"raw(("privkey"|"passphrase"|"oldpassphrase"|"signsecret"|"privkeyaddress")(\s*:\s*)(".*?"))raw", boost::regex::perl);
         return boost::regex_replace(data, ptnSec, string(R"raw($1$2"***")raw"));
     };
 
@@ -587,24 +589,6 @@ bool CRPCMod::CheckWalletError(Errno err)
         break;
     }
     return (err == OK);
-}
-
-crypto::CPubKey CRPCMod::GetPubKey(const string& addr)
-{
-    crypto::CPubKey pubkey;
-    CAddress address(addr);
-    if (!address.IsNull())
-    {
-        if (!address.GetPubKey(pubkey))
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address, should be pubkey address");
-        }
-    }
-    else
-    {
-        pubkey.SetHex(addr);
-    }
-    return pubkey;
 }
 
 void CRPCMod::ListDestination(vector<CDestination>& vDestination)
@@ -1914,6 +1898,16 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
+    int nLockHeight = 0;
+    if (spParam->nLockheight.IsValid())
+    {
+        nLockHeight = (int)(spParam->nLockheight);
+        if (nLockHeight < 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid lockheight");
+        }
+    }
+
     vector<unsigned char> vchData;
     if (spParam->strData.IsValid())
     {
@@ -1974,7 +1968,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, nLockHeight, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
@@ -2129,6 +2123,16 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
+    int nLockHeight = 0;
+    if (spParam->nLockheight.IsValid())
+    {
+        nLockHeight = (int)(spParam->nLockheight);
+        if (nLockHeight < 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid lockheight");
+        }
+    }
+
     vector<unsigned char> vchData;
     if (spParam->strData.IsValid())
     {
@@ -2183,7 +2187,7 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, nLockHeight, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
@@ -2279,24 +2283,47 @@ CRPCResultPtr CRPCMod::RPCSignMessage(CRPCParamPtr param)
     auto spParam = CastParamPtr<CSignMessageParam>(param);
 
     crypto::CPubKey pubkey;
-    pubkey.SetHex(spParam->strPubkey);
+    crypto::CKey privkey;
+    if (spParam->strPubkey.IsValid())
+    {
+        if (pubkey.SetHex(spParam->strPubkey) != spParam->strPubkey.size())
+        {
+            throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Invalid pubkey error");
+        }
+    }
+    else if (spParam->strPrivkey.IsValid())
+    {
+        uint256 nPriv;
+        if (nPriv.SetHex(spParam->strPrivkey) != spParam->strPrivkey.size())
+        {
+            throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
+        }
+        privkey.SetSecret(crypto::CCryptoKeyData(nPriv.begin(), nPriv.end()));
+    }
+    else
+    {
+        throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "no pubkey or privkey");
+    }
 
     string strMessage = spParam->strMessage;
 
-    int nVersion;
-    bool fLocked, fPublic;
-    int64 nAutoLockTime;
-    if (!pService->GetKeyStatus(pubkey, nVersion, fLocked, nAutoLockTime, fPublic))
+    if (!!pubkey)
     {
-        throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Unknown key");
-    }
-    if (fPublic)
-    {
-        throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Can't sign message by public key");
-    }
-    if (fLocked)
-    {
-        throw CRPCException(RPC_WALLET_UNLOCK_NEEDED, "Key is locked");
+        int nVersion;
+        bool fLocked, fPublic;
+        int64 nAutoLockTime;
+        if (!pService->GetKeyStatus(pubkey, nVersion, fLocked, nAutoLockTime, fPublic))
+        {
+            throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Unknown key");
+        }
+        if (fPublic)
+        {
+            throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Can't sign message by public key");
+        }
+        if (fLocked)
+        {
+            throw CRPCException(RPC_WALLET_UNLOCK_NEEDED, "Key is locked");
+        }
     }
 
     vector<unsigned char> vchSig;
@@ -2308,20 +2335,50 @@ CRPCResultPtr CRPCMod::RPCSignMessage(CRPCParamPtr param)
         {
             throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address parameters");
         }
-        if (!pService->SignSignature(pubkey, addr.GetTemplateId(), vchSig))
+        if (!!pubkey)
         {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            if (!pService->SignSignature(pubkey, addr.GetTemplateId(), vchSig))
+            {
+                throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            }
+        }
+        else
+        {
+            if (!privkey.Sign(addr.GetTemplateId(), vchSig))
+            {
+                throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            }
         }
     }
     else
     {
-        const string strMessageMagic = "Bigbang Signed Message:\n";
-        CBufStream ss;
-        ss << strMessageMagic;
-        ss << strMessage;
-        if (!pService->SignSignature(pubkey, crypto::CryptoHash(ss.GetData(), ss.GetSize()), vchSig))
+        uint256 hashStr;
+        if (spParam->fHasprefix)
         {
-            throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            CBufStream ss;
+            const string strMessageMagic = "Bigbang Signed Message:\n";
+            ss << strMessageMagic;
+            ss << strMessage;
+            hashStr = crypto::CryptoHash(ss.GetData(), ss.GetSize());
+        }
+        else
+        {
+            hashStr = crypto::CryptoHash(strMessage.data(), strMessage.size());
+        }
+
+        if (!!pubkey)
+        {
+            if (!pService->SignSignature(pubkey, hashStr, vchSig))
+            {
+                throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            }
+        }
+        else
+        {
+            if (!privkey.Sign(hashStr, vchSig))
+            {
+                throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+            }
         }
     }
     return MakeCSignMessageResultPtr(ToHexString(vchSig));
@@ -2676,6 +2733,10 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
         if (profile.defi.nMintHeight > 0 && profile.defi.nMintHeight < nJointHeight + 2)
         {
             throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param mintheight should be -1 or larger than fork genesis block height");
+        }
+        else if (profile.defi.nMintHeight < -1)
+        {
+            profile.defi.nMintHeight = -1;
         }
 
         profile.defi.nMaxSupply = spParam->defi.nMaxsupply;
@@ -3035,12 +3096,20 @@ CRPCResultPtr CRPCMod::RPCVerifyMessage(CRPCParamPtr param)
     }
     else
     {
-        const string strMessageMagic = "Bigbang Signed Message:\n";
-        CBufStream ss;
-        ss << strMessageMagic;
-        ss << strMessage;
-        return MakeCVerifyMessageResultPtr(
-            pubkey.Verify(crypto::CryptoHash(ss.GetData(), ss.GetSize()), vchSig));
+        uint256 hashStr;
+        if (spParam->fHasprefix)
+        {
+            CBufStream ss;
+            const string strMessageMagic = "Bigbang Signed Message:\n";
+            ss << strMessageMagic;
+            ss << strMessage;
+            hashStr = crypto::CryptoHash(ss.GetData(), ss.GetSize());
+        }
+        else
+        {
+            hashStr = crypto::CryptoHash(strMessage.data(), strMessage.size());
+        }
+        return MakeCVerifyMessageResultPtr(pubkey.Verify(hashStr, vchSig));
     }
 }
 
@@ -3055,6 +3124,37 @@ CRPCResultPtr CRPCMod::RPCMakeKeyPair(CRPCParamPtr param)
     spResult->strPrivkey = key.secret.GetHex();
     spResult->strPubkey = key.pubkey.GetHex();
     return spResult;
+}
+
+CRPCResultPtr CRPCMod::RPCGetPubKey(CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CGetPubkeyParam>(param);
+    crypto::CPubKey pubkey;
+    {
+        CAddress address(spParam->strPrivkeyaddress);
+        if (!address.IsNull())
+        {
+            if (!address.GetPubKey(pubkey))
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "Invalid pubkey address");
+            }
+            return MakeCGetPubkeyResultPtr(pubkey.ToString());
+        }
+    }
+    {
+        uint256 nPriv;
+        if (nPriv.SetHex(spParam->strPrivkeyaddress) == spParam->strPrivkeyaddress.size())
+        {
+            crypto::CKey key;
+            if (!key.SetSecret(crypto::CCryptoKeyData(nPriv.begin(), nPriv.end())))
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "Get pubkey by privkey error");
+            }
+            return MakeCGetPubkeyResultPtr(key.GetPubKey().ToString());
+        }
+    }
+
+    throw CRPCException(RPC_INVALID_PARAMETER, "Invalid address or privkey");
 }
 
 CRPCResultPtr CRPCMod::RPCGetPubKeyAddress(CRPCParamPtr param)
@@ -4456,162 +4556,11 @@ bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const st
 
 bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
 {
-    // try
-    // {
-    //     CHttpRsp& rsp = event.data;
-
-    //     StdWarn("CPusher", "Response Content %s", rsp.strContent.c_str());
-    //     if (rsp.nStatusCode < 0)
-    //     {
-
-    //         const char* strErr[] = { "", "connect failed", "invalid nonce", "activate failed",
-    //                                  "disconnected", "no response", "resolve failed",
-    //                                  "internal failure", "aborted" };
-
-    //         //RemoveClient(event.nNonce);
-    //         StdError("CPusher", rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
-
-    //         if (pHttpGet && rsp.nStatusCode == HTTPGET_CONNECT_FAILED)
-    //         {
-    //             CEventHttpAbort eventAbort(event.nNonce);
-    //             CHttpAbort& httpAbort = eventAbort.data;
-    //             httpAbort.strIOModule = GetOwnKey();
-    //             httpAbort.vNonce.push_back(event.nNonce);
-    //             pHttpGet->DispatchEvent(&eventAbort);
-    //         }
-
-    //         ioComplt.Completed(false);
-    //         return true;
-    //     }
-    //     if (rsp.nStatusCode == 401)
-    //     {
-    //         //RemoveClient(event.nNonce);
-    //         StdError("CPusher", "incorrect rpcuser or rpcpassword (authorization failed)");
-    //         ioComplt.Completed(false);
-    //         return true;
-    //     }
-    //     else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
-    //     {
-    //         ostringstream oss;
-    //         oss << "server returned HTTP error " << rsp.nStatusCode;
-    //         //RemoveClient(event.nNonce);
-    //         StdError("CPusher", oss.str().c_str());
-    //         ioComplt.Completed(false);
-    //         return true;
-    //     }
-    //     else if (rsp.strContent.empty())
-    //     {
-    //         StdError("CPusher", "no response from server");
-    //         ioComplt.Completed(false);
-    //         return true;
-    //     }
-
-    //     // Parse reply
-    //     if (Config()->fDebug)
-    //     {
-    //         //cout << "response: " << rsp.strContent;
-    //         StdDebug("CPusher", "response: ", rsp.strContent.c_str());
-    //     }
-
-    //     std::string content = rsp.strContent;
-    //     // auto spResp = DeserializeCRPCResp("", content);
-    //     // if (spResp->IsError())
-    //     // {
-    //     //     // Error
-    //     //     //cerr << spResp->spError->Serialize(true) << endl;
-    //     //     //cerr << strServerHelpTips << endl;
-    //     //     StdError("CPusher", "RPC Response error: %s", spResp->spError->Serialize(true).c_str());
-    //     //     StdError("CPusher", "RPC Response error tips: %s", strServerHelpTips.c_str());
-    //     //     ioComplt.Completed(false);
-    //     //     return true;
-    //     // }
-    //     // else if (spResp->IsSuccessful())
-    //     // {
-    //     //     //cout << spResp->spResult->Serialize(true) << endl;
-    //     // }
-    //     // else
-    //     // {
-    //     //     //cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
-    //     //     StdError("CPusher", "server error: neither error nor result. resp:  %s", spResp->Serialize(true).c_str());
-    //     //     ioComplt.Completed(false);
-    //     //     return true;
-    //     // }
-
-    //     auto jsonObj = nlohmann::json::parse(content);
-    //     if (!jsonObj.is_object())
-    //     {
-    //         StdError("CPusher", "server error: neither error nor result. resp:  %s", content.c_str());
-    //         ioComplt.Completed(false);
-    //         return true;
-    //     }
-    // }
-    // catch (const std::exception& e)
-    // {
-    //     StdError("CPusher", "RPC Response Exception: %s ", e.what());
-    //     ioComplt.Completed(false);
-    //     return true;
-    // }
-    // ioComplt.Completed(false);
     return true;
 }
 
 bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content, std::string& response)
 {
-
-    // CEventHttpGet eventHttpGet(nNonce);
-    // CHttpReqData& httpReqData = eventHttpGet.data;
-    // httpReqData.strIOModule = GetOwnKey();
-    // httpReqData.nTimeout = /*Config()->nRPCConnectTimeout*/ 1;
-
-    // CNetHost host(strHost, nPort);
-    // httpReqData.mapHeader["host"] = host.ToString();
-    // httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
-    // //httpReqData.mapHeader["url"] = "/" + strURL;
-    // httpReqData.mapHeader["method"] = "POST";
-    // httpReqData.mapHeader["accept"] = "application/json";
-    // httpReqData.mapHeader["content-type"] = "application/json";
-    // httpReqData.mapHeader["user-agent"] = string("bigbang-json-rpc/");
-    // httpReqData.mapHeader["connection"] = "Keep-Alive";
-    // if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
-    // {
-    //     httpReqData.strProtocol = "https";
-    //     // httpReqData.fVerifyPeer = Config()->fRPCSSLVerify;
-    //     // httpReqData.strPathCA = Config()->strRPCCAFile;
-    //     // httpReqData.strPathCert = Config()->strRPCCertFile;
-    //     // httpReqData.strPathPK = Config()->strRPCPKFile;
-    // }
-    // else
-    // {
-    //     httpReqData.strProtocol = "http";
-    // }
-
-    // CNetHost host(strHost, nPort);
-    // httpReqData.mapHeader["host"] = host.ToString();
-    // //httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
-    // httpReqData.mapHeader["url"] = "/" + strURL;
-    // httpReqData.mapHeader["method"] = "POST";
-    // httpReqData.mapHeader["accept"] = "application/json";
-    // httpReqData.mapHeader["content-type"] = "application/json";
-    // httpReqData.mapHeader["user-agent"] = string("bigbang-json-rpc/");
-    // httpReqData.mapHeader["connection"] = "Keep-Alive";
-    // // if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
-    // // {
-    // //     string strAuth;
-    // //     CHttpUtil().Base64Encode(Config()->strRPCUser + ":" + Config()->strRPCPass, strAuth);
-    // //     httpReqData.mapHeader["authorization"] = string("Basic ") + strAuth;
-    // // }
-
-    // httpReqData.strContent = content + "\n";
-
-    // ioComplt.Reset();
-
-    // if (!pHttpGet->DispatchEvent(&eventHttpGet))
-    // {
-    //     return false;
-    // }
-    // bool fResult = false;
-    // return (ioComplt.WaitForComplete(fResult) && fResult);
-    //return true;
 
     httplib::Client cli(strHost, nPort);
     std::string path = std::string("/") + strURL;
@@ -4619,7 +4568,7 @@ bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, cons
         { "Accept-Encoding", "gzip, deflate" },
         { "Connection", "Keep-Alive" },
         { "Accept", "application/json" },
-        { "User-Agent", "bigbang-json-rpc/" }
+        { "User-Agent", "bigbang-data-sync-rpc/" }
     };
     if (auto res = cli.Post(path.c_str(), headers, content, "application/json"))
     {
