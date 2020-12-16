@@ -15,7 +15,8 @@ def check_files(path):
             print(file)
             with codecs.open(file, 'r', encoding='utf8') as fd:
                 content = fd.read()
-            if re.search(r'[\u4e00-\u9fff]+', content):
+            if re.search(r'[\u4e00-\u9fff]+|[\uff01-\uff5e]+', content):
+                print(re.search(r'[\u4e00-\u9fff]+|[\uff01-\uff5e]+', content))
                 return False
             else:
                 continue
