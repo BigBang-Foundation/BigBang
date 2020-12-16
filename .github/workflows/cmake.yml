@@ -66,14 +66,20 @@ jobs:
           ./build/test/test_big
           ./build/test/test_ctsdb
 
-      # cppcheck
-      - name: CPPCheck
+      # Check
+      - name: Check
         working-directory: ${{github.workspace}}
         shell: bash
         if: matrix.os == 'ubuntu-18.04'
         run: |
           cppcheck --error-exitcode=1 --std=c++11 --enable=warning,performance,portability -i libsodium-1.0.18 -i src/leveldb -i build -i src/snappy -i src/crypto -i src/jsonrpc/json -i src/xengine/docker -i script -i test .
-
+          ./tools/check-char.py ./src/bigbang
+          ./tools/check-char.py ./src/xengine
+          ./tools/check-char.py ./src/common
+          ./tools/check-char.py ./src/storage
+          ./tools/check-char.py ./src/network
+          ./tools/check-char.py ./src/crypto
+          ./tools/check-char.py ./src/delegate
   build-macos:
     runs-on: macos-latest
 
