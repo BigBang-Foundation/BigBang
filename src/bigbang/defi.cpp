@@ -322,11 +322,14 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
             pNode->data.nPower += llround(pow(nMax, 1.0 / 3));
         }
 
-        if (pNode->data.nPower > 0)
-        {
-            nTotal += pNode->data.nPower;
-            mapPower.insert(make_pair(pNode->data.nPower, make_tuple(pNode->key, nAmount, pNode->data.nAmount)));
-        }
+        // FIXME: only for DeFi App
+        // if (pNode->data.nPower > 0)
+        // {
+        //     nTotal += pNode->data.nPower;
+        //     mapPower.insert(make_pair(pNode->data.nPower, make_tuple(pNode->key, nAmount, pNode->data.nAmount)));
+        // }
+        nTotal += pNode->data.nPower;
+        mapPower.insert(make_pair(pNode->data.nPower, make_tuple(pNode->key, nAmount, pNode->data.nAmount)));
 
         return true;
     });

@@ -2464,23 +2464,67 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
             reward.nReward += it->nPromotionReward;
             destIdx.erase(it);
         }
-
-        // check reward > txfee
-        if (reward.nReward > NEW_MIN_TX_FEE)
+        // FIXME: only for DeFi App
+        else
         {
-            reward.hashAnchor = hash;
-            s.insert(move(reward));
+            reward.nAchievement = stake.nAmount / COIN;
         }
+
+        // FIXME: only for DeFi App
+        // // check reward > txfee
+        // if (reward.nReward > NEW_MIN_TX_FEE)
+        // {
+        //     reward.hashAnchor = hash;
+        //     s.insert(move(reward));
+        // }
+        reward.hashAnchor = hash;
+        s.insert(move(reward));
     }
 
     for (auto& promotion : promotionReward)
     {
-        // check reward > txfee
-        if (promotion.nReward > NEW_MIN_TX_FEE)
+        // FIXME: only for DeFi App
+        // // check reward > txfee
+        // if (promotion.nReward > NEW_MIN_TX_FEE)
+        // {
+        //     CDeFiReward reward = promotion;
+        //     reward.hashAnchor = hash;
+        //     s.insert(move(reward));
+        // }
+        CDeFiReward reward = promotion;
+        reward.hashAnchor = hash;
+        s.insert(move(reward));
+    }
+
+    // FIXME: only for DeFi App
+    // print all reward address info
+    for (auto& reward : s)
+    {
+        printf("%d|%s|%s|%s|%ld|%lu|%ld|%lu|%lu|%ld\n",
+               CBlock::GetBlockHeightByHash(hash), forkid.ToString().c_str(), hash.ToString().c_str(), CAddress(reward.dest).ToString().c_str(),
+               reward.nAmount, reward.nRank, reward.nStakeReward, reward.nAchievement, reward.nPower, reward.nPromotionReward);
+    }
+    // print non-reward address info
+    auto& idx = s.get<0>();
+    for (auto& x : mapAddressAmount)
+    {
+        auto it = idx.find(x.first);
+        if (it == idx.end())
         {
-            CDeFiReward reward = promotion;
-            reward.hashAnchor = hash;
-            s.insert(move(reward));
+            printf("%d|%s|%s|%s|%ld|%lu|%ld|%lu|%lu|%ld\n",
+                   CBlock::GetBlockHeightByHash(hash), forkid.ToString().c_str(), hash.ToString().c_str(), CAddress(x.first).ToString().c_str(),
+                   x.second, (uint64)0, (int64)0, x.second / COIN, (uint64)0, (int64)0);
+        }
+    }
+    for (auto it = idx.begin(); it != idx.end();)
+    {
+        if (it->nReward <= NEW_MIN_TX_FEE)
+        {
+            idx.erase(it++);
+        }
+        else
+        {
+            ++it;
         }
     }
 
