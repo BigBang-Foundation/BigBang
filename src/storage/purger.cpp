@@ -5,9 +5,9 @@
 #include "purger.h"
 
 #include "blockdb.h"
+#include "delegatevotesave.h"
 #include "txpooldata.h"
 #include "walletdb.h"
-#include "delegatevotesave.h"
 
 using namespace std;
 using namespace boost::filesystem;
@@ -21,29 +21,17 @@ namespace storage
 //////////////////////////////
 // CPurger
 
-bool CPurger::ResetDB(const boost::filesystem::path& pathDataLocation) const
+bool CPurger::ResetDB(const boost::filesystem::path& pathDataLocation, const uint256& hashGenesisBlockIn) const
 {
     {
         CBlockDB dbBlock;
-        if (dbBlock.Initialize(pathDataLocation))
+        if (dbBlock.Initialize(pathDataLocation, hashGenesisBlockIn, true))
         {
             if (!dbBlock.RemoveAll())
             {
                 return false;
             }
             dbBlock.Deinitialize();
-        }
-    }
-
-    {
-        CWalletDB dbWallet;
-        if (dbWallet.Initialize(pathDataLocation / "wallet"))
-        {
-            if (!dbWallet.ClearTx())
-            {
-                return false;
-            }
-            dbWallet.Deinitialize();
         }
     }
 

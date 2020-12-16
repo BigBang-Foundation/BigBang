@@ -1,0 +1,148 @@
+name: BigBangCore
+
+on:
+  pull_request:
+    branches:    
+      - master
+
+env:
+  BUILD_TYPE: release
+
+jobs:
+  build-ubuntu:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-18.04]
+
+    steps:
+      # install dependencies by apt
+      - name: Prepare ubuntu Build Dependencies
+        shell: bash
+        run: | 
+          sudo apt update -qq
+          sudo apt install -y build-essential libboost-all-dev openssl libreadline-dev pkg-config libncurses5-dev autoconf libssl-dev cmake libprotobuf-dev protobuf-compiler
+          sudo apt install -y cppcheck valgrind
+      
+      # cache libsodium
+      - name: cache libsodium-1.0.18
+        id: libsodium
+        uses: actions/cache@v2
+        with:
+          path: ~/libsodium-1.0.18
+          key: ${{ runner.os }}-libsodium-1.0.18
+      
+      # install libsodium with cache
+      - name: Install cache libsodium-1.0.18
+        if: steps.libsodium.outputs.cache-hit == 'true'
+        run: cd ~/libsodium-1.0.18 && sudo make install
+
+      # download & install libsodium without cache
+      - name: Download and Install libsodium-1.0.18
+        if: steps.libsodium.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz -P ~ --no-check-certificate
+          tar -zxvf ~/libsodium-1.0.18.tar.gz -C ~
+          cd ~/libsodium-1.0.18
+          ./configure
+          make -j2
+          sudo make install
+          cd -
+
+      # checkout repo
+      - uses: actions/checkout@v2
+
+      # build
+      - name: Build
+        working-directory: ${{github.workspace}}
+        shell: bash
+        run: ./INSTALL.sh ${{ env.BUILD_TYPE }}
+
+      # test
+      - name: Test
+        working-directory: ${{github.workspace}}
+        shell: bash
+        run: |
+          ./build/test/test_big
+          ./build/test/test_ctsdb
+
+      # cppcheck
+      - name: CPPCheck
+        working-directory: ${{github.workspace}}
+        shell: bash
+        if: matrix.os == 'ubuntu-18.04'
+        run: |
+          cppcheck --error-exitcode=1 --std=c++11 --enable=warning,performance,portability -i libsodium-1.0.18 -i src/leveldb -i build -i src/snappy -i src/crypto -i src/jsonrpc/json -i src/xengine/docker -i script -i test .
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      # install dependencies by brew
+      - name: Prepare macos Build Dependencies
+        shell: bash
+        run: brew install cmake pkg-config openssl boost libsodium readline protobuf ncurses 
+
+      # checkout
+      - uses: actions/checkout@v2
+
+      # build
+      - name: Build
+        working-directory: ${{github.workspace}}
+        shell: bash
+        run: |
+          export OPENSSL_ROOT_DIR=`brew --prefix openssl`
+          export BOOST_ROOT=`brew --prefix boost`
+          export PKG_CONFIG_PATH=`brew --prefix libsodium`/lib/pkgconfig:${PKG_CONFIG_PATH}
+          ./INSTALL.sh ${{ env.BUILD_TYPE }}
+
+      # test
+      - name: Test
+        working-directory: ${{github.workspace}}
+        shell: bash
+        run: |
+          ./build/test/test_big
+          ./build/test/test_ctsdb
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      # cache vcpkg installed
+      - name: cache vcpkg
+        id: vcpkg
+        uses: actions/cache@v2
+        with:
+          path: C:\vcpkg\installed
+          key: ${{ runner.os }}-vcpkg-installed
+      
+      # install dependencies by brew
+      - name: Prepare windows Build Dependencies
+        if: steps.vcpkg.outputs.cache-hit != 'true'
+        run: |
+          vcpkg.exe install boost:x64-windows
+          vcpkg.exe install libsodium:x64-windows
+          vcpkg.exe install openssl:x64-windows
+          vcpkg.exe install protobuf:x64-windows
+          vcpkg.exe install readline-win32:x64-windows
+
+      # checkout
+      - uses: actions/checkout@v2
+
+      # build
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build
+        working-directory: ${{github.workspace}}
+        env:
+          VCPKG_ROOT: C:\vcpkg
+        run: .\INSTALL.bat ${{ env.BUILD_TYPE }}
+
+      # test
+      - name: Test
+        working-directory: ${{github.workspace}}
+        run: |
+          .\build\test\test_big
+          .\build\test\test_ctsdb

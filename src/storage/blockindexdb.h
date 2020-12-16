@@ -27,6 +27,7 @@ public:
     void Deinitialize();
     bool AddNewBlock(const CBlockOutline& outline);
     bool RemoveBlock(const uint256& hashBlock);
+    bool RetrieveBlock(const uint256& hashBlock, CBlockOutline& outline);
     bool WalkThroughBlock(CBlockDBWalker& walker);
     void Clear();
 

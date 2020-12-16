@@ -69,6 +69,10 @@ public:
     {
         return forkProfile;
     }
+    void SetProfile(const CProfile& forkProfileIn)
+    {
+        forkProfile = forkProfileIn;
+    }
     CBlockIndex* GetLast() const
     {
         return pIndexLast;
@@ -131,30 +135,42 @@ protected:
 class CBlockView
 {
 public:
-    class CUnspent : public CTxOut
+    class CViewUnspent
     {
     public:
+        CTxOut output;
+        int nTxType;
+        int nHeight;
+
+        bool fSpent;
         int nOpt;
 
     public:
-        CUnspent()
-          : nOpt(0) {}
-        void Enable(const CTxOut& output)
+        CViewUnspent()
+          : nTxType(-1), nHeight(-1), fSpent(false), nOpt(0) {}
+        void Enable(const CTxOut& outputIn, int nTxTypeIn, int nHeightIn)
         {
-            destTo = output.destTo;
-            nAmount = output.nAmount;
-            nTxTime = output.nTxTime;
-            nLockUntil = output.nLockUntil;
+            output = outputIn;
+            nTxType = nTxTypeIn;
+            nHeight = nHeightIn;
+            fSpent = false;
             nOpt++;
         }
-        void Disable()
+        void Disable(const CTxOut& outputIn, int nTxTypeIn, int nHeightIn)
         {
-            SetNull();
+            output = outputIn;
+            nTxType = nTxTypeIn;
+            nHeight = nHeightIn;
+            fSpent = true;
             nOpt--;
         }
         bool IsModified() const
         {
             return (nOpt != 0);
+        }
+        bool IsSpent() const
+        {
+            return fSpent;
         }
     };
     CBlockView();
@@ -177,17 +193,14 @@ public:
     bool ExistsTx(const uint256& txid) const;
     bool RetrieveTx(const uint256& txid, CTransaction& tx);
     bool RetrieveUnspent(const CTxOutPoint& out, CTxOut& unspent);
-    bool AddTx(const uint256& txid, const CTransaction& tx, const CDestination& destIn = CDestination(), int64 nValueIn = 0);
-    bool AddTx(const uint256& txid, const CAssembledTx& tx)
-    {
-        return AddTx(txid, tx, tx.destIn, tx.nValueIn);
-    }
-    void RemoveTx(const uint256& txid, const CTransaction& tx, const CTxContxt& txContxt = CTxContxt());
+    bool AddTx(const uint256& txid, const CTransaction& tx, int nHeight, const CTxContxt& txContxt);
+    void RemoveTx(const uint256& txid, const CTransaction& tx, const int nHeight, const int nBlockSeq, const int nTxSeq, const CTxContxt& txContxt, const bool fAddrTxIndexIn);
     void AddBlock(const uint256& hash, const CBlockEx& block);
     void RemoveBlock(const uint256& hash, const CBlockEx& block);
     void GetUnspentChanges(std::vector<CTxUnspent>& vAddNew, std::vector<CTxOutPoint>& vRemove);
+    void GetUnspentChanges(std::vector<CTxUnspent>& vAddNewUnspent, std::vector<CTxUnspent>& vRemoveUnspent);
     void GetTxUpdated(std::set<uint256>& setUpdate);
-    void GetTxRemoved(std::vector<uint256>& vRemove);
+    void GetTxRemoved(std::vector<uint256>& vRemove, std::vector<CAddrTxIndex>& vAddrTxIndexRemove, const bool fAddrTxIndexIn);
     void GetBlockChanges(std::vector<CBlockEx>& vAdd, std::vector<CBlockEx>& vRemove) const;
 
 protected:
@@ -199,8 +212,9 @@ protected:
     uint256 hashFork;
     bool fCommittable;
     std::map<uint256, CTransaction> mapTx;
-    std::map<CTxOutPoint, CUnspent> mapUnspent;
+    std::map<CTxOutPoint, CViewUnspent> mapUnspent;
     std::vector<uint256> vTxRemove;
+    std::vector<CAddrTxIndex> vAddrTxRemove;
     std::vector<uint256> vTxAddNew;
     std::list<std::pair<uint256, CBlockEx>> vBlockAddNew;
     std::list<std::pair<uint256, CBlockEx>> vBlockRemove;
@@ -244,7 +258,7 @@ class CBlockBase
 public:
     CBlockBase();
     ~CBlockBase();
-    bool Initialize(const boost::filesystem::path& pathDataLocation, const uint256& hashGenesisBlockIn, bool fDebug, bool fRenewDB = false);
+    bool Initialize(const boost::filesystem::path& pathDataLocation, const uint256& hashGenesisBlockIn, const bool fDebug, const bool fAddrTxIndexIn, const bool fRenewDB = false);
     void Deinitialize();
     void Clear();
     bool IsEmpty() const;
@@ -292,6 +306,8 @@ public:
     bool RecordRollback(const std::vector<CBlockEx>& vBlockAddNew, const std::vector<CBlockEx>& vBlockRemove);
     bool RecordRemove(const CBlockEx& block);
     bool ListForkUnspentBatch(const uint256& hashFork, uint32 nMax, std::map<CDestination, std::vector<CTxUnspent>>& mapUnspent);
+    bool RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut);
+    int64 RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, std::vector<CTxInfo>& vTx);
 
     // DeFi
     template <typename D, typename Convert>
@@ -349,10 +365,11 @@ public:
     }
 
     bool ListForkAllAddressAmount(const uint256& hashFork, CBlockView& view, std::map<CDestination, int64>& mapAddressAmount);
-    bool AddDeFiRelation(const uint256& hashFork, CBlockView& view, boost::shared_ptr<CBlockFork> spFork);
+    bool AddDeFiRelation(const uint256& hashFork, boost::shared_ptr<CBlockFork> spFork, const std::vector<CBlockEx>& vAdd, const std::vector<CBlockEx>& vRemove);
     bool GetDeFiRelation(const uint256& hashFork, const CDestination& destIn, CAddrInfo& addrInfo);
     bool InitDeFiRelation(const uint256& hashFork);
     bool CheckAddDeFiRelation(const uint256& hashFork, const CDestination& dest, const CDestination& parent);
+    bool UpdateDeFiMintHeight(const uint256& hashFork, boost::shared_ptr<CBlockFork> spFork, const std::vector<CBlockEx>& vAdd, const std::vector<CBlockEx>& vRemove);
 
     bool GetVotes(const uint256& hashGenesis, const CDestination& destDelegate, int64& nVotes);
     bool GetDelegateList(const uint256& hashGenesis, uint32 nCount, std::multimap<int64, CDestination>& mapVotes);
@@ -384,7 +401,7 @@ protected:
     bool VerifyDelegateVote(const uint256& hash, CBlockEx& block, int64 nMinEnrollAmount, CDelegateContext& ctxtDelegate);
     bool UpdateDelegate(const uint256& hash, CBlockEx& block, const CDiskPos& posBlock, CDelegateContext& ctxtDelegate);
     bool GetTxUnspent(const uint256 fork, const CTxOutPoint& out, CTxOut& unspent);
-    bool GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, std::vector<std::pair<uint256, CTxIndex>>& vTxNew);
+    bool GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, std::vector<std::pair<uint256, CTxIndex>>& vTxNew, std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddrTxNew);
     bool IsValidBlock(CBlockIndex* pForkLast, const uint256& hashBlock);
     bool VerifyValidBlock(CBlockIndex* pIndexGenesisLast, const CBlockIndex* pIndex);
     CBlockIndex* GetLongChainLastBlock(const uint256& hashFork, int nStartHeight, CBlockIndex* pIndexGenesisLast, const std::set<uint256>& setInvalidHash);
@@ -429,6 +446,7 @@ protected:
     xengine::CLog log;
     uint256 hashGenesisBlock;
     bool fDebugLog;
+    bool fCfgAddrTxIndex;
     CBlockDB dbBlock;
     CTimeSeriesCached tsBlock;
     std::map<uint256, CBlockIndex*> mapIndex;

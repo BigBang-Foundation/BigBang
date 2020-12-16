@@ -7,6 +7,8 @@
 
 #include <boost/filesystem.hpp>
 
+#include "uint256.h"
+
 namespace bigbang
 {
 namespace storage
@@ -15,11 +17,11 @@ namespace storage
 class CPurger
 {
 public:
-    bool ResetDB(const boost::filesystem::path& pathDataLocation) const;
+    bool ResetDB(const boost::filesystem::path& pathDataLocation, const uint256& hashGenesisBlockIn) const;
     bool RemoveBlockFile(const boost::filesystem::path& pathDataLocation) const;
-    bool operator()(const boost::filesystem::path& pathDataLocation) const
+    bool operator()(const boost::filesystem::path& pathDataLocation, const uint256& hashGenesisBlockIn) const
     {
-        return (ResetDB(pathDataLocation) && RemoveBlockFile(pathDataLocation));
+        return (ResetDB(pathDataLocation, hashGenesisBlockIn) && RemoveBlockFile(pathDataLocation));
     }
 };
 

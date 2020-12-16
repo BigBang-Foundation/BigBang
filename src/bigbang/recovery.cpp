@@ -7,6 +7,7 @@
 #include <boost/filesystem.hpp>
 
 #include "block.h"
+#include "core.h"
 #include "purger.h"
 #include "timeseries.h"
 
@@ -74,8 +75,10 @@ bool CRecovery::HandleInitialize()
     {
         Warn("Clear old database except wallet address");
 
+        CProofOfWorkParam param(StorageConfig()->fTestNet);
+
         storage::CPurger purger;
-        if (!purger(Config()->pathData))
+        if (!purger(Config()->pathData, param.hashGenesisBlock))
         {
             Error("Failed to reset DB");
             return false;

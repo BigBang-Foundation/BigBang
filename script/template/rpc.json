@@ -320,10 +320,21 @@
                     }
                 }
             },
+            "dexbbcmap": {
+                "type": "object",
+                "desc": "a dex bbc map template",
+                "condition": "type=dexbbcmap",
+                "content": {
+                    "owner": {
+                        "type": "string",
+                        "desc": "owner address"
+                    }
+                }
+            },
             "synctx": {
                 "type": "bool",
                 "desc": "sync tx or not",
-                "default": true,
+                "default": false,
                 "required": false
             }
         }
@@ -592,6 +603,17 @@
                     }
                 }
             },
+            "dexbbcmap": {
+                "type": "object",
+                "desc": "a dex bbc map template",
+                "condition": "type=dexbbcmap",
+                "content": {
+                    "owner": {
+                        "type": "string",
+                        "desc": "owner address"
+                    }
+                }
+            },
             "weighted": {
                 "type": "object",
                 "desc": "weighted template struct",
@@ -717,6 +739,11 @@
             "blockheight": {
                 "type": "int",
                 "desc": "block height",
+                "required": false
+            },
+            "txseq": {
+                "type": "uint",
+                "desc": "tx sequence",
                 "required": false
             },
             "type": {
@@ -1183,6 +1210,18 @@
                             "type": "string",
                             "desc": "owner's address"
                         },
+                        "createtxid": {
+                            "type": "string",
+                            "desc": "create fork txid"
+                        },
+                        "forkheight": {
+                            "type": "int",
+                            "desc": "fork height"
+                        },
+                        "parentfork": {
+                            "type": "string",
+                            "desc": "parent fork"
+                        },
                         "forktype": {
                             "type": "string",
                             "desc": "fork params, a json object"
@@ -1194,7 +1233,7 @@
                             "content": {
                                 "mintheight": {
                                     "type": "int",
-                                    "desc": "beginning mint height of DeFi, -1 means the first block after origin"
+                                    "desc": "beginning mint height of DeFi, 0 means the first block after origin, -1 means not confirmed mint height(mint height depends on confirm tx of owner)"
                                 },
                                 "maxsupply": {
                                     "type": "double",
@@ -1285,11 +1324,11 @@
         "example": [
             {
                 "request": "bigbang-cli listfork",
-                "response": "[{\"fork\":\"a63d6f9d8055dc1bd7799593fb46ddc1b4e4519bd049e8eba1a0806917dcafc0\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\"}]"
+                "response": "[{\"fork\":\"00000023e3f9ba506f2ee2f96869f54eb4f23f3141471d57cad55b78ace699ff\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\",\"createtxid\":\"5fcef9b220f234b1b1356d545877e55551728bae8484e4a68d425d9242c6860c\",\"forkheight\":34,\"parentfork\":\"0000000006854ebdc236f48dbbe5c87312ea0abd7398888374b5ee9a5eb1d291\",\"forktype\":\"common\"}]"
             },
             {
                 "request": "{\"id\":69,\"method\":\"listfork\",\"jsonrpc\":\"2.0\",\"params\":{}}",
-                "response": "{\"id\":69,\"jsonrpc\":\"2.0\",\"result\":[{\"fork\":\"a63d6f9d8055dc1bd7799593fb46ddc1b4e4519bd049e8eba1a0806917dcafc0\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\"}]}"
+                "response": "{\"id\":69,\"jsonrpc\":\"2.0\",\"result\":[{\"fork\":\"00000023e3f9ba506f2ee2f96869f54eb4f23f3141471d57cad55b78ace699ff\",\"name\":\"BigBang Network\",\"symbol\":\"BIG\",\"amount\":100000000.000000,\"reward\":15,\"halvecycle\":0,\"isolated\":true,\"private\":false,\"enclosed\":false,\"owner\":\"1mjw7aa0s7v9sv7x3thvcexxzjz4tq82j5qc12dy29ktqy84haa0j7dwb\",\"createtxid\":\"5fcef9b220f234b1b1356d545877e55551728bae8484e4a68d425d9242c6860c\",\"forkheight\":34,\"parentfork\":\"0000000006854ebdc236f48dbbe5c87312ea0abd7398888374b5ee9a5eb1d291\",\"forktype\":\"common\"}]}"
             }
         ]
     },
@@ -1586,12 +1625,32 @@
                     "required": false,
                     "opt": "f"
                 },
+                "address": {
+                    "type": "string",
+                    "desc": "address",
+                    "required": false,
+                    "opt": "a"
+                },
                 "detail": {
                     "type": "bool",
                     "desc": "get detail or not",
                     "default": false,
                     "required": false,
                     "opt": "d"
+                },
+                "getoffset": {
+                    "type": "int",
+                    "desc": "get offset, If not set, from 0",
+                    "default": 0,
+                    "required": false,
+                    "opt": "o"
+                },
+                "getcount": {
+                    "type": "int",
+                    "desc": "get count, 0 is all",
+                    "default": 20,
+                    "required": false,
+                    "opt": "n"
                 }
             }
         },
@@ -1621,9 +1680,29 @@
                             "type": "object",
                             "desc": "pool struct",
                             "content": {
-                                "hex": {
+                                "txid": {
                                     "type": "string",
-                                    "desc": "tx pool hex"
+                                    "desc": "txid"
+                                },
+                                "txtype": {
+                                    "type": "string",
+                                    "desc": "tx type"
+                                },
+                                "from": {
+                                    "type": "string",
+                                    "desc": "from address"
+                                },
+                                "to": {
+                                    "type": "string",
+                                    "desc": "to address"
+                                },
+                                "amount": {
+                                    "type": "double",
+                                    "desc": "amount"
+                                },
+                                "txfee": {
+                                    "type": "double",
+                                    "desc": "tx fee"
                                 },
                                 "size": {
                                     "type": "uint",
@@ -1951,6 +2030,51 @@
             "{\"code\":-401,\"message\":\"Failed add new key.\"}"
         ]
     },
+    "removekey": {
+        "type": "command",
+        "name": "RemoveKey",
+        "desc": "Remove Key in Wallet.",
+        "request": {
+            "type": "object",
+            "content": {
+                "pubkey": {
+                    "type": "string",
+                    "desc": "public key or pubkey address"
+                },
+                "passphrase": {
+                    "type": "string",
+                    "desc": "passphrase",
+                    "required": false
+                },
+                "synctx": {
+                    "type": "bool",
+                    "desc": "sync tx or not",
+                    "default": true,
+                    "required": false,
+                    "opt": "s"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "pubkey",
+            "desc": "public key"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli removekey f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9 123",
+                "response": "f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9"
+            },
+            {
+                "request": "curl -d '{\"id\":7,\"method\":\"removekey\",\"jsonrpc\":\"2.0\",\"params\":{\"pubkey\":\"f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9\",\"passphrase\":\"123\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":7,\"jsonrpc\":\"2.0\",\"result\":\"f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-6,\"message\":\"Passphrase must be nonempty\"}",
+            "{\"code\":-401,\"message\":\"Failed remove key.\"}"
+        ]
+    },
     "encryptkey": {
         "type": "command",
         "name": "EncryptKey",
@@ -2110,7 +2234,7 @@
                 "synctx": {
                     "type": "bool",
                     "desc": "sync tx or not",
-                    "default": true,
+                    "default": false,
                     "required": false,
                     "opt": "s"
                 }
@@ -2148,6 +2272,13 @@
                 "pubkey": {
                     "type": "string",
                     "desc": "private key"
+                },
+                "synctx": {
+                    "type": "bool",
+                    "desc": "sync tx or not",
+                    "default": false,
+                    "required": false,
+                    "opt": "s"
                 }
             }
         },
@@ -2186,7 +2317,7 @@
                 "synctx": {
                     "type": "bool",
                     "desc": "sync tx or not",
-                    "default": true,
+                    "default": false,
                     "required": false,
                     "opt": "s"
                 }
@@ -2280,7 +2411,8 @@
             "bigbang-cli addnewtemplate weighted '{\"required\": 1, \"pubkeys\": [{\"key\":\"2e05c9ee45fdf58f7b007458298042fc3d3ad416a2f9977ace16d14164a3e882\", \"weight\": 1},{\"key\": \"f4124c636d37b1308ba95c14b2487134030d5817f7fa93f11bcbc616aab7c3b9\", \"weight\": 2}]}'",
             "bigbang-cli addnewtemplate vote '{\"delegate\": \"20m01802pgptaswc5b2dq09kmj10ns88bn69q0msrnz64mtypx4xm5sff\", \"owner\": \"1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda\"}'",
             "bigbang-cli addnewtemplate dexorder '{\"seller_address\":\"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"coinpair\":\"BBC/MKF\",\"price\":10,\"fee\": 0.002,\"recv_address\":\"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"valid_height\": 300,\"match_address\": \"15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd\",\"deal_address\": \"1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb\",\"timestamp\":1234}'",
-            "bigbang-cli addnewtemplate dexmatch '{\"match_address\": \"15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd\",\"coinpair\":\"BBC/MKF\",\"final_price\":10,\"match_amount\": 15,\"fee\": 0.002,\"secret_hash\":\"41f73534701f620ee8f48ecd61bb422fa9243ccc6ddda5e806f5858121c47268\",\"secret_enc\": \"42f30c39231e1a518e437df6a71e26535ef65f852fb879157bf9903b7d8065edc66eacec81eaef841c1052978b01340e\",\"seller_order_address\": \"2140c6rd39hpdmgv9m1m80h738gz4f2c0kmpvn707p04c7x1kcb8gawj6\",\"seller_address\": \"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"seller_deal_address\": \"1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb\",\"seller_valid_height\": 300,\"buyer_address\": \"1njqk8wmenyvqs4cz7d8b9pjc6tsdhxtzza050a2n02eqpfcr22ggqg47\",\"buyer_amount\": \"150\",\"buyer_secret_hash\":\"dfa313257be0216a498d2eb6e5a1939eb6168d4a9e3356cc20fb957d030b1ac5\",\"buyer_valid_height\":320}'"
+            "bigbang-cli addnewtemplate dexmatch '{\"match_address\": \"15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd\",\"coinpair\":\"BBC/MKF\",\"final_price\":10,\"match_amount\": 15,\"fee\": 0.002,\"secret_hash\":\"41f73534701f620ee8f48ecd61bb422fa9243ccc6ddda5e806f5858121c47268\",\"secret_enc\": \"42f30c39231e1a518e437df6a71e26535ef65f852fb879157bf9903b7d8065edc66eacec81eaef841c1052978b01340e\",\"seller_order_address\": \"2140c6rd39hpdmgv9m1m80h738gz4f2c0kmpvn707p04c7x1kcb8gawj6\",\"seller_address\": \"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"seller_deal_address\": \"1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb\",\"seller_valid_height\": 300,\"buyer_address\": \"1njqk8wmenyvqs4cz7d8b9pjc6tsdhxtzza050a2n02eqpfcr22ggqg47\",\"buyer_amount\": \"150\",\"buyer_secret_hash\":\"dfa313257be0216a498d2eb6e5a1939eb6168d4a9e3356cc20fb957d030b1ac5\",\"buyer_valid_height\":320}'",
+            "bigbang-cli addnewtemplate dexbbcmap '{\"owner\": \"1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda\"}'"
         ],
         "error": [
             "{\"code\":-6,\"message\":\"Invalid parameters,failed to make template\"}",
@@ -2306,7 +2438,7 @@
                 "synctx": {
                     "type": "bool",
                     "desc": "sync tx or not",
-                    "default": true,
+                    "default": false,
                     "required": false,
                     "opt": "s"
                 }
@@ -2400,6 +2532,38 @@
             "{\"code\":-401,\"message\":\"Failed to sync wallet tx\"}"
         ]
     },
+    "removetemplate": {
+        "type": "command",
+        "name": "RemoveTemplate",
+        "desc": "Remove template in Wallet.",
+        "request": {
+            "type": "object",
+            "content": {
+                "address": {
+                    "type": "string",
+                    "desc": "template address"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "result",
+            "desc": "remove result"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli removetemplate 20m01gbqzmw3nvndx684nsxp1z3tcy4rg0715tgc9sraxd7m56ydttama",
+                "response": "Success"
+            },
+            {
+                "request": "curl -d '{\"id\":7,\"method\":\"removetemplate\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"20m01gbqzmw3nvndx684nsxp1z3tcy4rg0715tgc9sraxd7m56ydttama\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":7,\"jsonrpc\":\"2.0\",\"result\":\"Success\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-401,\"message\":\"Failed remove template.\"}"
+        ]
+    },
     "validateaddress": {
         "type": "command",
         "name": "ValidateAddress",
@@ -2474,47 +2638,6 @@
                 "request": "curl -d '{\"id\":3,\"method\":\"validateaddress\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"123\"}}' http://127.0.0.1:9902",
                 "response": "{\"id\":3,\"jsonrpc\":\"2.0\",\"result\":{\"isvalid\":false}}"
             }
-        ]
-    },
-    "resyncwallet": {
-        "type": "command",
-        "name": "ResyncWallet",
-        "introduction": "Resync wallet's transactions.",
-        "desc": [
-            "If (address) is not specified, resync wallet's tx for each address.",
-            "If (address) is specified, resync wallet's tx for the address."
-        ],
-        "request": {
-            "type": "object",
-            "content": {
-                "address": {
-                    "type": "string",
-                    "desc": "tx address",
-                    "required": false
-                }
-            }
-        },
-        "response": {
-            "type": "string",
-            "name": "result",
-            "desc": "resync wallet result"
-        },
-        "example": [
-            {
-                "request": "bigbang-cli resyncwallet",
-                "response": "Resync wallet successfully."
-            },
-            {
-                "request": "curl -d '{\"id\":38,\"method\":\"resyncwallet\",\"jsonrpc\":\"2.0\",\"params\":{}}' http://127.0.0.1:9902",
-                "response": "{\"id\":38,\"jsonrpc\":\"2.0\",\"result\":\"Resync wallet successfully.\"}"
-            },
-            {
-                "request": "bigbang-cli resyncwallet 1gbma6s21t4bcwymqz6h1dn1t7qy45019b1t00ywfyqymbvp90mqc1wmq"
-            }
-        ],
-        "error": [
-            "{\"code\":-6,\"message\":\"Invalid address\"}",
-            "{\"code\":-401,\"message\":\"Failed to resync wallet tx\"}"
         ]
     },
     "getdefirelation": {
@@ -2662,15 +2785,27 @@
                 },
                 "fork": {
                     "type": "string",
-                    "desc": "fork hash. If not set, return all local fork 10 tx",
+                    "desc": "fork hash. If not set, default is genesis",
                     "required": false,
                     "opt": "f"
                 },
                 "address": {
                     "type": "string",
-                    "desc": "from address or sendto address",
+                    "desc": "from address or sendto address. If not set, default is all wallet address",
                     "required": false,
                     "opt": "a"
+                },
+                "prevheight": {
+                    "type": "int",
+                    "desc": "query previous parameters: block height, if txpool is -1",
+                    "required": false,
+                    "opt": "h"
+                },
+                "prevtxseq": {
+                    "type": "uint",
+                    "desc": "query previous parameters: sequence of tx in block",
+                    "required": false,
+                    "opt": "s"
                 }
             }
         },
@@ -2762,6 +2897,12 @@
                     "required": false,
                     "opt": "ss"
                 },
+                "fromdata": {
+                    "type": "string",
+                    "desc": "If the 'from' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "fd"
+                },
                 "sendtodata": {
                     "type": "string",
                     "desc": "If the 'to' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
@@ -2770,10 +2911,28 @@
                 },
                 "type": {
                     "type": "uint",
-                    "desc": "0: common token tx, 2: defi relation tx",
+                    "desc": "0(default): common token tx, 2: defi relation tx, 3: defi mint height tx",
                     "default": 0,
                     "required": false,
                     "opt": "type"
+                },
+                "signsecret": {
+                    "type": "string",
+                    "desc": "sign secret",
+                    "required": false,
+                    "opt": "sec"
+                },
+                "mintheight": {
+                    "type": "int",
+                    "desc": "mint height of DeFi fork",
+                    "required": false,
+                    "opt": "mintheight"
+                },
+                "lockheight": {
+                    "type": "int",
+                    "desc": "lock height",
+                    "required": false,
+                    "opt": "lh"
                 }
             }
         },
@@ -2814,6 +2973,14 @@
             {
                 "request": "curl -d '{\"id\":9,\"method\":\"sendfrom\",\"jsonrpc\":\"2.0\",\"params\":{\"from\":\"1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm\",\"to\":\"12pseg2t39s5v8z7cqeyj4f09vcxy4jn0dge8q86bkmkr284bm7gx4dy4\",\"amount\":1.000000,\"type\":2}}' http://127.0.0.1:9902",
                 "response": "{\"id\":9,\"jsonrpc\":\"2.0\",\"result\":\"5f43336e0c300c03491c65d0f79ded0d864a4442f6c3eb9af3b736bf123d5aff\"}"
+            },
+            {
+                "request": "bigbang-cli sendfrom 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1 -f=00000001aeb53fd1f94825d758ee130f3de63ac235a3744240af15200a6fe07b -type=3 -mintheight=20",
+                "response": "5f43336e0c300c03491c65d0f79ded0d864a4442f6c3eb9af3b736bf123d5aff"
+            },
+            {
+                "request": "bigbang-cli sendfrom 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1ae0mjxfcw0vn90r4y1fnd0qw7rkhha7w9smkaf5n9td48zpkjcwdyv5q 8000 -lh=13",
+                "response": "5fd32be9996a4a7d0282135d93ad519d9f237da6f0b025e5bd3139272c733ec9"
             }
         ],
         "error": [
@@ -2821,6 +2988,7 @@
             "{\"code\":-6,\"message\":\"Invalid to address\"}",
             "{\"code\":-6,\"message\":\"Invalid fork\"}",
             "{\"code\":-6,\"message\":\"Unknown fork\"}",
+            "{\"code\":-6,\"message\":\"Invalid lockheight\"}",
             "{\"code\":-401,\"message\":\"Failed to create transaction\"}",
             "{\"code\":-401,\"message\":\"Failed to sign transaction\"}",
             "{\"code\":-401,\"message\":\"The signature is not completed\"}",
@@ -2869,10 +3037,22 @@
                 },
                 "type": {
                     "type": "uint",
-                    "desc": "0: common token tx, 2: defi relation tx",
+                    "desc": "0(default): common token tx, 2: defi relation tx, 3: defi mint height tx",
                     "default": 0,
                     "required": false,
                     "opt": "type"
+                },
+                "mintheight": {
+                    "type": "int",
+                    "desc": "mint height of DeFi fork",
+                    "required": false,
+                    "opt": "mintheight"
+                },
+                "lockheight": {
+                    "type": "int",
+                    "desc": "lock height",
+                    "required": false,
+                    "opt": "lh"
                 }
             }
         },
@@ -2897,6 +3077,14 @@
             {
                 "request": "curl -d '{\"id\":17,\"method\":\"createtransaction\",\"jsonrpc\":\"2.0\",\"params\":{\"from\":\"1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm\",\"to\":\"12pseg2t39s5v8z7cqeyj4f09vcxy4jn0dge8q86bkmkr284bm7gx4dy4\",\"amount\":1.000000,\"type\":2}}' http://127.0.0.1:9902",
                 "response": "{\"id\":17,\"jsonrpc\":\"2.0\",\"result\":\"010002006334435f0000000091d2b15e9aeeb57483889873bd0aea1273c8e5bb8df436c2bd4e85060000000001ff5a3d12bf36b7f39aebc3f642444a860ded9df7d0651c49030c300c6e33435f010115b2e80b434e4bb47cecbbbd223c09db3be24aa06c1c8ba0cb9d2781208ba1e140420f000000000010270000000000000000\"}"
+            },
+            {
+                "request": "bigbang-cli createtransaction 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1 -f=00000001ba93ccb7402df70b511637223a08ebbe33c7504eda28235028130d32 -type=3 -mintheight=3000",
+                "response": "01000300b0abc05f00000000320d1328502328da4e50c733beeb083a223716510bf72d40b7cc93ba010000000136824ad81f09da9e47fde50e5e2bb228b25ae289966e305c04c25babca6dbf5f0001498b63009dfb70f7ee0902ba95cc171f7d7a97ff16d89fd96e1f1b9e7d5f91da40420f0000000000307500000000000004b80b000000"
+            },
+            {
+                "request": "bigbang-cli createtransaction 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm 1ae0mjxfcw0vn90r4y1fnd0qw7rkhha7w9smkaf5n9td48zpkjcwdyv5q 3000 -lh=16",
+                "response": "01000000af2cd35f1000000091d2b15e9aeeb57483889873bd0aea1273c8e5bb8df436c2bd4e85060000000001c3acca171f8703848537280e0a19676cb31f9379b99e069082ab706a862cd35f000153814975ece037548304f05f5682fc3e2718a8fc4e69353cb54e9a447ed39338005ed0b20000000010270000000000000000"
             }
         ],
         "error": [
@@ -2904,6 +3092,7 @@
             "{\"code\":-6,\"message\":\"Invalid to address\"}",
             "{\"code\":-6,\"message\":\"Invalid fork\"}",
             "{\"code\":-6,\"message\":\"Unknown fork\"}",
+            "{\"code\":-6,\"message\":\"Invalid lockheight\"}",
             "{\"code\":-401,\"message\":\"Failed to create transaction\"}"
         ]
     },
@@ -2923,11 +3112,35 @@
                     "type": "string",
                     "desc": "transaction data(hex string)"
                 },
+                "sign_m": {
+                    "type": "string",
+                    "desc": "exchange sign m",
+                    "required": false,
+                    "opt": "sm"
+                },
+                "sign_s": {
+                    "type": "string",
+                    "desc": "exchange sign s",
+                    "required": false,
+                    "opt": "ss"
+                },
+                "fromdata": {
+                    "type": "string",
+                    "desc": "If the 'from' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "fd"
+                },
                 "sendtodata": {
                     "type": "string",
                     "desc": "If the 'to' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
                     "required": false,
                     "opt": "td"
+                },
+                "signsecret": {
+                    "type": "string",
+                    "desc": "sign secret",
+                    "required": false,
+                    "opt": "sec"
                 }
             }
         },
@@ -2967,19 +3180,34 @@
         "request": {
             "type": "object",
             "content": {
-                "pubkey": {
-                    "type": "string",
-                    "desc": "public key"
-                },
                 "message": {
                     "type": "string",
-                    "desc": "message to be signed"
+                    "desc": "message to be signed. It will be hash(blake2b) before sign"
+                },
+                "pubkey": {
+                    "type": "string",
+                    "desc": "public key",
+                    "required": false,
+                    "opt": "pubkey"
+                },
+                "privkey": {
+                    "type": "string",
+                    "desc": "private key",
+                    "required": false,
+                    "opt": "privkey"
                 },
                 "addr": {
                     "type": "string",
                     "desc": "address signed",
                     "required": false,
                     "opt": "a"
+                },
+                "hasprefix": {
+                    "type": "bool",
+                    "desc": "If add magic string(Bigbang Signed Message:\\n) before message or not",
+                    "required": false,
+                    "default": true,
+                    "opt": "p"
                 }
             }
         },
@@ -2996,6 +3224,18 @@
             {
                 "request": "curl -d '{\"id\":4,\"method\":\"signmessage\",\"jsonrpc\":\"2.0\",\"params\":{\"pubkey\":\"2e05c9ee45fdf58f7b007458298042fc3d3ad416a2f9977ace16d14164a3e882\",\"message\":\"123456\"}}' http://127.0.0.1:9902",
                 "response": "{\"id\":4,\"jsonrpc\":\"2.0\",\"result\":\"045977f8c07e6d846d6055357f36a70c16c071cb85115e3ffb498e171a9ac3f4aed1292203a0c8e42c4becafad3ced0d9874abd2a8b788fda9f07099a1e71707\"}"
+            },
+            {
+                "request": "bigbang-cli signmessage dc7547feed1d145c21915a739f1fcc75f7b9f88ebe4dba176628844d6916803e 3bdc5190cd3283c81d6b7a186610ce4ada5e81c4f7fcb153b379afc6154d0014",
+                "response": "98235a42178cf985dfcb58c9e3f728d38b9c60a92107084adc4ce40e391c51593e57ee109ee7c65aca24627219da8fc8e632a57a013967213630e33b17b4b209"
+            },
+            {
+                "request": "bigbang-cli signmessage dc7547feed1d145c21915a739f1fcc75f7b9f88ebe4dba176628844d6916803e -pubkey=3bdc5190cd3283c81d6b7a186610ce4ada5e81c4f7fcb153b379afc6154d0014 -nop",
+                "response": "d73de744d34b4e15dbc790638b65692325adddc4723125139a21e53eee282b79095db38ba27d732d41ad00f5fa2071b3290f8ec77ba69fd8f34537786ae10d07"
+            },
+            {
+                "request": "signmessage DeFiRelation00000000b0a9be545f022309e148894d1e1c853ccac3ef04cb6f5e5c70f41a7006c4246621002576ec70545f04f2cb75378e3f1a16eca2c596fc1c64f52e122b -privkey=1dc5a5956c2de69f597cf20da70523b024470ae789e1d2bfc157c9605f17a33a -nop",
+                "response": "eb3540abf61b9cf57caef4a7c24054a5b8dfcb382de053b5377fcd76f05409f120d61b501c17745a676bc78197f456bc303be3d64a89aad69c587ba6ac86cf0c"
             }
         ],
         "error": [
@@ -3187,7 +3427,7 @@
                     "content": {
                         "mintheight": {
                             "type": "int",
-                            "desc": "beginning mint height of DeFi, -1 means the first block after origin",
+                            "desc": "beginning mint height of DeFi, 0 means the first block after origin, -1 means not confirmed mint height(mint height depends on mint height tx of owner)",
                             "default": -1,
                             "required": false
                         },
@@ -3388,6 +3628,13 @@
                     "desc": "address signed",
                     "required": false,
                     "opt": "a"
+                },
+                "hasprefix": {
+                    "type": "bool",
+                    "desc": "If add magic string(Bigbang Signed Message:\\n) before message or not",
+                    "required": false,
+                    "default": true,
+                    "opt": "p"
                 }
             }
         },
@@ -3453,6 +3700,46 @@
             }
         ]
     },
+    "getpubkey": {
+        "type": "command",
+        "name": "GetPubkey",
+        "desc": "Return public key by address or private key.",
+        "request": {
+            "type": "object",
+            "content": {
+                "privkeyaddress": {
+                    "type": "string",
+                    "desc": "address or private key"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "pubkey",
+            "desc": "public key"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli getpubkey 15c02b5f9eb6e516159c230011a87e57757645b53d3534958f910c08feb5c203",
+                "response": "06c4246621002576ec70545f04f2cb75378e3f1a16eca2c596fc1c64f52e122b"
+            },
+            {
+                "request": "curl -d '{\"id\":44,\"method\":\"getpubkey\",\"jsonrpc\":\"2.0\",\"params\":{\"privkey\":\"15c02b5f9eb6e516159c230011a87e57757645b53d3534958f910c08feb5c203\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":44,\"jsonrpc\":\"2.0\",\"result\":\"06c4246621002576ec70545f04f2cb75378e3f1a16eca2c596fc1c64f52e122b\"}"
+            },
+            {
+                "request": "bigbang-cli getpubkey 1z6taz5dyrv2xa11pc92y0ggbrf2wf36gbtk8wjprb96qe3kqwfm3ayc1",
+                "response": "e8e3770e774d5ad84a8ea65ed08cc7c5c30b42e045623604d5c5c6be95afb4f9"
+            },
+            {
+                "request": "curl -d '{\"id\":44,\"method\":\"getpubkey\",\"jsonrpc\":\"2.0\",\"params\":{\"privkey\":\"1z6taz5dyrv2xa11pc92y0ggbrf2wf36gbtk8wjprb96qe3kqwfm3ayc1\"}}' http://127.0.0.1:9902",
+                "response": "{\"id\":44,\"jsonrpc\":\"2.0\",\"result\":\"e8e3770e774d5ad84a8ea65ed08cc7c5c30b42e045623604d5c5c6be95afb4f9\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-6,\"message\":\"Invalid pubkey\"}"
+        ]
+    },
     "getpubkeyaddress": {
         "type": "command",
         "name": "GetPubkeyAddress",
@@ -3463,12 +3750,6 @@
                 "pubkey": {
                     "type": "string",
                     "desc": "public key"
-                },
-                "reversal": {
-                    "type": "string",
-                    "desc": "reversal get address pubkey",
-                    "required": false,
-                    "opt": "r"
                 }
             }
         },
@@ -3781,6 +4062,13 @@
                     "default": 10,
                     "required": false
                 },
+                "amount": {
+                    "type": "double",
+                    "desc": "amount unspents(0 means unlimited)",
+                    "opt": "a",
+                    "default": 0.0,
+                    "required": false
+                },
                 "file": {
                     "type": "string",
                     "desc": "input file containing list of multiple addresses",
@@ -3838,6 +4126,96 @@
             },
             {
                 "request": "curl -d '{\"id\":0,\"method\":\"listunspent\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm\",\"fork\":\"00000000beb6f9e2a8813f4778b26820a8649894de63624e65bc0ffa9562730b\",\"max\":1}}' http://127.0.0.1:9902",
+                "response": "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":{\"unspents\":[{\"txid\":\"5dd4bb56b3d0aed9bb0e0a80d01ec1f70d7bd4d1fc200a48df330154b366ca8e\",\"out\":0,\"amount\":1000.000000,\"time\":1574222678,\"lockuntil\":0}],\"sum\":1000.000000}}"
+            }
+        ],
+        "error": [
+            "{\"code\":-401,\"message\":\"Address as an argument should be provided.\"}",
+            "{\"code\":-401,\"message\":\"Acquiring unspent list failed.\"}",
+            "{\"code\":-402,\"message\":\"Not enough funds in wallet or account.\"}"
+        ]
+    },
+    "listunspentold": {
+        "type": "command",
+        "name": "ListUnspentOld",
+        "desc": "Return a JSON object listing unspent utxo by user specifying arguments address, fork(optional, main fork by default), maximum unspents(optional, 3 by default) and an input file containing list of multiple addresses(optional, plain text file name must be absolute path, one line only contains one wallet address with maximum of 10,000 lines). You may specify one wallet address in RPC command line with or without a text file name, core wallet will return all unspent utxos in a single batch operation.",
+        "request": {
+            "type": "object",
+            "content": {
+                "address": {
+                    "type": "string",
+                    "desc": "address to receive the unspent"
+                },
+                "fork": {
+                    "type": "string",
+                    "desc": "fork hash",
+                    "opt": "f",
+                    "required": false
+                },
+                "max": {
+                    "type": "uint",
+                    "desc": "maximum unspents(0 means unlimited)",
+                    "opt": "n",
+                    "default": 10,
+                    "required": false
+                },
+                "file": {
+                    "type": "string",
+                    "desc": "input file containing list of multiple addresses",
+                    "opt": "if",
+                    "required": false
+                }
+            }
+        },
+        "response": {
+            "type": "object",
+            "name": "data",
+            "content": {
+                "addresses": {
+                    "type": "array",
+                    "content": {
+                        "addr": {
+                            "type": "object",
+                            "content": {
+                                "address": {
+                                    "type": "string",
+                                    "desc": "address to list unspent"
+                                },
+                                "unspents": {
+                                    "type": "array",
+                                    "desc": "unspent list of address owner",
+                                    "content": {
+                                        "unspent": {
+                                            "type": "unspentdata",
+                                            "desc": "unspent data"
+                                        }
+                                    }
+                                },
+                                "sum": {
+                                    "type": "double",
+                                    "desc": "sum of unspent amount"
+                                }
+                            }
+                        }
+                    }
+                },
+                "total": {
+                    "type": "double",
+                    "desc": "total of unspent amount for list of addresses"
+                }
+            }
+        },
+        "example": [
+            {
+                "request": "bigbang-cli listunspentold 1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm -f=00000000beb6f9e2a8813f4778b26820a8649894de63624e65bc0ffa9562730b -n=1",
+                "response": "{\"unspents\":[{\"txid\":\"5dd4bb56b3d0aed9bb0e0a80d01ec1f70d7bd4d1fc200a48df330154b366ca8e\",\"out\":0,\"amount\":1000.000000,\"time\":1574222678,\"lockuntil\":0}],\"sum\":1000.000000}"
+            },
+            {
+                "request": "bigbang-cli listunspentold 20g075m4mh5trbkdy8vbh74n9h7t3npe7tewpnvsfb19p57jnyf3kdh45 -if=/home/oijen/addr10",
+                "response": "{\"addresses\":[{\"address\":\"1zbyhm9p0aa1wvebg3wch7xkhxsv5m9z32jsnjngpfnf7cgd778st8tds\",\"unspents\":[{\"txid\":\"5de8bcce65733bbcfff18130de6f3f10cfd46ce94aa4775070f1634777029401\",\"out\":0,\"amount\":340.999900,\"time\":1575533774,\"lockuntil\":0},{\"txid\":\"5e0423aadb07b4142abcf29e576e56d0eff594d5da18f6915155c1ece4c66309\",\"out\":0,\"amount\":11.999900,\"time\":1577329578,\"lockuntil\":0},{\"txid\":\"5df7b69db367bfc7a9b40fea36e2459f99e214db9505a44f9dfa9052e1d6f411\",\"out\":0,\"amount\":10.999900,\"time\":1576515229,\"lockuntil\":0}],\"sum\":363.999700},{\"address\":\"1z98n1sfbhtw3b5wrre69fh648e4res1g7r9bzcp0kf85hte75mv0zc01\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1tbvg7cxbqg36rph6ymws856ms4j5e4cvbd4ssy0ejxn1h869g9hfwv4c\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1j42adjfq37j9grmwsh4gnayfgg6kep59d78srpxg8zf8hdqv1yptjwzx\",\"unspents\":[{\"txid\":\"5df58dcccb52641f3b9c090ba5760181a3999370137cc6b5bbacc30b7b4b5909\",\"out\":0,\"amount\":499.999900,\"time\":1576373708,\"lockuntil\":0},{\"txid\":\"5df80dad00f53331757e19fae811308ec59d722ffb189958ecdb7cc4ad79b30d\",\"out\":0,\"amount\":499.999900,\"time\":1576537517,\"lockuntil\":0},{\"txid\":\"5df7a4344d2d887c929cf6d08bf825bfacc14d8c86cf62ab3944caa142bc6c0f\",\"out\":0,\"amount\":499.999900,\"time\":1576510516,\"lockuntil\":0}],\"sum\":1499.999700},{\"address\":\"1ztsgg3m6az2sm8t6ap6k3cw36z5ewd5sp05k7a62h6rqvpqp871aqpq6\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1ny00y8whrser450hfw3d87h1p3emdeca4fq5xetddwfz9mb4e38ndxx0\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1944eh1ysrjy1rgjyxcr9b0nvmbra2bmtm6v6kt1a3ag6wf07hfa0apgg\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1rjcyqyzsf1p8b22fxdx79qwfcr7wzkx1n2xykc5chzd905jymbfd8j4n\",\"unspents\":[{\"txid\":\"5df61f85cbe11a3ab7eedbc2929241aa10c27179ec0b4fef3cea9f803a9aad15\",\"out\":0,\"amount\":499.999900,\"time\":1576411013,\"lockuntil\":0},{\"txid\":\"5e04142090815b50bf1688e5cbd3ceca550c8f2ad6e44d690fb7a5f21b478227\",\"out\":0,\"amount\":499.999900,\"time\":1577325600,\"lockuntil\":0},{\"txid\":\"5dfa848c46ee3c4b3b468674433dad2b3d5531428e5b60ef3d827c020859f73a\",\"out\":0,\"amount\":499.999900,\"time\":1576699020,\"lockuntil\":0}],\"sum\":1499.999700},{\"address\":\"1jvy4ys1yrz3rg6te1h70mt0t89v9d0pbr038d48wmyzyzvrxk7safdg2\",\"unspents\":[],\"sum\":0.000000},{\"address\":\"1dq62d8y4fz20sfg63zzy4h4ayksswv1fgqjzvegde306bxxg5zygc27q\",\"unspents\":[{\"txid\":\"5df31decea3f149fe53062fbdbc8ca4e42d54e348f9e3c482a1edfb0c5b34100\",\"out\":0,\"amount\":499.999900,\"time\":1576213996,\"lockuntil\":0},{\"txid\":\"5df26e22ab57f87fa7f5ee931b09cdc550583ab7517afa18e5f68db1ee53fb02\",\"out\":0,\"amount\":499.999900,\"time\":1576168994,\"lockuntil\":0},{\"txid\":\"5df235df6a0d575378361ba75560ffab8ee9c786a58e604f14c037d7ec2afd05\",\"out\":0,\"amount\":499.999900,\"time\":1576154591,\"lockuntil\":0}],\"sum\":1499.999700},{\"address\":\"20g075m4mh5trbkdy8vbh74n9h7t3npe7tewpnvsfb19p57jnyf3kdh45\",\"unspents\":[{\"txid\":\"5e032143eb0c23c13f2d422144f1337ecd467c2163c7758e5a00b4d6fbe7ba00\",\"out\":0,\"amount\":1153.000000,\"time\":1577263427,\"lockuntil\":0},{\"txid\":\"5e046a5cae5ea2622a37ad737f53e9185b60ea010242191b75f276b8d50dc900\",\"out\":0,\"amount\":1153.000000,\"time\":1577347676,\"lockuntil\":0},{\"txid\":\"5e0399615cb69be399d6b6fee2bc1aca10d9d4e222467f9eef76745334b8ad01\",\"out\":0,\"amount\":1153.000000,\"time\":1577294177,\"lockuntil\":0}],\"sum\":3459.000000}],\"total\":8322.998800}"
+            },
+            {
+                "request": "curl -d '{\"id\":0,\"method\":\"listunspentold\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm\",\"fork\":\"00000000beb6f9e2a8813f4778b26820a8649894de63624e65bc0ffa9562730b\",\"max\":1}}' http://127.0.0.1:9902",
                 "response": "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":{\"unspents\":[{\"txid\":\"5dd4bb56b3d0aed9bb0e0a80d01ec1f70d7bd4d1fc200a48df330154b366ca8e\",\"out\":0,\"amount\":1000.000000,\"time\":1574222678,\"lockuntil\":0}],\"sum\":1000.000000}}"
             }
         ],
@@ -4071,6 +4449,36 @@
                 "txdata": {
                     "type": "string",
                     "desc": "raw transaction data(hex string)"
+                },
+                "sign_m": {
+                    "type": "string",
+                    "desc": "exchange sign m",
+                    "required": false,
+                    "opt": "sm"
+                },
+                "sign_s": {
+                    "type": "string",
+                    "desc": "exchange sign s",
+                    "required": false,
+                    "opt": "ss"
+                },
+                "fromdata": {
+                    "type": "string",
+                    "desc": "If the 'from' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "fd"
+                },
+                "sendtodata": {
+                    "type": "string",
+                    "desc": "If the 'to' address of transaction is a template, this option allows to save the template hex data. The hex data is equal output of RPC 'exporttemplate'",
+                    "required": false,
+                    "opt": "td"
+                },
+                "signsecret": {
+                    "type": "string",
+                    "desc": "sign secret",
+                    "required": false,
+                    "opt": "sec"
                 }
             }
         },

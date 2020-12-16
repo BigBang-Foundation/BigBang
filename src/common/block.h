@@ -323,6 +323,10 @@ public:
     {
         return (!pOrigin->pPrev ? uint64(0) : pOrigin->pPrev->GetOriginHash());
     }
+    uint256 GetPrevHash() const
+    {
+        return (!pPrev ? uint64(0) : pPrev->GetBlockHash());
+    }
     int64 GetMoneySupply() const
     {
         return nMoneySupply;
@@ -334,6 +338,10 @@ public:
     bool IsPrimary() const
     {
         return (nType & 1);
+    }
+    bool IsSubsidiary() const
+    {
+        return (nType == CBlock::BLOCK_SUBSIDIARY);
     }
     bool IsExtended() const
     {
@@ -367,6 +375,17 @@ public:
             }
         }
         return false;
+    }
+    int GetExtendedSequence() const
+    {
+        int nSeq = 0;
+        const CBlockIndex* pIndex = this;
+        while (pIndex && pIndex->IsExtended())
+        {
+            nSeq++;
+            pIndex = pIndex->pPrev;
+        }
+        return nSeq;
     }
     const std::string GetBlockType() const
     {

@@ -22,12 +22,35 @@ bool CDeFiForkReward::ExistFork(const uint256& forkid) const
     return forkReward.count(forkid);
 }
 
+bool CDeFiForkReward::IsMinted(const uint256& forkid, const int32 nHeight) const
+{
+    auto it = forkReward.find(forkid);
+    if (it != forkReward.end())
+    {
+        const CProfile& profile = it->second.profile;
+        if (profile.defi.nMintHeight < 0)
+        {
+            return false;
+        }
+        else if (profile.defi.nMintHeight == 0)
+        {
+            return nHeight >= profile.nJointHeight + 2;
+        }
+        else
+        {
+            return nHeight >= profile.defi.nMintHeight;
+        }
+    }
+
+    return false;
+}
+
 void CDeFiForkReward::AddFork(const uint256& forkid, const CProfile& profile)
 {
     CForkReward fr;
     fr.profile = profile;
     fr.nMaxRewardHeight = GetMaxRewardHeight(profile);
-    forkReward.insert(std::make_pair(forkid, fr));
+    forkReward[forkid] = fr;
 }
 
 CProfile CDeFiForkReward::GetForkProfile(const uint256& forkid)
@@ -48,9 +71,9 @@ int32 CDeFiForkReward::PrevRewardHeight(const uint256& forkid, const int32 nHeig
     if (it != forkReward.end())
     {
         CProfile& profile = it->second.profile;
-        if (!profile.defi.IsNull())
+        if (!profile.defi.IsNull() && profile.defi.nMintHeight >= 0)
         {
-            int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
+            int32 nMintHeight = (profile.defi.nMintHeight == 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
             int32 nRewardCycle = profile.defi.nRewardCycle;
             if (nHeight >= nMintHeight && nRewardCycle > 0)
             {
@@ -75,7 +98,11 @@ int64 CDeFiForkReward::GetSectionReward(const uint256& forkid, const uint256& ha
         return -1;
     }
 
-    int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
+    if (profile.defi.nMintHeight < 0)
+    {
+        return -1;
+    }
+    int32 nMintHeight = (profile.defi.nMintHeight == 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
 
     // begin height
     int32 nBeginHeight = PrevRewardHeight(forkid, CBlock::GetBlockHeightByHash(hash)) + 1;
@@ -326,7 +353,12 @@ CDeFiRewardSet CDeFiForkReward::ComputePromotionReward(const int64 nReward,
 
 int64 CDeFiForkReward::GetFixedDecayReward(const CProfile& profile, const int32 nBeginHeight, const int32 nEndHeight)
 {
-    int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
+    if (profile.defi.nMintHeight < 0)
+    {
+        return -1;
+    }
+    int32 nMintHeight = (profile.defi.nMintHeight == 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
+
     if (nBeginHeight < nMintHeight)
     {
         return -1;
@@ -418,7 +450,12 @@ int64 CDeFiForkReward::GetFixedDecayReward(const CProfile& profile, const int32 
 
 int64 CDeFiForkReward::GetSpecificDecayReward(const CProfile& profile, const int32 nBeginHeight, const int32 nEndHeight)
 {
-    int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
+    if (profile.defi.nMintHeight < 0)
+    {
+        return -1;
+    }
+    int32 nMintHeight = (profile.defi.nMintHeight == 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
+
     if (nBeginHeight < nMintHeight)
     {
         return -1;
@@ -510,8 +547,13 @@ int64 CDeFiForkReward::GetSpecificDecayReward(const CProfile& profile, const int
 
 int32 CDeFiForkReward::GetMaxRewardHeight(const CProfile& profile)
 {
+    if (profile.defi.nMintHeight < 0)
+    {
+        return -1;
+    }
+
     int64 nMaxSupply = (profile.defi.nMaxSupply < 0) ? MAX_MONEY : profile.defi.nMaxSupply;
-    int32 nMintHeight = (profile.defi.nMintHeight < 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
+    int32 nMintHeight = (profile.defi.nMintHeight == 0) ? (profile.nJointHeight + 2) : profile.defi.nMintHeight;
     int32 nSupplyCycle = profile.defi.nSupplyCycle;
     if (profile.defi.nCoinbaseType == FIXED_DEFI_COINBASE_TYPE)
     {
