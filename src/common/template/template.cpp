@@ -10,6 +10,7 @@
 #include <boost/multi_index_container.hpp>
 
 #include "delegate.h"
+#include "dexbbcmap.h"
 #include "dexmatch.h"
 #include "dexorder.h"
 #include "exchange.h"
@@ -57,6 +58,7 @@ static const CTypeInfoSet setTypeInfo = {
     { TEMPLATE_PAYMENT, new CTemplatePayment, "payment" },
     { TEMPLATE_DEXORDER, new CTemplateDexOrder, "dexorder" },
     { TEMPLATE_DEXMATCH, new CTemplateDexMatch, "dexmatch" },
+    { TEMPLATE_DEXBBCMAP, new CTemplateDexBbcMap, "dexbbcmap" },
 };
 
 static const CTypeInfo* GetTypeInfoByType(uint16 nTypeIn)
