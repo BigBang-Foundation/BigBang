@@ -7,7 +7,7 @@ import sys
 import re
 import codecs
 
-pattern = r'[\u4e00-\u9fff]+|[\uff01-\uff5e]+'
+pattern = r'[\u4e00-\u9fff]+|[\uff01-\uff5e]+|[\u201c\u201d\u300a\u300b\u3010\u3011\uff5b\uff5d\uff1b\uff1a\u3002\uff0c\u3001\uff1f]+'
 
 
 def check_files(path):
