@@ -79,13 +79,7 @@ jobs:
         shell: bash
         if: matrix.os == 'ubuntu-20.04'
         run: |
-          ./tools/check-char.py ./src/bigbang
-          ./tools/check-char.py ./src/xengine
-          ./tools/check-char.py ./src/common
-          ./tools/check-char.py ./src/storage
-          ./tools/check-char.py ./src/network
-          ./tools/check-char.py ./src/crypto
-          ./tools/check-char.py ./src/delegate
+          ./tools/check-char.py ./src
   build-macos:
     runs-on: macos-latest
 
