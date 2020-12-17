@@ -10,7 +10,7 @@ import codecs
 pattern = r'[\u4e00-\u9fff]+|[\uff01-\uff5e]+|[\u201c\u201d\u300a\u300b\u3010\u3011\uff5b\uff5d\uff1b\uff1a\u3002\uff0c\u3001\uff1f]+'
 
 
-def check_files(path):
+def check_files_is_valid(path):
     for fpathe, dirs, fs in os.walk(path):
         for f in fs:
             file = os.path.join(fpathe, f)
@@ -26,7 +26,7 @@ def check_files(path):
 
 
 def main():
-    if not check_files(sys.argv[1]):
+    if not check_files_is_valid(sys.argv[1]):
         print('finded chinese char')
         sys.exit(1)
     else:
