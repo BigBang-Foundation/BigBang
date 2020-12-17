@@ -20,8 +20,9 @@ def check_files_is_valid(path):
                 continue
             with codecs.open(file, 'r', encoding='utf8') as fd:
                 content = fd.read()
-            if re.search(white_list_pattern, content):
-                print(re.search(white_list_pattern, content))
+            result = re.search(white_list_pattern, content)
+            if result:
+                print(result)
                 return False
             else:
                 continue
