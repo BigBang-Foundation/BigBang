@@ -16,6 +16,8 @@ def check_files_is_valid(path):
         for f in fs:
             file = os.path.join(fpathe, f)
             print(file)
+            if file.find('.h') == -1 or file.find('.c') == -1:
+                continue
             with codecs.open(file, 'r', encoding='utf8') as fd:
                 content = fd.read()
             if re.search(white_list_pattern, content):
