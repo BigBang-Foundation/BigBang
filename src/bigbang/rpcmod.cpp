@@ -3947,8 +3947,16 @@ CRPCResultPtr CRPCMod::RPCGetFork(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INTERNAL_ERROR, "GetForkNextMortgageDecayHeight failed");
     }
 
+    CForkContext forkContext;
+    if (!pForkManager->GetForkContext(hashFork, forkContext))
+    {
+        StdError("CRPCMod", "RPCGetFork: Get fork context fail, fork: %s", hashFork.GetHex().c_str());
+        throw CRPCException(RPC_INTERNAL_ERROR, "GetForkContext failed");
+    }
+
     auto spResult = MakeCGetForkResultPtr();
     spResult->strFork = hashFork.ToString();
+    spResult->strParent = forkContext.hashParent.ToString();
     spResult->strName = profile.strName;
     spResult->strSymbol = profile.strSymbol;
     spResult->dAmount = ValueFromAmount(profile.nAmount);
