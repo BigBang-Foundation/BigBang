@@ -60,9 +60,9 @@
             "name": "nLogFileSize",
             "type": "int",
             "opt": "logfilesize",
-            "default": 10,
+            "default": 200,
             "format": "-logfilesize=<size>",
-            "desc": "Log file size(M) (default: 10M)"
+            "desc": "Log file size(M) (default: 200M)"
         },
         {
             "name": "nLogHistorySize",
@@ -71,6 +71,14 @@
             "default": 2048,
             "format": "-loghistorysize=<size>",
             "desc": "Log history size(M) (default: 2048M)"
+        },
+        {
+            "name": "fAddrTxIndex",
+            "type": "bool",
+            "opt": "addrtxindex",
+            "default": false,
+            "format": "-addrtxindex",
+            "desc": "Launch server without address txindex"
         }
     ],
     "CForkConfigOption": [
@@ -87,6 +95,13 @@
             "opt": "addgroup",
             "format": "-addgroup=<forkid of group leader>",
             "desc": "Add a supported fork group"
+        },
+        {
+            "name": "vExcludeFork",
+            "type": "vector<string>",
+            "opt": "excludefork",
+            "format": "-excludefork=<forkid>",
+            "desc": "Exclude a fork"
         }
     ],
     "CMintConfigOption": [
@@ -121,6 +136,14 @@
             "opt": "cryptonightkey",
             "format": "-cryptonightkey=<key>",
             "desc": "POW cryptonight key"
+        },
+        {
+            "name": "strPeerType",
+            "type": "string",
+            "opt": "peertype",
+            "default": "common",
+            "format": "-peertype=<type>",
+            "desc": "Node type: 'super' means super node, it will make main fork block. 'fork' means fork node, it will make other fork block. 'common' is not specific node"
         }
     ],
     "CRPCBasicConfigOption": [
@@ -423,7 +446,8 @@
             "default": "1440",
             "format": "-chkdpth=<n>",
             "desc": "Set storage check depth (default: 1440, range=0-n)"
-        },        {
+        },
+        {
             "name": "strRecoveryDir",
             "type": "string",
             "opt": "recoverydir",

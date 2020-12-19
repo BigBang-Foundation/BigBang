@@ -26,7 +26,6 @@ CDispatcher::CDispatcher()
     pTxPool = nullptr;
     pForkManager = nullptr;
     pConsensus = nullptr;
-    pWallet = nullptr;
     pService = nullptr;
     pBlockMaker = nullptr;
     pNetChannel = nullptr;
@@ -70,12 +69,6 @@ bool CDispatcher::HandleInitialize()
         return false;
     }
 
-    if (!GetObject("wallet", pWallet))
-    {
-        Error("Failed to request wallet");
-        return false;
-    }
-
     if (!GetObject("service", pService))
     {
         Error("Failed to request service");
@@ -116,7 +109,6 @@ void CDispatcher::HandleDeinitialize()
     pTxPool = nullptr;
     pForkManager = nullptr;
     pConsensus = nullptr;
-    pWallet = nullptr;
     pService = nullptr;
     pBlockMaker = nullptr;
     pNetChannel = nullptr;
@@ -126,11 +118,8 @@ void CDispatcher::HandleDeinitialize()
 
 bool CDispatcher::HandleInvoke()
 {
-    uint256 hashPrimaryLastBlock;
-    int nTempHeight;
-    int64 nTempTime;
-    uint16 nTempMintType;
-    if (!pBlockChain->GetLastBlock(pCoreProtocol->GetGenesisBlockHash(), hashPrimaryLastBlock, nTempHeight, nTempTime, nTempMintType))
+    CBlockStatus status;
+    if (!pBlockChain->GetLastBlockStatus(pCoreProtocol->GetGenesisBlockHash(), status))
     {
         Error("Failed to get last block");
         return false;
@@ -145,7 +134,7 @@ bool CDispatcher::HandleInvoke()
     }
 
     vector<uint256> vActive;
-    if (!pForkManager->LoadForkContext(hashPrimaryLastBlock, vForkCtxt, mapValidForkId, vActive))
+    if (!pForkManager->LoadForkContext(status.hashBlock, vForkCtxt, mapValidForkId, vActive))
     {
         Error("Failed to load for context");
         return false;
@@ -214,21 +203,6 @@ Errno CDispatcher::AddNewBlock(const CBlock& block, uint64 nNonce)
         return ERR_SYS_DATABASE_ERROR;
     }
 
-    if (block.IsOrigin())
-    {
-        if (!pWallet->AddNewFork(updateBlockChain.hashFork, updateBlockChain.hashParent,
-                                 updateBlockChain.nOriginHeight))
-        {
-            return ERR_SYS_DATABASE_ERROR;
-        }
-    }
-
-    if (!pWallet->SynchronizeTxSet(changeTxSet))
-    {
-        StdError("CDispatcher", "AddNewBlock: Wallet SynchronizeTxSet fail, block: %s", block.GetHash().GetHex().c_str());
-        return ERR_SYS_DATABASE_ERROR;
-    }
-
     if (!block.IsOrigin() && (!block.IsVacant() || pCoreProtocol->IsRefVacantHeight(block.GetBlockHeight())))
     {
         pNetChannel->BroadcastBlockInv(updateBlockChain.hashFork, block.GetHash());
@@ -269,17 +243,14 @@ Errno CDispatcher::AddNewBlock(const CBlock& block, uint64 nNonce)
 Errno CDispatcher::AddNewTx(const CTransaction& tx, uint64 nNonce)
 {
     Errno err = OK;
-    uint256 hashBlock;
-    int nHeight = 0;
-    int64 nTime = 0;
-    uint16 nMintType = 0;
-    if (!pBlockChain->GetLastBlock(pCoreProtocol->GetGenesisBlockHash(), hashBlock, nHeight, nTime, nMintType))
+    CBlockStatus status;
+    if (!pBlockChain->GetLastBlockStatus(pCoreProtocol->GetGenesisBlockHash(), status))
     {
         StdError("CDispatcher", "AddNewTx: GetLastBlock fail, fork: %s", pCoreProtocol->GetGenesisBlockHash().GetHex().c_str());
         return ERR_NOT_FOUND;
     }
 
-    err = pCoreProtocol->ValidateTransaction(tx, nHeight);
+    err = pCoreProtocol->ValidateTransaction(tx, status.nBlockHeight);
     if (err != OK)
     {
         StdError("CDispatcher", "AddNewTx: ValidateTransaction fail, txid: %s", tx.GetHash().GetHex().c_str());
@@ -299,11 +270,6 @@ Errno CDispatcher::AddNewTx(const CTransaction& tx, uint64 nNonce)
     pDataStat->AddP2pSynTxSynStatData(hashFork, !!nNonce);
 
     CAssembledTx assembledTx(tx, -1, destIn, nValueIn);
-    if (!pWallet->AddNewTx(hashFork, assembledTx))
-    {
-        StdError("CDispatcher", "AddNewTx: Wallet AddNewTx fail, txid: %s", tx.GetHash().GetHex().c_str());
-        return ERR_SYS_DATABASE_ERROR;
-    }
 
     CTransactionUpdate updateTransaction;
     updateTransaction.hashFork = hashFork;
@@ -412,6 +378,7 @@ void CDispatcher::UpdatePrimaryBlock(const CBlock& block, const CBlockChainUpdat
         proof.Load(block.vchProof);
         pBlockMakerUpdate->data.hashParent = updateBlockChain.hashParent;
         pBlockMakerUpdate->data.nOriginHeight = updateBlockChain.nOriginHeight;
+        pBlockMakerUpdate->data.hashPrevBlock = updateBlockChain.hashPrevBlock;
         pBlockMakerUpdate->data.hashBlock = updateBlockChain.hashLastBlock;
         pBlockMakerUpdate->data.nBlockTime = updateBlockChain.nLastBlockTime;
         pBlockMakerUpdate->data.nBlockHeight = updateBlockChain.nLastBlockHeight;
@@ -508,11 +475,6 @@ void CDispatcher::CheckSubForkLastBlock(const uint256& hashFork)
         if (!pTxPool->SynchronizeBlockChain(updateBlockChain, changeTxSet))
         {
             StdError("CDispatcher", "CheckSubForkLastBlock: TxPool SynchronizeBlockChain fail, last block: %s", updateBlockChain.hashLastBlock.GetHex().c_str());
-        }
-
-        if (!pWallet->SynchronizeTxSet(changeTxSet))
-        {
-            StdError("CDispatcher", "CheckSubForkLastBlock: Wallet SynchronizeTxSet fail, last block: %s", updateBlockChain.hashLastBlock.GetHex().c_str());
         }
 
         for (auto& block : updateBlockChain.vBlockAddNew)

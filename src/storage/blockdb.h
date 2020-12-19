@@ -6,6 +6,8 @@
 #define STORAGE_BLOCKDB_H
 
 #include "addressdb.h"
+#include "addresstxindexdb.h"
+#include "addressunspentdb.h"
 #include "block.h"
 #include "blockindexdb.h"
 #include "delegatedb.h"
@@ -25,11 +27,9 @@ class CBlockDB
 public:
     CBlockDB();
     ~CBlockDB();
-    bool Initialize(const boost::filesystem::path& pathData);
+    bool Initialize(const boost::filesystem::path& pathData, const uint256& hashGenesisBlockIn, const bool fAddrTxIndexIn);
     void Deinitialize();
     bool RemoveAll();
-    bool WriteGenesisBlockHash(const uint256& hashGenesisBlockIn);
-    bool GetGenesisBlockHash(uint256& hashGenesisBlockOut);
     bool AddNewForkContext(const CForkContext& ctxt);
     bool RetrieveForkContext(const uint256& hash, CForkContext& ctxt);
     bool ListForkContext(std::vector<CForkContext>& vForkCtxt, std::map<uint256, CValidForkId>& mapValidForkId);
@@ -40,7 +40,8 @@ public:
     bool ListFork(std::vector<std::pair<uint256, uint256>>& vFork);
     bool UpdateFork(const uint256& hash, const uint256& hashRefBlock, const uint256& hashForkBased,
                     const std::vector<std::pair<uint256, CTxIndex>>& vTxNew, const std::vector<uint256>& vTxDel,
-                    const std::vector<CTxUnspent>& vAddNew, const std::vector<CTxOutPoint>& vRemove);
+                    const std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddrTxNew, const std::vector<CAddrTxIndex>& vAddrTxDel,
+                    const std::vector<CTxUnspent>& vAddNewUnspent, const std::vector<CTxUnspent>& vRemoveUnspent);
     bool AddNewBlock(const CBlockOutline& outline);
     bool RemoveBlock(const uint256& hash);
     bool UpdateDelegateContext(const uint256& hash, const CDelegateContext& ctxtDelegate);
@@ -57,17 +58,22 @@ public:
     bool RetrieveEnroll(const uint256& hash, std::map<int, std::map<CDestination, CDiskPos>>& mapEnrollTxPos);
     bool RetrieveEnroll(int height, const std::vector<uint256>& vBlockRange,
                         std::map<CDestination, CDiskPos>& mapEnrollTxPos);
+    bool RetrieveAddressUnspent(const uint256& hashFork, const CDestination& dest, std::map<CTxOutPoint, CUnspentOut>& mapUnspent, uint256& hashLastBlockOut);
+    int64 RetrieveAddressTxList(const uint256& hashFork, const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, std::map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex);
 
 protected:
     bool LoadFork();
 
 protected:
+    bool fDbCfgAddrTxIndex;
     CForkDB dbFork;
     CBlockIndexDB dbBlockIndex;
     CTxIndexDB dbTxIndex;
     CUnspentDB dbUnspent;
     CDelegateDB dbDelegate;
     CAddressDB dbAddress;
+    CAddressUnspentDB dbAddressUnspent;
+    CAddressTxIndexDB dbAddressTxIndex;
 };
 
 } // namespace storage

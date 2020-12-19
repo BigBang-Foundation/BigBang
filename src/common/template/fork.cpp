@@ -13,7 +13,7 @@ using namespace std;
 using namespace xengine;
 
 static const int64 COIN = 1000000;
-const int64 MORTGAGE_BASE = 100000 * COIN; // initial mortgage
+const int64 MORTGAGE_BASE = 10000 * COIN; // initial mortgage. Change from 100000 * COIN to 10000 * COIN on about 565620 height
 #ifndef BIGBANG_TESTNET
 const int32 MORTGAGE_DECAY_CYCLE = 60 * 24 * 90; // decay cycle
 #else

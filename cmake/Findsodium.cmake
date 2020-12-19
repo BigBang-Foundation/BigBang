@@ -67,13 +67,12 @@ if (UNIX)
 
         # if pkgconfig for libsodium doesn't provide
         # static lib info, then override PKG_STATIC here..
-        if (sodium_PKG_STATIC_LIBRARIES STREQUAL "")
+        if ("${sodium_PKG_STATIC_LIBRARIES}" STREQUAL "")
             set(sodium_PKG_STATIC_LIBRARIES libsodium.a)
         endif()
-
         set(XPREFIX sodium_PKG_STATIC)
     else()
-        if (sodium_PKG_LIBRARIES STREQUAL "")
+        if ("${sodium_PKG_LIBRARIES}" STREQUAL "")
             set(sodium_PKG_LIBRARIES sodium)
         endif()
 
@@ -84,12 +83,12 @@ if (UNIX)
         HINTS ${${XPREFIX}_INCLUDE_DIRS}
     )
     find_library(sodium_LIBRARY_DEBUG NAMES ${${XPREFIX}_LIBRARIES}
-        HINTS ${${XPREFIX}_LIBRARY_DIRS}
+        HINTS ${${XPREFIX}_LIBRARY_DIRS} 
     )
     find_library(sodium_LIBRARY_RELEASE NAMES ${${XPREFIX}_LIBRARIES}
-        HINTS ${${XPREFIX}_LIBRARY_DIRS}
+        HINTS ${${XPREFIX}_LIBRARY_DIRS} 
     )
-
+   
 
 ########################################################################
 # Windows

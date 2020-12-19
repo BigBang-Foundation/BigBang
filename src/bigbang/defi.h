@@ -54,6 +54,8 @@ public:
 
     // return exist fork or not
     bool ExistFork(const uint256& forkid) const;
+    // return fork has been minted or not
+    bool IsMinted(const uint256& forkid, const int32 nHeight) const;
     // add a fork and its profile
     void AddFork(const uint256& forkid, const CProfile& profile);
     // get a fork profile
