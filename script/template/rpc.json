@@ -2950,6 +2950,10 @@
                         "unconfirmed": {
                             "type": "double",
                             "desc": "unconfirmed amount"
+                        },
+                        "latesthash": {
+                            "type": "string",
+                            "desc": "latest height block hash"
                         }
                     }
                 }
