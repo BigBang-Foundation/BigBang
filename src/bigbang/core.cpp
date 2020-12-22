@@ -818,15 +818,21 @@ Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* p
     block.GetSerializedProofOfWorkData(vchProofOfWork);
     uint256 hash = crypto::CryptoPowHash(&vchProofOfWork[0], vchProofOfWork.size());
 
+    string powHex;
+    powHex = ToHexString(vchProofOfWork);
+    DEBUG(OK, "monero hash algo: input[%s] vs. output[%s]", powHex.c_str(), hash.ToString().c_str());
+
     if (hash > hashTarget)
     {
 //        return DEBUG(ERR_BLOCK_PROOF_OF_WORK_INVALID, "hash error: proof[%s] vs. target[%s] with bits[%d]",
 //                     hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits);
         DEBUG(ERR_BLOCK_PROOF_OF_WORK_INVALID, "hash difficulty is not match: proof[%s] vs. target[%s] with bits[%d]",
-                     hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits);
+              hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits);
         return OK;
     }
 
+    DEBUG(OK, "hash difficulty matches: proof[%s] vs. target[%s] with bits[%d]",
+          hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits);
     return OK;
 }
 
