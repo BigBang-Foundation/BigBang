@@ -1717,6 +1717,13 @@ CRPCResultPtr CRPCMod::RPCGetBalance(CRPCParamPtr param)
         ListDestination(vDest);
     }
 
+    int nLastHeight = -1;
+    uint256 nLastBlockHash;
+    if (!pService->GetForkLastBlock(hashFork, nLastHeight, nLastBlockHash))
+    {
+        throw CRPCException(RPC_INTERNAL_ERROR, "Get Last Block hash Error");
+    }
+
     auto spResult = MakeCGetBalanceResultPtr();
     for (const CDestination& dest : vDest)
     {
@@ -1728,6 +1735,7 @@ CRPCResultPtr CRPCMod::RPCGetBalance(CRPCParamPtr param)
             b.dAvail = ValueFromAmount(balance.nAvailable);
             b.dLocked = ValueFromAmount(balance.nLocked);
             b.dUnconfirmed = ValueFromAmount(balance.nUnconfirmed);
+            b.strLatesthash = nLastBlockHash.ToString();
             spResult->vecBalance.push_back(b);
         }
     }
