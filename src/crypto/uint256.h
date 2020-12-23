@@ -734,6 +734,14 @@ public:
         else
             *this = 0;
     }
+
+    explicit uint256(const uint8* pData, const int nLen)
+    {
+        if (pData && (size_t)nLen == sizeof(pn))
+            memcpy(pn, pData, nLen);
+        else
+            *this = 0;
+    }
 };
 
 inline bool operator==(const uint256& a, uint64 b)

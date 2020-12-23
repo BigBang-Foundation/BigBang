@@ -222,6 +222,14 @@ public:
         }
         return -1;
     }
+    friend bool operator==(const CValidForkId& a, const CValidForkId& b)
+    {
+        return (a.hashRefFdBlock == b.hashRefFdBlock && a.mapForkId == b.mapForkId);
+    }
+    friend bool operator!=(const CValidForkId& a, const CValidForkId& b)
+    {
+        return !(a == b);
+    }
 
 public:
     uint256 hashRefFdBlock;

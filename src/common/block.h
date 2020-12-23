@@ -483,4 +483,40 @@ public:
     std::vector<uint256> vBlockHash;
 };
 
+struct SBlockCheckData
+{
+    uint32 nFile;
+    uint32 nOffset;
+    uint32 nBlockDataCrc;
+    uint32 nBlockIndexCrc;
+    uint32 nLinkCrc;
+};
+
+struct SPrevBlockCheckData
+{
+    uint32 nPrevLinkCrc;
+    uint32 nFile;
+    uint32 nOffset;
+    uint32 nBlockDataCrc;
+    uint32 nBlockIndexCrc;
+};
+
+struct SDelegateCheckData
+{
+    uint32 nFile;
+    uint32 nOffset;
+    uint32 nDelegateCrc;
+    uint32 nValidForkIdCrc;
+    uint32 nLinkCrc;
+};
+
+struct SPrevDelegateCheckData
+{
+    uint32 nPrevLinkCrc;
+    uint32 nFile;
+    uint32 nOffset;
+    uint32 nDelegateCrc;
+    uint32 nValidForkIdCrc;
+};
+
 #endif //COMMON_BLOCK_H

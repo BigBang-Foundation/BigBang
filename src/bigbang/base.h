@@ -240,7 +240,7 @@ public:
     virtual void SetPrimaryLastBlock(const uint256& hashPrimaryLastBlockIn) = 0;
     virtual bool VerifyFork(const uint256& hashPrevBlock, const uint256& hashFork, const std::string& strForkName) = 0;
     virtual bool AddValidForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const std::vector<std::pair<CDestination, CForkContext>>& vForkCtxt,
-                                     bool fCheckPointBlock, uint256& hashRefFdBlock, std::map<uint256, int>& mapValidFork)
+                                     bool fCheckPointBlock, CValidForkId& validForkId)
         = 0;
     virtual void RemoveValidForkContext(const uint256& hashBlock) = 0;
     virtual void ForkUpdate(const CBlockChainUpdate& update, std::vector<uint256>& vActive, std::vector<uint256>& vDeactive) = 0;

@@ -245,14 +245,14 @@ public:
     bool AddBlockForkContext(const CBlockEx& blockex);
     bool VerifyBlockForkTx(const uint256& hashPrev, const CTransaction& tx, vector<pair<CDestination, CForkContext>>& vForkCtxt);
     bool AddForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<pair<CDestination, CForkContext>>& vForkCtxt,
-                        bool fCheckPointBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork);
+                        const bool fCheckPointBlock, CValidForkId& validForkId);
     bool GetForkContext(const uint256& hashFork, CForkContext& ctxt);
     bool VerifyValidFork(const uint256& hashPrevBlock, const uint256& hashFork, const string& strForkName);
     bool GetValidFdForkId(const uint256& hashBlock, map<uint256, int>& mapFdForkIdOut);
     int GetValidForkCreatedHeight(const uint256& hashBlock, const uint256& hashFork);
 
-    bool CheckDbValidFork(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork);
-    bool AddDbValidForkHash(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork);
+    bool CheckDbValidFork(const uint256& hashBlock, const CValidForkId& validForkId);
+    bool AddDbValidForkHash(const uint256& hashBlock, const CValidForkId& validForkId);
 
     bool GetDbForkContext(const uint256& hashFork, CForkContext& ctxt);
     bool UpdateDbForkContext(const CForkContext& ctxt);
@@ -489,6 +489,11 @@ protected:
     bool CheckRepairAddressUnspent();
     bool CheckRepairAddress(uint64& nAddressCount);
     bool CheckTxIndex(uint64& nTxIndexCount);
+
+    bool CheckBlockIndexCrc();
+    bool CheckBlockData();
+    bool CheckBlockDataEx();
+    bool CheckBlockIndex();
 
 public:
     bool CheckRepairData();

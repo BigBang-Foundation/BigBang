@@ -18,6 +18,8 @@ using namespace boost::filesystem;
 using namespace xengine;
 
 #define BLOCKFILE_PREFIX "block"
+#define BLOCKCHECKFILE_PREFIX "blockcheck"
+#define DELEGATECHECKFILE_PREFIX "delegatecheck"
 #define LOGFILE_NAME "storage.log"
 namespace bigbang
 {
@@ -430,7 +432,7 @@ map<uint256, CBlockHeightIndex>* CForkHeightIndex::GetBlockMintList(uint32 nHeig
 // CBlockBase
 
 CBlockBase::CBlockBase()
-  : fDebugLog(false), fCfgAddrTxIndex(false)
+  : fDebugLog(false), fCfgAddrTxIndex(false), nLastBlockCheckCrc(0), nLastDelegateCheckCrc(0)
 {
 }
 
@@ -438,6 +440,8 @@ CBlockBase::~CBlockBase()
 {
     dbBlock.Deinitialize();
     tsBlock.Deinitialize();
+    tsBlockCheck.Deinitialize();
+    tsDelegateCheck.Deinitialize();
 }
 
 bool CBlockBase::Initialize(const path& pathDataLocation, const uint256& hashGenesisBlockIn, const bool fDebug, const bool fAddrTxIndexIn, const bool fRenewDB)
@@ -465,6 +469,40 @@ bool CBlockBase::Initialize(const path& pathDataLocation, const uint256& hashGen
         return false;
     }
 
+    if (!tsBlockCheck.Initialize(pathDataLocation / "check/block", BLOCKCHECKFILE_PREFIX))
+    {
+        dbBlock.Deinitialize();
+        tsBlock.Deinitialize();
+        Error("B", "Failed to initialize block check tsfile");
+        return false;
+    }
+    if (!GetBlockCheckLinkCrc())
+    {
+        dbBlock.Deinitialize();
+        tsBlock.Deinitialize();
+        tsBlockCheck.Deinitialize();
+        Error("B", "Failed to initialize block check link");
+        return false;
+    }
+
+    if (!tsDelegateCheck.Initialize(pathDataLocation / "check/delegate", DELEGATECHECKFILE_PREFIX))
+    {
+        dbBlock.Deinitialize();
+        tsBlock.Deinitialize();
+        tsBlockCheck.Deinitialize();
+        Error("B", "Failed to initialize delegate check tsfile");
+        return false;
+    }
+    if (!GetDelegateCheckLinkCrc())
+    {
+        dbBlock.Deinitialize();
+        tsBlock.Deinitialize();
+        tsBlockCheck.Deinitialize();
+        tsDelegateCheck.Deinitialize();
+        Error("B", "Failed to initialize delegate check link");
+        return false;
+    }
+
     if (fRenewDB)
     {
         Clear();
@@ -473,6 +511,8 @@ bool CBlockBase::Initialize(const path& pathDataLocation, const uint256& hashGen
     {
         dbBlock.Deinitialize();
         tsBlock.Deinitialize();
+        tsBlockCheck.Deinitialize();
+        tsDelegateCheck.Deinitialize();
         {
             CWriteLock wlock(rwAccess);
 
@@ -489,6 +529,8 @@ void CBlockBase::Deinitialize()
 {
     dbBlock.Deinitialize();
     tsBlock.Deinitialize();
+    tsBlockCheck.Deinitialize();
+    tsDelegateCheck.Deinitialize();
     {
         CWriteLock wlock(rwAccess);
 
@@ -534,7 +576,8 @@ bool CBlockBase::Initiate(const uint256& hashGenesis, const CBlock& blockGenesis
         return false;
     }
     uint32 nFile, nOffset;
-    if (!tsBlock.Write(CBlockEx(blockGenesis), nFile, nOffset))
+    CBlockEx blockEx(blockGenesis);
+    if (!tsBlock.Write(blockEx, nFile, nOffset))
     {
         StdTrace("BlockBase", "Write genesis %s block failed", hashGenesis.ToString().c_str());
         return false;
@@ -562,9 +605,22 @@ bool CBlockBase::Initiate(const uint256& hashGenesis, const CBlock& blockGenesis
             return false;
         }
 
-        if (!dbBlock.AddNewBlock(CBlockOutline(pIndexNew)))
+        CBlockOutline indexBlock(pIndexNew);
+        if (!dbBlock.AddNewBlock(indexBlock))
         {
             StdTrace("BlockBase", "Add New genesis Block %s block failed", hashGenesis.ToString().c_str());
+            return false;
+        }
+
+        SBlockCheckData checkData;
+        checkData.nFile = nFile;
+        checkData.nOffset = nOffset;
+        checkData.nBlockDataCrc = CTimeSeriesCached::GetChecksum(blockEx);
+        checkData.nBlockIndexCrc = CTimeSeriesCached::GetChecksum(indexBlock);
+        checkData.nLinkCrc = 0;
+        if (!WriteBlockCheckData(checkData))
+        {
+            StdTrace("BlockBase", "Write genesis block check fail");
             return false;
         }
 
@@ -590,22 +646,21 @@ bool CBlockBase::Initiate(const uint256& hashGenesis, const CBlock& blockGenesis
         }
 
         bool fCheckValidForkResult = true;
-        uint256 hashRefFdBlock;
-        map<uint256, int> mapValidFork;
-        if (!dbBlock.RetrieveValidForkHash(hashGenesisBlock, hashRefFdBlock, mapValidFork))
+        CValidForkId validForkId;
+        if (!dbBlock.RetrieveValidForkHash(hashGenesisBlock, validForkId))
         {
             fCheckValidForkResult = false;
         }
         else
         {
-            if (hashRefFdBlock != 0)
+            if (validForkId.hashRefFdBlock != 0)
             {
                 fCheckValidForkResult = false;
             }
             else
             {
-                const auto it = mapValidFork.find(hashGenesisBlock);
-                if (it == mapValidFork.end() || it->second != 0)
+                const auto it = validForkId.mapForkId.find(hashGenesisBlock);
+                if (it == validForkId.mapForkId.end() || it->second != 0)
                 {
                     fCheckValidForkResult = false;
                 }
@@ -613,13 +668,25 @@ bool CBlockBase::Initiate(const uint256& hashGenesis, const CBlock& blockGenesis
         }
         if (!fCheckValidForkResult)
         {
-            map<uint256, int> mapValidFork;
-            mapValidFork.insert(make_pair(hashGenesis, 0));
-            if (!dbBlock.AddValidForkHash(hashGenesis, uint256(), mapValidFork))
+            validForkId.Clear();
+            validForkId.mapForkId.insert(make_pair(hashGenesis, 0));
+            if (!dbBlock.AddValidForkHash(hashGenesis, validForkId))
             {
                 StdTrace("BlockBase", "Add valid genesis fork fail");
                 return false;
             }
+        }
+
+        SDelegateCheckData checkDelegateData;
+        checkDelegateData.nFile = nFile;
+        checkDelegateData.nOffset = nOffset;
+        checkDelegateData.nDelegateCrc = CTimeSeriesCached::GetChecksum(ctxtDelegate);
+        checkDelegateData.nValidForkIdCrc = CTimeSeriesCached::GetChecksum(validForkId);
+        checkDelegateData.nLinkCrc = 0;
+        if (!WriteDelegateCheckData(checkDelegateData))
+        {
+            StdTrace("BlockBase", "Write genesis delegate check fail");
+            return false;
         }
 
         if (!dbBlock.AddNewFork(hashGenesis))
@@ -651,7 +718,8 @@ bool CBlockBase::Initiate(const uint256& hashGenesis, const CBlock& blockGenesis
     return true;
 }
 
-bool CBlockBase::AddNew(const uint256& hash, CBlockEx& block, CBlockIndex** ppIndexNew, const uint256& nChainTrust, int64 nMinEnrollAmount)
+bool CBlockBase::AddNew(const uint256& hash, const CBlockEx& block, const uint256& nChainTrust, const int64 nMinEnrollAmount,
+                        CBlockIndex** ppIndexNew, uint32& nDelegateCrc24q)
 {
     if (Exists(hash))
     {
@@ -667,6 +735,7 @@ bool CBlockBase::AddNew(const uint256& hash, CBlockEx& block, CBlockIndex** ppIn
             StdError("BlockBase", "Add new block: Verify delegate vote fail, block: %s", hash.ToString().c_str());
             return false;
         }
+        nDelegateCrc24q = CTimeSeriesCached::GetChecksum(ctxtDelegate);
     }
 
     uint32 nFile, nOffset;
@@ -685,7 +754,8 @@ bool CBlockBase::AddNew(const uint256& hash, CBlockEx& block, CBlockIndex** ppIn
             return false;
         }
 
-        if (!dbBlock.AddNewBlock(CBlockOutline(pIndexNew)))
+        CBlockOutline blockOutline(pIndexNew);
+        if (!dbBlock.AddNewBlock(blockOutline))
         {
             StdError("BlockBase", "Add new block: AddNewBlock failed, block: %s", hash.ToString().c_str());
             //mapIndex.erase(hash);
@@ -694,9 +764,23 @@ bool CBlockBase::AddNew(const uint256& hash, CBlockEx& block, CBlockIndex** ppIn
             return false;
         }
 
+        SBlockCheckData blockCheckData;
+        blockCheckData.nFile = pIndexNew->nFile;
+        blockCheckData.nOffset = pIndexNew->nOffset;
+        blockCheckData.nBlockDataCrc = CTimeSeriesCached::GetChecksum(block);
+        blockCheckData.nBlockIndexCrc = CTimeSeriesCached::GetChecksum(blockOutline);
+        blockCheckData.nLinkCrc = 0;
+        if (!WriteBlockCheckData(blockCheckData))
+        {
+            StdError("BlockBase", "Add new block: Write block check failed, block: %s", hash.ToString().c_str());
+            RemoveBlockIndex(pIndexNew->GetOriginHash(), hash);
+            delete pIndexNew;
+            return false;
+        }
+
         if (pIndexNew->IsPrimary())
         {
-            if (!UpdateDelegate(hash, block, CDiskPos(nFile, nOffset), ctxtDelegate))
+            if (!UpdateDelegate(hash, CDiskPos(nFile, nOffset), ctxtDelegate))
             {
                 StdTrace("BlockBase", "Add new block: Update delegate failed, block: %s", hash.ToString().c_str());
                 dbBlock.RemoveBlock(hash);
@@ -725,9 +809,14 @@ bool CBlockBase::AddNewForkContext(const CForkContext& ctxt)
     return true;
 }
 
-bool CBlockBase::AddValidForkHash(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork)
+bool CBlockBase::AddValidForkHash(const uint256& hashBlock, const CValidForkId& validForkId, uint32& nValidForkIdCrc24q)
 {
-    return dbBlock.AddValidForkHash(hashBlock, hashRefFdBlock, mapValidFork);
+    if (!dbBlock.AddValidForkHash(hashBlock, validForkId))
+    {
+        return false;
+    }
+    nValidForkIdCrc24q = CTimeSeriesCached::GetChecksum(validForkId);
+    return true;
 }
 
 bool CBlockBase::Retrieve(const uint256& hash, CBlock& block)
@@ -2624,6 +2713,70 @@ bool CBlockBase::GetPrimaryHeightBlockTime(const uint256& hashLastBlock, int nHe
     return false;
 }
 
+bool CBlockBase::GetBlockCheckLinkCrc()
+{
+    SBlockCheckData checkData;
+    int nLen = tsBlockCheck.ReadLast((uint8*)&checkData, sizeof(checkData));
+    if (nLen == -3 || nLen == 0 || nLen == sizeof(checkData))
+    {
+        if (nLen == sizeof(checkData))
+        {
+            nLastBlockCheckCrc = checkData.nLinkCrc;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool CBlockBase::WriteBlockCheckData(SBlockCheckData& checkData)
+{
+    SPrevBlockCheckData tempCheckData;
+
+    tempCheckData.nPrevLinkCrc = nLastBlockCheckCrc;
+    tempCheckData.nFile = checkData.nFile;
+    tempCheckData.nOffset = checkData.nOffset;
+    tempCheckData.nBlockDataCrc = checkData.nBlockDataCrc;
+    tempCheckData.nBlockIndexCrc = checkData.nBlockIndexCrc;
+
+    checkData.nLinkCrc = CTimeSeriesCached::GetChecksum((const uint8*)&tempCheckData, sizeof(tempCheckData));
+    nLastBlockCheckCrc = checkData.nLinkCrc;
+
+    CDiskPos pos;
+    return tsBlockCheck.Write((const uint8*)&(checkData), sizeof(checkData), pos);
+}
+
+bool CBlockBase::GetDelegateCheckLinkCrc()
+{
+    SDelegateCheckData checkData;
+    int nLen = tsDelegateCheck.ReadLast((uint8*)&checkData, sizeof(checkData));
+    if (nLen == -3 || nLen == 0 || nLen == sizeof(checkData))
+    {
+        if (nLen == sizeof(checkData))
+        {
+            nLastDelegateCheckCrc = checkData.nLinkCrc;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool CBlockBase::WriteDelegateCheckData(SDelegateCheckData& checkData)
+{
+    SPrevDelegateCheckData tempCheckData;
+
+    tempCheckData.nPrevLinkCrc = nLastDelegateCheckCrc;
+    tempCheckData.nFile = checkData.nFile;
+    tempCheckData.nOffset = checkData.nOffset;
+    tempCheckData.nDelegateCrc = checkData.nDelegateCrc;
+    tempCheckData.nValidForkIdCrc = checkData.nValidForkIdCrc;
+
+    checkData.nLinkCrc = CTimeSeriesCached::GetChecksum((const uint8*)&tempCheckData, sizeof(tempCheckData));
+    nLastDelegateCheckCrc = checkData.nLinkCrc;
+
+    CDiskPos pos;
+    return tsDelegateCheck.Write((const uint8*)&(checkData), sizeof(checkData), pos);
+}
+
 CBlockIndex* CBlockBase::GetIndex(const uint256& hash) const
 {
     map<uint256, CBlockIndex*>::const_iterator mi = mapIndex.find(hash);
@@ -2793,7 +2946,7 @@ bool CBlockBase::LoadForkProfile(const CBlockIndex* pIndexOrigin, CProfile& prof
     return true;
 }
 
-bool CBlockBase::VerifyDelegateVote(const uint256& hash, CBlockEx& block, int64 nMinEnrollAmount, CDelegateContext& ctxtDelegate)
+bool CBlockBase::VerifyDelegateVote(const uint256& hash, const CBlockEx& block, const int64 nMinEnrollAmount, CDelegateContext& ctxtDelegate)
 {
     StdTrace("CBlockBase", "VerifyDelegateVote: height: %d, block: %s", block.GetBlockHeight(), hash.GetHex().c_str());
 
@@ -2822,10 +2975,10 @@ bool CBlockBase::VerifyDelegateVote(const uint256& hash, CBlockEx& block, int64 
                      + ss.GetSerializeSize(var);
     for (int i = 0; i < block.vtx.size(); i++)
     {
-        CTransaction& tx = block.vtx[i];
+        const CTransaction& tx = block.vtx[i];
         CDestination destInDelegateTemplate;
         CDestination sendToDelegateTemplate;
-        CTxContxt& txContxt = block.vTxContxt[i];
+        const CTxContxt& txContxt = block.vTxContxt[i];
         if (!CTemplateVote::ParseDelegateDest(txContxt.destIn, tx.sendTo, tx.vchSig, destInDelegateTemplate, sendToDelegateTemplate))
         {
             StdLog("CBlockBase", "Verify delegate vote: parse delegate dest fail, destIn: %s, sendTo: %s, block: %s, txid: %s",
@@ -2901,7 +3054,7 @@ bool CBlockBase::VerifyDelegateVote(const uint256& hash, CBlockEx& block, int64 
     return true;
 }
 
-bool CBlockBase::UpdateDelegate(const uint256& hash, CBlockEx& block, const CDiskPos& posBlock, CDelegateContext& ctxtDelegate)
+bool CBlockBase::UpdateDelegate(const uint256& hash, const CDiskPos& posBlock, CDelegateContext& ctxtDelegate)
 {
     for (auto& dEnrollTx : ctxtDelegate.mapEnrollTx)
     {

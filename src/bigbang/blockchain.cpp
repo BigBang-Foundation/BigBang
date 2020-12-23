@@ -661,18 +661,34 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
     }
     StdTrace("BlockChain", "AddNewBlock block chain trust: %s", nChainTrust.GetHex().c_str());
 
-    CBlockIndex* pIndexNew;
-    if (!cntrBlock.AddNew(hash, blockex, &pIndexNew, nChainTrust, pCoreProtocol->MinEnrollAmount()))
+    CBlockIndex* pIndexNew = nullptr;
+    uint32 nDelegateCrc24q = 0;
+    if (!cntrBlock.AddNew(hash, blockex, nChainTrust, pCoreProtocol->MinEnrollAmount(), &pIndexNew, nDelegateCrc24q))
     {
         Log("AddNewBlock Storage AddNew Error : %s ", hash.ToString().c_str());
         return ERR_SYS_STORAGE_ERROR;
     }
     Log("AddNew Block : %s", pIndexNew->ToString().c_str());
 
-    if (pIndexNew->IsPrimary() && !AddBlockForkContext(blockex))
+    if (pIndexNew->IsPrimary())
     {
-        Log("AddNewBlock add block fork fail, block: %s", hash.ToString().c_str());
-        return ERR_BLOCK_TRANSACTIONS_INVALID;
+        uint32 nValidForkIdCrc24q;
+        if (!AddBlockForkContext(blockex, nValidForkIdCrc24q))
+        {
+            Log("AddNewBlock add block fork fail, block: %s", hash.ToString().c_str());
+            return ERR_BLOCK_TRANSACTIONS_INVALID;
+        }
+
+        SDelegateCheckData checkData;
+        checkData.nFile = pIndexNew->nFile;
+        checkData.nOffset = pIndexNew->nOffset;
+        checkData.nDelegateCrc = nDelegateCrc24q;
+        checkData.nValidForkIdCrc = nValidForkIdCrc24q;
+        if (!cntrBlock.WriteDelegateCheckData(checkData))
+        {
+            Log("AddNewBlock write delegate check fail, block: %s", hash.ToString().c_str());
+            return ERR_BLOCK_TRANSACTIONS_INVALID;
+        }
     }
 
     if (!pIndexNew->IsPrimary() && (!pIndexNew->IsVacant() || pCoreProtocol->IsRefVacantHeight(block.GetBlockHeight())) && pIndexRef
@@ -857,7 +873,8 @@ Errno CBlockChain::AddNewOrigin(const CBlock& block, CBlockChainUpdate& update)
 
     CBlockIndex* pIndexNew;
     CBlockEx blockex(block);
-    if (!cntrBlock.AddNew(hash, blockex, &pIndexNew, nChainTrust, pCoreProtocol->MinEnrollAmount()))
+    uint32 nDelegateCrc24q = 0;
+    if (!cntrBlock.AddNew(hash, blockex, nChainTrust, pCoreProtocol->MinEnrollAmount(), &pIndexNew, nDelegateCrc24q))
     {
         Log("AddNewOrigin Storage AddNew Error : %s ", hash.ToString().c_str());
         return ERR_SYS_STORAGE_ERROR;
@@ -2010,7 +2027,7 @@ void CBlockChain::InitCheckPoints()
     }
 }
 
-bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
+bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex, uint32& nValidForkIdCrc24q)
 {
     uint256 hashBlock = blockex.GetHash();
     vector<pair<CDestination, CForkContext>> vForkCtxt;
@@ -2065,15 +2082,14 @@ bool CBlockChain::AddBlockForkContext(const CBlockEx& blockex)
         }
     }
 
-    uint256 hashRefFdBlock;
-    map<uint256, int> mapValidFork;
-    if (!pForkManager->AddValidForkContext(blockex.hashPrev, hashBlock, vForkCtxt, fCheckPointBlock, hashRefFdBlock, mapValidFork))
+    CValidForkId validForkId;
+    if (!pForkManager->AddValidForkContext(blockex.hashPrev, hashBlock, vForkCtxt, fCheckPointBlock, validForkId))
     {
         StdLog("CBlockChain", "Add block fork context: Add valid fork context fail, block: %s", hashBlock.ToString().c_str());
         return false;
     }
 
-    if (!cntrBlock.AddValidForkHash(hashBlock, hashRefFdBlock, mapValidFork))
+    if (!cntrBlock.AddValidForkHash(hashBlock, validForkId, nValidForkIdCrc24q))
     {
         StdLog("CBlockChain", "Add block fork context: AddValidForkHash fail, block: %s", hashBlock.ToString().c_str());
         pForkManager->RemoveValidForkContext(hashBlock);

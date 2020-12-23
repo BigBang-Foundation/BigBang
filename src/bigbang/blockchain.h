@@ -114,7 +114,7 @@ protected:
     bool VerifyBlockCertTx(const CBlock& block);
 
     void InitCheckPoints();
-    bool AddBlockForkContext(const CBlockEx& blockex);
+    bool AddBlockForkContext(const CBlockEx& blockex, uint32& nValidForkIdCrc24q);
     void InitCheckPoints(const uint256& hashFork, const std::map<int, uint256>& mapCheckPointsIn);
 
     // defi

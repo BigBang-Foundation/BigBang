@@ -174,7 +174,7 @@ bool CForkManager::VerifyFork(const uint256& hashPrevBlock, const uint256& hashF
 }
 
 bool CForkManager::AddValidForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<pair<CDestination, CForkContext>>& vForkCtxt,
-                                       bool fCheckPointBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork)
+                                       bool fCheckPointBlock, CValidForkId& validForkId)
 {
     CValidForkId& fd = mapBlockValidFork[hashNewBlock];
     if (fCheckPointBlock)
@@ -228,9 +228,7 @@ bool CForkManager::AddValidForkContext(const uint256& hashPrevBlock, const uint2
         fd.mapForkId.insert(make_pair(ctxt.hashFork, CBlock::GetBlockHeightByHash(hashNewBlock)));
     }
 
-    hashRefFdBlock = fd.hashRefFdBlock;
-    mapValidFork.clear();
-    mapValidFork.insert(fd.mapForkId.begin(), fd.mapForkId.end());
+    validForkId = fd;
     return true;
 }
 

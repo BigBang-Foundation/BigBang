@@ -187,22 +187,21 @@ bool CCheckForkManager::FetchForkStatus()
     }
 
     bool fCheckGenesisRet = true;
-    uint256 hashRefFdBlock;
-    map<uint256, int> mapValidFork;
-    if (!dbFork.RetrieveValidForkHash(objParam.hashGenesisBlock, hashRefFdBlock, mapValidFork))
+    CValidForkId validForkId;
+    if (!dbFork.RetrieveValidForkHash(objParam.hashGenesisBlock, validForkId))
     {
         fCheckGenesisRet = false;
     }
     else
     {
-        if (hashRefFdBlock != 0)
+        if (validForkId.hashRefFdBlock != 0)
         {
             fCheckGenesisRet = false;
         }
         else
         {
-            const auto it = mapValidFork.find(objParam.hashGenesisBlock);
-            if (it == mapValidFork.end() || it->second != 0)
+            const auto it = validForkId.mapForkId.find(objParam.hashGenesisBlock);
+            if (it == validForkId.mapForkId.end() || it->second != 0)
             {
                 fCheckGenesisRet = false;
             }
@@ -215,8 +214,9 @@ bool CCheckForkManager::FetchForkStatus()
         {
             return false;
         }
-        mapValidFork.insert(make_pair(objParam.hashGenesisBlock, 0));
-        if (!dbFork.AddValidForkHash(objParam.hashGenesisBlock, uint256(), mapValidFork))
+        validForkId.Clear();
+        validForkId.mapForkId.insert(make_pair(objParam.hashGenesisBlock, 0));
+        if (!dbFork.AddValidForkHash(objParam.hashGenesisBlock, validForkId))
         {
             StdError("check", "Fetch fork status: Add valid fork fail");
             return false;
@@ -235,8 +235,7 @@ bool CCheckForkManager::FetchForkStatus()
 bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
 {
     uint256 hashBlock = blockex.GetHash();
-    uint256 hashRefFdBlock;
-    map<uint256, int> mapValidFork;
+    CValidForkId validForkId;
 
     if (hashBlock == objParam.hashGenesisBlock)
     {
@@ -249,8 +248,7 @@ bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
         }
         vForkCtxt.push_back(make_pair(profile.destOwner, CForkContext(objParam.hashGenesisBlock, uint64(0), uint64(0), profile)));
 
-        mapValidFork.insert(make_pair(objParam.hashGenesisBlock, 0));
-        if (!AddForkContext(uint256(), objParam.hashGenesisBlock, vForkCtxt, true, hashRefFdBlock, mapValidFork))
+        if (!AddForkContext(uint256(), objParam.hashGenesisBlock, vForkCtxt, true, validForkId))
         {
             StdLog("check", "Add block fork context: Add fork context fail, block: %s", hashBlock.ToString().c_str());
             return false;
@@ -290,21 +288,21 @@ bool CCheckForkManager::AddBlockForkContext(const CBlockEx& blockex)
             }
         }
 
-        if (!AddForkContext(blockex.hashPrev, hashBlock, vForkCtxt, IsCheckPoint(objParam.hashGenesisBlock, hashBlock), hashRefFdBlock, mapValidFork))
+        if (!AddForkContext(blockex.hashPrev, hashBlock, vForkCtxt, IsCheckPoint(objParam.hashGenesisBlock, hashBlock), validForkId))
         {
             StdLog("check", "Add block fork context: Add fork context fail, block: %s", hashBlock.ToString().c_str());
             return false;
         }
     }
 
-    if (!CheckDbValidFork(hashBlock, hashRefFdBlock, mapValidFork))
+    if (!CheckDbValidFork(hashBlock, validForkId))
     {
         StdLog("check", "Add block fork context: Check db valid fork fail, block: %s", hashBlock.ToString().c_str());
         if (fOnlyCheck)
         {
             return false;
         }
-        if (!AddDbValidForkHash(hashBlock, hashRefFdBlock, mapValidFork))
+        if (!AddDbValidForkHash(hashBlock, validForkId))
         {
             StdLog("check", "Add block fork context: Add db valid fork fail, block: %s", hashBlock.ToString().c_str());
             return false;
@@ -402,7 +400,7 @@ bool CCheckForkManager::VerifyBlockForkTx(const uint256& hashPrev, const CTransa
 }
 
 bool CCheckForkManager::AddForkContext(const uint256& hashPrevBlock, const uint256& hashNewBlock, const vector<pair<CDestination, CForkContext>>& vForkCtxt,
-                                       bool fCheckPointBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork)
+                                       const bool fCheckPointBlock, CValidForkId& validForkId)
 {
     CCheckValidFdForkId& fd = mapBlockValidFork[hashNewBlock];
     if (fCheckPointBlock)
@@ -451,9 +449,9 @@ bool CCheckForkManager::AddForkContext(const uint256& hashPrevBlock, const uint2
         }
         fd.mapForkId.insert(make_pair(hashFork, CBlock::GetBlockHeightByHash(hashNewBlock)));
     }
-    hashRefFdBlock = fd.hashRefFdBlock;
-    mapValidFork.clear();
-    mapValidFork.insert(fd.mapForkId.begin(), fd.mapForkId.end());
+    validForkId.hashRefFdBlock = fd.hashRefFdBlock;
+    validForkId.mapForkId.clear();
+    validForkId.mapForkId.insert(fd.mapForkId.begin(), fd.mapForkId.end());
     return true;
 }
 
@@ -536,35 +534,25 @@ int CCheckForkManager::GetValidForkCreatedHeight(const uint256& hashBlock, const
     return -1;
 }
 
-bool CCheckForkManager::CheckDbValidFork(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork)
+bool CCheckForkManager::CheckDbValidFork(const uint256& hashBlock, const CValidForkId& validForkId)
 {
-    uint256 hashRefFdBlockGet;
-    map<uint256, int> mapValidForkGet;
-    if (!dbFork.RetrieveValidForkHash(hashBlock, hashRefFdBlockGet, mapValidForkGet))
+    CValidForkId validForkIdGet;
+    if (!dbFork.RetrieveValidForkHash(hashBlock, validForkIdGet))
     {
         StdLog("check", "CheckDbValidFork: RetrieveValidForkHash fail, block: %s", hashBlock.GetHex().c_str());
         return false;
     }
-    if (hashRefFdBlockGet != hashRefFdBlock || mapValidForkGet.size() != mapValidFork.size())
+    if (validForkIdGet != validForkId)
     {
         StdLog("check", "CheckDbValidFork: hashRefFdBlock or mapValidFork error, block: %s", hashBlock.GetHex().c_str());
         return false;
     }
-    for (const auto& vd : mapValidForkGet)
-    {
-        const auto it = mapValidFork.find(vd.first);
-        if (it == mapValidFork.end() || it->second != vd.second)
-        {
-            StdLog("check", "CheckDbValidFork: mapValidFork error, block: %s", hashBlock.GetHex().c_str());
-            return false;
-        }
-    }
     return true;
 }
 
-bool CCheckForkManager::AddDbValidForkHash(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork)
+bool CCheckForkManager::AddDbValidForkHash(const uint256& hashBlock, const CValidForkId& validForkId)
 {
-    return dbFork.AddValidForkHash(hashBlock, hashRefFdBlock, mapValidFork);
+    return dbFork.AddValidForkHash(hashBlock, validForkId);
 }
 
 bool CCheckForkManager::GetDbForkContext(const uint256& hashFork, CForkContext& ctxt)
@@ -2722,10 +2710,472 @@ bool CCheckRepairData::CheckTxIndex(uint64& nTxIndexCount)
     return true;
 }
 
+bool CCheckRepairData::CheckBlockIndexCrc()
+{
+    class CCheckTSBufWalker : public CTSBufWalker
+    {
+    public:
+        CCheckTSBufWalker()
+        {
+            memset(&cachePrevCheckData, 0, sizeof(cachePrevCheckData));
+            fUpdate = false;
+        }
+
+        bool Walk(const uint8* pBuf, const uint32 nSize, uint32 nFile, uint32 nOffset)
+        {
+            bool fRet = true;
+            SBlockCheckData* pCheckData = (SBlockCheckData*)pBuf;
+            uint32 nSySize = nSize;
+
+            uint32 nCheckLinkCrc = 0;
+            if (pCheckData && nSySize >= sizeof(SBlockCheckData))
+            {
+                memcpy(&cachePrevCheckData[1], pCheckData, sizeof(SBlockCheckData));
+                nCheckLinkCrc = CTimeSeriesCached::GetChecksum((uint8*)&(cachePrevCheckData[0].nLinkCrc), sizeof(SBlockCheckData));
+            }
+
+            SBlockCheckData* pPrevCheck = nullptr;
+            while (pCheckData && nSySize >= sizeof(SBlockCheckData))
+            {
+                if (pPrevCheck)
+                {
+                    nCheckLinkCrc = CTimeSeriesCached::GetChecksum((uint8*)&(pPrevCheck->nLinkCrc), sizeof(SBlockCheckData));
+                }
+
+                /*StdLog("CCH", "CCheckTSBufWalker: nFile: %d, nOffset: %d, block crc: %8.8x, index crc: %8.8x, nLinkCrc: %8.8x, nCheckLinkCrc: %8.8x, nSySize: %d",
+                       pCheckData->nFile, pCheckData->nOffset,
+                       pCheckData->nBlockDataCrc, pCheckData->nBlockIndexCrc,
+                       pCheckData->nLinkCrc, nCheckLinkCrc, nSySize);*/
+
+                if (pCheckData->nLinkCrc != nCheckLinkCrc)
+                {
+                    StdLog("CCH", "CCheckTSBufWalker: nFile: %d, nOffset: %d, LinkCrc error", pCheckData->nFile, pCheckData->nOffset);
+                    fRet = false;
+                    break;
+                }
+                uint64 nFileOffset = ((uint64)(pCheckData->nFile) << 32 | pCheckData->nOffset);
+                if (!mapBlockCheckCrc.insert(make_pair(nFileOffset, make_pair(pCheckData->nBlockDataCrc, pCheckData->nBlockIndexCrc))).second)
+                {
+                    StdLog("CCH", "CCheckTSBufWalker: insert fail");
+                    fRet = false;
+                    break;
+                }
+                pPrevCheck = pCheckData;
+                pCheckData++;
+                nSySize -= sizeof(SBlockCheckData);
+            }
+            if (fRet && pPrevCheck)
+            {
+                memcpy(&cachePrevCheckData[0], pPrevCheck, sizeof(SBlockCheckData));
+            }
+            return fRet;
+        }
+
+    protected:
+        SBlockCheckData cachePrevCheckData[2];
+
+    public:
+        map<uint64, pair<uint32, uint32>> mapBlockCheckCrc;
+        bool fUpdate;
+    };
+
+    class CCheckBlockTSBufWalker : public CTSBufWalker
+    {
+    public:
+        CCheckBlockTSBufWalker(const map<uint64, pair<uint32, uint32>>& mapBlockCheckCrcIn)
+          : mapFileBlockCheckCrc(mapBlockCheckCrcIn) {}
+
+        bool Walk(const uint8* pBuf, const uint32 nSize, uint32 nFile, uint32 nOffset)
+        {
+            /*CBlockEx block;
+            try
+            {
+                xengine::CBufStream ss;
+                ss.Write((char*)pBuf, nSize);
+                ss >> block;
+            }
+            catch (std::exception& e)
+            {
+                xengine::StdError(__PRETTY_FUNCTION__, e.what());
+                return false;
+            }*/
+            bool fRet = true;
+            uint64 nFileOffset = ((uint64)nFile << 32 | nOffset);
+            setExistBlock.insert(nFileOffset);
+
+            uint32 nBlockCrc = CTimeSeriesCached::GetChecksum(pBuf, nSize);
+            auto it = mapFileBlockCheckCrc.find(nFileOffset);
+            if (it == mapFileBlockCheckCrc.end())
+            {
+                StdLog("CCH", "CCheckBlockTSBufWalker: find fail, nFile: %d, nOffset: %d", nFile, nOffset);
+                fRet = false;
+            }
+            else if (it->second.first != nBlockCrc)
+            {
+                StdLog("CCH", "CCheckBlockTSBufWalker: crc error, nFile: %d, nOffset: %d", nFile, nOffset);
+                fRet = false;
+            }
+            if (!fRet)
+            {
+                mapUpdateBlockCheckCrc.insert(make_pair(nFileOffset, nBlockCrc));
+            }
+            /*else
+            {
+                StdLog("CCH", "CCheckBlockTSBufWalker: crc success, nFile: %d, nOffset: %d", nFile, nOffset);
+            }*/
+            return true;
+        }
+
+    protected:
+        const map<uint64, pair<uint32, uint32>>& mapFileBlockCheckCrc;
+
+    public:
+        set<uint64> setExistBlock;
+        map<uint64, uint32> mapUpdateBlockCheckCrc;
+    };
+
+    class CCheckBlockIndexVerifyWalker : public CBlockDBWalker
+    {
+    public:
+        CCheckBlockIndexVerifyWalker(const map<uint64, pair<uint32, uint32>>& mapBlockCheckCrcIn)
+          : mapFileBlockCheckCrc(mapBlockCheckCrcIn) {}
+
+        bool Walk(CBlockOutline& outline) override
+        {
+            uint64 nFileOffset = ((uint64)(outline.nFile) << 32 | outline.nOffset);
+            auto it = mapFileBlockCheckCrc.find(nFileOffset);
+            if (it == mapFileBlockCheckCrc.end())
+            {
+                StdLog("CCH", "CCheckBlockIndexVerifyWalker: Find index fail, block: %s, nFile: %d, nOffset: %d",
+                       outline.hashBlock.GetHex().c_str(), outline.nFile, outline.nOffset);
+                vRemove.push_back(outline.hashBlock);
+            }
+            else
+            {
+                setExistBlockIndex.insert(nFileOffset);
+                if (it->second.second != CTimeSeriesCached::GetChecksum(outline))
+                {
+                    StdLog("CCH", "CCheckBlockIndexVerifyWalker: Check fail, block: %s, nFile: %d, nOffset: %d",
+                           outline.hashBlock.GetHex().c_str(), outline.nFile, outline.nOffset);
+                    vUpdate.push_back(make_pair(nFileOffset, CTimeSeriesCached::GetChecksum(outline)));
+                }
+                /*else
+                {
+                    StdLog("CCH", "CCheckBlockIndexVerifyWalker: Check success, block: %s, nFile: %d, nOffset: %d",
+                           outline.hashBlock.GetHex().c_str(), outline.nFile, outline.nOffset);
+                }*/
+            }
+            return true;
+        }
+
+    protected:
+        const map<uint64, pair<uint32, uint32>>& mapFileBlockCheckCrc;
+
+    public:
+        set<uint64> setExistBlockIndex;
+        vector<pair<uint64, uint32>> vUpdate;
+        vector<uint256> vRemove;
+    };
+
+    ///////////////////////////////////////////////
+    bool fCheckRet = true;
+    bool fInitBlockCheck = false;
+    bool fInitTsBlock = false;
+    bool fInitBlockIndex = false;
+    CTimeSeriesCached tsBlockCheck;
+    CTimeSeriesCached objTsBlock;
+    CBlockIndexDB dbBlockIndex;
+
+    do
+    {
+        // Block check crc
+        if (!tsBlockCheck.Initialize(path(strDataPath) / "check/block", "blockcheck"))
+        {
+            StdLog("CCH", "CheckBlockIndexCrc: Initialize fail");
+            fCheckRet = false;
+            break;
+        }
+        fInitBlockCheck = true;
+
+        CCheckTSBufWalker walkerTsBuf;
+        if (!tsBlockCheck.WalkThrough(walkerTsBuf, sizeof(SBlockCheckData) * 300))
+        {
+            StdLog("CCH", "CheckBlockIndexCrc: WalkThrough fail");
+            fCheckRet = false;
+            break;
+        }
+        StdLog("CCH", "Get block check complete, count: %lu", walkerTsBuf.mapBlockCheckCrc.size());
+
+        // Block
+        if (!objTsBlock.Initialize(path(strDataPath) / "block", BLOCKFILE_PREFIX))
+        {
+            StdError("check", "CheckBlockIndexCrc: TsBlock initialize fail, path: %s.", strDataPath.c_str());
+            fCheckRet = false;
+            break;
+        }
+        fInitTsBlock = true;
+
+        CCheckBlockTSBufWalker blockWalker(walkerTsBuf.mapBlockCheckCrc);
+        if (!objTsBlock.WalkThrough(blockWalker))
+        {
+            StdLog("CCH", "Block WalkThrough fail");
+            fCheckRet = false;
+            break;
+        }
+        if (!blockWalker.mapUpdateBlockCheckCrc.empty())
+        {
+            for (const auto& vd : blockWalker.mapUpdateBlockCheckCrc)
+            {
+                auto it = walkerTsBuf.mapBlockCheckCrc.find(vd.first);
+                if (it == walkerTsBuf.mapBlockCheckCrc.end())
+                {
+                    walkerTsBuf.mapBlockCheckCrc.insert(make_pair(vd.first, make_pair(vd.second, 0)));
+                }
+                else
+                {
+                    it->second.first = vd.second;
+                }
+            }
+            walkerTsBuf.fUpdate = true;
+            StdLog("CCH", "Block update count: %lu", blockWalker.mapUpdateBlockCheckCrc.size());
+        }
+        StdLog("CCH", "Check block complete, count: %lu", walkerTsBuf.mapBlockCheckCrc.size());
+
+        // Block index
+        if (!dbBlockIndex.Initialize(path(strDataPath)))
+        {
+            StdLog("CCH", "dbBlockIndex Initialize fail");
+            fCheckRet = false;
+            break;
+        }
+        fInitBlockIndex = true;
+
+        CCheckBlockIndexVerifyWalker walkerBlockIndex(walkerTsBuf.mapBlockCheckCrc);
+        if (!dbBlockIndex.WalkThroughBlock(walkerBlockIndex))
+        {
+            StdLog("CCH", "dbBlockIndex WalkThroughBlock fail");
+            fCheckRet = false;
+            break;
+        }
+        StdLog("CCH", "Check block index complete, count: %lu", walkerTsBuf.mapBlockCheckCrc.size());
+        if (!walkerBlockIndex.vUpdate.empty())
+        {
+            for (const auto& vd : walkerBlockIndex.vUpdate)
+            {
+                auto it = walkerTsBuf.mapBlockCheckCrc.find(vd.first);
+                if (it == walkerTsBuf.mapBlockCheckCrc.end())
+                {
+                    StdLog("CCH", "dbBlockIndex error");
+                    walkerTsBuf.mapBlockCheckCrc.insert(make_pair(vd.first, make_pair(0, vd.second)));
+                }
+                else
+                {
+                    it->second.second = vd.second;
+                }
+            }
+            walkerTsBuf.fUpdate = true;
+            StdLog("CCH", "Block index update count: %lu", walkerBlockIndex.vUpdate.size());
+        }
+        if (walkerTsBuf.fUpdate)
+        {
+            const uint32 nWriteSize = sizeof(SBlockCheckData) * walkerTsBuf.mapBlockCheckCrc.size();
+            uint8* pWriteBuf = (uint8*)malloc(nWriteSize);
+            if (pWriteBuf == nullptr)
+            {
+                StdLog("CCH", "malloc error");
+                fCheckRet = false;
+                break;
+            }
+            memset(pWriteBuf, 0, nWriteSize);
+            SBlockCheckData* pPrevCheckData = nullptr;
+            SBlockCheckData* pCheckData = (SBlockCheckData*)pWriteBuf;
+            for (const auto& vd : walkerTsBuf.mapBlockCheckCrc)
+            {
+                pCheckData->nFile = (uint32)(vd.first >> 32);
+                pCheckData->nOffset = (uint32)(vd.first & 0xFFFFFFFF);
+                pCheckData->nBlockDataCrc = vd.second.first;
+                pCheckData->nBlockIndexCrc = vd.second.second;
+
+                if (pPrevCheckData == nullptr)
+                {
+                    SPrevBlockCheckData firstCheckData;
+                    firstCheckData.nPrevLinkCrc = 0;
+                    firstCheckData.nFile = pCheckData->nFile;
+                    firstCheckData.nOffset = pCheckData->nOffset;
+                    firstCheckData.nBlockDataCrc = pCheckData->nBlockDataCrc;
+                    firstCheckData.nBlockIndexCrc = pCheckData->nBlockIndexCrc;
+                    pCheckData->nLinkCrc = CTimeSeriesCached::GetChecksum((uint8*)&firstCheckData, sizeof(SPrevBlockCheckData));
+                }
+                else
+                {
+                    pCheckData->nLinkCrc = CTimeSeriesCached::GetChecksum((uint8*)&(pPrevCheckData->nLinkCrc), sizeof(SBlockCheckData));
+                }
+
+                pPrevCheckData = pCheckData;
+                pCheckData++;
+            }
+
+            CDiskPos pos;
+            tsBlockCheck.Write(pWriteBuf, nWriteSize, pos);
+
+            StdLog("CCH", "Repair block check count: %lu", walkerTsBuf.mapBlockCheckCrc.size());
+        }
+    } while (0);
+
+    if (fInitBlockCheck)
+    {
+        tsBlockCheck.Deinitialize();
+    }
+    if (fInitTsBlock)
+    {
+        objTsBlock.Deinitialize();
+    }
+    if (fInitBlockIndex)
+    {
+        dbBlockIndex.Deinitialize();
+    }
+    return fCheckRet;
+}
+
+bool CCheckRepairData::CheckBlockData()
+{
+    class CCheckBlockTSBufWalker : public CTSBufWalker
+    {
+    public:
+        CCheckBlockTSBufWalker()
+          : nBlockCount(0) {}
+
+        bool Walk(const uint8* pBuf, const uint32 nSize, uint32 nFile, uint32 nOffset)
+        {
+            CBlockEx block;
+            try
+            {
+                xengine::CBufStream ss;
+                ss.Write((char*)pBuf, nSize);
+                ss >> block;
+            }
+            catch (std::exception& e)
+            {
+                xengine::StdError(__PRETTY_FUNCTION__, e.what());
+                return false;
+            }
+            nBlockCount++;
+            if (nBlockCount % 100000 == 0)
+            {
+                StdError("check", "CCheckBlockTSBufWalker, nBlockCount: %lu.", nBlockCount);
+            }
+            return true;
+        }
+
+    public:
+        int64 nBlockCount;
+    };
+
+    CTimeSeriesCached objTsBlock;
+    if (!objTsBlock.Initialize(path(strDataPath) / "block", BLOCKFILE_PREFIX))
+    {
+        StdError("check", "CheckBlockIndexCrc: TsBlock initialize fail, path: %s.", strDataPath.c_str());
+        return false;
+    }
+
+    CCheckBlockTSBufWalker blockWalker;
+    if (!objTsBlock.WalkThrough(blockWalker))
+    {
+        StdLog("CCH", "Block WalkThrough fail");
+        return false;
+    }
+    StdLog("CCH", "Block WalkThrough success, count: %lu", blockWalker.nBlockCount);
+
+    objTsBlock.Deinitialize();
+    return true;
+}
+
+bool CCheckRepairData::CheckBlockDataEx()
+{
+    class CBlockTSWalker : public CTSWalker<CBlockEx>
+    {
+    public:
+        CBlockTSWalker()
+          : nBlockCount(0) {}
+        bool Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset)
+        {
+            nBlockCount++;
+            if (nBlockCount % 100000 == 0)
+            {
+                StdError("check", "CheckBlockDataEx, nBlockCount: %lu.", nBlockCount);
+            }
+            return true;
+        }
+
+    public:
+        int64 nBlockCount;
+    };
+
+    CTimeSeriesCached objTsBlock;
+    if (!objTsBlock.Initialize(path(strDataPath) / "block", BLOCKFILE_PREFIX))
+    {
+        StdError("check", "CheckBlockIndexCrc: TsBlock initialize fail, path: %s.", strDataPath.c_str());
+        return false;
+    }
+
+    uint32 nLastFileRet = 0;
+    uint32 nLastPosRet = 0;
+    CBlockTSWalker walker;
+    objTsBlock.WalkThrough(walker, nLastFileRet, nLastPosRet, false);
+    StdLog("CCH", "Block WalkThrough success, count: %lu", walker.nBlockCount);
+
+    objTsBlock.Deinitialize();
+    return true;
+}
+
+bool CCheckRepairData::CheckBlockIndex()
+{
+    class CCheckBlockIndexWalker : public CBlockDBWalker
+    {
+    public:
+        CCheckBlockIndexWalker() {}
+        bool Walk(CBlockOutline& outline)
+        {
+            mapBlockIndex[outline.hashBlock] = outline;
+            //vBlockIndex.push_back(outline);
+            return true;
+        }
+
+    public:
+        map<uint256, CBlockOutline> mapBlockIndex;
+        //vector<CBlockOutline> vBlockIndex;
+    };
+
+    CBlockIndexDB dbBlockIndex;
+    dbBlockIndex.Initialize(path(strDataPath));
+
+    CCheckBlockIndexWalker walker;
+    dbBlockIndex.WalkThroughBlock(walker);
+    StdLog("CCH", "BlockIndex WalkThrough success, count: %lu", walker.mapBlockIndex.size());
+
+    dbBlockIndex.Deinitialize();
+
+    sleep(10);
+
+    return true;
+}
+
 ////////////////////////////////////////////////////////////////
 bool CCheckRepairData::CheckRepairData()
 {
     StdLog("check", "Start check and repair, path: %s", strDataPath.c_str());
+
+    /*if (!CheckBlockIndexCrc())
+    {
+        StdLog("check", "Check block data fail");
+        return false;
+    }
+    StdLog("check", "Check block data success");
+    return false;*/
+    //CheckBlockData();
+    //CheckBlockDataEx();
+    //CheckBlockIndex();
+    //return false;
 
     if (!objForkManager.FetchForkStatus())
     {

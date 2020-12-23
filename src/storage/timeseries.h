@@ -9,6 +9,7 @@
 #include <boost/thread/thread.hpp>
 #include <xengine.h>
 
+#include "crc24q.h"
 #include "uint256.h"
 
 namespace bigbang
@@ -58,6 +59,12 @@ class CTSWalker
 {
 public:
     virtual bool Walk(const T& t, uint32 nFile, uint32 nOffset) = 0;
+};
+
+class CTSBufWalker
+{
+public:
+    virtual bool Walk(const uint8* pBuf, const uint32 nSize, uint32 nFile, uint32 nOffset) = 0;
 };
 
 class CTimeSeriesBase
@@ -158,6 +165,27 @@ public:
             {
                 ResetCache();
             }
+        }
+        return true;
+    }
+    bool Write(const uint8* pData, const uint32 nSize, CDiskPos& pos)
+    {
+        std::string pathFile;
+        if (!GetLastFilePath(pos.nFile, pathFile))
+        {
+            return false;
+        }
+        try
+        {
+            xengine::CFileStream fs(pathFile.c_str());
+            fs.SeekToEnd();
+            pos.nOffset = fs.GetCurPos();
+            fs.Write((const char*)pData, nSize);
+        }
+        catch (std::exception& e)
+        {
+            xengine::StdError(__PRETTY_FUNCTION__, e.what());
+            return false;
         }
         return true;
     }
@@ -350,6 +378,206 @@ public:
         }
         return true;
     }
+    int ReadDirect(uint8* pDataBuf, const int nReadSize, uint32 nFile, uint32 nOffset)
+    {
+        if (pDataBuf == nullptr || nReadSize <= 0)
+        {
+            return -1;
+        }
+        std::string pathFile;
+        if (!GetFilePath(nFile, pathFile))
+        {
+            return -2;
+        }
+        FILE* f = fopen(pathFile.c_str(), "rb");
+        if (f == nullptr)
+        {
+            return -3;
+        }
+        if (nOffset > 0)
+        {
+            fseek(f, nOffset, SEEK_SET);
+        }
+        size_t nLen = fread(pDataBuf, 1, nReadSize, f);
+        fclose(f);
+        return nLen;
+    }
+    int ReadLast(uint8* pDataBuf, const int nReadSize)
+    {
+        if (pDataBuf == nullptr || nReadSize <= 0)
+        {
+            xengine::StdError("TimeSeriesCached", "ReadLast: param error");
+            return -1;
+        }
+        uint32 nFile;
+        std::string pathFile;
+        if (!GetLastFilePath(nFile, pathFile))
+        {
+            xengine::StdError("TimeSeriesCached", "ReadLast: GetLastFilePath fail");
+            return -2;
+        }
+        FILE* f = fopen(pathFile.c_str(), "rb");
+        if (f == nullptr)
+        {
+            return -3;
+        }
+        fseek(f, 0, SEEK_END);
+        if (ftell(f) <= nReadSize)
+        {
+            fseek(f, 0, SEEK_SET);
+        }
+        else
+        {
+            fseek(f, nReadSize, SEEK_END);
+        }
+        size_t nLen = fread(pDataBuf, 1, nReadSize, f);
+        fclose(f);
+        return nLen;
+    }
+    bool WalkThrough(CTSBufWalker& walker, const uint32 nReadSliceSize)
+    {
+        uint32 nFile = 1;
+        uint32 nOffset = 0;
+        std::string pathFile;
+
+        if (nReadSliceSize == 0)
+        {
+            return false;
+        }
+        uint8* pReadBuf = (uint8*)malloc(nReadSliceSize);
+        if (pReadBuf == nullptr)
+        {
+            return false;
+        }
+
+        while (GetFilePath(nFile, pathFile))
+        {
+            FILE* f = fopen(pathFile.c_str(), "rb");
+            if (f == nullptr)
+            {
+                free(pReadBuf);
+                return false;
+            }
+
+            nOffset = 0;
+            while (!feof(f))
+            {
+                size_t nLen = fread(pReadBuf, 1, nReadSliceSize, f);
+                if (nLen == 0)
+                {
+                    break;
+                }
+                if (!walker.Walk(pReadBuf, nLen, nFile, nOffset))
+                {
+                    free(pReadBuf);
+                    return false;
+                }
+                nOffset += nLen;
+            }
+
+            fclose(f);
+            nFile++;
+        }
+        free(pReadBuf);
+        return true;
+    }
+    bool WalkThrough(CTSBufWalker& walker)
+    {
+        bool fRet = true;
+        uint32 nFile = 1;
+        uint32 nOffset = 0;
+        uint32 nSurplusSize = 0;
+        std::string pathFile;
+
+        const uint32 nReadBufSize = 0x2000000;
+        uint8* pReadBuf = (uint8*)malloc(nReadBufSize);
+        if (pReadBuf == nullptr)
+        {
+            return false;
+        }
+
+        while (GetFilePath(nFile, pathFile) && fRet)
+        {
+            FILE* f = fopen(pathFile.c_str(), "rb");
+            if (f == nullptr)
+            {
+                fRet = false;
+                break;
+            }
+
+            nOffset = 0;
+            nSurplusSize = 0;
+            while (!feof(f) && fRet)
+            {
+                if (nSurplusSize >= nReadBufSize)
+                {
+                    fRet = false;
+                    break;
+                }
+                size_t nLen = fread(pReadBuf + nSurplusSize, 1, nReadBufSize - nSurplusSize, f);
+                if (nLen == 0)
+                {
+                    break;
+                }
+                nSurplusSize += nLen;
+
+                uint8* pCurPos = pReadBuf;
+                while (nSurplusSize > sizeof(uint32) * 2)
+                {
+                    if (*(uint32*)pCurPos != nMagicNum)
+                    {
+                        fRet = false;
+                        break;
+                    }
+                    uint32 nBlockSize = *(uint32*)(pCurPos + sizeof(uint32));
+                    if (nBlockSize == 0 || nBlockSize > nReadBufSize / 2)
+                    {
+                        fRet = false;
+                        break;
+                    }
+                    uint32 nSectSize = sizeof(uint32) * 2 + nBlockSize;
+                    if (nSurplusSize < nSectSize)
+                    {
+                        break;
+                    }
+                    nOffset += (sizeof(uint32) * 2);
+                    if (!walker.Walk(pCurPos + (sizeof(uint32) * 2), nBlockSize, nFile, nOffset))
+                    {
+                        fRet = false;
+                        break;
+                    }
+                    nOffset += nBlockSize;
+                    pCurPos += nSectSize;
+                    nSurplusSize -= nSectSize;
+                }
+
+                if (fRet && pCurPos != pReadBuf && nSurplusSize > 0)
+                {
+                    if (pReadBuf + nSurplusSize > pCurPos)
+                    {
+                        size_t nFirstLen = pCurPos - pReadBuf;
+                        memcpy(pReadBuf, pCurPos, nFirstLen);
+                        memcpy(pReadBuf + nFirstLen, pCurPos + nFirstLen, nSurplusSize - nFirstLen);
+                    }
+                    else
+                    {
+                        memcpy(pReadBuf, pCurPos, nSurplusSize);
+                    }
+                }
+            }
+
+            if (fRet && nSurplusSize != 0)
+            {
+                fRet = false;
+            }
+
+            fclose(f);
+            nFile++;
+        }
+
+        free(pReadBuf);
+        return fRet;
+    }
     size_t GetSize(const uint32 nFile = -1)
     {
         uint32 nFileNo = (nFile == -1) ? 1 : nFile;
@@ -378,6 +606,25 @@ public:
             }
         }
         return nOffset;
+    }
+    template <typename T>
+    static uint32 GetChecksum(T& t)
+    {
+        try
+        {
+            xengine::CBufStream ss;
+            ss << t;
+            return crypto::crc24q((uint8*)ss.GetData(), ss.GetSize());
+        }
+        catch (std::exception& e)
+        {
+            xengine::StdError(__PRETTY_FUNCTION__, e.what());
+        }
+        return 0;
+    }
+    static uint32 GetChecksum(const uint8* pData, const uint32 nSize)
+    {
+        return crypto::crc24q(pData, nSize);
     }
 
 protected:

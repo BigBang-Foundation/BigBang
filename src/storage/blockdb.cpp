@@ -122,14 +122,14 @@ bool CBlockDB::ListForkContext(vector<CForkContext>& vForkCtxt, map<uint256, CVa
     return dbFork.ListForkContext(vForkCtxt, mapValidForkId);
 }
 
-bool CBlockDB::AddValidForkHash(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork)
+bool CBlockDB::AddValidForkHash(const uint256& hashBlock, const CValidForkId& validForkId)
 {
-    return dbFork.AddValidForkHash(hashBlock, hashRefFdBlock, mapValidFork);
+    return dbFork.AddValidForkHash(hashBlock, validForkId);
 }
 
-bool CBlockDB::RetrieveValidForkHash(const uint256& hashBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork)
+bool CBlockDB::RetrieveValidForkHash(const uint256& hashBlock, CValidForkId& validForkId)
 {
-    return dbFork.RetrieveValidForkHash(hashBlock, hashRefFdBlock, mapValidFork);
+    return dbFork.RetrieveValidForkHash(hashBlock, validForkId);
 }
 
 bool CBlockDB::AddNewFork(const uint256& hash)

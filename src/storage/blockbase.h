@@ -265,9 +265,10 @@ public:
     bool Exists(const uint256& hash) const;
     bool ExistsTx(const uint256& txid);
     bool Initiate(const uint256& hashGenesis, const CBlock& blockGenesis, const uint256& nChainTrust);
-    bool AddNew(const uint256& hash, CBlockEx& block, CBlockIndex** ppIndexNew, const uint256& nChainTrust, int64 nMinEnrollAmount);
+    bool AddNew(const uint256& hash, const CBlockEx& block, const uint256& nChainTrust, const int64 nMinEnrollAmount,
+                CBlockIndex** ppIndexNew, uint32& nDelegateCrc24q);
     bool AddNewForkContext(const CForkContext& ctxt);
-    bool AddValidForkHash(const uint256& hashBlock, const uint256& hashRefFdBlock, const std::map<uint256, int>& mapValidFork);
+    bool AddValidForkHash(const uint256& hashBlock, const CValidForkId& validForkId, uint32& nValidForkIdCrc24q);
     bool Retrieve(const uint256& hash, CBlock& block);
     bool Retrieve(const CBlockIndex* pIndex, CBlock& block);
     bool Retrieve(const uint256& hash, CBlockEx& block);
@@ -382,6 +383,10 @@ public:
     bool VerifySameChain(const uint256& hashPrevBlock, const uint256& hashAfterBlock);
     bool GetLastRefBlockHash(const uint256& hashFork, const uint256& hashBlock, uint256& hashRefBlock, bool& fOrigin);
     bool GetPrimaryHeightBlockTime(const uint256& hashLastBlock, int nHeight, uint256& hashBlock, int64& nTime);
+    bool GetBlockCheckLinkCrc();
+    bool WriteBlockCheckData(SBlockCheckData& checkData);
+    bool GetDelegateCheckLinkCrc();
+    bool WriteDelegateCheckData(SDelegateCheckData& checkData);
 
 protected:
     CBlockIndex* GetIndex(const uint256& hash) const;
@@ -396,8 +401,8 @@ protected:
     boost::shared_ptr<CBlockFork> GetFork(const std::string& strName);
     boost::shared_ptr<CBlockFork> AddNewFork(const CProfile& profileIn, CBlockIndex* pIndexLast);
     bool LoadForkProfile(const CBlockIndex* pIndexOrigin, CProfile& profile);
-    bool VerifyDelegateVote(const uint256& hash, CBlockEx& block, int64 nMinEnrollAmount, CDelegateContext& ctxtDelegate);
-    bool UpdateDelegate(const uint256& hash, CBlockEx& block, const CDiskPos& posBlock, CDelegateContext& ctxtDelegate);
+    bool VerifyDelegateVote(const uint256& hash, const CBlockEx& block, const int64 nMinEnrollAmount, CDelegateContext& ctxtDelegate);
+    bool UpdateDelegate(const uint256& hash, const CDiskPos& posBlock, CDelegateContext& ctxtDelegate);
     bool GetTxUnspent(const uint256 fork, const CTxOutPoint& out, CTxOut& unspent);
     bool GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, std::vector<std::pair<uint256, CTxIndex>>& vTxNew, std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddrTxNew);
     bool IsValidBlock(CBlockIndex* pForkLast, const uint256& hashBlock);
@@ -445,8 +450,12 @@ protected:
     uint256 hashGenesisBlock;
     bool fDebugLog;
     bool fCfgAddrTxIndex;
+    uint32 nLastBlockCheckCrc;
+    uint32 nLastDelegateCheckCrc;
     CBlockDB dbBlock;
     CTimeSeriesCached tsBlock;
+    CTimeSeriesCached tsBlockCheck;
+    CTimeSeriesCached tsDelegateCheck;
     std::map<uint256, CBlockIndex*> mapIndex;
     std::map<uint256, CForkHeightIndex> mapForkHeightIndex;
     std::map<uint256, boost::shared_ptr<CBlockFork>> mapFork;

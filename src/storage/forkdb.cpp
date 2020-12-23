@@ -111,16 +111,16 @@ bool CForkDB::ListFork(vector<pair<uint256, uint256>>& vFork)
     }
     else
     {
-        uint256 hashRefFdBlock;
-        if (RetrieveValidForkHash(hashLastBlock, hashRefFdBlock, mapValidFork))
+        CValidForkId validForkId;
+        if (RetrieveValidForkHash(hashLastBlock, validForkId))
         {
-            if (hashRefFdBlock != 0)
+            mapValidFork.insert(validForkId.mapForkId.begin(), validForkId.mapForkId.end());
+            if (validForkId.hashRefFdBlock != 0)
             {
-                uint256 hashTempBlock;
-                map<uint256, int> mapTempValidFork;
-                if (RetrieveValidForkHash(hashRefFdBlock, hashTempBlock, mapTempValidFork) && !mapTempValidFork.empty())
+                CValidForkId validForkIdTemp;
+                if (RetrieveValidForkHash(validForkId.hashRefFdBlock, validForkIdTemp) && !validForkIdTemp.mapForkId.empty())
                 {
-                    mapValidFork.insert(mapTempValidFork.begin(), mapTempValidFork.end());
+                    mapValidFork.insert(validForkIdTemp.mapForkId.begin(), validForkIdTemp.mapForkId.end());
                 }
             }
         }
@@ -157,23 +157,14 @@ bool CForkDB::ListFork(vector<pair<uint256, uint256>>& vFork)
     return true;
 }
 
-bool CForkDB::AddValidForkHash(const uint256& hashBlock, const uint256& hashRefFdBlock, const map<uint256, int>& mapValidFork)
+bool CForkDB::AddValidForkHash(const uint256& hashBlock, const CValidForkId& validForkId)
 {
-    return Write(make_pair(string("valid"), hashBlock), CValidForkId(hashRefFdBlock, mapValidFork));
+    return Write(make_pair(string("valid"), hashBlock), validForkId);
 }
 
-bool CForkDB::RetrieveValidForkHash(const uint256& hashBlock, uint256& hashRefFdBlock, map<uint256, int>& mapValidFork)
+bool CForkDB::RetrieveValidForkHash(const uint256& hashBlock, CValidForkId& validForkId)
 {
-    CValidForkId validForkId;
-    if (!Read(make_pair(string("valid"), hashBlock), validForkId))
-    {
-        //StdError("CForkDB", "RetrieveValidForkHash: Read fail");
-        return false;
-    }
-    hashRefFdBlock = validForkId.hashRefFdBlock;
-    mapValidFork.clear();
-    mapValidFork.insert(validForkId.mapForkId.begin(), validForkId.mapForkId.end());
-    return true;
+    return Read(make_pair(string("valid"), hashBlock), validForkId);
 }
 
 bool CForkDB::ListActiveFork(map<uint256, uint256>& mapActiveFork)
