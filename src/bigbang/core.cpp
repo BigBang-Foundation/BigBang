@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+﻿// Copyright (c) 2019-2020 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -134,9 +134,32 @@ static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 340935;
 
 // DeFi fork blacklist
 #ifdef BIGBANG_TESTNET
-static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {};
+static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
+    {
+        uint256(),
+        {
+            {
+                0,
+                {
+                    bigbang::CAddress("100000000000000000000000000000000000000000000000000000000"),
+                },
+            },
+        },
+    },
+};
 #else
 static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
+    {
+        uint256(),
+        {
+            {
+                0,
+                {
+                    bigbang::CAddress("100000000000000000000000000000000000000000000000000000000"),
+                },
+            },
+        },
+    },
     {
         uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"),
         {
@@ -166,7 +189,21 @@ static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
 #ifdef BIGBANG_TESTNET
 static const int32 CHANGE_MINT_RATE_HEIGHT = 0;
 #else
-static const int32 CHANGE_MINT_RATE_HEIGHT = 580000;
+static const int32 CHANGE_MINT_RATE_HEIGHT = 565620;
+#endif
+
+// new DeFi relation tx type
+#ifdef BIGBANG_TESTNET
+static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 0;
+#else
+static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 565620;
+#endif
+
+// Change DPoS chain trust
+#ifdef BIGBANG_TESTNET
+static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 0;
+#else
+static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 565620;
 #endif
 
 namespace bigbang
@@ -627,9 +664,9 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
         }
 
         const CDeFiProfile& defi = forkProfile.defi;
-        if (defi.nMintHeight > 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2)
+        if ((defi.nMintHeight < -1) || (defi.nMintHeight > 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2))
         {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mintheight should be -1 or larger than fork genesis block height");
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mintheight should be -1 or 0 or larger than fork genesis block height");
         }
         if (defi.nMaxSupply >= 0 && !MoneyRange(defi.nMaxSupply))
         {
@@ -889,23 +926,9 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && VerifyDeFiRelationTx(tx, destIn, nBlockHeight, fork) != OK)
     {
-        if (destIn == tx.sendTo)
-        {
-            return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "DeFi relation tx from address must be not equal to sendto address");
-        }
-
-        if (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable");
-        }
-
-        const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nBlockHeight);
-        if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist");
-        }
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid DeFi relation tx");
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -1069,23 +1092,9 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && VerifyDeFiRelationTx(tx, destIn, nForkHeight + 1, fork) != OK)
     {
-        if (destIn == tx.sendTo)
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address");
-        }
-
-        if ((!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable");
-        }
-
-        const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nForkHeight);
-        if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist");
-        }
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid DeFi relation tx");
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -1279,6 +1288,7 @@ Errno CCoreProtocol::VerifyMintHeightTx(const CTransaction& tx, const CDestinati
 
 bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, const CBlockIndex* pIndexPrev, const CDelegateAgreement& agreement, const CBlockIndex* pIndexRef, size_t nEnrollTrust)
 {
+    int32 nHeight = block.GetBlockHeight();
     if (block.IsGenesis())
     {
         nChainTrust = uint64(0);
@@ -1299,9 +1309,9 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
         }
         else if (pIndexPrev != nullptr)
         {
-            if (!IsDposHeight(block.GetBlockHeight()))
+            if (!IsDposHeight(nHeight))
             {
-                StdError("CCoreProtocol", "GetBlockTrust: not dpos height, height: %d", block.GetBlockHeight());
+                StdError("CCoreProtocol", "GetBlockTrust: not dpos height, height: %d", nHeight);
                 return false;
             }
 
@@ -1321,7 +1331,6 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
                 nAlgo = pIndex->nProofAlgo;
             }
 
-            // DPoS difficulty = weight * (2 ^ nBits)
             int nBits;
             int64 nReward;
             if (GetProofOfWorkTarget(pIndexPrev, nAlgo, nBits, nReward))
@@ -1336,7 +1345,17 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
                     StdError("CCoreProtocol", "GetBlockTrust: nEnrollTrust error, nEnrollTrust: %lu", nEnrollTrust);
                     return false;
                 }
-                nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+
+                if (!IsDPoSNewTrustHeight(nHeight))
+                {
+                    // DPoS difficulty = weight * (2 ^ nBits)
+                    nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+                }
+                else
+                {
+                    // DPoS difficulty = 2 ^ (nBits + weight)
+                    nChainTrust = uint256(1) << (int(nEnrollTrust) + nBits);
+                }
             }
             else
             {
@@ -1453,6 +1472,15 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
 bool CCoreProtocol::IsDposHeight(int height)
 {
     if (height < DELEGATE_PROOF_OF_STAKE_HEIGHT)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CCoreProtocol::IsDPoSNewTrustHeight(int height)
+{
+    if (height < CHANGE_DPOS_CHAIN_TRUST_HEIGHT)
     {
         return false;
     }
@@ -1597,23 +1625,32 @@ int CCoreProtocol::GetRefVacantHeight()
     return REF_VACANT_HEIGHT;
 }
 
-const std::set<CDestination>& CCoreProtocol::GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight)
+const std::set<CDestination> CCoreProtocol::GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight)
 {
-    static set<CDestination> null;
-
-    auto it = mapDeFiBlacklist.find(hashFork);
-    if (it != mapDeFiBlacklist.end())
-    {
-        for (auto& list : boost::adaptors::reverse(it->second))
+    auto f = [](const uint256& hashFork, const int32 nHeight, const map<uint256, map<int, set<CDestination>>>& mapDeFiBlacklist) -> set<CDestination> {
+        auto it = mapDeFiBlacklist.find(hashFork);
+        if (it != mapDeFiBlacklist.end())
         {
-            if (nHeight >= list.first)
+            for (auto& list : boost::adaptors::reverse(it->second))
             {
-                return list.second;
+                if (nHeight >= list.first)
+                {
+                    return list.second;
+                }
             }
         }
+        return set<CDestination>();
+    };
+
+    set<CDestination> commonBlacklist = f(uint256(), nHeight, mapDeFiBlacklist);
+    set<CDestination> forkBlacklist = f(hashFork, nHeight, mapDeFiBlacklist);
+
+    for (auto& dest : commonBlacklist)
+    {
+        forkBlacklist.insert(dest);
     }
 
-    return null;
+    return forkBlacklist;
 }
 
 bool CCoreProtocol::CheckBlockSignature(const CBlock& block)
@@ -1887,6 +1924,69 @@ Errno CCoreProtocol::VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, in
     return OK;
 }
 
+Errno CCoreProtocol::VerifyDeFiRelationTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const uint256& fork)
+{
+    if (destIn == tx.sendTo)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address");
+    }
+
+    const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nHeight);
+    if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist");
+    }
+
+    // new relation type
+    if (nHeight >= NEW_DEFI_RELATION_TX_HEIGHT)
+    {
+        if (!tx.sendTo.IsPubKey() || !destIn.IsPubKey())
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be public key address");
+        }
+
+        // vchData: shared_pubkey + sub_sig + parent_sig
+        if (tx.vchData.size() != 160)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx length of vchData is not 160");
+        }
+        uint256 sharedPubKey(vector<uint8>(tx.vchData.begin(), tx.vchData.begin() + 32));
+        vector<uint8> subSign(tx.vchData.begin() + 32, tx.vchData.begin() + 96);
+        vector<uint8> parentSign(tx.vchData.begin() + 96, tx.vchData.end());
+        StdTrace("CCoreProtocol", "VerifyDeFiRelationTx sharedPubKey: %s, subSign: %s, parentSign: %s",
+                 sharedPubKey.ToString().c_str(), ToHexString(subSign).c_str(), ToHexString(parentSign).c_str());
+
+        // sub_sign: sign blake2b(“DeFiRelation” + forkid + shared_pubkey) with sendto
+        crypto::CPubKey subKey = tx.sendTo.GetPubKey();
+        string subSignStr = string("DeFiRelation") + fork.ToString() + sharedPubKey.ToString();
+        uint256 subSignHashStr = crypto::CryptoHash(subSignStr.data(), subSignStr.size());
+        StdTrace("CCoreProtocol", "VerifyDeFiRelationTx subSignStr: %s, subSignHashStr: %s", subSignStr.c_str(), ToHexString(subSignHashStr.begin(), subSignHashStr.size()).c_str());
+        if (!crypto::CryptoVerify(subKey, subSignHashStr.begin(), subSignHashStr.size(), subSign))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sub signature in vchData is not currect");
+        }
+
+        // parent_sign: sign blake2b(“DeFiRelation” + parent_pubkey) with sharedPubKey
+        crypto::CPubKey parentKey = destIn.GetPubKey();
+        string parentSignStr = string("DeFiRelation") + parentKey.ToString();
+        uint256 parentSignHashStr = crypto::CryptoHash(parentSignStr.data(), parentSignStr.size());
+        StdTrace("CCoreProtocol", "VerifyDeFiRelationTx parentSignStr: %s, parentSignHashStr: %s", parentSignStr.c_str(), ToHexString(parentSignHashStr.begin(), parentSignHashStr.size()).c_str());
+        if (!crypto::CryptoVerify(sharedPubKey, parentSignHashStr.begin(), parentSignHashStr.size(), parentSign))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx parent signature in vchData is not currect");
+        }
+    }
+    else
+    {
+        if ((!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable");
+        }
+    }
+
+    return OK;
+}
+
 ///////////////////////////////
 // CTestNetCoreProtocol
 
@@ -1993,6 +2093,15 @@ CProofOfWorkParam::~CProofOfWorkParam()
 bool CProofOfWorkParam::IsDposHeight(int height)
 {
     if (height < nDelegateProofOfStakeHeight)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CProofOfWorkParam::IsDPoSNewTrustHeight(int height)
+{
+    if (height < CHANGE_DPOS_CHAIN_TRUST_HEIGHT)
     {
         return false;
     }

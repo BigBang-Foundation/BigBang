@@ -1687,6 +1687,7 @@ CBlockIndex* CCheckBlockWalker::AddBlockIndex(const uint256& hashBlock, const CB
 
 bool CCheckBlockWalker::GetBlockTrust(const CBlockEx& block, uint256& nChainTrust, const CBlockIndex* pIndexPrev, const CDelegateAgreement& agreement, const CBlockIndex* pIndexRef, size_t nEnrollTrust)
 {
+    int32 nHeight = block.GetBlockHeight();
     if (block.IsGenesis())
     {
         nChainTrust = uint64(0);
@@ -1707,9 +1708,9 @@ bool CCheckBlockWalker::GetBlockTrust(const CBlockEx& block, uint256& nChainTrus
         }
         else if (pIndexPrev != nullptr)
         {
-            if (!objProofParam.IsDposHeight(block.GetBlockHeight()))
+            if (!objProofParam.IsDposHeight(nHeight))
             {
-                StdError("check", "GetBlockTrust: not dpos height, height: %d", block.GetBlockHeight());
+                StdError("check", "GetBlockTrust: not dpos height, height: %d", nHeight);
                 return false;
             }
 
@@ -1729,7 +1730,6 @@ bool CCheckBlockWalker::GetBlockTrust(const CBlockEx& block, uint256& nChainTrus
                 nAlgo = pIndex->nProofAlgo;
             }
 
-            // DPoS difficulty = weight * (2 ^ nBits)
             int nBits;
             if (GetProofOfWorkTarget(pIndexPrev, nAlgo, nBits))
             {
@@ -1743,7 +1743,17 @@ bool CCheckBlockWalker::GetBlockTrust(const CBlockEx& block, uint256& nChainTrus
                     StdError("check", "GetBlockTrust: nEnrollTrust error, nEnrollTrust: %lu", nEnrollTrust);
                     return false;
                 }
-                nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+
+                if (!objProofParam.IsDPoSNewTrustHeight(nHeight))
+                {
+                    // DPoS difficulty = weight * (2 ^ nBits)
+                    nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+                }
+                else
+                {
+                    // DPoS difficulty = 2 ^ (nBits + weight)
+                    nChainTrust = uint256(1) << (int(nEnrollTrust) + nBits);
+                }
             }
             else
             {

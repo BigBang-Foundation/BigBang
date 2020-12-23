@@ -20,6 +20,7 @@ set(template
     template/payment.h      template/payment.cpp 
     template/dexorder.h     template/dexorder.cpp 
     template/dexmatch.h     template/dexmatch.cpp 
+    template/dexbbcmap.h    template/dexbbcmap.cpp 
 )
 
 set(sources
