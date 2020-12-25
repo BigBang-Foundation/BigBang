@@ -57,9 +57,13 @@ set(sources
     ${pow_hash}
 )
 
-if(NOT MSVC)
+if(NOT MSVC AND NOT ARM_CRYPTO)
     set(CMAKE_C_FLAGS "-msse2 -maes")
 endif()
+
+if(ARM_CRYPTO)
+    add_definitions(-D__ARM_FEATURE_CRYPTO)
+endif ()
 
 add_library(crypto ${sources})
 
