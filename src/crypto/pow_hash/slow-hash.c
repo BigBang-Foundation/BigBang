@@ -1207,6 +1207,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     };
 
     /* CryptoNight Step 1:  Use Keccak1600 to initialize the 'state' (and 'text') buffers from the data. */
+    printf("step - 1\n");
 
     if (prehashed) {
         memcpy(&state.hs, data, length);
@@ -1222,6 +1223,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     /* CryptoNight Step 2:  Iteratively encrypt the results from Keccak to fill
      * the 2MB large random access buffer.
      */
+    printf("step - 2\n");
 
     aes_expand_key(state.hs.b, expandedKey);
     for(i = 0; i < MEMORY / INIT_SIZE_BYTE; i++)
@@ -1239,6 +1241,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
      * using 524,288 iterations of the following mixing function.  Each execution
      * performs two reads and writes from the mixing buffer.
      */
+    printf("step - 3\n");
 
     _b = vld1q_u8((const uint8_t *)b);
     _b1 = vld1q_u8(((const uint8_t *)b) + AES_BLOCK_SIZE);
@@ -1255,6 +1258,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     /* CryptoNight Step 4:  Sequentially pass through the mixing buffer and use 10 rounds
      * of AES encryption to mix the random data back into the 'text' buffer.  'text'
      * was originally created with the output of Keccak1600. */
+    printf("step - 4\n");
 
     memcpy(text, state.init, INIT_SIZE_BYTE);
 
@@ -1271,6 +1275,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
      * Use this hash to squeeze the state array down
      * to the final 256 bit hash output.
      */
+    printf("step - 5\n");
 
     memcpy(state.init, text, INIT_SIZE_BYTE);
     hash_permutation(&state.hs);
