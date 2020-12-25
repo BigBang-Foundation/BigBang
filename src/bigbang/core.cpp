@@ -37,6 +37,8 @@ static const int PROOF_OF_WORK_ADJUST_DEBOUNCE = 15;
 static const int PROOF_OF_WORK_TARGET_SPACING = 45; // BLOCK_TARGET_SPACING;
 static const int PROOF_OF_WORK_TARGET_OF_DPOS_UPPER = 65;
 static const int PROOF_OF_WORK_TARGET_OF_DPOS_LOWER = 40;
+static const int PROOF_OF_WORK_TARGET_OF_DEIF_UPPER = 5;
+static const int PROOF_OF_WORK_TARGET_OF_DEIF_LOWER = 3;
 
 static const int64 DELEGATE_PROOF_OF_STAKE_ENROLL_MINIMUM_AMOUNT = 10000000 * COIN;
 #ifdef BIGBANG_TESTNET
@@ -53,6 +55,12 @@ static const int64 DELEGATE_PROOF_OF_STAKE_MAXIMUM_TIMES = 1000000 * COIN;
 static const uint32 DELEGATE_PROOF_OF_STAKE_HEIGHT = 1;
 #else
 static const uint32 DELEGATE_PROOF_OF_STAKE_HEIGHT = 243800;
+#endif
+
+#ifdef BIGBANG_TESTNET
+static const int ADJUST_POW_DIFF_HEIGHT = 0;
+#else
+static const int ADJUST_POW_DIFF_HEIGHT = 800000;
 #endif
 
 #ifdef BIGBANG_TESTNET
@@ -220,6 +228,8 @@ CCoreProtocol::CCoreProtocol()
     nProofOfWorkLowerTarget = PROOF_OF_WORK_TARGET_SPACING - PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkUpperTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_UPPER;
     nProofOfWorkLowerTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_LOWER;
+    nProofOfWorkUpperTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_UPPER;
+    nProofOfWorkLowerTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_LOWER;
     pBlockChain = nullptr;
     pForkManager = nullptr;
 }
@@ -775,7 +785,7 @@ Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* p
 
     if (IsDposHeight(block.GetBlockHeight()))
     {
-        uint32 nNextTimestamp = GetNextBlockTimeStamp(pIndexPrev->nMintType, pIndexPrev->GetBlockTime(), block.txMint.nType, block.GetBlockHeight());
+        uint32 nNextTimestamp = GetNextBlockTimeStamp(pIndexPrev->nMintType, pIndexPrev->GetBlockTime(), block.txMint.nType);
         if (block.GetBlockTime() < nNextTimestamp)
         {
             return DEBUG(ERR_BLOCK_TIMESTAMP_OUT_OF_RANGE, "Verify proof work: Timestamp out of range 2, height: %d, block time: %d, next time: %d, prev minttype: 0x%x, prev time: %d, block: %s.",
@@ -1424,13 +1434,31 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
         return true;
     }
 
+    bool fAdjustPowDiff = false;
+    if (IsDeifPowHeight(pIndexPrev->GetBlockHeight() + 1))
+    {
+        fAdjustPowDiff = true;
+    }
+
     nBits = pIndex->nProofBits;
     int64 nSpacing = 0;
     int64 nWeight = 0;
     int nWIndex = PROOF_OF_WORK_ADJUST_COUNT - 1;
     while (pIndex->IsProofOfWork())
     {
-        nSpacing += (pIndex->GetBlockTime() - pIndex->pPrev->GetBlockTime()) << nWIndex;
+        if (fAdjustPowDiff)
+        {
+            uint32 nStartTime = GetNextBlockTimeStamp(pIndex->pPrev->nMintType, pIndex->pPrev->GetBlockTime(), pIndex->nMintType);
+            int64 nPowTime = pIndex->GetBlockTime() - nStartTime;
+            if (nPowTime > 0)
+            {
+                nSpacing += (nPowTime << nWIndex);
+            }
+        }
+        else
+        {
+            nSpacing += (pIndex->GetBlockTime() - pIndex->pPrev->GetBlockTime()) << nWIndex;
+        }
         nWeight += (1ULL) << nWIndex;
         if (!nWIndex--)
         {
@@ -1444,7 +1472,18 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
     }
     nSpacing /= nWeight;
 
-    if (IsDposHeight(pIndexPrev->GetBlockHeight() + 1))
+    if (fAdjustPowDiff)
+    {
+        if (nSpacing > nProofOfWorkUpperTargetOfDeif && nBits > nProofOfWorkLowerLimit)
+        {
+            nBits--;
+        }
+        else if (nSpacing < nProofOfWorkLowerTargetOfDeif && nBits < nProofOfWorkUpperLimit)
+        {
+            nBits++;
+        }
+    }
+    else if (IsDposHeight(pIndexPrev->GetBlockHeight() + 1))
     {
         if (nSpacing > nProofOfWorkUpperTargetOfDpos && nBits > nProofOfWorkLowerLimit)
         {
@@ -1485,6 +1524,15 @@ bool CCoreProtocol::IsDPoSNewTrustHeight(int height)
         return false;
     }
     return true;
+}
+
+bool CCoreProtocol::IsDeifPowHeight(int height)
+{
+    if (height >= ADJUST_POW_DIFF_HEIGHT)
+    {
+        return true;
+    }
+    return false;
 }
 
 bool CCoreProtocol::DPoSConsensusCheckRepeated(int height)
@@ -1598,7 +1646,7 @@ uint32 CCoreProtocol::DPoSTimestamp(const CBlockIndex* pIndexPrev)
     return pIndexPrev->GetBlockTime() + BLOCK_TARGET_SPACING;
 }
 
-uint32 CCoreProtocol::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight)
+uint32 CCoreProtocol::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType)
 {
     if (nPrevMintType == CTransaction::TX_WORK || nPrevMintType == CTransaction::TX_GENESIS)
     {
@@ -2048,6 +2096,8 @@ CProofOfWorkParam::CProofOfWorkParam(const bool fTestnetIn)
     nProofOfWorkLowerTarget = PROOF_OF_WORK_TARGET_SPACING - PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkUpperTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_UPPER;
     nProofOfWorkLowerTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_LOWER;
+    nProofOfWorkUpperTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_UPPER;
+    nProofOfWorkLowerTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_LOWER;
     if (fTestnet)
     {
         nProofOfWorkInit = PROOF_OF_WORK_BITS_INIT_TESTNET;
@@ -2106,6 +2156,28 @@ bool CProofOfWorkParam::IsDPoSNewTrustHeight(int height)
         return false;
     }
     return true;
+}
+
+bool CProofOfWorkParam::IsDeifPowHeight(int height)
+{
+    if (height >= ADJUST_POW_DIFF_HEIGHT)
+    {
+        return true;
+    }
+    return false;
+}
+
+uint32 CProofOfWorkParam::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType)
+{
+    if (nPrevMintType == CTransaction::TX_WORK || nPrevMintType == CTransaction::TX_GENESIS)
+    {
+        if (nTargetMintType == CTransaction::TX_STAKE)
+        {
+            return nPrevTimeStamp + BLOCK_TARGET_SPACING;
+        }
+        return nPrevTimeStamp + PROOF_OF_WORK_BLOCK_SPACING;
+    }
+    return nPrevTimeStamp + BLOCK_TARGET_SPACING;
 }
 
 bool CProofOfWorkParam::DPoSConsensusCheckRepeated(int height)

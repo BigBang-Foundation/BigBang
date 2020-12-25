@@ -1820,13 +1820,31 @@ bool CCheckBlockWalker::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int 
         return true;
     }
 
+    bool fAdjustPowDiff = false;
+    if (objProofParam.IsDeifPowHeight(pIndexPrev->GetBlockHeight() + 1))
+    {
+        fAdjustPowDiff = true;
+    }
+
     nBits = pIndex->nProofBits;
     int64 nSpacing = 0;
     int64 nWeight = 0;
     int nWIndex = objProofParam.nProofOfWorkAdjustCount - 1;
     while (pIndex->IsProofOfWork())
     {
-        nSpacing += (pIndex->GetBlockTime() - pIndex->pPrev->GetBlockTime()) << nWIndex;
+        if (fAdjustPowDiff)
+        {
+            uint32 nStartTime = objProofParam.GetNextBlockTimeStamp(pIndex->pPrev->nMintType, pIndex->pPrev->GetBlockTime(), pIndex->nMintType);
+            int64 nPowTime = pIndex->GetBlockTime() - nStartTime;
+            if (nPowTime > 0)
+            {
+                nSpacing += (nPowTime << nWIndex);
+            }
+        }
+        else
+        {
+            nSpacing += (pIndex->GetBlockTime() - pIndex->pPrev->GetBlockTime()) << nWIndex;
+        }
         nWeight += (1ULL) << nWIndex;
         if (!nWIndex--)
         {
@@ -1839,7 +1857,19 @@ bool CCheckBlockWalker::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int 
         }
     }
     nSpacing /= nWeight;
-    if (objProofParam.IsDposHeight(pIndexPrev->GetBlockHeight() + 1))
+
+    if (fAdjustPowDiff)
+    {
+        if (nSpacing > objProofParam.nProofOfWorkUpperTargetOfDeif && nBits > objProofParam.nProofOfWorkLowerLimit)
+        {
+            nBits--;
+        }
+        else if (nSpacing < objProofParam.nProofOfWorkLowerTargetOfDeif && nBits < objProofParam.nProofOfWorkUpperLimit)
+        {
+            nBits++;
+        }
+    }
+    else if (objProofParam.IsDposHeight(pIndexPrev->GetBlockHeight() + 1))
     {
         if (nSpacing > objProofParam.nProofOfWorkUpperTargetOfDpos && nBits > objProofParam.nProofOfWorkLowerLimit)
         {
