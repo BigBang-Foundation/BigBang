@@ -4089,7 +4089,7 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
 
     pPusher->InsertNewClient(spParam->strIpport, client);
 
-    StdWarn("CRPCMod", "port %d, url: %s", nPort, urlPath.c_str());
+    StdWarn("CRPCMod", "Inserted Client ipport: $s, url: %s", spParam->strIpport.c_str(), urlPath.c_str());
     spResult->strIpport = spParam->strIpport;
     return spResult;
 }
@@ -4468,8 +4468,13 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
 
     static uint64 nNonce = 10;
     {
-        boost::lock_guard<boost::mutex> lock(mMutex);
-        for (const auto& client : mapRPCClient)
+        decltype(mapRPCClient) tempMap;
+        {
+            boost::lock_guard<boost::mutex> lock(mMutex);
+            tempMap = mapRPCClient;
+        }
+
+        for (const auto& client : tempMap)
         {
             const std::string& ipport = client.first;
             int64 nTimeStamp = client.second.timestamp;
