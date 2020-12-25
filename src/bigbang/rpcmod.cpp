@@ -4089,7 +4089,7 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
 
     pPusher->InsertNewClient(spParam->strIpport, client);
 
-    StdWarn("CRPCMod", "Inserted Client ipport: $s, url: %s", spParam->strIpport.c_str(), urlPath.c_str());
+    StdWarn("CRPCMod", "Inserted Client ipport: %s, url: %s", spParam->strIpport.c_str(), urlPath.c_str());
     spResult->strIpport = spParam->strIpport;
     return spResult;
 }
