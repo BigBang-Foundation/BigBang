@@ -63,6 +63,7 @@ endif()
 
 if(ARM_CRYPTO)
     add_definitions(-D__ARM_FEATURE_CRYPTO)
+    set(CMAKE_C_FLAGS "-march=armv8-a+crypto")
 endif ()
 
 add_library(crypto ${sources})
@@ -89,3 +90,4 @@ target_link_libraries(crypto
     xengine
     common
 )
+
