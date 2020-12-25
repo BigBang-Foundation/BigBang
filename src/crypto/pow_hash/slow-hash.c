@@ -1195,8 +1195,8 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     RDATA_ALIGN16 uint64_t b[4];
     RDATA_ALIGN16 uint64_t c[2];
 
-    RDATA_ALIGN16 uint8_t sha3_in[128];     //todo: maybe useless
-    RDATA_ALIGN16 uint8_t sha3_out[200];    //todo: maybe useless
+    RDATA_ALIGN16 uint8_t sha3_in[128];
+    RDATA_ALIGN16 uint8_t sha3_out[200];
 
     union cn_slow_hash_state state;
     //uint8x16_t _a, _b, _b1, _c, zero = {0};
