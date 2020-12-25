@@ -1180,6 +1180,7 @@ STATIC INLINE void aligned_free(void *ptr)
 
 void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, uint64_t height)
 {
+    printf("cn_slow_hash - 2\n");
     RDATA_ALIGN16 uint8_t expandedKey[240];
 
 #ifndef FORCE_USE_HEAP

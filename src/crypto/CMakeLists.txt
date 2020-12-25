@@ -62,8 +62,7 @@ if(NOT MSVC AND NOT ARM_CRYPTO)
 endif()
 
 if(ARM_CRYPTO)
-    add_definitions(-D__ARM_FEATURE_CRYPTO)
-    set(CMAKE_C_FLAGS "-march=armv8-a+crypto")
+    #set(CMAKE_C_FLAGS "-march=armv8-a+crypto")
 endif ()
 
 add_library(crypto ${sources})
