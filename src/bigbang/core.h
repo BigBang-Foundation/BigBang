@@ -65,6 +65,7 @@ protected:
 protected:
     uint256 hashGenesisBlock;
     int nProofOfWorkLowerLimit;
+    int nProofOfWorkNewLowerLimit;
     int nProofOfWorkUpperLimit;
     int nProofOfWorkInit;
     int64 nProofOfWorkUpperTarget;
@@ -93,6 +94,7 @@ public:
 public:
     bool fTestnet;
     int nProofOfWorkLowerLimit;
+    int nProofOfWorkNewLowerLimit;
     int nProofOfWorkUpperLimit;
     int nProofOfWorkInit;
     int64 nProofOfWorkUpperTarget;

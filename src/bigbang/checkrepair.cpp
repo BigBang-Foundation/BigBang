@@ -1860,7 +1860,7 @@ bool CCheckBlockWalker::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int 
 
     if (fAdjustPowDiff)
     {
-        if (nSpacing > objProofParam.nProofOfWorkUpperTargetOfDeif && nBits > objProofParam.nProofOfWorkLowerLimit)
+        if (nSpacing > objProofParam.nProofOfWorkUpperTargetOfDeif && nBits > objProofParam.nProofOfWorkNewLowerLimit)
         {
             nBits--;
         }

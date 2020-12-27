@@ -25,6 +25,7 @@ using namespace xengine;
 static const int64 MAX_CLOCK_DRIFT = 80;
 
 static const int PROOF_OF_WORK_BITS_LOWER_LIMIT = 8;
+static const int PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT = 25;
 static const int PROOF_OF_WORK_BITS_UPPER_LIMIT = 200;
 #ifdef BIGBANG_TESTNET
 static const int PROOF_OF_WORK_BITS_INIT_MAINNET = 10;
@@ -222,6 +223,11 @@ namespace bigbang
 CCoreProtocol::CCoreProtocol()
 {
     nProofOfWorkLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#ifdef BIGBANG_TESTNET
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#else
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT;
+#endif
     nProofOfWorkUpperLimit = PROOF_OF_WORK_BITS_UPPER_LIMIT;
     nProofOfWorkInit = PROOF_OF_WORK_BITS_INIT_MAINNET;
     nProofOfWorkUpperTarget = PROOF_OF_WORK_TARGET_SPACING + PROOF_OF_WORK_ADJUST_DEBOUNCE;
@@ -1474,7 +1480,7 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
 
     if (fAdjustPowDiff)
     {
-        if (nSpacing > nProofOfWorkUpperTargetOfDeif && nBits > nProofOfWorkLowerLimit)
+        if (nSpacing > nProofOfWorkUpperTargetOfDeif && nBits > nProofOfWorkNewLowerLimit)
         {
             nBits--;
         }
@@ -2091,6 +2097,11 @@ CProofOfWorkParam::CProofOfWorkParam(const bool fTestnetIn)
 {
     fTestnet = fTestnetIn;
     nProofOfWorkLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#ifdef BIGBANG_TESTNET
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#else
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT;
+#endif
     nProofOfWorkUpperLimit = PROOF_OF_WORK_BITS_UPPER_LIMIT;
     nProofOfWorkUpperTarget = PROOF_OF_WORK_TARGET_SPACING + PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkLowerTarget = PROOF_OF_WORK_TARGET_SPACING - PROOF_OF_WORK_ADJUST_DEBOUNCE;
