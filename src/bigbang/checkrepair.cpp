@@ -1821,7 +1821,7 @@ bool CCheckBlockWalker::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int 
     }
 
     bool fAdjustPowDiff = false;
-    if (objProofParam.IsDeifPowHeight(pIndexPrev->GetBlockHeight() + 1))
+    if (objProofParam.IsNewDiffPowHeight(pIndexPrev->GetBlockHeight() + 1))
     {
         fAdjustPowDiff = true;
     }
@@ -1860,11 +1860,11 @@ bool CCheckBlockWalker::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int 
 
     if (fAdjustPowDiff)
     {
-        if (nSpacing > objProofParam.nProofOfWorkUpperTargetOfDeif && nBits > objProofParam.nProofOfWorkNewLowerLimit)
+        if (nSpacing > objProofParam.nProofOfWorkUpperTargetOfNewDiff && nBits > objProofParam.nProofOfWorkNewLowerLimit)
         {
             nBits--;
         }
-        else if (nSpacing < objProofParam.nProofOfWorkLowerTargetOfDeif && nBits < objProofParam.nProofOfWorkUpperLimit)
+        else if (nSpacing < objProofParam.nProofOfWorkLowerTargetOfNewDiff && nBits < objProofParam.nProofOfWorkUpperLimit)
         {
             nBits++;
         }

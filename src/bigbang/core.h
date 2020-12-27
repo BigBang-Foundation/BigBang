@@ -39,7 +39,7 @@ public:
     virtual bool GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlgo, int& nBits, int64& nReward) override;
     virtual bool IsDposHeight(int height) override;
     virtual bool IsDPoSNewTrustHeight(int height) override;
-    virtual bool IsDeifPowHeight(int height) override;
+    virtual bool IsNewDiffPowHeight(int height) override;
     virtual bool DPoSConsensusCheckRepeated(int height) override;
     virtual int64 GetPrimaryMintWorkReward(const CBlockIndex* pIndexPrev) override;
     virtual void GetDelegatedBallot(const uint256& nAgreement, const std::size_t nWeight, const std::map<CDestination, size_t>& mapBallot,
@@ -72,8 +72,8 @@ protected:
     int64 nProofOfWorkLowerTarget;
     int64 nProofOfWorkUpperTargetOfDpos;
     int64 nProofOfWorkLowerTargetOfDpos;
-    int64 nProofOfWorkUpperTargetOfDeif;
-    int64 nProofOfWorkLowerTargetOfDeif;
+    int64 nProofOfWorkUpperTargetOfNewDiff;
+    int64 nProofOfWorkLowerTargetOfNewDiff;
     IBlockChain* pBlockChain;
     IForkManager* pForkManager;
 };
@@ -101,8 +101,8 @@ public:
     int64 nProofOfWorkLowerTarget;
     int64 nProofOfWorkUpperTargetOfDpos;
     int64 nProofOfWorkLowerTargetOfDpos;
-    int64 nProofOfWorkUpperTargetOfDeif;
-    int64 nProofOfWorkLowerTargetOfDeif;
+    int64 nProofOfWorkUpperTargetOfNewDiff;
+    int64 nProofOfWorkLowerTargetOfNewDiff;
     int nProofOfWorkAdjustCount;
     int64 nDelegateProofOfStakeEnrollMinimumAmount;
     int64 nDelegateProofOfStakeEnrollMaximumAmount;
@@ -115,7 +115,7 @@ protected:
 public:
     bool IsDposHeight(int height);
     bool IsDPoSNewTrustHeight(int height);
-    bool IsDeifPowHeight(int height);
+    bool IsNewDiffPowHeight(int height);
     uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType);
     bool DPoSConsensusCheckRepeated(int height);
     bool IsRefVacantHeight(int height);
