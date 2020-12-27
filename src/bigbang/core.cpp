@@ -61,7 +61,7 @@ static const uint32 DELEGATE_PROOF_OF_STAKE_HEIGHT = 243800;
 #ifdef BIGBANG_TESTNET
 static const int ADJUST_POW_DIFF_HEIGHT = 0;
 #else
-static const int ADJUST_POW_DIFF_HEIGHT = 800000;
+static const int ADJUST_POW_DIFF_HEIGHT = 581329;
 #endif
 
 #ifdef BIGBANG_TESTNET
