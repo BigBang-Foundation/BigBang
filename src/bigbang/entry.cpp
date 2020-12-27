@@ -182,7 +182,7 @@ bool CBbEntry::Initialize(int argc, char* argv[])
         StdLog("Bigbang", "Check and repair data complete.");
     }
 
-#if !defined(WIN32) && !defined(__APPLE__)
+#if defined(__linux__) && !defined(ALPINE_LINUX)
     StdLog("Bigbang", "malloc_trim: %d.", malloc_trim(0));
 #endif
 
