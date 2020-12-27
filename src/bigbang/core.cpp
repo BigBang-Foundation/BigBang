@@ -38,8 +38,8 @@ static const int PROOF_OF_WORK_ADJUST_DEBOUNCE = 15;
 static const int PROOF_OF_WORK_TARGET_SPACING = 45; // BLOCK_TARGET_SPACING;
 static const int PROOF_OF_WORK_TARGET_OF_DPOS_UPPER = 65;
 static const int PROOF_OF_WORK_TARGET_OF_DPOS_LOWER = 40;
-static const int PROOF_OF_WORK_TARGET_OF_DEIF_UPPER = 10;
-static const int PROOF_OF_WORK_TARGET_OF_DEIF_LOWER = 5;
+static const int PROOF_OF_WORK_TARGET_OF_NEW_DIFF_UPPER = 10;
+static const int PROOF_OF_WORK_TARGET_OF_NEW_DIFF_LOWER = 5;
 
 static const int64 DELEGATE_PROOF_OF_STAKE_ENROLL_MINIMUM_AMOUNT = 10000000 * COIN;
 #ifdef BIGBANG_TESTNET
@@ -234,8 +234,8 @@ CCoreProtocol::CCoreProtocol()
     nProofOfWorkLowerTarget = PROOF_OF_WORK_TARGET_SPACING - PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkUpperTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_UPPER;
     nProofOfWorkLowerTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_LOWER;
-    nProofOfWorkUpperTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_UPPER;
-    nProofOfWorkLowerTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_LOWER;
+    nProofOfWorkUpperTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_UPPER;
+    nProofOfWorkLowerTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_LOWER;
     pBlockChain = nullptr;
     pForkManager = nullptr;
 }
@@ -1441,7 +1441,7 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
     }
 
     bool fAdjustPowDiff = false;
-    if (IsDeifPowHeight(pIndexPrev->GetBlockHeight() + 1))
+    if (IsNewDiffPowHeight(pIndexPrev->GetBlockHeight() + 1))
     {
         fAdjustPowDiff = true;
     }
@@ -1480,11 +1480,11 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
 
     if (fAdjustPowDiff)
     {
-        if (nSpacing > nProofOfWorkUpperTargetOfDeif && nBits > nProofOfWorkNewLowerLimit)
+        if (nSpacing > nProofOfWorkUpperTargetOfNewDiff && nBits > nProofOfWorkNewLowerLimit)
         {
             nBits--;
         }
-        else if (nSpacing < nProofOfWorkLowerTargetOfDeif && nBits < nProofOfWorkUpperLimit)
+        else if (nSpacing < nProofOfWorkLowerTargetOfNewDiff && nBits < nProofOfWorkUpperLimit)
         {
             nBits++;
         }
@@ -1532,7 +1532,7 @@ bool CCoreProtocol::IsDPoSNewTrustHeight(int height)
     return true;
 }
 
-bool CCoreProtocol::IsDeifPowHeight(int height)
+bool CCoreProtocol::IsNewDiffPowHeight(int height)
 {
     if (height >= ADJUST_POW_DIFF_HEIGHT)
     {
@@ -2107,8 +2107,8 @@ CProofOfWorkParam::CProofOfWorkParam(const bool fTestnetIn)
     nProofOfWorkLowerTarget = PROOF_OF_WORK_TARGET_SPACING - PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkUpperTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_UPPER;
     nProofOfWorkLowerTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_LOWER;
-    nProofOfWorkUpperTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_UPPER;
-    nProofOfWorkLowerTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_LOWER;
+    nProofOfWorkUpperTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_UPPER;
+    nProofOfWorkLowerTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_LOWER;
     if (fTestnet)
     {
         nProofOfWorkInit = PROOF_OF_WORK_BITS_INIT_TESTNET;
@@ -2169,7 +2169,7 @@ bool CProofOfWorkParam::IsDPoSNewTrustHeight(int height)
     return true;
 }
 
-bool CProofOfWorkParam::IsDeifPowHeight(int height)
+bool CProofOfWorkParam::IsNewDiffPowHeight(int height)
 {
     if (height >= ADJUST_POW_DIFF_HEIGHT)
     {
