@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+﻿// Copyright (c) 2019-2020 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -25,6 +25,7 @@ using namespace xengine;
 static const int64 MAX_CLOCK_DRIFT = 80;
 
 static const int PROOF_OF_WORK_BITS_LOWER_LIMIT = 8;
+static const int PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT = 25;
 static const int PROOF_OF_WORK_BITS_UPPER_LIMIT = 200;
 #ifdef BIGBANG_TESTNET
 static const int PROOF_OF_WORK_BITS_INIT_MAINNET = 10;
@@ -37,6 +38,8 @@ static const int PROOF_OF_WORK_ADJUST_DEBOUNCE = 15;
 static const int PROOF_OF_WORK_TARGET_SPACING = 45; // BLOCK_TARGET_SPACING;
 static const int PROOF_OF_WORK_TARGET_OF_DPOS_UPPER = 65;
 static const int PROOF_OF_WORK_TARGET_OF_DPOS_LOWER = 40;
+static const int PROOF_OF_WORK_TARGET_OF_DEIF_UPPER = 10;
+static const int PROOF_OF_WORK_TARGET_OF_DEIF_LOWER = 5;
 
 static const int64 DELEGATE_PROOF_OF_STAKE_ENROLL_MINIMUM_AMOUNT = 10000000 * COIN;
 #ifdef BIGBANG_TESTNET
@@ -53,6 +56,12 @@ static const int64 DELEGATE_PROOF_OF_STAKE_MAXIMUM_TIMES = 1000000 * COIN;
 static const uint32 DELEGATE_PROOF_OF_STAKE_HEIGHT = 1;
 #else
 static const uint32 DELEGATE_PROOF_OF_STAKE_HEIGHT = 243800;
+#endif
+
+#ifdef BIGBANG_TESTNET
+static const int ADJUST_POW_DIFF_HEIGHT = 0;
+#else
+static const int ADJUST_POW_DIFF_HEIGHT = 800000;
 #endif
 
 #ifdef BIGBANG_TESTNET
@@ -164,12 +173,6 @@ static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
         uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"),
         {
             {
-                0,
-                {
-                    bigbang::CAddress("100000000000000000000000000000000000000000000000000000000"),
-                },
-            },
-            {
                 500824,
                 {
                     bigbang::CAddress("103vf0z8f5kry0937ar3ac864cbhkfh8efmmy8mxxy27kaq5sf3svbare"),
@@ -195,14 +198,21 @@ static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
 #ifdef BIGBANG_TESTNET
 static const int32 CHANGE_MINT_RATE_HEIGHT = 0;
 #else
-static const int32 CHANGE_MINT_RATE_HEIGHT = 580000;
+static const int32 CHANGE_MINT_RATE_HEIGHT = 565620;
 #endif
 
 // new DeFi relation tx type
 #ifdef BIGBANG_TESTNET
 static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 0;
 #else
-static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 580000;
+static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 565620;
+#endif
+
+// Change DPoS chain trust
+#ifdef BIGBANG_TESTNET
+static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 0;
+#else
+static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 565620;
 #endif
 
 namespace bigbang
@@ -213,12 +223,19 @@ namespace bigbang
 CCoreProtocol::CCoreProtocol()
 {
     nProofOfWorkLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#ifdef BIGBANG_TESTNET
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#else
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT;
+#endif
     nProofOfWorkUpperLimit = PROOF_OF_WORK_BITS_UPPER_LIMIT;
     nProofOfWorkInit = PROOF_OF_WORK_BITS_INIT_MAINNET;
     nProofOfWorkUpperTarget = PROOF_OF_WORK_TARGET_SPACING + PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkLowerTarget = PROOF_OF_WORK_TARGET_SPACING - PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkUpperTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_UPPER;
     nProofOfWorkLowerTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_LOWER;
+    nProofOfWorkUpperTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_UPPER;
+    nProofOfWorkLowerTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_LOWER;
     pBlockChain = nullptr;
     pForkManager = nullptr;
 }
@@ -663,9 +680,9 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
         }
 
         const CDeFiProfile& defi = forkProfile.defi;
-        if (defi.nMintHeight > 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2)
+        if ((defi.nMintHeight < -1) || (defi.nMintHeight > 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2))
         {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mintheight should be -1 or larger than fork genesis block height");
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mintheight should be -1 or 0 or larger than fork genesis block height");
         }
         if (defi.nMaxSupply >= 0 && !MoneyRange(defi.nMaxSupply))
         {
@@ -774,7 +791,7 @@ Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* p
 
     if (IsDposHeight(block.GetBlockHeight()))
     {
-        uint32 nNextTimestamp = GetNextBlockTimeStamp(pIndexPrev->nMintType, pIndexPrev->GetBlockTime(), block.txMint.nType, block.GetBlockHeight());
+        uint32 nNextTimestamp = GetNextBlockTimeStamp(pIndexPrev->nMintType, pIndexPrev->GetBlockTime(), block.txMint.nType);
         if (block.GetBlockTime() < nNextTimestamp)
         {
             return DEBUG(ERR_BLOCK_TIMESTAMP_OUT_OF_RANGE, "Verify proof work: Timestamp out of range 2, height: %d, block time: %d, next time: %d, prev minttype: 0x%x, prev time: %d, block: %s.",
@@ -1091,7 +1108,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION && VerifyDeFiRelationTx(tx, destIn, nForkHeight, fork) != OK)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && VerifyDeFiRelationTx(tx, destIn, nForkHeight + 1, fork) != OK)
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "invalid DeFi relation tx");
     }
@@ -1287,6 +1304,7 @@ Errno CCoreProtocol::VerifyMintHeightTx(const CTransaction& tx, const CDestinati
 
 bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, const CBlockIndex* pIndexPrev, const CDelegateAgreement& agreement, const CBlockIndex* pIndexRef, size_t nEnrollTrust)
 {
+    int32 nHeight = block.GetBlockHeight();
     if (block.IsGenesis())
     {
         nChainTrust = uint64(0);
@@ -1307,9 +1325,9 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
         }
         else if (pIndexPrev != nullptr)
         {
-            if (!IsDposHeight(block.GetBlockHeight()))
+            if (!IsDposHeight(nHeight))
             {
-                StdError("CCoreProtocol", "GetBlockTrust: not dpos height, height: %d", block.GetBlockHeight());
+                StdError("CCoreProtocol", "GetBlockTrust: not dpos height, height: %d", nHeight);
                 return false;
             }
 
@@ -1329,7 +1347,6 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
                 nAlgo = pIndex->nProofAlgo;
             }
 
-            // DPoS difficulty = weight * (2 ^ nBits)
             int nBits;
             int64 nReward;
             if (GetProofOfWorkTarget(pIndexPrev, nAlgo, nBits, nReward))
@@ -1344,7 +1361,17 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
                     StdError("CCoreProtocol", "GetBlockTrust: nEnrollTrust error, nEnrollTrust: %lu", nEnrollTrust);
                     return false;
                 }
-                nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+
+                if (!IsDPoSNewTrustHeight(nHeight))
+                {
+                    // DPoS difficulty = weight * (2 ^ nBits)
+                    nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+                }
+                else
+                {
+                    // DPoS difficulty = 2 ^ (nBits + weight)
+                    nChainTrust = uint256(1) << (int(nEnrollTrust) + nBits);
+                }
             }
             else
             {
@@ -1413,13 +1440,31 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
         return true;
     }
 
+    bool fAdjustPowDiff = false;
+    if (IsDeifPowHeight(pIndexPrev->GetBlockHeight() + 1))
+    {
+        fAdjustPowDiff = true;
+    }
+
     nBits = pIndex->nProofBits;
     int64 nSpacing = 0;
     int64 nWeight = 0;
     int nWIndex = PROOF_OF_WORK_ADJUST_COUNT - 1;
     while (pIndex->IsProofOfWork())
     {
-        nSpacing += (pIndex->GetBlockTime() - pIndex->pPrev->GetBlockTime()) << nWIndex;
+        if (fAdjustPowDiff)
+        {
+            uint32 nStartTime = GetNextBlockTimeStamp(pIndex->pPrev->nMintType, pIndex->pPrev->GetBlockTime(), pIndex->nMintType);
+            int64 nPowTime = pIndex->GetBlockTime() - nStartTime;
+            if (nPowTime > 0)
+            {
+                nSpacing += (nPowTime << nWIndex);
+            }
+        }
+        else
+        {
+            nSpacing += (pIndex->GetBlockTime() - pIndex->pPrev->GetBlockTime()) << nWIndex;
+        }
         nWeight += (1ULL) << nWIndex;
         if (!nWIndex--)
         {
@@ -1433,7 +1478,18 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
     }
     nSpacing /= nWeight;
 
-    if (IsDposHeight(pIndexPrev->GetBlockHeight() + 1))
+    if (fAdjustPowDiff)
+    {
+        if (nSpacing > nProofOfWorkUpperTargetOfDeif && nBits > nProofOfWorkNewLowerLimit)
+        {
+            nBits--;
+        }
+        else if (nSpacing < nProofOfWorkLowerTargetOfDeif && nBits < nProofOfWorkUpperLimit)
+        {
+            nBits++;
+        }
+    }
+    else if (IsDposHeight(pIndexPrev->GetBlockHeight() + 1))
     {
         if (nSpacing > nProofOfWorkUpperTargetOfDpos && nBits > nProofOfWorkLowerLimit)
         {
@@ -1465,6 +1521,24 @@ bool CCoreProtocol::IsDposHeight(int height)
         return false;
     }
     return true;
+}
+
+bool CCoreProtocol::IsDPoSNewTrustHeight(int height)
+{
+    if (height < CHANGE_DPOS_CHAIN_TRUST_HEIGHT)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CCoreProtocol::IsDeifPowHeight(int height)
+{
+    if (height >= ADJUST_POW_DIFF_HEIGHT)
+    {
+        return true;
+    }
+    return false;
 }
 
 bool CCoreProtocol::DPoSConsensusCheckRepeated(int height)
@@ -1578,7 +1652,7 @@ uint32 CCoreProtocol::DPoSTimestamp(const CBlockIndex* pIndexPrev)
     return pIndexPrev->GetBlockTime() + BLOCK_TARGET_SPACING;
 }
 
-uint32 CCoreProtocol::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight)
+uint32 CCoreProtocol::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType)
 {
     if (nPrevMintType == CTransaction::TX_WORK || nPrevMintType == CTransaction::TX_GENESIS)
     {
@@ -1936,7 +2010,7 @@ Errno CCoreProtocol::VerifyDeFiRelationTx(const CTransaction& tx, const CDestina
         StdTrace("CCoreProtocol", "VerifyDeFiRelationTx sharedPubKey: %s, subSign: %s, parentSign: %s",
                  sharedPubKey.ToString().c_str(), ToHexString(subSign).c_str(), ToHexString(parentSign).c_str());
 
-        // sub_sign: sign blake2b(“DeFiRelation” + forkid + shared_pubkey) with sendto
+        // sub_sign: sign blake2b(DeFiRelation + forkid + shared_pubkey) with sendto
         crypto::CPubKey subKey = tx.sendTo.GetPubKey();
         string subSignStr = string("DeFiRelation") + fork.ToString() + sharedPubKey.ToString();
         uint256 subSignHashStr = crypto::CryptoHash(subSignStr.data(), subSignStr.size());
@@ -1946,7 +2020,7 @@ Errno CCoreProtocol::VerifyDeFiRelationTx(const CTransaction& tx, const CDestina
             return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sub signature in vchData is not currect");
         }
 
-        // parent_sign: sign blake2b(“DeFiRelation” + parent_pubkey) with sharedPubKey
+        // parent_sign: sign blake2b(DeFiRelation + parent_pubkey) with sharedPubKey
         crypto::CPubKey parentKey = destIn.GetPubKey();
         string parentSignStr = string("DeFiRelation") + parentKey.ToString();
         uint256 parentSignHashStr = crypto::CryptoHash(parentSignStr.data(), parentSignStr.size());
@@ -2023,11 +2097,18 @@ CProofOfWorkParam::CProofOfWorkParam(const bool fTestnetIn)
 {
     fTestnet = fTestnetIn;
     nProofOfWorkLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#ifdef BIGBANG_TESTNET
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#else
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT;
+#endif
     nProofOfWorkUpperLimit = PROOF_OF_WORK_BITS_UPPER_LIMIT;
     nProofOfWorkUpperTarget = PROOF_OF_WORK_TARGET_SPACING + PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkLowerTarget = PROOF_OF_WORK_TARGET_SPACING - PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkUpperTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_UPPER;
     nProofOfWorkLowerTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_LOWER;
+    nProofOfWorkUpperTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_UPPER;
+    nProofOfWorkLowerTargetOfDeif = PROOF_OF_WORK_TARGET_OF_DEIF_LOWER;
     if (fTestnet)
     {
         nProofOfWorkInit = PROOF_OF_WORK_BITS_INIT_TESTNET;
@@ -2077,6 +2158,37 @@ bool CProofOfWorkParam::IsDposHeight(int height)
         return false;
     }
     return true;
+}
+
+bool CProofOfWorkParam::IsDPoSNewTrustHeight(int height)
+{
+    if (height < CHANGE_DPOS_CHAIN_TRUST_HEIGHT)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CProofOfWorkParam::IsDeifPowHeight(int height)
+{
+    if (height >= ADJUST_POW_DIFF_HEIGHT)
+    {
+        return true;
+    }
+    return false;
+}
+
+uint32 CProofOfWorkParam::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType)
+{
+    if (nPrevMintType == CTransaction::TX_WORK || nPrevMintType == CTransaction::TX_GENESIS)
+    {
+        if (nTargetMintType == CTransaction::TX_STAKE)
+        {
+            return nPrevTimeStamp + BLOCK_TARGET_SPACING;
+        }
+        return nPrevTimeStamp + PROOF_OF_WORK_BLOCK_SPACING;
+    }
+    return nPrevTimeStamp + BLOCK_TARGET_SPACING;
 }
 
 bool CProofOfWorkParam::DPoSConsensusCheckRepeated(int height)

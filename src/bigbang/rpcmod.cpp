@@ -363,7 +363,7 @@ bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
         // or passphrass from log content
 
         //log for debug mode
-        boost::regex ptnSec(R"raw(("privkey"|"passphrase"|"oldpassphrase"|"signsecret")(\s*:\s*)(".*?"))raw", boost::regex::perl);
+        boost::regex ptnSec(R"raw(("privkey"|"passphrase"|"oldpassphrase"|"signsecret"|"privkeyaddress")(\s*:\s*)(".*?"))raw", boost::regex::perl);
         return boost::regex_replace(data, ptnSec, string(R"raw($1$2"***")raw"));
     };
 
@@ -1320,10 +1320,14 @@ CRPCResultPtr CRPCMod::RPCRemoveKey(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Unknown key");
     }
 
-    crypto::CCryptoString strPassphrase = spParam->strPassphrase.c_str();
-    if (!fPublic && !pService->Unlock(pubkey, strPassphrase, UNLOCKKEY_RELEASE_DEFAULT_TIME))
+    if (!fPublic)
     {
-        throw CRPCException(RPC_WALLET_PASSPHRASE_INCORRECT, "Can't remove key with incorrect passphrase");
+        pService->Lock(pubkey);
+        crypto::CCryptoString strPassphrase = spParam->strPassphrase.c_str();
+        if (!pService->Unlock(pubkey, strPassphrase, UNLOCKKEY_RELEASE_DEFAULT_TIME))
+        {
+            throw CRPCException(RPC_WALLET_PASSPHRASE_INCORRECT, "Can't remove key with incorrect passphrase");
+        }
     }
 
     auto strErr = pService->RemoveKey(pubkey);
@@ -1843,6 +1847,16 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
+    int nLockHeight = 0;
+    if (spParam->nLockheight.IsValid())
+    {
+        nLockHeight = (int)(spParam->nLockheight);
+        if (nLockHeight < 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid lockheight");
+        }
+    }
+
     vector<unsigned char> vchData;
     if (spParam->strData.IsValid())
     {
@@ -1903,7 +1917,7 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, nLockHeight, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
@@ -2058,6 +2072,16 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
+    int nLockHeight = 0;
+    if (spParam->nLockheight.IsValid())
+    {
+        nLockHeight = (int)(spParam->nLockheight);
+        if (nLockHeight < 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid lockheight");
+        }
+    }
+
     vector<unsigned char> vchData;
     if (spParam->strData.IsValid())
     {
@@ -2112,7 +2136,7 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, nType, nAmount, nTxFee, nLockHeight, vchData, txNew);
     if (strErr)
     {
         boost::format fmt = boost::format(" Balance: %1% TxFee: %2%") % balance.nAvailable % txNew.nTxFee;
@@ -2659,6 +2683,10 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
         {
             throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param mintheight should be -1 or larger than fork genesis block height");
         }
+        else if (profile.defi.nMintHeight < -1)
+        {
+            profile.defi.nMintHeight = -1;
+        }
 
         profile.defi.nMaxSupply = spParam->defi.nMaxsupply;
         if (profile.defi.nMaxSupply >= 0)
@@ -3052,7 +3080,7 @@ CRPCResultPtr CRPCMod::RPCGetPubKey(CRPCParamPtr param)
     auto spParam = CastParamPtr<CGetPubkeyParam>(param);
     crypto::CPubKey pubkey;
     {
-        CAddress address(spParam->strInfo);
+        CAddress address(spParam->strPrivkeyaddress);
         if (!address.IsNull())
         {
             if (!address.GetPubKey(pubkey))
@@ -3064,7 +3092,7 @@ CRPCResultPtr CRPCMod::RPCGetPubKey(CRPCParamPtr param)
     }
     {
         uint256 nPriv;
-        if (nPriv.SetHex(spParam->strInfo) == spParam->strInfo.size())
+        if (nPriv.SetHex(spParam->strPrivkeyaddress) == spParam->strPrivkeyaddress.size())
         {
             crypto::CKey key;
             if (!key.SetSecret(crypto::CCryptoKeyData(nPriv.begin(), nPriv.end())))
