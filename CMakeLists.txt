@@ -148,6 +148,10 @@ if(MSVC)
     add_definitions(-DBOOST_ALL_DYN_LINK)
 endif()
 
+if(ALPINE_LINUX)
+    add_definitions(-DALPINE_LINUX)
+endif()
+
 if(TESTNET)
     add_definitions(-DBIGBANG_TESTNET)
 endif()
