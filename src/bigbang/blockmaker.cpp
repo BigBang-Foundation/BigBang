@@ -803,6 +803,7 @@ bool CBlockMaker::CreateProofOfWork()
     int64& nHashRate = pHashAlgo->nHashRate;
     int64 nHashComputeCount = 0;
     int64 nHashComputeBeginTime = GetTime();
+    int64 nTimeDiff = (int64)nTime - GetNetTime();
 
     Log("Proof-of-work: start hash compute, target height: %d, difficulty bits: (%d)", nPrevBlockHeight + 1, nBits);
 
@@ -837,7 +838,7 @@ bool CBlockMaker::CreateProofOfWork()
             nNonce++;
         }
 
-        int64 nNetTime = GetNetTime();
+        int64 nNetTime = GetNetTime() + nTimeDiff;
         if (nTime + 1 < nNetTime)
         {
             nHashRate /= (nNetTime - nTime);

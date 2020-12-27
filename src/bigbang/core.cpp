@@ -25,6 +25,7 @@ using namespace xengine;
 static const int64 MAX_CLOCK_DRIFT = 80;
 
 static const int PROOF_OF_WORK_BITS_LOWER_LIMIT = 8;
+static const int PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT = 25;
 static const int PROOF_OF_WORK_BITS_UPPER_LIMIT = 200;
 #ifdef BIGBANG_TESTNET
 static const int PROOF_OF_WORK_BITS_INIT_MAINNET = 10;
@@ -37,6 +38,8 @@ static const int PROOF_OF_WORK_ADJUST_DEBOUNCE = 15;
 static const int PROOF_OF_WORK_TARGET_SPACING = 45; // BLOCK_TARGET_SPACING;
 static const int PROOF_OF_WORK_TARGET_OF_DPOS_UPPER = 65;
 static const int PROOF_OF_WORK_TARGET_OF_DPOS_LOWER = 40;
+static const int PROOF_OF_WORK_TARGET_OF_NEW_DIFF_UPPER = 10;
+static const int PROOF_OF_WORK_TARGET_OF_NEW_DIFF_LOWER = 5;
 
 static const int64 DELEGATE_PROOF_OF_STAKE_ENROLL_MINIMUM_AMOUNT = 10000000 * COIN;
 #ifdef BIGBANG_TESTNET
@@ -53,6 +56,12 @@ static const int64 DELEGATE_PROOF_OF_STAKE_MAXIMUM_TIMES = 1000000 * COIN;
 static const uint32 DELEGATE_PROOF_OF_STAKE_HEIGHT = 1;
 #else
 static const uint32 DELEGATE_PROOF_OF_STAKE_HEIGHT = 243800;
+#endif
+
+#ifdef BIGBANG_TESTNET
+static const int ADJUST_POW_DIFF_HEIGHT = 0;
+#else
+static const int ADJUST_POW_DIFF_HEIGHT = 581329;
 #endif
 
 #ifdef BIGBANG_TESTNET
@@ -214,12 +223,19 @@ namespace bigbang
 CCoreProtocol::CCoreProtocol()
 {
     nProofOfWorkLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#ifdef BIGBANG_TESTNET
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#else
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT;
+#endif
     nProofOfWorkUpperLimit = PROOF_OF_WORK_BITS_UPPER_LIMIT;
     nProofOfWorkInit = PROOF_OF_WORK_BITS_INIT_MAINNET;
     nProofOfWorkUpperTarget = PROOF_OF_WORK_TARGET_SPACING + PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkLowerTarget = PROOF_OF_WORK_TARGET_SPACING - PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkUpperTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_UPPER;
     nProofOfWorkLowerTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_LOWER;
+    nProofOfWorkUpperTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_UPPER;
+    nProofOfWorkLowerTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_LOWER;
     pBlockChain = nullptr;
     pForkManager = nullptr;
 }
@@ -775,7 +791,7 @@ Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* p
 
     if (IsDposHeight(block.GetBlockHeight()))
     {
-        uint32 nNextTimestamp = GetNextBlockTimeStamp(pIndexPrev->nMintType, pIndexPrev->GetBlockTime(), block.txMint.nType, block.GetBlockHeight());
+        uint32 nNextTimestamp = GetNextBlockTimeStamp(pIndexPrev->nMintType, pIndexPrev->GetBlockTime(), block.txMint.nType);
         if (block.GetBlockTime() < nNextTimestamp)
         {
             return DEBUG(ERR_BLOCK_TIMESTAMP_OUT_OF_RANGE, "Verify proof work: Timestamp out of range 2, height: %d, block time: %d, next time: %d, prev minttype: 0x%x, prev time: %d, block: %s.",
@@ -1424,13 +1440,31 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
         return true;
     }
 
+    bool fAdjustPowDiff = false;
+    if (IsNewDiffPowHeight(pIndexPrev->GetBlockHeight() + 1))
+    {
+        fAdjustPowDiff = true;
+    }
+
     nBits = pIndex->nProofBits;
     int64 nSpacing = 0;
     int64 nWeight = 0;
     int nWIndex = PROOF_OF_WORK_ADJUST_COUNT - 1;
     while (pIndex->IsProofOfWork())
     {
-        nSpacing += (pIndex->GetBlockTime() - pIndex->pPrev->GetBlockTime()) << nWIndex;
+        if (fAdjustPowDiff)
+        {
+            uint32 nStartTime = GetNextBlockTimeStamp(pIndex->pPrev->nMintType, pIndex->pPrev->GetBlockTime(), pIndex->nMintType);
+            int64 nPowTime = pIndex->GetBlockTime() - nStartTime;
+            if (nPowTime > 0)
+            {
+                nSpacing += (nPowTime << nWIndex);
+            }
+        }
+        else
+        {
+            nSpacing += (pIndex->GetBlockTime() - pIndex->pPrev->GetBlockTime()) << nWIndex;
+        }
         nWeight += (1ULL) << nWIndex;
         if (!nWIndex--)
         {
@@ -1444,7 +1478,18 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
     }
     nSpacing /= nWeight;
 
-    if (IsDposHeight(pIndexPrev->GetBlockHeight() + 1))
+    if (fAdjustPowDiff)
+    {
+        if (nSpacing > nProofOfWorkUpperTargetOfNewDiff && nBits > nProofOfWorkNewLowerLimit)
+        {
+            nBits--;
+        }
+        else if (nSpacing < nProofOfWorkLowerTargetOfNewDiff && nBits < nProofOfWorkUpperLimit)
+        {
+            nBits++;
+        }
+    }
+    else if (IsDposHeight(pIndexPrev->GetBlockHeight() + 1))
     {
         if (nSpacing > nProofOfWorkUpperTargetOfDpos && nBits > nProofOfWorkLowerLimit)
         {
@@ -1485,6 +1530,15 @@ bool CCoreProtocol::IsDPoSNewTrustHeight(int height)
         return false;
     }
     return true;
+}
+
+bool CCoreProtocol::IsNewDiffPowHeight(int height)
+{
+    if (height >= ADJUST_POW_DIFF_HEIGHT)
+    {
+        return true;
+    }
+    return false;
 }
 
 bool CCoreProtocol::DPoSConsensusCheckRepeated(int height)
@@ -1598,7 +1652,7 @@ uint32 CCoreProtocol::DPoSTimestamp(const CBlockIndex* pIndexPrev)
     return pIndexPrev->GetBlockTime() + BLOCK_TARGET_SPACING;
 }
 
-uint32 CCoreProtocol::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight)
+uint32 CCoreProtocol::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType)
 {
     if (nPrevMintType == CTransaction::TX_WORK || nPrevMintType == CTransaction::TX_GENESIS)
     {
@@ -1956,7 +2010,7 @@ Errno CCoreProtocol::VerifyDeFiRelationTx(const CTransaction& tx, const CDestina
         StdTrace("CCoreProtocol", "VerifyDeFiRelationTx sharedPubKey: %s, subSign: %s, parentSign: %s",
                  sharedPubKey.ToString().c_str(), ToHexString(subSign).c_str(), ToHexString(parentSign).c_str());
 
-        // sub_sign: sign blake2b(“DeFiRelation” + forkid + shared_pubkey) with sendto
+        // sub_sign: sign blake2b(DeFiRelation + forkid + shared_pubkey) with sendto
         crypto::CPubKey subKey = tx.sendTo.GetPubKey();
         string subSignStr = string("DeFiRelation") + fork.ToString() + sharedPubKey.ToString();
         uint256 subSignHashStr = crypto::CryptoHash(subSignStr.data(), subSignStr.size());
@@ -1966,7 +2020,7 @@ Errno CCoreProtocol::VerifyDeFiRelationTx(const CTransaction& tx, const CDestina
             return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sub signature in vchData is not currect");
         }
 
-        // parent_sign: sign blake2b(“DeFiRelation” + parent_pubkey) with sharedPubKey
+        // parent_sign: sign blake2b(DeFiRelation + parent_pubkey) with sharedPubKey
         crypto::CPubKey parentKey = destIn.GetPubKey();
         string parentSignStr = string("DeFiRelation") + parentKey.ToString();
         uint256 parentSignHashStr = crypto::CryptoHash(parentSignStr.data(), parentSignStr.size());
@@ -2043,11 +2097,18 @@ CProofOfWorkParam::CProofOfWorkParam(const bool fTestnetIn)
 {
     fTestnet = fTestnetIn;
     nProofOfWorkLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#ifdef BIGBANG_TESTNET
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#else
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT;
+#endif
     nProofOfWorkUpperLimit = PROOF_OF_WORK_BITS_UPPER_LIMIT;
     nProofOfWorkUpperTarget = PROOF_OF_WORK_TARGET_SPACING + PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkLowerTarget = PROOF_OF_WORK_TARGET_SPACING - PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkUpperTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_UPPER;
     nProofOfWorkLowerTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_LOWER;
+    nProofOfWorkUpperTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_UPPER;
+    nProofOfWorkLowerTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_LOWER;
     if (fTestnet)
     {
         nProofOfWorkInit = PROOF_OF_WORK_BITS_INIT_TESTNET;
@@ -2106,6 +2167,28 @@ bool CProofOfWorkParam::IsDPoSNewTrustHeight(int height)
         return false;
     }
     return true;
+}
+
+bool CProofOfWorkParam::IsNewDiffPowHeight(int height)
+{
+    if (height >= ADJUST_POW_DIFF_HEIGHT)
+    {
+        return true;
+    }
+    return false;
+}
+
+uint32 CProofOfWorkParam::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType)
+{
+    if (nPrevMintType == CTransaction::TX_WORK || nPrevMintType == CTransaction::TX_GENESIS)
+    {
+        if (nTargetMintType == CTransaction::TX_STAKE)
+        {
+            return nPrevTimeStamp + BLOCK_TARGET_SPACING;
+        }
+        return nPrevTimeStamp + PROOF_OF_WORK_BLOCK_SPACING;
+    }
+    return nPrevTimeStamp + BLOCK_TARGET_SPACING;
 }
 
 bool CProofOfWorkParam::DPoSConsensusCheckRepeated(int height)
