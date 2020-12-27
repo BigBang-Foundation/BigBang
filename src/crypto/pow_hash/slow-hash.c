@@ -1179,6 +1179,95 @@ STATIC INLINE void aligned_free(void *ptr)
 }
 #endif /* FORCE_USE_HEAP */
 
+#define bbc_math_0_a() \
+	{ \
+		_c_aes = veorq_u8(_c_aes, _c_aes); \
+		_c_aes = veorq_u8(_c_aes, _c_aes); \
+		_c_aes = veorq_u8(_c_aes, _c_aes); \
+		_c_aes = veorq_u8(_c_aes, _c_aes); \
+		_c_aes = veorq_u8(_c_aes, _c_aes); \
+		_c_aes = veorq_u8(_c_aes, _c_aes); \
+		_c_aes = veorq_u8(_c_aes, _c_aes); \
+		_c_aes = veorq_u8(_c_aes, _c_aes); \
+		_c_aes = veorq_u8(_c_aes, _c_aes); \
+	}
+
+#define SL_0_0_a() { \
+	const uint64_t sqrt_input = U64(&_c_aes)[0]; \
+	VARIANT2_INTEGER_MATH_SQRT_STEP_SSE2(); \
+	VARIANT2_INTEGER_MATH_SQRT_FIXUP(sqrt_result); \
+	for(int i=0; i<10; i++) { \
+		_c_aes = veorq_u8(_c_aes, _c_aes); \
+	} \
+	U64(&_c_aes)[0] ^= sqrt_result; \
+}
+
+#define SL_0_a_a() { \
+	SL_0_0(); \
+	SL_0_0(); \
+}
+
+#define SL_1_a() {\
+	U64(&sha3_in)[0] = a[0]; \
+	U64(&sha3_in)[1] = a[1]; \
+	U64(&sha3_in)[2] = U64(&_b)[0]; \
+	U64(&sha3_in)[3] = U64(&_b)[1]; \
+	U64(&sha3_in)[4] = U64(&_b1)[0]; \
+	U64(&sha3_in)[5] = U64(&_b1)[1]; \
+	hash_process((union hash_state*)sha3_out, (const uint8_t*)sha3_in, 128); \
+	a[0] = U64(&sha3_out)[0]; \
+	a[1] = U64(&sha3_out)[1]; \
+	U64(&_b)[0] = U64(&sha3_out)[2]; \
+	U64(&_b)[1] = U64(&sha3_out)[3]; \
+	U64(&_b1)[0] = U64(&sha3_out)[4]; \
+	U64(&_b1)[1] = U64(&sha3_out)[5]; \
+	for(int i=0; i<30; i++) { \
+		_c_aes = veorq_u8(_c_aes, _c_aes); \
+	} \
+	U64(&_c_aes)[0] ^= U64(&_b)[0]; \
+	U64(&_c_aes)[1] ^= U64(&_b)[1]; \
+	U64(&_c_aes)[0] ^= U64(&_b1)[0]; \
+	U64(&_c_aes)[1] ^= U64(&_b1)[1]; \
+}
+
+#define bbc_math_1_a() { \
+	uint32_t n = *((uint32_t *) &_c_aes); \
+	switch(n&31) { \
+		case 0:  SL_0_a(); SL_0_a(); SL_0_a(); SL_0_a(); SL_0_a(); break; \
+		case 1:  SL_0_a(); SL_0_a(); SL_0_a(); SL_0_a(); SL_1_a(); break; \
+		case 2:  SL_0_a(); SL_0_a(); SL_0_a(); SL_1_a(); SL_0_a(); break; \
+		case 3:  SL_0_a(); SL_0_a(); SL_0_a(); SL_1_a(); SL_1_a(); break; \
+		case 4:  SL_0_a(); SL_0_a(); SL_1_a(); SL_0_a(); SL_0_a(); break; \
+		case 5:  SL_0_a(); SL_0_a(); SL_1_a(); SL_0_a(); SL_1_a(); break; \
+		case 6:  SL_0_a(); SL_0_a(); SL_1_a(); SL_1_a(); SL_0_a(); break; \
+		case 7:  SL_0_a(); SL_0_a(); SL_1_a(); SL_1_a(); SL_1_a(); break; \
+		case 8:  SL_0_a(); SL_1_a(); SL_0_a(); SL_0_a(); SL_0_a(); break; \
+		case 9:  SL_0_a(); SL_1_a(); SL_0_a(); SL_0_a(); SL_1_a(); break; \
+		case 10: SL_0_a(); SL_1_a(); SL_0_a(); SL_1_a(); SL_0_a(); break; \
+		case 11: SL_0_a(); SL_1_a(); SL_0_a(); SL_1_a(); SL_1_a(); break; \
+		case 12: SL_0_a(); SL_1_a(); SL_1_a(); SL_0_a(); SL_0_a(); break; \
+		case 13: SL_0_a(); SL_1_a(); SL_1_a(); SL_0_a(); SL_1_a(); break; \
+		case 14: SL_0_a(); SL_1_a(); SL_1_a(); SL_1_a(); SL_0_a(); break; \
+		case 15: SL_0_a(); SL_1_a(); SL_1_a(); SL_1_a(); SL_1_a(); break; \
+		case 16: SL_1_a(); SL_0_a(); SL_0_a(); SL_0_a(); SL_0_a(); break; \
+		case 17: SL_1_a(); SL_0_a(); SL_0_a(); SL_0_a(); SL_1_a(); break; \
+		case 18: SL_1_a(); SL_0_a(); SL_0_a(); SL_1_a(); SL_0_a(); break; \
+		case 19: SL_1_a(); SL_0_a(); SL_0_a(); SL_1_a(); SL_1_a(); break; \
+		case 20: SL_1_a(); SL_0_a(); SL_1_a(); SL_0_a(); SL_0_a(); break; \
+		case 21: SL_1_a(); SL_0_a(); SL_1_a(); SL_0_a(); SL_1_a(); break; \
+		case 22: SL_1_a(); SL_0_a(); SL_1_a(); SL_1_a(); SL_0_a(); break; \
+		case 23: SL_1_a(); SL_0_a(); SL_1_a(); SL_1_a(); SL_1_a(); break; \
+		case 24: SL_1_a(); SL_1_a(); SL_0_a(); SL_0_a(); SL_0_a(); break; \
+		case 25: SL_1_a(); SL_1_a(); SL_0_a(); SL_0_a(); SL_1_a(); break; \
+		case 26: SL_1_a(); SL_1_a(); SL_0_a(); SL_1_a(); SL_0_a(); break; \
+		case 27: SL_1_a(); SL_1_a(); SL_0_a(); SL_1_a(); SL_1_a(); break; \
+		case 28: SL_1_a(); SL_1_a(); SL_1_a(); SL_0_a(); SL_0_a(); break; \
+		case 29: SL_1_a(); SL_1_a(); SL_1_a(); SL_0_a(); SL_1_a(); break; \
+		case 30: SL_1_a(); SL_1_a(); SL_1_a(); SL_1_a(); SL_0_a(); break; \
+		case 31: SL_1_a(); SL_1_a(); SL_1_a(); SL_1_a(); SL_1_a(); break; \
+	} \
+}
+
 void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, uint64_t height)
 {
     printf("cn_slow_hash - 2\n");
@@ -1271,8 +1360,8 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
 		_c_aes = _c;
         post_aes();
 
-        bbc_math_0();
-        bbc_math_1();
+        bbc_math_0_a();
+        bbc_math_1_a();
         a[0] ^= U64(&_c_aes)[0];
         a[1] ^= U64(&_c_aes)[1];
     }
