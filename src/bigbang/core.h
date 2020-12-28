@@ -39,13 +39,14 @@ public:
     virtual bool GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlgo, int& nBits, int64& nReward) override;
     virtual bool IsDposHeight(int height) override;
     virtual bool IsDPoSNewTrustHeight(int height) override;
+    virtual bool IsNewDiffPowHeight(int height) override;
     virtual bool DPoSConsensusCheckRepeated(int height) override;
     virtual int64 GetPrimaryMintWorkReward(const CBlockIndex* pIndexPrev) override;
     virtual void GetDelegatedBallot(const uint256& nAgreement, const std::size_t nWeight, const std::map<CDestination, size_t>& mapBallot,
                                     const std::vector<std::pair<CDestination, int64>>& vecAmount, int64 nMoneySupply, std::vector<CDestination>& vBallot, std::size_t& nEnrollTrust, int nBlockHeight) override;
     virtual int64 MinEnrollAmount() override;
     virtual uint32 DPoSTimestamp(const CBlockIndex* pIndexPrev) override;
-    virtual uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight) override;
+    virtual uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType) override;
     virtual bool IsRefVacantHeight(uint32 nBlockHeight) override;
     virtual int GetRefVacantHeight() override;
     virtual const std::set<CDestination> GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) override;
@@ -64,12 +65,15 @@ protected:
 protected:
     uint256 hashGenesisBlock;
     int nProofOfWorkLowerLimit;
+    int nProofOfWorkNewLowerLimit;
     int nProofOfWorkUpperLimit;
     int nProofOfWorkInit;
     int64 nProofOfWorkUpperTarget;
     int64 nProofOfWorkLowerTarget;
     int64 nProofOfWorkUpperTargetOfDpos;
     int64 nProofOfWorkLowerTargetOfDpos;
+    int64 nProofOfWorkUpperTargetOfNewDiff;
+    int64 nProofOfWorkLowerTargetOfNewDiff;
     IBlockChain* pBlockChain;
     IForkManager* pForkManager;
 };
@@ -90,12 +94,15 @@ public:
 public:
     bool fTestnet;
     int nProofOfWorkLowerLimit;
+    int nProofOfWorkNewLowerLimit;
     int nProofOfWorkUpperLimit;
     int nProofOfWorkInit;
     int64 nProofOfWorkUpperTarget;
     int64 nProofOfWorkLowerTarget;
     int64 nProofOfWorkUpperTargetOfDpos;
     int64 nProofOfWorkLowerTargetOfDpos;
+    int64 nProofOfWorkUpperTargetOfNewDiff;
+    int64 nProofOfWorkLowerTargetOfNewDiff;
     int nProofOfWorkAdjustCount;
     int64 nDelegateProofOfStakeEnrollMinimumAmount;
     int64 nDelegateProofOfStakeEnrollMaximumAmount;
@@ -108,6 +115,8 @@ protected:
 public:
     bool IsDposHeight(int height);
     bool IsDPoSNewTrustHeight(int height);
+    bool IsNewDiffPowHeight(int height);
+    uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType);
     bool DPoSConsensusCheckRepeated(int height);
     bool IsRefVacantHeight(int height);
     Errno ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile) const;

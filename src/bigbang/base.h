@@ -62,6 +62,7 @@ public:
     virtual bool GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlgo, int& nBits, int64& nReward) = 0;
     virtual bool IsDposHeight(int height) = 0;
     virtual bool IsDPoSNewTrustHeight(int height) = 0;
+    virtual bool IsNewDiffPowHeight(int height) = 0;
     virtual bool DPoSConsensusCheckRepeated(int height) = 0;
     virtual int64 GetPrimaryMintWorkReward(const CBlockIndex* pIndexPrev) = 0;
     virtual void GetDelegatedBallot(const uint256& nAgreement, const std::size_t nWeight, const std::map<CDestination, size_t>& mapBallot,
@@ -69,7 +70,7 @@ public:
         = 0;
     virtual int64 MinEnrollAmount() = 0;
     virtual uint32 DPoSTimestamp(const CBlockIndex* pIndexPrev) = 0;
-    virtual uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight) = 0;
+    virtual uint32 GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType) = 0;
     virtual bool IsRefVacantHeight(uint32 nBlockHeight) = 0;
     virtual int GetRefVacantHeight() = 0;
     virtual const std::set<CDestination> GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) = 0;
