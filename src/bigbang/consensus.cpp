@@ -552,7 +552,7 @@ bool CConsensus::GetNextConsensus(CAgreementBlock& consParam)
         return true;
     }
 
-    int64 nNextBlockTime = pCoreProtocol->GetNextBlockTimeStamp(status.nMintType, status.nBlockTime, CTransaction::TX_WORK, status.nBlockHeight + 1);
+    int64 nNextBlockTime = pCoreProtocol->GetNextBlockTimeStamp(status.nMintType, status.nBlockTime, CTransaction::TX_WORK);
     consParam.nWaitTime = nNextBlockTime - 2 - GetNetTime();
     if (consParam.nWaitTime >= -60)
     {
@@ -597,7 +597,7 @@ bool CConsensus::GetNextConsensus(CAgreementBlock& consParam)
     }
     if (!cacheAgreementBlock.agreement.IsProofOfWork())
     {
-        nNextBlockTime = pCoreProtocol->GetNextBlockTimeStamp(status.nMintType, status.nBlockTime, CTransaction::TX_STAKE, status.nBlockHeight + 1);
+        nNextBlockTime = pCoreProtocol->GetNextBlockTimeStamp(status.nMintType, status.nBlockTime, CTransaction::TX_STAKE);
         consParam.nWaitTime = nNextBlockTime - 2 - GetNetTime();
         if (consParam.nWaitTime > 0)
         {
