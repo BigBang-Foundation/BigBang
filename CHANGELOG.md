@@ -1,3 +1,12 @@
+
+
+# Version 2.3.1 (2020-12-28)
+
+### Fixs
+
+- Adjust the calculation method of pow difficulty coefficient
+* Fix some bugs
+
 # Version 2.3.0 (2020-12-16)
 
 ### Features

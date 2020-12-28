@@ -1324,10 +1324,14 @@ CRPCResultPtr CRPCMod::RPCRemoveKey(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_ADDRESS_OR_KEY, "Unknown key");
     }
 
-    crypto::CCryptoString strPassphrase = spParam->strPassphrase.c_str();
-    if (!fPublic && !pService->Unlock(pubkey, strPassphrase, UNLOCKKEY_RELEASE_DEFAULT_TIME))
+    if (!fPublic)
     {
-        throw CRPCException(RPC_WALLET_PASSPHRASE_INCORRECT, "Can't remove key with incorrect passphrase");
+        pService->Lock(pubkey);
+        crypto::CCryptoString strPassphrase = spParam->strPassphrase.c_str();
+        if (!pService->Unlock(pubkey, strPassphrase, UNLOCKKEY_RELEASE_DEFAULT_TIME))
+        {
+            throw CRPCException(RPC_WALLET_PASSPHRASE_INCORRECT, "Can't remove key with incorrect passphrase");
+        }
     }
 
     auto strErr = pService->RemoveKey(pubkey);
