@@ -112,9 +112,12 @@ BOOST_AUTO_TEST_CASE(base25519)
     // if uint(lhs[0, 31]) < uint(rhs[0, 31], return -1
     // int Compare32(const void* lhs, const void* rhs);
     {
-        uint8_t lhs[32];
-        RandGeneretor(lhs, 32);
+        uint8_t lhs[32] = { 0x01, 0xfe, 0xab, 0x0f, 0xec, 0xff, 0xff, 0xcc, 0xbc, 0x23, 0x64, 0x00, 0x1e, 0xee, 0x3c,
+                            0x23, 0x01, 0xfe, 0xab, 0x0f, 0xec, 0xff, 0xff, 0xcc, 0x01, 0xfe, 0xab, 0x0f, 0xec, 0xff, 0xff, 0xcc };
+        // RandGeneretor(lhs, 32);
         uint8_t rhs[32];
+        vector<uint8_t> vchData;
+
         for (int i = 0; i < 32; i++)
         {
             curve25519::Copy32(rhs, lhs);
@@ -125,6 +128,11 @@ BOOST_AUTO_TEST_CASE(base25519)
                 rhs[i]++;
                 BOOST_CHECK(curve25519::Compare32(lhs, rhs) == 0);
                 rhs[i]++;
+                std::cout << "CSH::Debug "
+                          << "i: " << i << std::endl;
+                std::cout
+                    << "lhs: " << xengine::ToHexString(&lhs[0], 32) << std::endl
+                    << "rhs: " << xengine::ToHexString(&rhs[0], 32) << std::endl;
                 BOOST_CHECK(curve25519::Compare32(lhs, rhs) < 0);
             }
             else
@@ -813,4 +821,3 @@ BOOST_AUTO_TEST_CASE(mpvss)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
