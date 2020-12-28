@@ -946,13 +946,13 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
 }
 
 #elif !defined NO_AES && (defined(__arm__) || defined(__aarch64__))
-void slow_hash_allocate_state(void)
+static void slow_hash_allocate_state(void)
 {
   // Do nothing, this is just to maintain compatibility with the upgraded slow-hash.c
   return;
 }
 
-void slow_hash_free_state(void)
+static void slow_hash_free_state(void)
 {
   // As above
   return;
@@ -1276,7 +1276,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     unsigned int height_ = *((unsigned int *)((unsigned char*)data + 36));
     if ((height_ < HEIGHT_HASH_MULTI_SIGNER) || (height_ > HEIGHT_HASH_TX_DATA))
     {
-        cn_slow_hash_1(data, length, hash, variant, prehashed, height_);
+        cn_slow_hash_1_a(data, length, hash, variant, prehashed, height_);
         return;
     }
 
