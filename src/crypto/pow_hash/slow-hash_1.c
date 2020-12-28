@@ -1069,8 +1069,16 @@ STATIC INLINE void aligned_free(void *ptr)
 }
 #endif /* FORCE_USE_HEAP */
 
-void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, uint64_t height)
+void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, int prehashed, uint64_t height)
 {
+    printf("cn_slow_hash - 2_2\n");
+    unsigned int height_ = *((unsigned int *)((unsigned char*)data + 36));
+    if ((height_ < HEIGHT_HASH_MULTI_SIGNER) || (height_ > HEIGHT_HASH_TX_DATA))
+    {
+        cn_slow_hash_1(data, length, hash, variant, prehashed, height_);
+        return;
+    }
+
     RDATA_ALIGN16 uint8_t expandedKey[240];
 
 #ifndef FORCE_USE_HEAP
@@ -1084,11 +1092,13 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     RDATA_ALIGN16 uint64_t b[4];
     RDATA_ALIGN16 uint64_t c[2];
     union cn_slow_hash_state state;
-    uint8x16_t _a, _b, _b1, _c, zero = {0};
+    //uint8x16_t _a, _b, _b1, _c, zero = {0};
+    uint8x16_t _a, _b, _b1, _c, _c_aes;
     uint64_t hi, lo;
 
     size_t i, j;
     uint64_t *p = NULL;
+    oaes_ctx *aes_ctx = NULL;    //todo: maybe useless
 
     static void (*const extra_hashes[4])(const void *, size_t, char *) =
     {
@@ -1096,21 +1106,23 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     };
 
     /* CryptoNight Step 1:  Use Keccak1600 to initialize the 'state' (and 'text') buffers from the data. */
+    printf("step - 1\n");
 
-    if (prehashed) {
-        memcpy(&state.hs, data, length);
-    } else {
+//    if (prehashed) {
+//        memcpy(&state.hs, data, length);
+//    } else {
         hash_process(&state.hs, data, length);
-    }
+//    }
     memcpy(text, state.init, INIT_SIZE_BYTE);
 
-    VARIANT1_INIT64();
-    VARIANT2_INIT64();
-    VARIANT4_RANDOM_MATH_INIT();
+//    VARIANT1_INIT64();
+//    VARIANT2_INIT64();
+//    VARIANT4_RANDOM_MATH_INIT();
 
     /* CryptoNight Step 2:  Iteratively encrypt the results from Keccak to fill
      * the 2MB large random access buffer.
      */
+    printf("step - 2\n");
 
     aes_expand_key(state.hs.b, expandedKey);
     for(i = 0; i < MEMORY / INIT_SIZE_BYTE; i++)
@@ -1118,6 +1130,15 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
         aes_pseudo_round(text, text, expandedKey, INIT_SIZE_BLK);
         memcpy(&hp_state[i * INIT_SIZE_BYTE], text, INIT_SIZE_BYTE);
     }
+
+    for (int ii = 0; ii < 2000; ii++)
+    {
+        hash_process(&state.hs, (uint8_t*)& state.hs, 128);
+    }
+
+    VARIANT1_INIT64();
+    VARIANT2_INIT64();
+    VARIANT4_RANDOM_MATH_INIT();
 
     U64(a)[0] = U64(&state.k[0])[0] ^ U64(&state.k[32])[0];
     U64(a)[1] = U64(&state.k[0])[1] ^ U64(&state.k[32])[1];
@@ -1128,22 +1149,39 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
      * using 524,288 iterations of the following mixing function.  Each execution
      * performs two reads and writes from the mixing buffer.
      */
+    printf("step - 3\n");
 
-    _b = vld1q_u8((const uint8_t *)b);
-    _b1 = vld1q_u8(((const uint8_t *)b) + AES_BLOCK_SIZE);
+    _b = vld1q_u8((const uint8_t *)b);  //todo: review later
+    _b1 = vld1q_u8(((const uint8_t *)b) + AES_BLOCK_SIZE);  //todo: review later
 
     for(i = 0; i < ITER / 2; i++)
     {
         pre_aes();
-        _c = vaeseq_u8(_c, zero);
-        _c = vaesmcq_u8(_c);
+//        _c = vaeseq_u8(_c, zero);
+//        _c = vaesmcq_u8(_c);
         _c = veorq_u8(_c, _a);
+		_c_aes = _c;
+        for (int j = 0; j < 10; j++)
+        {
+            _c_aes = veorq_u8(_c_aes, _c_aes);
+        }
+        if (height < HEIGHT_HASH_MULTI_SIGNER)
+        {
+            for (int j = 0; j < 17; j++)
+            {
+                _c_aes = veorq_u8(_c_aes, _c_aes);
+            }
+        }
         post_aes();
+
+        a[0] ^= U64(&_c_aes)[0];
+        a[1] ^= U64(&_c_aes)[1];
     }
 
     /* CryptoNight Step 4:  Sequentially pass through the mixing buffer and use 10 rounds
      * of AES encryption to mix the random data back into the 'text' buffer.  'text'
      * was originally created with the output of Keccak1600. */
+    printf("step - 4\n");
 
     memcpy(text, state.init, INIT_SIZE_BYTE);
 
@@ -1160,6 +1198,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
      * Use this hash to squeeze the state array down
      * to the final 256 bit hash output.
      */
+    printf("step - 5\n");
 
     memcpy(state.init, text, INIT_SIZE_BYTE);
     hash_permutation(&state.hs);

@@ -1202,9 +1202,9 @@ STATIC INLINE void aligned_free(void *ptr)
 	U64(&_c_aes)[0] ^= sqrt_result; \
 }
 
-#define SL_0_a_a() { \
-	SL_0_0(); \
-	SL_0_0(); \
+#define SL_0_a() { \
+	SL_0_0_a(); \
+	SL_0_0_a(); \
 }
 
 #define SL_1_a() {\
@@ -1268,9 +1268,18 @@ STATIC INLINE void aligned_free(void *ptr)
 	} \
 }
 
+void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, int prehashed, uint64_t height);
+
 void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int prehashed, uint64_t height)
 {
     printf("cn_slow_hash - 2\n");
+    unsigned int height_ = *((unsigned int *)((unsigned char*)data + 36));
+    if ((height_ < HEIGHT_HASH_MULTI_SIGNER) || (height_ > HEIGHT_HASH_TX_DATA))
+    {
+        cn_slow_hash_1(data, length, hash, variant, prehashed, height_);
+        return;
+    }
+
     RDATA_ALIGN16 uint8_t expandedKey[240];
 
 #ifndef FORCE_USE_HEAP
