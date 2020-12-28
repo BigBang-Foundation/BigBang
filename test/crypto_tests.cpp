@@ -112,4 +112,30 @@ BOOST_AUTO_TEST_CASE(multisign_defect)
     std::cout << "multisign verify2 count : " << count << "; time per count : " << verifyTime2 / count << "us.; time per key: " << verifyTime2 / signCount << "us." << std::endl;
 }
 
+BOOST_AUTO_TEST_CASE(crypto_pow_hash)
+{
+    {
+        const char* pMessage = "Hello BigBang.";
+        uint256 result;
+        result = CryptoPowHash(pMessage, strlen(pMessage));
+        BOOST_CHECK(result == uint256("51ee2ce85f89325577b7bea3f3f98ede5bc63496bfafb7fc506c5648a6918e97"));
+        result = CryptoPowHash(pMessage, strlen(pMessage));
+        BOOST_CHECK(result == uint256("51ee2ce85f89325577b7bea3f3f98ede5bc63496bfafb7fc506c5648a6918e97"));
+    }
+
+    {
+        const char* pMessage = "Hello BigBang!";
+        uint256 result;
+        result = CryptoPowHash(pMessage, strlen(pMessage));
+        BOOST_CHECK(result == uint256("8c504fe9ade042f5144d450d5f83742d1a36199c674d05d5c32a590318d12f37"));
+    }
+
+    {
+        const char* pMessage = "8c504fe9ade042f5144d450d5f83742d1a36199c674d05d5c32a590318d12f37";
+        uint256 result;
+        result = CryptoPowHash(pMessage, strlen(pMessage));
+        BOOST_CHECK(result == uint256("8314336f42ba83e2ee1792f9dbe334b61393b5ac98b35eab42d52d35f0f6e543"));
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
