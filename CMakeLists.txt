@@ -131,7 +131,6 @@ find_package(Boost 1.58.0 REQUIRED COMPONENTS
 )
 find_package(OpenSSL 1.0.0 REQUIRED) 
 find_package(sodium 1.0.18 REQUIRED)
-find_package(Protobuf 3.0.0 REQUIRED)
 find_package(Readline 5.0 REQUIRED)
 if(ALPINE_LINUX)
     set(LevelDB_USE_STATIC_LIBS ON)
