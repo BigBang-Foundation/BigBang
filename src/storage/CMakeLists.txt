@@ -28,7 +28,11 @@ set(sources
 
 add_library(storage ${sources})
 
-include_directories(../xengine ../crypto ../common ../leveldb/include ../snappy ../delegate ../mpvss)
+if(NOT ALPINE_LINUX)
+    include_directories(../xengine ../crypto ../common ../leveldb/include ../snappy ../delegate ../mpvss)
+else()
+    include_directories(../xengine ../crypto ../common ../delegate ../mpvss)
+endif()
 
 target_link_libraries(storage
     ${Boost_SYSTEM_LIBRARY}

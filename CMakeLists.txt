@@ -172,6 +172,7 @@ include_directories(${sodium_INCLUDE_DIR})
 include_directories(${Protobuf_INCLUDE_DIR})
 include_directories(${Readline_INCLUDE_DIR})
 include_directories(${Snappy_INCLUDE_DIRS})
+include_directories(${LEVELDB_INCLUDE_DIRS})
 
 # sub directories
 add_subdirectory(src)
