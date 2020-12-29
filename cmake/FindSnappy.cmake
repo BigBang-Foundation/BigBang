@@ -45,6 +45,7 @@ find_package_handle_standard_args(Snappy
 # Create the imported target
 if(Snappy_FOUND)
     set(Snappy_INCLUDE_DIRS ${Snappy_INCLUDE_DIR})
+    message(STATUS "Snappy path: ${Snappy_LIBRARY}")
     set(Snappy_LIBRARIES ${Snappy_LIBRARY})
     if(NOT TARGET Snappy::Snappy)
         add_library(Snappy::Snappy UNKNOWN IMPORTED)
