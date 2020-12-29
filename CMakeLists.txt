@@ -71,6 +71,9 @@ if(UNIX AND NOT CYGWIN)
     if (APPLE)
         string(APPEND CMAKE_CXX_FLAGS " -fvisibility-inlines-hidden -fvisibility=hidden -Wno-unknown-warning-option -Wno-tautological-overlap-compare")
     endif()
+    if(ALPINE_LINUX)
+        string(APPEND CMAKE_CXX_FLAGS "-Wno-narrowing")
+    endif()
 elseif(MSVC)
     # C4018: 'expression' : signed/unsigned mismatch
     # C4101: 'identifier' : unreferenced local variable

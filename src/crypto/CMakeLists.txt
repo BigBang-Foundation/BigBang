@@ -57,8 +57,9 @@ set(sources
     ${pow_hash}
 )
 
-if(NOT MSVC)
-    set(CMAKE_C_FLAGS "-msse2 -maes")
+if(NOT MSVC AND NOT ALPINE_LINUX)
+    set(CMAKE_C_FLAGS "-maes")
+    set(USE_SSE2_INSTRUCTIONS ON)
 endif()
 
 add_library(crypto ${sources})
