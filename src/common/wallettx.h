@@ -108,6 +108,8 @@ public:
             return std::string("defi-reward");
         else if (nType == CTransaction::TX_DEFI_RELATION)
             return std::string("defi-relation");
+        else if (nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+            return std::string("defi-mint-height");
         return std::string("undefined");
     }
     int64 GetTxTime() const

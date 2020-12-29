@@ -22,12 +22,12 @@ class CTxIndexDB
 
 public:
     CTxIndexDB();
-    bool Initialize(const boost::filesystem::path& pathData);
+    bool Initialize(const boost::filesystem::path& pathData, const bool fFlush = true);
     void Deinitialize();
     bool LoadFork(const uint256& hashFork);
     bool Update(const uint256& hashFork, const std::vector<std::pair<uint256, CTxIndex>>& vTxNew,
                 const std::vector<uint256>& vTxDel);
-    bool Retrieve(const uint256& hashFork, const uint256& txid, CTxIndex& txIndex);
+    bool Retrieve(const uint256& hashFork, const uint256& txid, CTxIndex& txIndex, const bool fSaveLoad = false);
     bool Retrieve(const uint256& txid, CTxIndex& txIndex, uint256& hashFork);
 
     void Clear();

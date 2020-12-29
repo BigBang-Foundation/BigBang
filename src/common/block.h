@@ -339,6 +339,10 @@ public:
     {
         return (nType & 1);
     }
+    bool IsSubsidiary() const
+    {
+        return (nType == CBlock::BLOCK_SUBSIDIARY);
+    }
     bool IsExtended() const
     {
         return (nType == CBlock::BLOCK_EXTENDED);
@@ -371,6 +375,17 @@ public:
             }
         }
         return false;
+    }
+    int GetExtendedSequence() const
+    {
+        int nSeq = 0;
+        const CBlockIndex* pIndex = this;
+        while (pIndex && pIndex->IsExtended())
+        {
+            nSeq++;
+            pIndex = pIndex->pPrev;
+        }
+        return nSeq;
     }
     const std::string GetBlockType() const
     {

@@ -60,9 +60,9 @@
             "name": "nLogFileSize",
             "type": "int",
             "opt": "logfilesize",
-            "default": 10,
+            "default": 200,
             "format": "-logfilesize=<size>",
-            "desc": "Log file size(M) (default: 10M)"
+            "desc": "Log file size(M) (default: 200M)"
         },
         {
             "name": "nLogHistorySize",
@@ -71,6 +71,14 @@
             "default": 2048,
             "format": "-loghistorysize=<size>",
             "desc": "Log history size(M) (default: 2048M)"
+        },
+        {
+            "name": "fAddrTxIndex",
+            "type": "bool",
+            "opt": "addrtxindex",
+            "default": false,
+            "format": "-addrtxindex",
+            "desc": "Launch server without address txindex"
         }
     ],
     "CForkConfigOption": [
@@ -87,6 +95,13 @@
             "opt": "addgroup",
             "format": "-addgroup=<forkid of group leader>",
             "desc": "Add a supported fork group"
+        },
+        {
+            "name": "vExcludeFork",
+            "type": "vector<string>",
+            "opt": "excludefork",
+            "format": "-excludefork=<forkid>",
+            "desc": "Exclude a fork"
         }
     ],
     "CMintConfigOption": [
@@ -471,18 +486,16 @@
             "name": "strListenAddressv4",
             "type": "string",
             "opt": "listenaddressv4",
-            "default": "0.0.0.0",
             "format": "-listenaddressv4=<ip>",
-            "desc": "listens for IPv4 addresses (default: 0.0.0.0)"
+            "desc": "listens for IPv4 addresses"
         },
         {
             "access": "protected",
             "name": "strListenAddressv6",
             "type": "string",
             "opt": "listenaddressv6",
-            "default": "::",
             "format": "-listenaddressv6=<ip>",
-            "desc": "listens for IPv6 addresses (default: ::)"
+            "desc": "listens for IPv6 addresses"
         },
         {
             "name": "nPortInt",

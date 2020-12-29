@@ -507,7 +507,7 @@ void CBlockMaker::ProcessSubFork(const CBlockMakerProfile& profile, const CDeleg
                     {
                         if (pBlockChain->GetLastBlockOfHeight(hashFork, nPrevHeight, status.hashBlock, status.nBlockTime))
                         {
-                            block.hashPrev = status.nBlockHeight;
+                            block.hashPrev = status.hashBlock;
                         }
                         else
                         {
@@ -803,6 +803,7 @@ bool CBlockMaker::CreateProofOfWork()
     int64& nHashRate = pHashAlgo->nHashRate;
     int64 nHashComputeCount = 0;
     int64 nHashComputeBeginTime = GetTime();
+    int64 nTimeDiff = (int64)nTime - GetNetTime();
 
     Log("Proof-of-work: start hash compute, target height: %d, difficulty bits: (%d)", nPrevBlockHeight + 1, nBits);
 
@@ -837,7 +838,7 @@ bool CBlockMaker::CreateProofOfWork()
             nNonce++;
         }
 
-        int64 nNetTime = GetNetTime();
+        int64 nNetTime = GetNetTime() + nTimeDiff;
         if (nTime + 1 < nNetTime)
         {
             nHashRate /= (nNetTime - nTime);
@@ -860,7 +861,7 @@ void CBlockMaker::BlockMakerThreadFunc()
         hashLastBlock = lastStatus.hashBlock;
     }
     bool fCachePow = false;
-    int64 nWaitTime = (MintConfig()->nPeerType == NODE_TYPE_FORK) ? BLOCK_TARGET_SPACING : 1;
+    int64 nWaitTime = 1;
     while (!fExit)
     {
         if (nWaitTime < 1)
@@ -916,6 +917,7 @@ void CBlockMaker::BlockMakerThreadFunc()
                 Error("Block maker error: %s", e.what());
                 break;
             }
+            break;
         }
         case NODE_TYPE_FORK:
         {
@@ -959,6 +961,7 @@ void CBlockMaker::BlockMakerThreadFunc()
                     }
                 }
             }
+            break;
         }
         default:
             break;

@@ -13,8 +13,8 @@
 #define VERSION_NAME "Bigbang"
 
 #define VERSION_MAJOR 2
-#define VERSION_MINOR 2
-#define VERSION_REVISION 4
+#define VERSION_MINOR 3
+#define VERSION_REVISION 0
 
 std::string FormatVersion(int nVersion);
 

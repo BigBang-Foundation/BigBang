@@ -27,6 +27,10 @@ public:
 protected:
     bool HandleInitialize() override;
     void HandleDeinitialize() override;
+    const CBasicConfig* BasicConfig()
+    {
+        return dynamic_cast<const CBasicConfig*>(xengine::IBase::Config());
+    }
     const CNetworkConfig* Config()
     {
         return dynamic_cast<const CNetworkConfig*>(xengine::IBase::Config());
@@ -46,6 +50,10 @@ protected:
     {
         return i.IsValid() ? uint64(i) : valDefault;
     }
+    uint64 GetUint64(const rpc::CRPCUint64& i, uint64 valDefault)
+    {
+        return i.IsValid() ? uint64(i) : valDefault;
+    }
     bool GetForkHashOfDef(const rpc::CRPCString& hex, uint256& hashFork)
     {
         if (!hex.empty())
@@ -62,7 +70,6 @@ protected:
         return true;
     }
     bool CheckWalletError(Errno err);
-    bigbang::crypto::CPubKey GetPubKey(const std::string& addr);
     void ListDestination(std::vector<CDestination>& vDestination);
     bool CheckVersion(std::string& strVersion);
     std::string GetWidthString(const std::string& strIn, int nWidth);
@@ -100,6 +107,7 @@ private:
     rpc::CRPCResultPtr RPCEncryptKey(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCLockKey(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCUnlockKey(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCRemoveKey(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCImportPrivKey(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCImportPubKey(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCImportKey(rpc::CRPCParamPtr param);
@@ -107,8 +115,8 @@ private:
     rpc::CRPCResultPtr RPCAddNewTemplate(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCImportTemplate(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCExportTemplate(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCRemoveTemplate(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCValidateAddress(rpc::CRPCParamPtr param);
-    rpc::CRPCResultPtr RPCResyncWallet(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetBalance(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListTransaction(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSendFrom(rpc::CRPCParamPtr param);
@@ -124,6 +132,7 @@ private:
     /* Util */
     rpc::CRPCResultPtr RPCVerifyMessage(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCMakeKeyPair(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCGetPubKey(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetPubKeyAddress(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetTemplateAddress(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCMakeTemplate(rpc::CRPCParamPtr param);
@@ -133,13 +142,13 @@ private:
     rpc::CRPCResultPtr RPCAesEncrypt(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCAesDecrypt(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListUnspent(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCListUnspentOld(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetDeFiRelation(rpc::CRPCParamPtr param);
     /* Mint */
     rpc::CRPCResultPtr RPCGetWork(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSubmitWork(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCQueryStat(rpc::CRPCParamPtr param);
 
-    rpc::CRPCResultPtr PRCGetDestination(rpc::CRPCParamPtr param);
 protected:
     xengine::IIOProc* pHttpServer;
     ICoreProtocol* pCoreProtocol;

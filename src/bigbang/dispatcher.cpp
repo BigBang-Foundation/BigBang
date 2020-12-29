@@ -26,7 +26,6 @@ CDispatcher::CDispatcher()
     pTxPool = nullptr;
     pForkManager = nullptr;
     pConsensus = nullptr;
-    pWallet = nullptr;
     pService = nullptr;
     pBlockMaker = nullptr;
     pNetChannel = nullptr;
@@ -70,12 +69,6 @@ bool CDispatcher::HandleInitialize()
         return false;
     }
 
-    if (!GetObject("wallet", pWallet))
-    {
-        Error("Failed to request wallet");
-        return false;
-    }
-
     if (!GetObject("service", pService))
     {
         Error("Failed to request service");
@@ -116,7 +109,6 @@ void CDispatcher::HandleDeinitialize()
     pTxPool = nullptr;
     pForkManager = nullptr;
     pConsensus = nullptr;
-    pWallet = nullptr;
     pService = nullptr;
     pBlockMaker = nullptr;
     pNetChannel = nullptr;
@@ -211,21 +203,6 @@ Errno CDispatcher::AddNewBlock(const CBlock& block, uint64 nNonce)
         return ERR_SYS_DATABASE_ERROR;
     }
 
-    if (block.IsOrigin())
-    {
-        if (!pWallet->AddNewFork(updateBlockChain.hashFork, updateBlockChain.hashParent,
-                                 updateBlockChain.nOriginHeight))
-        {
-            return ERR_SYS_DATABASE_ERROR;
-        }
-    }
-
-    if (!pWallet->SynchronizeTxSet(changeTxSet))
-    {
-        StdError("CDispatcher", "AddNewBlock: Wallet SynchronizeTxSet fail, block: %s", block.GetHash().GetHex().c_str());
-        return ERR_SYS_DATABASE_ERROR;
-    }
-
     if (!block.IsOrigin() && (!block.IsVacant() || pCoreProtocol->IsRefVacantHeight(block.GetBlockHeight())))
     {
         pNetChannel->BroadcastBlockInv(updateBlockChain.hashFork, block.GetHash());
@@ -293,11 +270,6 @@ Errno CDispatcher::AddNewTx(const CTransaction& tx, uint64 nNonce)
     pDataStat->AddP2pSynTxSynStatData(hashFork, !!nNonce);
 
     CAssembledTx assembledTx(tx, -1, destIn, nValueIn);
-    if (!pWallet->AddNewTx(hashFork, assembledTx))
-    {
-        StdError("CDispatcher", "AddNewTx: Wallet AddNewTx fail, txid: %s", tx.GetHash().GetHex().c_str());
-        return ERR_SYS_DATABASE_ERROR;
-    }
 
     CTransactionUpdate updateTransaction;
     updateTransaction.hashFork = hashFork;
@@ -503,11 +475,6 @@ void CDispatcher::CheckSubForkLastBlock(const uint256& hashFork)
         if (!pTxPool->SynchronizeBlockChain(updateBlockChain, changeTxSet))
         {
             StdError("CDispatcher", "CheckSubForkLastBlock: TxPool SynchronizeBlockChain fail, last block: %s", updateBlockChain.hashLastBlock.GetHex().c_str());
-        }
-
-        if (!pWallet->SynchronizeTxSet(changeTxSet))
-        {
-            StdError("CDispatcher", "CheckSubForkLastBlock: Wallet SynchronizeTxSet fail, last block: %s", updateBlockChain.hashLastBlock.GetHex().c_str());
         }
 
         for (auto& block : updateBlockChain.vBlockAddNew)
