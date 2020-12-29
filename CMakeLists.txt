@@ -151,7 +151,7 @@ if(MSVC)
     add_definitions(-DBOOST_ALL_DYN_LINK)
 endif()
 
-message(status "Detected Processor Arch: ${CMAKE_SYSTEM_PROCESSOR}")
+message(STATUS "Detected Processor Arch: ${CMAKE_SYSTEM_PROCESSOR}")
 if(ALPINE_LINUX)
     add_definitions(-DALPINE_LINUX)
 endif()
