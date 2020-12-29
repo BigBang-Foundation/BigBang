@@ -133,6 +133,12 @@ find_package(OpenSSL 1.0.0 REQUIRED)
 find_package(sodium 1.0.18 REQUIRED)
 find_package(Protobuf 3.0.0 REQUIRED)
 find_package(Readline 5.0 REQUIRED)
+if(ALPINE_LINUX)
+    set(LevelDB_USE_STATIC_LIBS ON)
+    set(Snappy_USE_STATIC_LIBS ON)
+    find_package(LevelDB 1.20 REQUIRED)
+    find_package(Snappy 1.1.5 REQUIRED)
+endif()
 
 if(OPENSSL_VERSION VERSION_EQUAL 1.1.0 OR 
     (OPENSSL_VERSION VERSION_GREATER 1.1.0 AND OPENSSL_VERSION VERSION_LESS 1.2.0))
@@ -166,6 +172,7 @@ include_directories(${OpenSSL_INCLUDE_DIR})
 include_directories(${sodium_INCLUDE_DIR})
 include_directories(${Protobuf_INCLUDE_DIR})
 include_directories(${Readline_INCLUDE_DIR})
+include_directories(${Snappy_INCLUDE_DIRS})
 
 # sub directories
 add_subdirectory(src)
