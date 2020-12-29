@@ -15,11 +15,7 @@ set(auto_files
 if(MSVC)
     set(PYTHON_PATH "python.exe")
 else()
-    if(ALPINE_LINUX)
-        set(PYTHON_PATH "/usr/bin/python3")
-    else()
-        set(PYTHON_PATH "python")
-    endif()  
+    set(PYTHON_PATH "python3")
 endif()
 add_custom_command(OUTPUT ${auto_files}
     COMMAND "${PYTHON_PATH}" "\"${CMAKE_SOURCE_DIR}/script/generator.py\"" "\"mode\"" "\"${CMAKE_CURRENT_BINARY_DIR}\""
