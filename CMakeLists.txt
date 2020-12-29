@@ -40,6 +40,8 @@ configure_file(
         "${PROJECT_SOURCE_DIR}/src/bigbang/git_version.h.in"
         "${PROJECT_BINARY_DIR}/src/bigbang/git_version.h")
 
+message(STATUS "Detected Processor Arch: ${CMAKE_SYSTEM_PROCESSOR}")
+
 if(CYGWIN)
     set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 elseif(UNIX)
@@ -67,12 +69,11 @@ endif()
 
 # warnings
 if(UNIX AND NOT CYGWIN)
-    string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra -Werror -Wno-char-subscripts -Wno-unused-parameter -Wno-sign-compare -Wno-reorder -Wno-unused-local-typedefs -Wno-implicit-fallthrough -Wno-overloaded-virtual -Wno-strict-aliasing")
-    if (APPLE)
-        string(APPEND CMAKE_CXX_FLAGS " -fvisibility-inlines-hidden -fvisibility=hidden -Wno-unknown-warning-option -Wno-tautological-overlap-compare")
-    endif()
-    if(ALPINE_LINUX)
-        string(APPEND CMAKE_CXX_FLAGS "-Wno-narrowing")
+    if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^x86")
+        string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra -Werror -Wno-char-subscripts -Wno-unused-parameter -Wno-sign-compare -Wno-reorder -Wno-unused-local-typedefs -Wno-implicit-fallthrough -Wno-overloaded-virtual -Wno-strict-aliasing")
+        if (APPLE)
+            string(APPEND CMAKE_CXX_FLAGS " -fvisibility-inlines-hidden -fvisibility=hidden -Wno-unknown-warning-option -Wno-tautological-overlap-compare")
+        endif()
     endif()
 elseif(MSVC)
     # C4018: 'expression' : signed/unsigned mismatch
@@ -151,7 +152,6 @@ if(MSVC)
     add_definitions(-DBOOST_ALL_DYN_LINK)
 endif()
 
-message(STATUS "Detected Processor Arch: ${CMAKE_SYSTEM_PROCESSOR}")
 if(ALPINE_LINUX)
     add_definitions(-DALPINE_LINUX)
 endif()
