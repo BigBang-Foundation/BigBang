@@ -824,6 +824,7 @@ Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* p
         //             hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits);
         DEBUG(ERR_BLOCK_PROOF_OF_WORK_INVALID, "monero hash error: proof[%s] vs. target[%s] with bits[%d]",
                      hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits);
+        exit(-1);
 	return OK;
     }
 

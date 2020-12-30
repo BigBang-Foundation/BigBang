@@ -905,8 +905,6 @@ union cn_slow_hash_state
   j = state_index(c); \
   p = U64(&hp_state[j]); \
   b[0] = p[0]; b[1] = p[1]; \
-  VARIANT2_PORTABLE_INTEGER_MATH(b, c); \
-  VARIANT4_RANDOM_MATH(a, b, r, &_b, &_b1); \
   __mul(); \
   VARIANT2_2(); \
   VARIANT2_SHUFFLE_ADD_NEON(hp_state, j); \
@@ -1012,6 +1010,12 @@ STATIC INLINE void aes_pseudo_round(const uint8_t *in, uint8_t *out, const uint8
 	}
 }
 
+void print128_num(uint8x16_t var)
+{
+	uint16_t* val = (uint16_t*)&var;    
+	printf("Numerical: %i %i %i %i %i %i %i %i \n", val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7]);
+}
+
 STATIC INLINE void aes_pseudo_round_xor(const uint8_t *in, uint8_t *out, const uint8_t *expandedKey, const uint8_t *xor, int nblocks)
 {
 	const uint8x16_t *k = (const uint8x16_t *)expandedKey;
@@ -1019,11 +1023,15 @@ STATIC INLINE void aes_pseudo_round_xor(const uint8_t *in, uint8_t *out, const u
 	uint8x16_t tmp;
 	int i;
 
+//print128_num(*x);
 	for (i=0; i<nblocks; i++)
 	{
 		uint8x16_t tmp = vld1q_u8(in + i * AES_BLOCK_SIZE);
+//print128_num(tmp);
 		tmp = vaeseq_u8(tmp, x[i]);
 		tmp = vaesmcq_u8(tmp);
+//printf("x[i][%d]\n", x[i]);
+//print128_num(tmp);
 		tmp = vaeseq_u8(tmp, k[0]);
 		tmp = vaesmcq_u8(tmp);
 		tmp = vaeseq_u8(tmp, k[1]);
@@ -1044,6 +1052,8 @@ STATIC INLINE void aes_pseudo_round_xor(const uint8_t *in, uint8_t *out, const u
 		tmp = vaesmcq_u8(tmp);
 		tmp = veorq_u8(tmp,  k[9]);
 		vst1q_u8(out + i * AES_BLOCK_SIZE, tmp);
+//printf("aesblocksize[%d]\n", AES_BLOCK_SIZE);
+//exit(-2);
 	}
 }
 
@@ -1076,6 +1086,7 @@ void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, 
     RDATA_ALIGN16 uint8_t expandedKey[240];
 
 #ifndef FORCE_USE_HEAP
+    printf("No FORCE_USE_HEAP\n");
     RDATA_ALIGN16 uint8_t hp_state[MEMORY];
 #else
     uint8_t *hp_state = (uint8_t *)aligned_malloc(MEMORY,16);
@@ -1087,7 +1098,7 @@ void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, 
     RDATA_ALIGN16 uint64_t c[2];
     union cn_slow_hash_state state;
     //uint8x16_t _a, _b, _b1, _c, zero = {0};
-    uint8x16_t _a, _b, _b1, _c, _c_aes;
+    uint8x16_t _a, _b, _b1, _c, _c_aes, zero = {0};
     uint64_t hi, lo;
 
     size_t i, j;
@@ -1143,7 +1154,7 @@ void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, 
      * using 524,288 iterations of the following mixing function.  Each execution
      * performs two reads and writes from the mixing buffer.
      */
-    printf("step - 3\n");
+    printf("step - 3[%d]\n", ITER);
 
     _b = vld1q_u8((const uint8_t *)b);  //todo: review later
     _b1 = vld1q_u8(((const uint8_t *)b) + AES_BLOCK_SIZE);  //todo: review later
@@ -1153,17 +1164,26 @@ void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, 
         pre_aes();
 //        _c = vaeseq_u8(_c, zero);
 //        _c = vaesmcq_u8(_c);
-        _c = veorq_u8(_c, _a);
-		_c_aes = _c;
+//print128_num(_c);
+//print128_num(_a);
+        //_c = veorq_u8(_c, _a);
+//        _c = vaeseq_u8(_c, zero);
+ //       _c = vaesmcq_u8(_c);
+  //      _c = vaeseq_u8(_c, _a);
+   //     _c = veorq_u8(_c, _a);
+aesb_single_round((uint8_t*)&_c, (uint8_t*)&_c, (uint8_t*)&_a);
+//print128_num(_c);
+        //_c =  vaeseq_u8(_c, _a);
+    		_c_aes = _c;
         for (int j = 0; j < 10; j++)
         {
-            _c_aes = veorq_u8(_c_aes, _c_aes);
+aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
         }
         if (height < HEIGHT_HASH_MULTI_SIGNER)
         {
             for (int j = 0; j < 17; j++)
             {
-                _c_aes = veorq_u8(_c_aes, _c_aes);
+aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
             }
         }
         post_aes();
@@ -1175,15 +1195,24 @@ void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, 
     /* CryptoNight Step 4:  Sequentially pass through the mixing buffer and use 10 rounds
      * of AES encryption to mix the random data back into the 'text' buffer.  'text'
      * was originally created with the output of Keccak1600. */
-    printf("step - 4\n");
+
+    printf("step - 4[%d]init-size-blk[%d]\n", MEMORY / INIT_SIZE_BYTE, INIT_SIZE_BLK);
 
     memcpy(text, state.init, INIT_SIZE_BYTE);
 
     aes_expand_key(&state.hs.b[32], expandedKey);
+//for (int i = 0; i < 64; i++)    {        printf("%02x", hp_state[i]);    }    exit(0);
+//for (int i = 0; i < 240; i++)    {        printf("%02x", expandedKey[i]);    }    printf(" ----- 4 \n");
     for(i = 0; i < MEMORY / INIT_SIZE_BYTE; i++)
     {
         // add the xor to the pseudo round
         aes_pseudo_round_xor(text, text, expandedKey, &hp_state[i * INIT_SIZE_BYTE], INIT_SIZE_BLK);
+/*for (int i = 0; i < 128; i++)    
+{        
+printf("%02x", text[i]);    
+}    
+printf("----- 4 \n");
+break;*/
     }
 
     /* CryptoNight Step 5:  Apply Keccak to the state again, and then
