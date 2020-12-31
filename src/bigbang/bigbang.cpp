@@ -17,13 +17,13 @@ void Shutdown()
 
 int main(int argc, char** argv)
 {
-std::string str("1234567890");    
+/*std::string str("1234567890");
 auto ret = bigbang::crypto::CryptoPowHash(str.c_str(), str.size());    
 std::cout << str << std::endl;
 std::cout << ret.GetHex() << std::endl;    
 std::cout << "main terminated." << std::endl;
-return 0;
-/*    CBbEntry& entry = CBbEntry::GetInstance();
+return 0;*/
+    CBbEntry& entry = CBbEntry::GetInstance();
     try
     {
         if (entry.Initialize(argc, argv))
@@ -42,5 +42,5 @@ return 0;
 
     entry.Exit();
 
-    return 0;*/
+    return 0;
 }

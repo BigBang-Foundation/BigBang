@@ -767,7 +767,14 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
 }
 
 Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* pIndexPrev)
-{
+{/*
+#if defined(__aarch64__) && defined(__ARM_FEATURE_CRYPTO)
+    uint32 height = block.GetBlockHeight();
+    if ((height >= HEIGHT_HASH_MULTI_SIGNER) && (height <= HEIGHT_HASH_TX_DATA))
+        {
+            return OK;
+        }
+#endif*/
     if (block.vchProof.size() < CProofOfHashWorkCompact::PROOFHASHWORK_SIZE)
     {
         return DEBUG(ERR_BLOCK_PROOF_OF_WORK_INVALID, "vchProof size error.");
@@ -820,12 +827,12 @@ Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* p
 
     if (hash > hashTarget)
     {
-        //return DEBUG(ERR_BLOCK_PROOF_OF_WORK_INVALID, "hash error: proof[%s] vs. target[%s] with bits[%d]",
-        //             hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits);
-        DEBUG(ERR_BLOCK_PROOF_OF_WORK_INVALID, "monero hash error: proof[%s] vs. target[%s] with bits[%d]",
+        return DEBUG(ERR_BLOCK_PROOF_OF_WORK_INVALID, "hash error: proof[%s] vs. target[%s] with bits[%d]",
                      hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits);
-        exit(-1);
-	return OK;
+//        DEBUG(ERR_BLOCK_PROOF_OF_WORK_INVALID, "monero hash error: proof[%s] vs. target[%s] with bits[%d]",
+//                     hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits);
+//        exit(-1);
+//	return OK;
     }
 
     return OK;

@@ -1279,6 +1279,11 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
         cn_slow_hash_1_a(data, length, hash, variant, prehashed, height_);
         return;
     }
+    else
+    {
+        printf("phase - 2 (not 1 or 3)\n");
+        return;
+    }
 
     RDATA_ALIGN16 uint8_t expandedKey[240];
 
