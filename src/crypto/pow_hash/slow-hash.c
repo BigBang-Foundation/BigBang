@@ -1053,7 +1053,7 @@ static void slow_hash_free_state(void)
     hp_allocated = 0;
 }
 
-extern void cn_slow_hash_1(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height);
+void cn_slow_hash_1(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height);
 
 /**
  * @brief the hash function implementing CryptoNight, used for the Monero proof-of-work
