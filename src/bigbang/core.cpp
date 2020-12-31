@@ -6,6 +6,7 @@
 
 #include "address.h"
 #include "crypto.h"
+#include "defs.h"
 #include "param.h"
 #include "template/delegate.h"
 #include "template/dexmatch.h"
@@ -768,17 +769,74 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
 
 Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* pIndexPrev)
 {
-    printf("entering VerifyProofOfWork\n");
+    //printf("entering VerifyProofOfWork\n");
 #if defined(BIGBANG_ARM_CRYPTO)
-    printf("entering verification for arm64 with crypto\n");
+//#if defined(__aarch64__) && defined(__ARM_FEATURE_CRYPTO)
     uint32 height = block.GetBlockHeight();
+
+    if ((height == HEIGHT_HASH_MULTI_SIGNER - 1))
+    {
+	vector<unsigned char> vchProofOfWork;
+	block.GetSerializedProofOfWorkData(vchProofOfWork);
+	string prf = ToHexString(vchProofOfWork);
+	DEBUG(OK, "monero height[%d] proof[%s]", height, prf.c_str());
+    }
+
+    if ((height == HEIGHT_HASH_MULTI_SIGNER))
+    {
+	vector<unsigned char> vchProofOfWork;
+	block.GetSerializedProofOfWorkData(vchProofOfWork);
+	string prf = ToHexString(vchProofOfWork);
+	DEBUG(OK, "monero height[%d] proof[%s]", height, prf.c_str());
+    }
+  
+    if ((height == HEIGHT_HASH_MULTI_SIGNER + 1))
+    {
+	vector<unsigned char> vchProofOfWork;
+	block.GetSerializedProofOfWorkData(vchProofOfWork);
+	string prf = ToHexString(vchProofOfWork);
+	DEBUG(OK, "monero height[%d] proof[%s]", height, prf.c_str());
+    }
+
+    if ((height == HEIGHT_HASH_TX_DATA - 1))
+    {
+	vector<unsigned char> vchProofOfWork;
+	block.GetSerializedProofOfWorkData(vchProofOfWork);
+	string prf = ToHexString(vchProofOfWork);
+	DEBUG(OK, "monero height[%d] proof[%s]", height, prf.c_str());
+    }
+
+    if ((height == HEIGHT_HASH_TX_DATA))
+    {
+	vector<unsigned char> vchProofOfWork;
+	block.GetSerializedProofOfWorkData(vchProofOfWork);
+	string prf = ToHexString(vchProofOfWork);
+	DEBUG(OK, "monero height[%d] proof[%s]", height, prf.c_str());
+    }
+  
+    if ((height == HEIGHT_HASH_TX_DATA + 1))
+    {
+	vector<unsigned char> vchProofOfWork;
+	block.GetSerializedProofOfWorkData(vchProofOfWork);
+	string prf = ToHexString(vchProofOfWork);
+	DEBUG(OK, "monero height[%d] proof[%s]", height, prf.c_str());
+    }
+
     if ((height >= HEIGHT_HASH_MULTI_SIGNER) && (height <= HEIGHT_HASH_TX_DATA))
     {
+	printf("entering verification for arm64 with crypto - phase 2\n");
         return OK;
     }
-    printf("entering verification for arm64 with crypto - phase 1 or 3\n");
+    if ((height < HEIGHT_HASH_MULTI_SIGNER))
+    {
+	printf("entering verification for arm64 with crypto - phase 1\n");
+    }
+    if ((height > HEIGHT_HASH_TX_DATA))
+    {
+	printf("entering verification for arm64 with crypto - phase 3\n");
+    }
 #endif
-    printf("entering VerifyProofOfWork2\n");
+    //printf("entering VerifyProofOfWork2\n");
     if (block.vchProof.size() < CProofOfHashWorkCompact::PROOFHASHWORK_SIZE)
     {
         return DEBUG(ERR_BLOCK_PROOF_OF_WORK_INVALID, "vchProof size error.");
