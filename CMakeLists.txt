@@ -152,6 +152,10 @@ if(TESTNET)
     add_definitions(-DBIGBANG_TESTNET)
 endif()
 
+if(ARM_CRYPTO)
+    add_definitions(-DBIGBANG_ARM_CRYPTO)
+endif()
+
 # include directories
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${OpenSSL_INCLUDE_DIR})

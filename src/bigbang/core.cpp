@@ -767,14 +767,18 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
 }
 
 Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* pIndexPrev)
-{/*
-#if defined(__aarch64__) && defined(__ARM_FEATURE_CRYPTO)
+{
+    printf("entering VerifyProofOfWork\n");
+#if defined(BIGBANG_ARM_CRYPTO)
+    printf("entering verification for arm64 with crypto\n");
     uint32 height = block.GetBlockHeight();
     if ((height >= HEIGHT_HASH_MULTI_SIGNER) && (height <= HEIGHT_HASH_TX_DATA))
-        {
-            return OK;
-        }
-#endif*/
+    {
+        return OK;
+    }
+    printf("entering verification for arm64 with crypto - phase 1 or 3\n");
+#endif
+    printf("entering VerifyProofOfWork2\n");
     if (block.vchProof.size() < CProofOfHashWorkCompact::PROOFHASHWORK_SIZE)
     {
         return DEBUG(ERR_BLOCK_PROOF_OF_WORK_INVALID, "vchProof size error.");

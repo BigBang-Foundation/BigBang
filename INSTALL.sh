@@ -31,12 +31,12 @@ fi
 flagarm64crypto=''
 if [[ "$1" = "arm64crypto" || "$2" = "arm64crypto" || "$3" = "arm64crypto" ]]
 then
-    flagtestnet="-DARM_CRYPTO=on"
+    flagarm64crypto="-DARM_CRYPTO=on"
 else
-    flagtestnet="-DARM_CRYPTO=off"
+    flagarm64crypto="-DARM_CRYPTO=off"
 fi
 
-cmake .. $flagdebug $flagtestnet
+cmake .. $flagdebug $flagtestnet $flagarm64crypto
 if [ $? -ne 0 ]; then 
     cd $origin_path
     exit 1 
