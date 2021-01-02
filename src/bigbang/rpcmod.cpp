@@ -2089,7 +2089,7 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     CTransaction txNew;
-    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, CTransaction::TX_TOKEN, 0,nAmount, nTxFee, vchData, txNew);
+    auto strErr = pService->CreateTransactionByUnspent(hashFork, from, to, CTransaction::TX_TOKEN,nAmount, nTxFee,0, vchData, txNew);
     if (strErr)
     {
         throw CRPCException(RPC_WALLET_ERROR, std::string("Failed to create transaction: ") + *strErr);
