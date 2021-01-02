@@ -285,7 +285,7 @@ bool CConsensus::HandleInitialize()
         return false;
     }
 
-    if (!MintConfig()->destMpvss.IsNull() && MintConfig()->keyMpvss != 0)
+    if (MintConfig()->nPeerType != NODE_TYPE_FORK && !MintConfig()->destMpvss.IsNull() && MintConfig()->keyMpvss != 0)
     {
         crypto::CKey key;
         key.SetSecret(crypto::CCryptoKeyData(MintConfig()->keyMpvss.begin(), MintConfig()->keyMpvss.end()));
@@ -532,22 +532,19 @@ bool CConsensus::GetNextConsensus(CAgreementBlock& consParam)
     consParam.nWaitTime = 1;
     consParam.ret = false;
 
-    uint256 hashLastBlock;
-    int nLastHeight;
-    int64 nLastTime;
-    uint16 nLastMintType;
-    if (!pBlockChain->GetLastBlock(pCoreProtocol->GetGenesisBlockHash(), hashLastBlock, nLastHeight, nLastTime, nLastMintType))
+    CBlockStatus status;
+    if (!pBlockChain->GetLastBlockStatus(pCoreProtocol->GetGenesisBlockHash(), status))
     {
         Error("GetNextConsensus CBlockChain::GetLastBlock fail");
         return false;
     }
-    consParam.hashPrev = hashLastBlock;
-    consParam.nPrevTime = nLastTime;
-    consParam.nPrevHeight = nLastHeight;
-    consParam.nPrevMintType = nLastMintType;
+    consParam.hashPrev = status.hashBlock;
+    consParam.nPrevTime = status.nBlockTime;
+    consParam.nPrevHeight = status.nBlockHeight;
+    consParam.nPrevMintType = status.nMintType;
     consParam.agreement.Clear();
 
-    if (!pCoreProtocol->IsDposHeight(nLastHeight + 1))
+    if (!pCoreProtocol->IsDposHeight(status.nBlockHeight + 1))
     {
         consParam.nWaitTime = 0;
         consParam.fCompleted = true;
@@ -555,11 +552,11 @@ bool CConsensus::GetNextConsensus(CAgreementBlock& consParam)
         return true;
     }
 
-    int64 nNextBlockTime = pCoreProtocol->GetNextBlockTimeStamp(nLastMintType, nLastTime, CTransaction::TX_WORK, nLastHeight + 1);
+    int64 nNextBlockTime = pCoreProtocol->GetNextBlockTimeStamp(status.nMintType, status.nBlockTime, CTransaction::TX_WORK);
     consParam.nWaitTime = nNextBlockTime - 2 - GetNetTime();
     if (consParam.nWaitTime >= -60)
     {
-        int64 nAgreementWaitTime = GetAgreementWaitTime(nLastHeight + 1);
+        int64 nAgreementWaitTime = GetAgreementWaitTime(status.nBlockHeight + 1);
         if (nAgreementWaitTime > 0 && consParam.nWaitTime < nAgreementWaitTime)
         {
             consParam.nWaitTime = nAgreementWaitTime;
@@ -570,9 +567,9 @@ bool CConsensus::GetNextConsensus(CAgreementBlock& consParam)
         return false;
     }
 
-    if (hashLastBlock != cacheAgreementBlock.hashPrev)
+    if (status.hashBlock != cacheAgreementBlock.hashPrev)
     {
-        if (!GetInnerAgreement(nLastHeight + 1, consParam.agreement.nAgreement, consParam.agreement.nWeight,
+        if (!GetInnerAgreement(status.nBlockHeight + 1, consParam.agreement.nAgreement, consParam.agreement.nWeight,
                                consParam.agreement.vBallot, consParam.fCompleted))
         {
             Error("GetNextConsensus GetInnerAgreement fail");
@@ -584,7 +581,7 @@ bool CConsensus::GetNextConsensus(CAgreementBlock& consParam)
     {
         if (cacheAgreementBlock.agreement.IsProofOfWork() && !cacheAgreementBlock.fCompleted)
         {
-            if (!GetInnerAgreement(nLastHeight + 1, cacheAgreementBlock.agreement.nAgreement, cacheAgreementBlock.agreement.nWeight,
+            if (!GetInnerAgreement(status.nBlockHeight + 1, cacheAgreementBlock.agreement.nAgreement, cacheAgreementBlock.agreement.nWeight,
                                    cacheAgreementBlock.agreement.vBallot, cacheAgreementBlock.fCompleted))
             {
                 Error("GetNextConsensus GetInnerAgreement fail");
@@ -600,7 +597,7 @@ bool CConsensus::GetNextConsensus(CAgreementBlock& consParam)
     }
     if (!cacheAgreementBlock.agreement.IsProofOfWork())
     {
-        nNextBlockTime = pCoreProtocol->GetNextBlockTimeStamp(nLastMintType, nLastTime, CTransaction::TX_STAKE, nLastHeight + 1);
+        nNextBlockTime = pCoreProtocol->GetNextBlockTimeStamp(status.nMintType, status.nBlockTime, CTransaction::TX_STAKE);
         consParam.nWaitTime = nNextBlockTime - 2 - GetNetTime();
         if (consParam.nWaitTime > 0)
         {

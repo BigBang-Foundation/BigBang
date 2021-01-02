@@ -13,6 +13,14 @@
 
 namespace bigbang
 {
+
+enum
+{
+    NODE_TYPE_COMMON,
+    NODE_TYPE_SUPER,
+    NODE_TYPE_FORK
+};
+
 class CMintConfig : virtual public CBasicConfig, virtual public CMintConfigOption
 {
 public:
@@ -32,6 +40,7 @@ public:
     uint256 keyMpvss;
     CDestination destCryptonight;
     uint256 keyCryptonight;
+    int nPeerType;
 };
 
 } // namespace bigbang

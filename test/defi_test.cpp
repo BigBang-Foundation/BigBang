@@ -6,7 +6,9 @@
 #include <boost/test/unit_test.hpp>
 #include <map>
 #include <set>
+#include <sodium.h>
 
+#include "crypto.h"
 #include "defi.h"
 #include "forkcontext.h"
 #include "param.h"
@@ -17,6 +19,7 @@ using namespace std;
 using namespace xengine;
 using namespace bigbang;
 using namespace storage;
+using namespace bigbang::crypto;
 
 BOOST_FIXTURE_TEST_SUITE(defi_tests, BasicUtfSetup)
 
@@ -301,7 +304,7 @@ BOOST_AUTO_TEST_CASE(reward)
     profile1.nAmount = 21000000 * COIN;
     profile1.nJointHeight = 150;
     profile1.nForkType = FORK_TYPE_DEFI;
-    profile1.defi.nMintHeight = -1;
+    profile1.defi.nMintHeight = 0;
     profile1.defi.nMaxSupply = 2100000000 * COIN;
     profile1.defi.nCoinbaseType = FIXED_DEFI_COINBASE_TYPE;
     profile1.defi.nDecayCycle = 1036800;
@@ -546,10 +549,10 @@ BOOST_AUTO_TEST_CASE(reward2)
     profile.defi.nMaxSupply = 1000000000 * COIN;
     profile.defi.nCoinbaseType = SPECIFIC_DEFI_COINBASE_TYPE;
     profile.defi.mapCoinbasePercent = { { 259200, 10 }, { 777600, 8 }, { 1814400, 5 }, { 3369600, 3 }, { 5184000, 2 } };
-    profile.defi.nRewardCycle = 5;                                                                                       // every 5 height once reward
-    profile.defi.nSupplyCycle = 150;                                                                                     // every 150  once supply
-    profile.defi.nStakeMinToken = 100 * COIN;                                                                            // min token required, >= 100, can be required to join this defi game
-    profile.defi.nStakeRewardPercent = 50;                                                                               // 50% of supply amount per day
+    profile.defi.nRewardCycle = 5;            // every 5 height once reward
+    profile.defi.nSupplyCycle = 150;          // every 150  once supply
+    profile.defi.nStakeMinToken = 100 * COIN; // min token required, >= 100, can be required to join this defi game
+    profile.defi.nStakeRewardPercent = 50;    // 50% of supply amount per day
     profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));
     r.AddFork(forkid, profile);
 
@@ -786,9 +789,9 @@ BOOST_AUTO_TEST_CASE(reward_fixed)
     profile.defi.nDecayCycle = 3600;
     profile.defi.nCoinbaseDecayPercent = 50;
     profile.defi.nInitCoinbasePercent = 10;
-    profile.defi.nStakeMinToken = 100 * COIN;                              // min token required, >= 100, can be required to join this defi game
-    profile.defi.nStakeRewardPercent = 50;                                 // 50% of supply amount per day
-    profile.defi.nPromotionRewardPercent = 50;                             // 50% of supply amount per day
+    profile.defi.nStakeMinToken = 100 * COIN;  // min token required, >= 100, can be required to join this defi game
+    profile.defi.nStakeRewardPercent = 50;     // 50% of supply amount per day
+    profile.defi.nPromotionRewardPercent = 50; // 50% of supply amount per day
     profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));
     r.AddFork(forkid, profile);
 
@@ -996,9 +999,9 @@ BOOST_AUTO_TEST_CASE(reward_specific)
     // profile.defi.nCoinbaseDecayPercent = 50;
     // profile.defi.nInitCoinbasePercent = 10;
     profile.defi.mapCoinbasePercent = { { 900, 10 }, { 2700, 8 }, { 6300, 5 }, { 11700, 3 }, { 18000, 2 } };
-    profile.defi.nStakeMinToken = 100 * COIN;                                                                // min token required, >= 100, can be required to join this defi game
-    profile.defi.nStakeRewardPercent = 50;                                                                   // 50% of supply amount per day
-    profile.defi.nPromotionRewardPercent = 50;                                                               // 50% of supply amount per day
+    profile.defi.nStakeMinToken = 100 * COIN;  // min token required, >= 100, can be required to join this defi game
+    profile.defi.nStakeRewardPercent = 50;     // 50% of supply amount per day
+    profile.defi.nPromotionRewardPercent = 50; // 50% of supply amount per day
     profile.defi.mapPromotionTokenTimes.insert(std::make_pair(10000, 10));
     r.AddFork(forkid, profile);
 
@@ -1180,6 +1183,67 @@ BOOST_AUTO_TEST_CASE(reward_specific)
         nTotalSupply += balance[CAddress(x.first)];
     }
     cout << "total supply: " << (nTotalSupply + nTotalTxFee) << ", total reward:" << nTotalReward << endl;
+}
+
+BOOST_AUTO_TEST_CASE(defi_relation_tx)
+{
+    CCryptoKey sub_key;
+    CryptoMakeNewKey(sub_key);
+    CAddress sub_address(CDestination(CPubKey(sub_key.pubkey)));
+    cout << "sub_privkey: " << sub_key.secret.ToString() << endl;
+    cout << "sub_pubkey: " << sub_key.pubkey.ToString() << endl;
+    cout << "sub_address: " << sub_address.ToString() << endl;
+    CCryptoKey parent_key;
+    CryptoMakeNewKey(parent_key);
+    CAddress parent_address(CDestination(CPubKey(parent_key.pubkey)));
+    cout << "parent_privkey: " << parent_key.secret.ToString() << endl;
+    cout << "parent_pubkey: " << parent_key.pubkey.ToString() << endl;
+    cout << "parent_address: " << parent_address.ToString() << endl;
+    CCryptoKey shared_key;
+    CryptoMakeNewKey(shared_key);
+    cout << "shared_privkey: " << shared_key.secret.ToString() << endl;
+    cout << "shared_pubkey: " << shared_key.pubkey.ToString() << endl;
+
+    uint256 forkid("00000000b0a9be545f022309e148894d1e1c853ccac3ef04cb6f5e5c70f41a70");
+    cout << "forkid: " << forkid.ToString() << endl;
+
+    string sub_sign_str = string("DeFiRelation") + forkid.ToString() + shared_key.pubkey.ToString();
+    cout << "sub_sign_str: " << sub_sign_str << endl;
+    uint256 sub_sign_hash_str = CryptoHash(sub_sign_str.data(), sub_sign_str.size());
+    cout << "sub_sign_hash_str: " << ToHexString(sub_sign_hash_str.begin(), sub_sign_hash_str.size()) << endl;
+    vector<uint8> sub_sign;
+    CryptoSign(sub_key, sub_sign_hash_str.begin(), sub_sign_hash_str.size(), sub_sign);
+    cout << "sub_sign: " << ToHexString(sub_sign) << endl;
+
+    string parent_sign_str = string("DeFiRelation") + parent_key.pubkey.ToString();
+    cout << "parent_sign_str: " << parent_sign_str << endl;
+    uint256 parent_sign_hash_str = CryptoHash(parent_sign_str.data(), parent_sign_str.size());
+    cout << "parent_sign_hash_str: " << ToHexString(parent_sign_hash_str.begin(), parent_sign_hash_str.size()) << endl;
+    vector<uint8> parent_sign;
+    CryptoSign(shared_key, parent_sign_hash_str.begin(), parent_sign_hash_str.size(), parent_sign);
+    cout << "parent_sign: " << ToHexString(parent_sign) << endl;
+
+    vector<uint8> vchData;
+    vchData.insert(vchData.end(), shared_key.pubkey.begin(), shared_key.pubkey.end());
+    cout << "vchData (shared_pubkey): " << ToHexString(vchData) << endl;
+    vchData.insert(vchData.end(), sub_sign.begin(), sub_sign.end());
+    cout << "vchData (shared_pubkey+sub_sign): " << ToHexString(vchData) << endl;
+    vchData.insert(vchData.end(), parent_sign.begin(), parent_sign.end());
+    cout << "vchData (shared_pubkey + sub_sign + parent_sign): " << ToHexString(vchData) << endl;
+
+    BOOST_CHECK(vchData.size() == 160);
+    uint256 verify_shared_pubKey(vector<uint8>(vchData.begin(), vchData.begin() + 32));
+    BOOST_CHECK(verify_shared_pubKey == shared_key.pubkey);
+    vector<uint8> verify_sub_sign(vchData.begin() + 32, vchData.begin() + 96);
+    BOOST_CHECK(verify_sub_sign == sub_sign);
+    vector<uint8> verify_parent_sign(vchData.begin() + 96, vchData.end());
+    BOOST_CHECK(verify_parent_sign == parent_sign);
+
+    BOOST_CHECK(CryptoVerify(sub_key.pubkey, sub_sign_hash_str.begin(), sub_sign_hash_str.size(), verify_sub_sign));
+    BOOST_CHECK(CryptoVerify(verify_shared_pubKey, parent_sign_hash_str.begin(), parent_sign_hash_str.size(), verify_parent_sign));
+
+    uint256 invalidKey("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+    cout << crypto_core_ed25519_is_valid_point(invalidKey.begin()) << endl;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

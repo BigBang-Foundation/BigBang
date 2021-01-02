@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+﻿// Copyright (c) 2019-2020 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -25,6 +25,7 @@ using namespace xengine;
 static const int64 MAX_CLOCK_DRIFT = 80;
 
 static const int PROOF_OF_WORK_BITS_LOWER_LIMIT = 8;
+static const int PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT = 25;
 static const int PROOF_OF_WORK_BITS_UPPER_LIMIT = 200;
 #ifdef BIGBANG_TESTNET
 static const int PROOF_OF_WORK_BITS_INIT_MAINNET = 10;
@@ -37,6 +38,8 @@ static const int PROOF_OF_WORK_ADJUST_DEBOUNCE = 15;
 static const int PROOF_OF_WORK_TARGET_SPACING = 45; // BLOCK_TARGET_SPACING;
 static const int PROOF_OF_WORK_TARGET_OF_DPOS_UPPER = 65;
 static const int PROOF_OF_WORK_TARGET_OF_DPOS_LOWER = 40;
+static const int PROOF_OF_WORK_TARGET_OF_NEW_DIFF_UPPER = 10;
+static const int PROOF_OF_WORK_TARGET_OF_NEW_DIFF_LOWER = 5;
 
 static const int64 DELEGATE_PROOF_OF_STAKE_ENROLL_MINIMUM_AMOUNT = 10000000 * COIN;
 #ifdef BIGBANG_TESTNET
@@ -53,6 +56,12 @@ static const int64 DELEGATE_PROOF_OF_STAKE_MAXIMUM_TIMES = 1000000 * COIN;
 static const uint32 DELEGATE_PROOF_OF_STAKE_HEIGHT = 1;
 #else
 static const uint32 DELEGATE_PROOF_OF_STAKE_HEIGHT = 243800;
+#endif
+
+#ifdef BIGBANG_TESTNET
+static const int ADJUST_POW_DIFF_HEIGHT = 0;
+#else
+static const int ADJUST_POW_DIFF_HEIGHT = 581329;
 #endif
 
 #ifdef BIGBANG_TESTNET
@@ -134,9 +143,32 @@ static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 340935;
 
 // DeFi fork blacklist
 #ifdef BIGBANG_TESTNET
-static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {};
+static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
+    {
+        uint256(),
+        {
+            {
+                0,
+                {
+                    bigbang::CAddress("100000000000000000000000000000000000000000000000000000000"),
+                },
+            },
+        },
+    },
+};
 #else
 static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
+    {
+        uint256(),
+        {
+            {
+                0,
+                {
+                    bigbang::CAddress("100000000000000000000000000000000000000000000000000000000"),
+                },
+            },
+        },
+    },
     {
         uint256("0006d42cd48439988e906be71b9f377fcbb735b7905c1ec331d17402d75da805"),
         {
@@ -166,7 +198,21 @@ static const map<uint256, map<int, set<CDestination>>> mapDeFiBlacklist = {
 #ifdef BIGBANG_TESTNET
 static const int32 CHANGE_MINT_RATE_HEIGHT = 0;
 #else
-static const int32 CHANGE_MINT_RATE_HEIGHT = 525230;
+static const int32 CHANGE_MINT_RATE_HEIGHT = 565620;
+#endif
+
+// new DeFi relation tx type
+#ifdef BIGBANG_TESTNET
+static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 0;
+#else
+static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 565620;
+#endif
+
+// Change DPoS chain trust
+#ifdef BIGBANG_TESTNET
+static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 0;
+#else
+static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 565620;
 #endif
 
 namespace bigbang
@@ -177,12 +223,19 @@ namespace bigbang
 CCoreProtocol::CCoreProtocol()
 {
     nProofOfWorkLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#ifdef BIGBANG_TESTNET
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#else
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT;
+#endif
     nProofOfWorkUpperLimit = PROOF_OF_WORK_BITS_UPPER_LIMIT;
     nProofOfWorkInit = PROOF_OF_WORK_BITS_INIT_MAINNET;
     nProofOfWorkUpperTarget = PROOF_OF_WORK_TARGET_SPACING + PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkLowerTarget = PROOF_OF_WORK_TARGET_SPACING - PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkUpperTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_UPPER;
     nProofOfWorkLowerTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_LOWER;
+    nProofOfWorkUpperTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_UPPER;
+    nProofOfWorkLowerTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_LOWER;
     pBlockChain = nullptr;
     pForkManager = nullptr;
 }
@@ -193,9 +246,7 @@ CCoreProtocol::~CCoreProtocol()
 
 bool CCoreProtocol::HandleInitialize()
 {
-    CBlock block;
-    GetGenesisBlock(block);
-    hashGenesisBlock = block.GetHash();
+    InitializeGenesisBlock();
     if (!GetObject("blockchain", pBlockChain))
     {
         return false;
@@ -216,6 +267,13 @@ Errno CCoreProtocol::Debug(const Errno& err, const char* pszFunc, const char* ps
     VDebug(strFormat.c_str(), ap);
     va_end(ap);
     return err;
+}
+
+void CCoreProtocol::InitializeGenesisBlock()
+{
+    CBlock block;
+    GetGenesisBlock(block);
+    hashGenesisBlock = block.GetHash();
 }
 
 const uint256& CCoreProtocol::GetGenesisBlockHash()
@@ -327,8 +385,8 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
     if (IsDposHeight(nHeight))
     {
         if (!MoneyRange(tx.nTxFee)
-            || (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_DEFI_RELATION && tx.nTxFee != 0)
-            || ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), NEW_MIN_TX_FEE))
+            || (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_DEFI_RELATION && tx.nType != CTransaction::TX_DEFI_MINT_HEIGHT && tx.nTxFee != 0)
+            || ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION || tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), NEW_MIN_TX_FEE))
             || (tx.nType == CTransaction::TX_DEFI_REWARD && tx.nTxFee != NEW_MIN_TX_FEE))
         {
             return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid %ld", tx.nTxFee);
@@ -337,8 +395,8 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
     else
     {
         if (!MoneyRange(tx.nTxFee)
-            || (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_DEFI_RELATION && tx.nTxFee != 0)
-            || ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), OLD_MIN_TX_FEE))
+            || (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_DEFI_RELATION && tx.nType != CTransaction::TX_DEFI_MINT_HEIGHT && tx.nTxFee != 0)
+            || ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION || tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), OLD_MIN_TX_FEE))
             || (tx.nType == CTransaction::TX_DEFI_REWARD && tx.nTxFee != NEW_MIN_TX_FEE))
         {
             return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid %ld", tx.nTxFee);
@@ -620,19 +678,11 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
         {
             return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi fork mint halvecycle must be zero");
         }
-        if (forkProfile.hashParent != GetGenesisBlockHash())
-        {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi fork must be the direct child fork of main fork");
-        }
-        if (!forkProfile.IsIsolated())
-        {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi fork must be the isolated fork");
-        }
 
         const CDeFiProfile& defi = forkProfile.defi;
-        if (defi.nMintHeight >= 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2)
+        if ((defi.nMintHeight < -1) || (defi.nMintHeight > 0 && forkProfile.defi.nMintHeight < forkProfile.nJointHeight + 2))
         {
-            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mintheight should be -1 or larger than fork genesis block height");
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param mintheight should be -1 or 0 or larger than fork genesis block height");
         }
         if (defi.nMaxSupply >= 0 && !MoneyRange(defi.nMaxSupply))
         {
@@ -741,7 +791,7 @@ Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* p
 
     if (IsDposHeight(block.GetBlockHeight()))
     {
-        uint32 nNextTimestamp = GetNextBlockTimeStamp(pIndexPrev->nMintType, pIndexPrev->GetBlockTime(), block.txMint.nType, block.GetBlockHeight());
+        uint32 nNextTimestamp = GetNextBlockTimeStamp(pIndexPrev->nMintType, pIndexPrev->GetBlockTime(), block.txMint.nType);
         if (block.GetBlockTime() < nNextTimestamp)
         {
             return DEBUG(ERR_BLOCK_TIMESTAMP_OUT_OF_RANGE, "Verify proof work: Timestamp out of range 2, height: %d, block time: %d, next time: %d, prev minttype: 0x%x, prev time: %d, block: %s.",
@@ -861,7 +911,7 @@ Errno CCoreProtocol::VerifyBlock(const CBlock& block, CBlockIndex* pIndexPrev)
 }
 
 Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txContxt, CBlockIndex* pIndexPrev,
-                                   int nBlockHeight, const uint256& fork, int nForkType)
+                                   int nBlockHeight, const uint256& fork, const CProfile& profile)
 {
     Errno err = OK;
     const CDestination& destIn = txContxt.destIn;
@@ -888,27 +938,13 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "valuein is not enough (%ld : %ld)", nValueIn, tx.nAmount + tx.nTxFee);
     }
 
-    if ((tx.nType == CTransaction::TX_DEFI_REWARD || tx.nType == CTransaction::TX_DEFI_RELATION) && nForkType != FORK_TYPE_DEFI)
+    if ((tx.nType == CTransaction::TX_DEFI_REWARD || tx.nType == CTransaction::TX_DEFI_RELATION || tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT) && profile.nForkType != FORK_TYPE_DEFI)
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && VerifyDeFiRelationTx(tx, destIn, nBlockHeight, fork) != OK)
     {
-        if (destIn == tx.sendTo)
-        {
-            return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "DeFi relation tx from address must be not equal to sendto address");
-        }
-
-        if (!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable");
-        }
-
-        const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nBlockHeight);
-        if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist");
-        }
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid DeFi relation tx");
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -916,6 +952,13 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         if (VerifyCertTx(tx, destIn, fork) != OK)
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "invalid cert tx");
+        }
+    }
+    else if (tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+    {
+        if (VerifyMintHeightTx(tx, destIn, fork, nBlockHeight, profile) != OK)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "invalid mint height tx");
         }
     }
 
@@ -1031,7 +1074,7 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
 }
 
 Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxOut>& vPrevOutput,
-                                       int nForkHeight, const uint256& fork, int nForkType)
+                                       int nForkHeight, const uint256& fork, const CProfile& profile)
 {
     Errno err = OK;
     CDestination destIn = vPrevOutput[0].destTo;
@@ -1061,27 +1104,13 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         return DEBUG(ERR_TRANSACTION_INPUT_INVALID, "valuein is not enough (%ld : %ld)", nValueIn, tx.nAmount + tx.nTxFee);
     }
 
-    if ((tx.nType == CTransaction::TX_DEFI_REWARD || tx.nType == CTransaction::TX_DEFI_RELATION) && nForkType != FORK_TYPE_DEFI)
+    if ((tx.nType == CTransaction::TX_DEFI_REWARD || tx.nType == CTransaction::TX_DEFI_RELATION || tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT) && profile.nForkType != FORK_TYPE_DEFI)
     {
         return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx must be in DeFi fork");
     }
-    if (tx.nType == CTransaction::TX_DEFI_RELATION)
+    if (tx.nType == CTransaction::TX_DEFI_RELATION && VerifyDeFiRelationTx(tx, destIn, nForkHeight + 1, fork) != OK)
     {
-        if (destIn == tx.sendTo)
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address");
-        }
-
-        if ((!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable");
-        }
-
-        const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nForkHeight);
-        if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
-        {
-            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist");
-        }
+        return DEBUG(ERR_TRANSACTION_INVALID, "invalid DeFi relation tx");
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -1089,6 +1118,13 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         if (VerifyCertTx(tx, destIn, fork) != OK)
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "invalid cert tx");
+        }
+    }
+    else if (tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT)
+    {
+        if (VerifyMintHeightTx(tx, destIn, fork, nForkHeight + 1, profile) != OK)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "invalid mint height tx");
         }
     }
 
@@ -1186,11 +1222,8 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "It is not allowed to change from self to self");
         }
-        uint256 hashPrimaryLastBlock;
-        int nTempHeight;
-        int64 nTempTime;
-        uint16 nTempMintType;
-        if (!pBlockChain->GetLastBlock(GetGenesisBlockHash(), hashPrimaryLastBlock, nTempHeight, nTempTime, nTempMintType))
+        CBlockStatus status;
+        if (!pBlockChain->GetLastBlockStatus(GetGenesisBlockHash(), status))
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "Failed to get last block");
         }
@@ -1202,7 +1235,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         CDestination destRedeemLocked;
         uint256 hashForkLocked;
         boost::dynamic_pointer_cast<CLockedCoinTemplate>(ptr)->GetForkParam(destRedeemLocked, hashForkLocked);
-        int64 nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, hashPrimaryLastBlock);
+        int64 nLockedCoin = pForkManager->ForkLockedCoin(hashForkLocked, status.hashBlock);
         if (nLockedCoin < 0)
         {
             bool fTxAtTxPool = false;
@@ -1240,8 +1273,38 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     return OK;
 }
 
+Errno CCoreProtocol::VerifyMintHeightTx(const CTransaction& tx, const CDestination& destIn, const uint256& hashFork, const int nHeight, const CProfile& profile)
+{
+    if (profile.nForkType != FORK_TYPE_DEFI)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "mint height Tx must be on DeFi fork");
+    }
+    if (profile.defi.nMintHeight >= 0)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "already has vald mint height in fork: %s", hashFork.ToString().c_str());
+    }
+    if (destIn != profile.destOwner || tx.sendTo != profile.destOwner)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "mint height Tx must be from owner to owner");
+    }
+    if (tx.vchData.size() != 4)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "mint height Tx must save 4 bytes height of mint in vchData");
+    }
+    int32 nMintHeight;
+    CIDataStream is(tx.vchData);
+    is >> nMintHeight;
+    if (nMintHeight <= nHeight)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "mint height [%d] must be larger than current block chain height [%d]", nMintHeight, nHeight);
+    }
+
+    return OK;
+}
+
 bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, const CBlockIndex* pIndexPrev, const CDelegateAgreement& agreement, const CBlockIndex* pIndexRef, size_t nEnrollTrust)
 {
+    int32 nHeight = block.GetBlockHeight();
     if (block.IsGenesis())
     {
         nChainTrust = uint64(0);
@@ -1262,9 +1325,9 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
         }
         else if (pIndexPrev != nullptr)
         {
-            if (!IsDposHeight(block.GetBlockHeight()))
+            if (!IsDposHeight(nHeight))
             {
-                StdError("CCoreProtocol", "GetBlockTrust: not dpos height, height: %d", block.GetBlockHeight());
+                StdError("CCoreProtocol", "GetBlockTrust: not dpos height, height: %d", nHeight);
                 return false;
             }
 
@@ -1284,7 +1347,6 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
                 nAlgo = pIndex->nProofAlgo;
             }
 
-            // DPoS difficulty = weight * (2 ^ nBits)
             int nBits;
             int64 nReward;
             if (GetProofOfWorkTarget(pIndexPrev, nAlgo, nBits, nReward))
@@ -1299,7 +1361,17 @@ bool CCoreProtocol::GetBlockTrust(const CBlock& block, uint256& nChainTrust, con
                     StdError("CCoreProtocol", "GetBlockTrust: nEnrollTrust error, nEnrollTrust: %lu", nEnrollTrust);
                     return false;
                 }
-                nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+
+                if (!IsDPoSNewTrustHeight(nHeight))
+                {
+                    // DPoS difficulty = weight * (2 ^ nBits)
+                    nChainTrust = uint256(uint64(nEnrollTrust)) << nBits;
+                }
+                else
+                {
+                    // DPoS difficulty = 2 ^ (nBits + weight)
+                    nChainTrust = uint256(1) << (int(nEnrollTrust) + nBits);
+                }
             }
             else
             {
@@ -1368,13 +1440,31 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
         return true;
     }
 
+    bool fAdjustPowDiff = false;
+    if (IsNewDiffPowHeight(pIndexPrev->GetBlockHeight() + 1))
+    {
+        fAdjustPowDiff = true;
+    }
+
     nBits = pIndex->nProofBits;
     int64 nSpacing = 0;
     int64 nWeight = 0;
     int nWIndex = PROOF_OF_WORK_ADJUST_COUNT - 1;
     while (pIndex->IsProofOfWork())
     {
-        nSpacing += (pIndex->GetBlockTime() - pIndex->pPrev->GetBlockTime()) << nWIndex;
+        if (fAdjustPowDiff)
+        {
+            uint32 nStartTime = GetNextBlockTimeStamp(pIndex->pPrev->nMintType, pIndex->pPrev->GetBlockTime(), pIndex->nMintType);
+            int64 nPowTime = pIndex->GetBlockTime() - nStartTime;
+            if (nPowTime > 0)
+            {
+                nSpacing += (nPowTime << nWIndex);
+            }
+        }
+        else
+        {
+            nSpacing += (pIndex->GetBlockTime() - pIndex->pPrev->GetBlockTime()) << nWIndex;
+        }
         nWeight += (1ULL) << nWIndex;
         if (!nWIndex--)
         {
@@ -1388,7 +1478,18 @@ bool CCoreProtocol::GetProofOfWorkTarget(const CBlockIndex* pIndexPrev, int nAlg
     }
     nSpacing /= nWeight;
 
-    if (IsDposHeight(pIndexPrev->GetBlockHeight() + 1))
+    if (fAdjustPowDiff)
+    {
+        if (nSpacing > nProofOfWorkUpperTargetOfNewDiff && nBits > nProofOfWorkNewLowerLimit)
+        {
+            nBits--;
+        }
+        else if (nSpacing < nProofOfWorkLowerTargetOfNewDiff && nBits < nProofOfWorkUpperLimit)
+        {
+            nBits++;
+        }
+    }
+    else if (IsDposHeight(pIndexPrev->GetBlockHeight() + 1))
     {
         if (nSpacing > nProofOfWorkUpperTargetOfDpos && nBits > nProofOfWorkLowerLimit)
         {
@@ -1422,6 +1523,24 @@ bool CCoreProtocol::IsDposHeight(int height)
     return true;
 }
 
+bool CCoreProtocol::IsDPoSNewTrustHeight(int height)
+{
+    if (height < CHANGE_DPOS_CHAIN_TRUST_HEIGHT)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CCoreProtocol::IsNewDiffPowHeight(int height)
+{
+    if (height >= ADJUST_POW_DIFF_HEIGHT)
+    {
+        return true;
+    }
+    return false;
+}
+
 bool CCoreProtocol::DPoSConsensusCheckRepeated(int height)
 {
     return height >= DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED;
@@ -1444,7 +1563,7 @@ int64 CCoreProtocol::GetPrimaryMintWorkReward(const CBlockIndex* pIndexPrev)
 #endif
 }
 
-void CCoreProtocol::GetDelegatedBallot(const uint256& nAgreement, size_t nWeight, const map<CDestination, size_t>& mapBallot,
+void CCoreProtocol::GetDelegatedBallot(const uint256& nAgreement, const size_t nWeight, const map<CDestination, size_t>& mapBallot,
                                        const vector<pair<CDestination, int64>>& vecAmount, int64 nMoneySupply, vector<CDestination>& vBallot, size_t& nEnrollTrust, int nBlockHeight)
 {
     vBallot.clear();
@@ -1495,7 +1614,7 @@ void CCoreProtocol::GetDelegatedBallot(const uint256& nAgreement, size_t nWeight
     // new DPoS & PoW mint rate
     if (nBlockHeight >= CHANGE_MINT_RATE_HEIGHT)
     {
-        nWeight /= 10;
+        nWeightWork /= 10;
     }
     StdTrace("Core", "Get delegated ballot: weight height: %d, nRandomDelegate: %llu, nRandomWork: %llu, nWeightDelegate: %llu, nWeightWork: %llu",
              nBlockHeight, nSelected, (nWeightWork * 256 / (nWeightWork + nEnrollWeight)), nEnrollWeight, nWeightWork);
@@ -1533,7 +1652,7 @@ uint32 CCoreProtocol::DPoSTimestamp(const CBlockIndex* pIndexPrev)
     return pIndexPrev->GetBlockTime() + BLOCK_TARGET_SPACING;
 }
 
-uint32 CCoreProtocol::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType, int nTargetHeight)
+uint32 CCoreProtocol::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType)
 {
     if (nPrevMintType == CTransaction::TX_WORK || nPrevMintType == CTransaction::TX_GENESIS)
     {
@@ -1560,23 +1679,32 @@ int CCoreProtocol::GetRefVacantHeight()
     return REF_VACANT_HEIGHT;
 }
 
-const std::set<CDestination>& CCoreProtocol::GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight)
+const std::set<CDestination> CCoreProtocol::GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight)
 {
-    static set<CDestination> null;
-
-    auto it = mapDeFiBlacklist.find(hashFork);
-    if (it != mapDeFiBlacklist.end())
-    {
-        for (auto& list : boost::adaptors::reverse(it->second))
+    auto f = [](const uint256& hashFork, const int32 nHeight, const map<uint256, map<int, set<CDestination>>>& mapDeFiBlacklist) -> set<CDestination> {
+        auto it = mapDeFiBlacklist.find(hashFork);
+        if (it != mapDeFiBlacklist.end())
         {
-            if (nHeight >= list.first)
+            for (auto& list : boost::adaptors::reverse(it->second))
             {
-                return list.second;
+                if (nHeight >= list.first)
+                {
+                    return list.second;
+                }
             }
         }
+        return set<CDestination>();
+    };
+
+    set<CDestination> commonBlacklist = f(uint256(), nHeight, mapDeFiBlacklist);
+    set<CDestination> forkBlacklist = f(hashFork, nHeight, mapDeFiBlacklist);
+
+    for (auto& dest : commonBlacklist)
+    {
+        forkBlacklist.insert(dest);
     }
 
-    return null;
+    return forkBlacklist;
 }
 
 bool CCoreProtocol::CheckBlockSignature(const CBlock& block)
@@ -1850,6 +1978,69 @@ Errno CCoreProtocol::VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, in
     return OK;
 }
 
+Errno CCoreProtocol::VerifyDeFiRelationTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const uint256& fork)
+{
+    if (destIn == tx.sendTo)
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi relation tx from address must be not equal to sendto address");
+    }
+
+    const set<CDestination>& setBlacklist = GetDeFiBlacklist(fork, nHeight);
+    if (setBlacklist.count(tx.sendTo) || setBlacklist.count(destIn))
+    {
+        return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address or destIn is in blacklist");
+    }
+
+    // new relation type
+    if (nHeight >= NEW_DEFI_RELATION_TX_HEIGHT)
+    {
+        if (!tx.sendTo.IsPubKey() || !destIn.IsPubKey())
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be public key address");
+        }
+
+        // vchData: shared_pubkey + sub_sig + parent_sig
+        if (tx.vchData.size() != 160)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx length of vchData is not 160");
+        }
+        uint256 sharedPubKey(vector<uint8>(tx.vchData.begin(), tx.vchData.begin() + 32));
+        vector<uint8> subSign(tx.vchData.begin() + 32, tx.vchData.begin() + 96);
+        vector<uint8> parentSign(tx.vchData.begin() + 96, tx.vchData.end());
+        StdTrace("CCoreProtocol", "VerifyDeFiRelationTx sharedPubKey: %s, subSign: %s, parentSign: %s",
+                 sharedPubKey.ToString().c_str(), ToHexString(subSign).c_str(), ToHexString(parentSign).c_str());
+
+        // sub_sign: sign blake2b(DeFiRelation + forkid + shared_pubkey) with sendto
+        crypto::CPubKey subKey = tx.sendTo.GetPubKey();
+        string subSignStr = string("DeFiRelation") + fork.ToString() + sharedPubKey.ToString();
+        uint256 subSignHashStr = crypto::CryptoHash(subSignStr.data(), subSignStr.size());
+        StdTrace("CCoreProtocol", "VerifyDeFiRelationTx subSignStr: %s, subSignHashStr: %s", subSignStr.c_str(), ToHexString(subSignHashStr.begin(), subSignHashStr.size()).c_str());
+        if (!crypto::CryptoVerify(subKey, subSignHashStr.begin(), subSignHashStr.size(), subSign))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sub signature in vchData is not currect");
+        }
+
+        // parent_sign: sign blake2b(DeFiRelation + parent_pubkey) with sharedPubKey
+        crypto::CPubKey parentKey = destIn.GetPubKey();
+        string parentSignStr = string("DeFiRelation") + parentKey.ToString();
+        uint256 parentSignHashStr = crypto::CryptoHash(parentSignStr.data(), parentSignStr.size());
+        StdTrace("CCoreProtocol", "VerifyDeFiRelationTx parentSignStr: %s, parentSignHashStr: %s", parentSignStr.c_str(), ToHexString(parentSignHashStr.begin(), parentSignHashStr.size()).c_str());
+        if (!crypto::CryptoVerify(sharedPubKey, parentSignHashStr.begin(), parentSignHashStr.size(), parentSign))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx parent signature in vchData is not currect");
+        }
+    }
+    else
+    {
+        if ((!CTemplate::IsTxSpendable(tx.sendTo) || !CTemplate::IsTxSpendable(destIn)))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "DeFi tx sendto Address and destIn must be spendable");
+        }
+    }
+
+    return OK;
+}
+
 ///////////////////////////////
 // CTestNetCoreProtocol
 
@@ -1902,14 +2093,22 @@ void CTestNetCoreProtocol::GetGenesisBlock(CBlock& block)
 ///////////////////////////////
 // CProofOfWorkParam
 
-CProofOfWorkParam::CProofOfWorkParam(bool fTestnet)
+CProofOfWorkParam::CProofOfWorkParam(const bool fTestnetIn)
 {
+    fTestnet = fTestnetIn;
     nProofOfWorkLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#ifdef BIGBANG_TESTNET
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_LOWER_LIMIT;
+#else
+    nProofOfWorkNewLowerLimit = PROOF_OF_WORK_BITS_NEW_MAINNET_LOWER_LIMIT;
+#endif
     nProofOfWorkUpperLimit = PROOF_OF_WORK_BITS_UPPER_LIMIT;
     nProofOfWorkUpperTarget = PROOF_OF_WORK_TARGET_SPACING + PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkLowerTarget = PROOF_OF_WORK_TARGET_SPACING - PROOF_OF_WORK_ADJUST_DEBOUNCE;
     nProofOfWorkUpperTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_UPPER;
     nProofOfWorkLowerTargetOfDpos = PROOF_OF_WORK_TARGET_OF_DPOS_LOWER;
+    nProofOfWorkUpperTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_UPPER;
+    nProofOfWorkLowerTargetOfNewDiff = PROOF_OF_WORK_TARGET_OF_NEW_DIFF_LOWER;
     if (fTestnet)
     {
         nProofOfWorkInit = PROOF_OF_WORK_BITS_INIT_TESTNET;
@@ -1923,20 +2122,33 @@ CProofOfWorkParam::CProofOfWorkParam(bool fTestnet)
     nDelegateProofOfStakeEnrollMaximumAmount = DELEGATE_PROOF_OF_STAKE_ENROLL_MAXIMUM_AMOUNT;
     nDelegateProofOfStakeHeight = DELEGATE_PROOF_OF_STAKE_HEIGHT;
 
-    CBlock block;
     if (fTestnet)
     {
-        CTestNetCoreProtocol* pCore = new CTestNetCoreProtocol();
-        pCore->GetGenesisBlock(block);
-        delete pCore;
+        pCoreProtocol = (ICoreProtocol*)new CTestNetCoreProtocol();
     }
     else
     {
-        CCoreProtocol* pCore = new CCoreProtocol();
-        pCore->GetGenesisBlock(block);
-        delete pCore;
+        pCoreProtocol = (ICoreProtocol*)new CCoreProtocol();
     }
-    hashGenesisBlock = block.GetHash();
+    pCoreProtocol->InitializeGenesisBlock();
+
+    hashGenesisBlock = pCoreProtocol->GetGenesisBlockHash();
+}
+
+CProofOfWorkParam::~CProofOfWorkParam()
+{
+    if (pCoreProtocol)
+    {
+        if (fTestnet)
+        {
+            delete (CTestNetCoreProtocol*)pCoreProtocol;
+        }
+        else
+        {
+            delete (CCoreProtocol*)pCoreProtocol;
+        }
+        pCoreProtocol = nullptr;
+    }
 }
 
 bool CProofOfWorkParam::IsDposHeight(int height)
@@ -1946,6 +2158,37 @@ bool CProofOfWorkParam::IsDposHeight(int height)
         return false;
     }
     return true;
+}
+
+bool CProofOfWorkParam::IsDPoSNewTrustHeight(int height)
+{
+    if (height < CHANGE_DPOS_CHAIN_TRUST_HEIGHT)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CProofOfWorkParam::IsNewDiffPowHeight(int height)
+{
+    if (height >= ADJUST_POW_DIFF_HEIGHT)
+    {
+        return true;
+    }
+    return false;
+}
+
+uint32 CProofOfWorkParam::GetNextBlockTimeStamp(uint16 nPrevMintType, uint32 nPrevTimeStamp, uint16 nTargetMintType)
+{
+    if (nPrevMintType == CTransaction::TX_WORK || nPrevMintType == CTransaction::TX_GENESIS)
+    {
+        if (nTargetMintType == CTransaction::TX_STAKE)
+        {
+            return nPrevTimeStamp + BLOCK_TARGET_SPACING;
+        }
+        return nPrevTimeStamp + PROOF_OF_WORK_BLOCK_SPACING;
+    }
+    return nPrevTimeStamp + BLOCK_TARGET_SPACING;
 }
 
 bool CProofOfWorkParam::DPoSConsensusCheckRepeated(int height)
@@ -1960,6 +2203,11 @@ bool CProofOfWorkParam::IsRefVacantHeight(int height)
         return false;
     }
     return true;
+}
+
+Errno CProofOfWorkParam::ValidateOrigin(const CBlock& block, const CProfile& parentProfile, CProfile& forkProfile) const
+{
+    return pCoreProtocol->ValidateOrigin(block, parentProfile, forkProfile);
 }
 
 } // namespace bigbang

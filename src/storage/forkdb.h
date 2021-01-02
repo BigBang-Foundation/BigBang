@@ -20,10 +20,8 @@ class CForkDB : public xengine::CKVDB
 {
 public:
     CForkDB() {}
-    bool Initialize(const boost::filesystem::path& pathData);
+    bool Initialize(const boost::filesystem::path& pathData, const uint256& hashGenesisBlockIn);
     void Deinitialize();
-    bool WriteGenesisBlockHash(const uint256& hashGenesisBlockIn);
-    bool GetGenesisBlockHash(uint256& hashGenesisBlockOut);
     bool AddNewForkContext(const CForkContext& ctxt);
     bool RemoveForkContext(const uint256& hashFork);
     bool RetrieveForkContext(const uint256& hashFork, CForkContext& ctxt);
@@ -34,12 +32,16 @@ public:
     bool ListFork(std::vector<std::pair<uint256, uint256>>& vFork);
     bool AddValidForkHash(const uint256& hashBlock, const uint256& hashRefFdBlock, const std::map<uint256, int>& mapValidFork);
     bool RetrieveValidForkHash(const uint256& hashBlock, uint256& hashRefFdBlock, std::map<uint256, int>& mapValidFork);
+    bool ListActiveFork(std::map<uint256, uint256>& mapActiveFork);
     void Clear();
 
 protected:
     bool LoadCtxtWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::vector<CForkContext>& vForkCtxt);
     bool LoadActiveForkWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::map<uint256, uint256>& mapFork);
     bool LoadValidForkWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::map<uint256, CValidForkId>& mapBlockForkId);
+
+protected:
+    uint256 hashGenesisBlock;
 };
 
 } // namespace storage

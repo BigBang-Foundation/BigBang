@@ -43,6 +43,21 @@ inline int64 CalcMinTxFee(const uint32 nVchData, const uint32 nMinFee)
 }
 
 // Status
+class CBlockStatus
+{
+public:
+    CBlockStatus()
+      : nBlockTime(0), nBlockHeight(-1), nMoneySupply(0), nMintType(-1) {}
+
+public:
+    uint256 hashPrevBlock;
+    uint256 hashBlock;
+    int64 nBlockTime;
+    int nBlockHeight;
+    int64 nMoneySupply;
+    uint16 nMintType;
+};
+
 class CForkStatus
 {
 public:
@@ -70,6 +85,7 @@ public:
     int nOriginHeight;
     int nForkType;
 
+    uint256 hashPrevBlock;
     uint256 hashLastBlock;
     int64 nLastBlockTime;
     int nLastBlockHeight;
@@ -107,6 +123,7 @@ public:
         hashFork = pIndex->GetOriginHash();
         hashParent = pIndex->GetParentHash();
         nOriginHeight = pIndex->pOrigin->GetBlockHeight() - 1;
+        hashPrevBlock = pIndex->GetPrevHash();
         hashLastBlock = pIndex->GetBlockHash();
         nLastBlockTime = pIndex->GetBlockTime();
         nLastBlockHeight = pIndex->GetBlockHeight();
@@ -132,6 +149,7 @@ public:
     uint256 hashParent;
     int nOriginHeight;
     int nForkType;
+    uint256 hashPrevBlock;
     uint256 hashLastBlock;
     int64 nLastBlockTime;
     int nLastBlockHeight;
@@ -285,6 +303,7 @@ public:
     uint256 hashParent;
     int nOriginHeight;
 
+    uint256 hashPrevBlock;
     uint256 hashBlock;
     int64 nBlockTime;
     int nBlockHeight;
