@@ -665,7 +665,7 @@ BOOST_AUTO_TEST_CASE(sc25519)
 
 BOOST_AUTO_TEST_CASE(ed25519)
 {
-    srand(time(0));
+    // srand(time(0));
 
     // sign, verify
     uint8_t md32[32];
@@ -675,16 +675,31 @@ BOOST_AUTO_TEST_CASE(ed25519)
         uint256 priv2, pub2;
         KeyGenerator(priv1, pub1);
         KeyGenerator(priv2, pub2);
+        cout << "SHT priv1: " << priv1.ToString() << ", pub1: " << pub1.ToString();
+        cout << "SHT priv2: " << priv2.ToString() << ", pub2: " << pub2.ToString();
 
         RandGeneretor(md32);
         CSC25519 hash(md32);
+        hash.Unpack(md32);
+        cout << "SHT hash: " << xengine::ToHexString(md32, 32) << endl;
 
         CSC25519 sign = CSC25519(priv1.begin()) + CSC25519(priv2.begin()) * hash;
+        sign.Unpack(md32);
+        cout << "SHT sign: " << xengine::ToHexString(md32, 32) << endl;
 
         CEdwards25519 P, R, S;
         P.Unpack(pub1.begin());
         R.Unpack(pub2.begin());
         S.Generate(sign);
+        P.Unpack(md32);
+        cout << "SHT P: " << xengine::ToHexString(md32, 32) << endl;
+        R.Unpack(md32);
+        cout << "SHT R: " << xengine::ToHexString(md32, 32) << endl;
+        S.Unpack(md32);
+        cout << "SHT S: " << xengine::ToHexString(md32, 32) << endl;
+        auto S0 = (P + R.ScalarMult(hash));
+        S0.Unpack(md32);
+        cout << "SHT (P + R.ScalarMult(hash)): " << xengine::ToHexString(md32, 32) << endl;
 
         BOOST_CHECK(S == (P + R.ScalarMult(hash)));
     }

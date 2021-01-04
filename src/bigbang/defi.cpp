@@ -429,7 +429,10 @@ int64 CDeFiForkReward::GetFixedDecayReward(const CProfile& profile, const int32 
         }
         else
         {
-            int64 nLastReward = (int64)llround(fCoinbase * (nHeight - (nNextSupplyHeight - nSupplyCycle)));
+            double tmp = fCoinbase * (nHeight - (nNextSupplyHeight - nSupplyCycle));
+            int64 nLastReward = (int64)llround(tmp);
+            // int64 nLastReward = (int64)llround(fCoinbase * (nHeight - (nNextSupplyHeight - nSupplyCycle)));
+            printf("SHT fCoinbase: %lf, nHeight: %d, nNextSupplyHeight: %d, nSupplyCycle: %d, nLastReward: %ld, tmp: %lf\n", fCoinbase, nHeight, nNextSupplyHeight, nSupplyCycle, nLastReward, tmp);
             int64 nMaxReward = max((int64)0, nMaxSupply - nSupply - nLastReward);
             nReward += min(nMaxReward, nNextReward);
         }
