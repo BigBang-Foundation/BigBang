@@ -368,7 +368,6 @@ BOOST_AUTO_TEST_CASE(reward)
     BOOST_CHECK(r.GetFixedDecayReward(profile1, 1036952, 1036953) == 239403225);
     BOOST_CHECK(r.GetFixedDecayReward(profile1, 152, 1036953) == 185844625595177);
     BOOST_CHECK(r.GetFixedDecayReward(profile1, 7094819, 7094820) == 75927759);
-    cout << "SHT r.GetFixedDecayReward(profile1, 7094820, 7094821): " << r.GetFixedDecayReward(profile1, 7094820, 7094821) << endl;
     BOOST_CHECK(r.GetFixedDecayReward(profile1, 7094820, 7094821) == 73981955);
 
     BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 2940) == 33333333333);

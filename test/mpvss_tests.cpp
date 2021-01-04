@@ -680,25 +680,25 @@ BOOST_AUTO_TEST_CASE(ed25519)
 
         RandGeneretor(md32);
         CSC25519 hash(md32);
-        hash.Unpack(md32);
+        hash.Pack(md32);
         cout << "SHT hash: " << xengine::ToHexString(md32, 32) << endl;
 
         CSC25519 sign = CSC25519(priv1.begin()) + CSC25519(priv2.begin()) * hash;
-        sign.Unpack(md32);
+        sign.Pack(md32);
         cout << "SHT sign: " << xengine::ToHexString(md32, 32) << endl;
 
         CEdwards25519 P, R, S;
         P.Unpack(pub1.begin());
         R.Unpack(pub2.begin());
         S.Generate(sign);
-        P.Unpack(md32);
+        P.Pack(md32);
         cout << "SHT P: " << xengine::ToHexString(md32, 32) << endl;
-        R.Unpack(md32);
+        R.Pack(md32);
         cout << "SHT R: " << xengine::ToHexString(md32, 32) << endl;
-        S.Unpack(md32);
+        S.Pack(md32);
         cout << "SHT S: " << xengine::ToHexString(md32, 32) << endl;
         auto S0 = (P + R.ScalarMult(hash));
-        S0.Unpack(md32);
+        S0.Pack(md32);
         cout << "SHT (P + R.ScalarMult(hash)): " << xengine::ToHexString(md32, 32) << endl;
 
         BOOST_CHECK(S == (P + R.ScalarMult(hash)));
