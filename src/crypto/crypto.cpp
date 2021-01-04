@@ -481,11 +481,18 @@ bool CryptoMultiSignDefect(const set<uint256>& setPubKey, const CCryptoKey& priv
         pIndex[index / 8] |= (1 << (index % 8));
     }
 
+    uint8_t md64[64];
     printf("SHT CryptoMultiSignDefect 12\n");
-    R.Pack(&vchSig[nIndexLen]);
+    R.Pack(&md64[0]);
     printf("SHT CryptoMultiSignDefect 13\n");
-    S.Pack(&vchSig[nIndexLen + 32]);
+    S.Pack(&md64[32]);
+    printf("SHT CryptoMultiSignDefect md64: %s\n", xengine::ToHexString(md64, 64).c_str());
+
     printf("SHT CryptoMultiSignDefect 14\n");
+    R.Pack(&vchSig[nIndexLen]);
+    printf("SHT CryptoMultiSignDefect 15\n");
+    S.Pack(&vchSig[nIndexLen + 32]);
+    printf("SHT CryptoMultiSignDefect 16\n");
 
     return true;
 }
