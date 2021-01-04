@@ -36,6 +36,8 @@
 #ifndef _WIN32
 #include <unistd.h>
 #endif
+#include <time.h>
+#include <sys/time.h>
 
 #include "defs.h"
 #include "common/int-util.h"
@@ -1159,6 +1161,12 @@ void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, 
     _b = vld1q_u8((const uint8_t *)b);  //todo: review later
     _b1 = vld1q_u8(((const uint8_t *)b) + AES_BLOCK_SIZE);  //todo: review later
 
+//suseconds_t c = 0;
+//unsigned long long ecl = 0;
+long long ecl = 0;
+//struct timeval s, e;
+//struct timespec s{0, 0}, e{0, 0};
+struct timespec time_start = { 0, 0 }, time_end = { 0, 0 };
     for(i = 0; i < ITER / 2; i++)
     {
         pre_aes();
@@ -1171,7 +1179,18 @@ void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, 
  //       _c = vaesmcq_u8(_c);
   //      _c = vaeseq_u8(_c, _a);
    //     _c = veorq_u8(_c, _a);
+//gettimeofday(&s, NULL);
+clock_gettime(CLOCK_REALTIME, &time_start);
+//printf("starttime:%lus,%lu ns\n", time_start.tv_sec,time_start.tv_nsec);
 aesb_single_round((uint8_t*)&_c, (uint8_t*)&_c, (uint8_t*)&_a);
+//gettimeofday(&e, NULL);
+clock_gettime(CLOCK_REALTIME, &time_end);
+//printf("endtime %lus,%lu ns\n", time_end.tv_sec,time_end.tv_nsec);
+//printf("calcduration:%lds %ldns\n", time_end.tv_sec-time_start.tv_sec, time_end.tv_nsec-time_start.tv_nsec);
+//ecl = (e.tv_sec-s.tv_sec) * 1000000 + (e.tv_usec - s.tv_usec);
+ecl += (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+//printf("gap is [%010lld]\n", ecl);
+printf("gap is [%.10llu]\n", ecl);
 //print128_num(_c);
         //_c =  vaeseq_u8(_c, _a);
     		_c_aes = _c;
@@ -1191,6 +1210,7 @@ aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
         a[0] ^= U64(&_c_aes)[0];
         a[1] ^= U64(&_c_aes)[1];
     }
+printf("gap is [%.16llu]ns with average of [%.10llu]ns at height of [%ld]\n", ecl, ecl / ITER / 2, height);
 
     /* CryptoNight Step 4:  Sequentially pass through the mixing buffer and use 10 rounds
      * of AES encryption to mix the random data back into the 'text' buffer.  'text'
