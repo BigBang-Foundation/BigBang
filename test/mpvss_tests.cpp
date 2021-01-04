@@ -690,10 +690,10 @@ BOOST_AUTO_TEST_CASE(ed25519)
         cout << "SHT hash: " << xengine::ToHexString(md32, 32) << endl;
 
         // CSC25519 sign = CSC25519(priv1.begin()) + CSC25519(priv2.begin()) * hash;
-        CSC25519 priv = CSC25519(priv1.begin()) + CSC25519(priv2.begin());
+        CSC25519 priv = CSC25519(priv2.begin()) * hash;
         priv.Pack(md32);
         cout << "SHT priv: " << xengine::ToHexString(md32, 32) << endl;
-        CSC25519 sign = priv * hash;
+        CSC25519 sign = CSC25519(priv1.begin()) + priv;
         sign.Pack(md32);
         cout << "SHT sign: " << xengine::ToHexString(md32, 32) << endl;
 
