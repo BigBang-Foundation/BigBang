@@ -5,7 +5,8 @@
 #include "defs.h"
 #include "uint256.h"
 #include "util.h"
-#include "pow_hash/hash-ops.h"
+#include "crypto.h"
+//#include "pow_hash/hash-ops.h"
 
 #include "test_big.h"
 
@@ -15,6 +16,7 @@
 #include <string>
 
 using namespace xengine;
+using namespace bigbang::crypto;
 
 BOOST_FIXTURE_TEST_SUITE(slowhash_tests, BasicUtfSetup)
 
@@ -38,7 +40,8 @@ BOOST_AUTO_TEST_CASE(slowhash)
     {
         std::vector<uint8> vch = ParseHexString(ph.second.first);
         uint256 hash;
-        cn_slow_hash(vch.data(), vch.size(), (char*)hash.begin(), 2, 0, 0);
+        //cn_slow_hash(vch.data(), vch.size(), (char*)hash.begin(), 2, 0, 0);
+	hash = CryptoPowHash(vch.data(), vch.size());
     }
 
 #if !defined NO_AES && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
