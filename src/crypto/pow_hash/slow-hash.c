@@ -1087,6 +1087,7 @@ void cn_slow_hash_1(const void* data, size_t length, char* hash, int variant, in
  */
 void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height)
 {
+    printf("cn_slow_hash - 1\n");
     unsigned int height_ = *((unsigned int*)((unsigned char*)data + 36));
     if ((height_ < HEIGHT_HASH_MULTI_SIGNER) || (height_ > HEIGHT_HASH_TX_DATA))
     {
@@ -1205,13 +1206,13 @@ void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int 
 }
 
 #elif !defined NO_AES && (defined(__arm__) || defined(__aarch64__))
-void slow_hash_allocate_state(void)
+static void slow_hash_allocate_state(void)
 {
     // Do nothing, this is just to maintain compatibility with the upgraded slow-hash.c
     return;
 }
 
-void slow_hash_free_state(void)
+static void slow_hash_free_state(void)
 {
     // As above
     return;
@@ -1451,8 +1452,326 @@ STATIC INLINE void aligned_free(void* ptr)
 }
 #endif /* FORCE_USE_HEAP */
 
+#define bbc_math_0_a()
+{
+    _c_aes = veorq_u8(_c_aes, _c_aes);
+    _c_aes = veorq_u8(_c_aes, _c_aes);
+    _c_aes = veorq_u8(_c_aes, _c_aes);
+    _c_aes = veorq_u8(_c_aes, _c_aes);
+    _c_aes = veorq_u8(_c_aes, _c_aes);
+    _c_aes = veorq_u8(_c_aes, _c_aes);
+    _c_aes = veorq_u8(_c_aes, _c_aes);
+    _c_aes = veorq_u8(_c_aes, _c_aes);
+    _c_aes = veorq_u8(_c_aes, _c_aes);
+}
+
+#define SL_0_0_a()                                     \
+    {                                                  \
+        const uint64_t sqrt_input = U64(&_c_aes)[0];   \
+        VARIANT2_INTEGER_MATH_SQRT_STEP_SSE2();        \
+        VARIANT2_INTEGER_MATH_SQRT_FIXUP(sqrt_result); \
+        for (int i = 0; i < 10; i++)                   \
+        {                                              \
+            _c_aes = veorq_u8(_c_aes, _c_aes);         \
+        }                                              \
+        U64(&_c_aes)                                   \
+        [0] ^= sqrt_result;                            \
+    }
+
+#define SL_0_a()    \
+    {               \
+        SL_0_0_a(); \
+        SL_0_0_a(); \
+    }
+
+#define SL_1_a()                                                                 \
+    {                                                                            \
+        U64(&sha3_in)                                                            \
+        [0] = a[0];                                                              \
+        U64(&sha3_in)                                                            \
+        [1] = a[1];                                                              \
+        U64(&sha3_in)                                                            \
+        [2] = U64(&_b)[0];                                                       \
+        U64(&sha3_in)                                                            \
+        [3] = U64(&_b)[1];                                                       \
+        U64(&sha3_in)                                                            \
+        [4] = U64(&_b1)[0];                                                      \
+        U64(&sha3_in)                                                            \
+        [5] = U64(&_b1)[1];                                                      \
+        hash_process((union hash_state*)sha3_out, (const uint8_t*)sha3_in, 128); \
+        a[0] = U64(&sha3_out)[0];                                                \
+        a[1] = U64(&sha3_out)[1];                                                \
+        U64(&_b)                                                                 \
+        [0] = U64(&sha3_out)[2];                                                 \
+        U64(&_b)                                                                 \
+        [1] = U64(&sha3_out)[3];                                                 \
+        U64(&_b1)                                                                \
+        [0] = U64(&sha3_out)[4];                                                 \
+        U64(&_b1)                                                                \
+        [1] = U64(&sha3_out)[5];                                                 \
+        for (int i = 0; i < 30; i++)                                             \
+        {                                                                        \
+            _c_aes = veorq_u8(_c_aes, _c_aes);                                   \
+        }                                                                        \
+        U64(&_c_aes)                                                             \
+        [0] ^= U64(&_b)[0];                                                      \
+        U64(&_c_aes)                                                             \
+        [1] ^= U64(&_b)[1];                                                      \
+        U64(&_c_aes)                                                             \
+        [0] ^= U64(&_b1)[0];                                                     \
+        U64(&_c_aes)                                                             \
+        [1] ^= U64(&_b1)[1];                                                     \
+    }
+
+#define bbc_math_1_a()                      \
+    {                                       \
+        uint32_t n = *((uint32_t*)&_c_aes); \
+        switch (n & 31)                     \
+        {                                   \
+        case 0:                             \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 1:                             \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 2:                             \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 3:                             \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 4:                             \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 5:                             \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 6:                             \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 7:                             \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 8:                             \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 9:                             \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 10:                            \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 11:                            \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 12:                            \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 13:                            \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 14:                            \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 15:                            \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 16:                            \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 17:                            \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 18:                            \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 19:                            \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 20:                            \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 21:                            \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 22:                            \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 23:                            \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 24:                            \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 25:                            \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 26:                            \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 27:                            \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 28:                            \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 29:                            \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        case 30:                            \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_0_a();                       \
+            break;                          \
+        case 31:                            \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            SL_1_a();                       \
+            break;                          \
+        }                                   \
+    }
+
+void cn_slow_hash_1_a(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height);
+
 void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height)
 {
+    printf("cn_slow_hash - 2\n");
+    unsigned int height_ = *((unsigned int*)((unsigned char*)data + 36));
+    if ((height_ < HEIGHT_HASH_MULTI_SIGNER) || (height_ > HEIGHT_HASH_TX_DATA))
+    {
+        cn_slow_hash_1_a(data, length, hash, variant, prehashed, height_);
+        return;
+    }
+    else
+    {
+        printf("phase - 2 (not 1 or 3)\n");
+        return;
+    }
+
     RDATA_ALIGN16 uint8_t expandedKey[240];
 
 #ifndef FORCE_USE_HEAP
@@ -1465,36 +1784,41 @@ void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int 
     RDATA_ALIGN16 uint64_t a[2];
     RDATA_ALIGN16 uint64_t b[4];
     RDATA_ALIGN16 uint64_t c[2];
+
+    RDATA_ALIGN16 uint8_t sha3_in[128];
+    RDATA_ALIGN16 uint8_t sha3_out[200];
+
     union cn_slow_hash_state state;
-    uint8x16_t _a, _b, _b1, _c, zero = { 0 };
+    //uint8x16_t _a, _b, _b1, _c, zero = {0};
+    uint8x16_t _a, _b, _b1, _c, _c_aes;
     uint64_t hi, lo;
 
     size_t i, j;
     uint64_t* p = NULL;
+    oaes_ctx* aes_ctx = NULL; //todo: maybe useless
 
     static void (*const extra_hashes[4])(const void*, size_t, char*) = {
         hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
     };
 
     /* CryptoNight Step 1:  Use Keccak1600 to initialize the 'state' (and 'text') buffers from the data. */
+    printf("step - 1\n");
 
-    if (prehashed)
-    {
-        memcpy(&state.hs, data, length);
-    }
-    else
-    {
-        hash_process(&state.hs, data, length);
-    }
+    //    if (prehashed) {
+    //        memcpy(&state.hs, data, length);
+    //    } else {
+    hash_process(&state.hs, data, length);
+    //    }
     memcpy(text, state.init, INIT_SIZE_BYTE);
 
-    VARIANT1_INIT64();
-    VARIANT2_INIT64();
-    VARIANT4_RANDOM_MATH_INIT();
+    //    VARIANT1_INIT64();
+    //    VARIANT2_INIT64();
+    //    VARIANT4_RANDOM_MATH_INIT();
 
     /* CryptoNight Step 2:  Iteratively encrypt the results from Keccak to fill
      * the 2MB large random access buffer.
      */
+    printf("step - 2\n");
 
     aes_expand_key(state.hs.b, expandedKey);
     for (i = 0; i < MEMORY / INIT_SIZE_BYTE; i++)
@@ -1502,6 +1826,16 @@ void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int 
         aes_pseudo_round(text, text, expandedKey, INIT_SIZE_BLK);
         memcpy(&hp_state[i * INIT_SIZE_BYTE], text, INIT_SIZE_BYTE);
     }
+
+    for (int ii = 0; ii < 2000; ii++)
+    {
+        hash_process(&state.hs, (uint8_t*)&state.hs, 128);
+    }
+    memcpy(sha3_in, &state.hs, 128);
+
+    VARIANT1_INIT64();
+    VARIANT2_INIT64();
+    VARIANT4_RANDOM_MATH_INIT();
 
     U64(a)
     [0] = U64(&state.k[0])[0] ^ U64(&state.k[32])[0];
@@ -1516,22 +1850,30 @@ void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int 
      * using 524,288 iterations of the following mixing function.  Each execution
      * performs two reads and writes from the mixing buffer.
      */
+    printf("step - 3\n");
 
-    _b = vld1q_u8((const uint8_t*)b);
-    _b1 = vld1q_u8(((const uint8_t*)b) + AES_BLOCK_SIZE);
+    _b = vld1q_u8((const uint8_t*)b);                     //todo: review later
+    _b1 = vld1q_u8(((const uint8_t*)b) + AES_BLOCK_SIZE); //todo: review later
 
     for (i = 0; i < ITER / 2; i++)
     {
         pre_aes();
-        _c = vaeseq_u8(_c, zero);
-        _c = vaesmcq_u8(_c);
+        //        _c = vaeseq_u8(_c, zero);
+        //        _c = vaesmcq_u8(_c);
         _c = veorq_u8(_c, _a);
+        _c_aes = _c;
         post_aes();
+
+        bbc_math_0_a();
+        bbc_math_1_a();
+        a[0] ^= U64(&_c_aes)[0];
+        a[1] ^= U64(&_c_aes)[1];
     }
 
     /* CryptoNight Step 4:  Sequentially pass through the mixing buffer and use 10 rounds
      * of AES encryption to mix the random data back into the 'text' buffer.  'text'
      * was originally created with the output of Keccak1600. */
+    printf("step - 4\n");
 
     memcpy(text, state.init, INIT_SIZE_BYTE);
 
@@ -1548,6 +1890,7 @@ void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int 
      * Use this hash to squeeze the state array down
      * to the final 256 bit hash output.
      */
+    printf("step - 5\n");
 
     memcpy(state.init, text, INIT_SIZE_BYTE);
     hash_permutation(&state.hs);
@@ -1691,6 +2034,7 @@ STATIC INLINE void xor_blocks(uint8_t* a, const uint8_t* b)
 
 void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height)
 {
+    printf("cn_slow_hash - 3\n");
     uint8_t text[INIT_SIZE_BYTE];
     uint8_t a[AES_BLOCK_SIZE];
     uint8_t b[AES_BLOCK_SIZE * 2];
@@ -1913,8 +2257,9 @@ union cn_slow_hash_state
 };
 #pragma pack(pop)
 
-void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height)
+static void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height)
 {
+    printf("cn_slow_hash - 4\n");
 #ifndef FORCE_USE_HEAP
     uint8_t long_state[MEMORY];
 #else

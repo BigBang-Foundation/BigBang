@@ -62,7 +62,13 @@ if(UNIX)
         set(CMAKE_C_FLAGS "-maes")
         set(USE_SSE2_INSTRUCTIONS ON)
     endif()
+    if(ARM_CRYPTO)
+        if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
+            set(CMAKE_C_FLAGS "-march=armv8-a+crypto")
+        endif()
+    endif()
 endif()
+
 
 add_library(crypto ${sources})
 
@@ -88,3 +94,4 @@ target_link_libraries(crypto
     xengine
     common
 )
+

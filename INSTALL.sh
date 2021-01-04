@@ -13,7 +13,7 @@ cd build
 
 # cmake
 flagdebug=""
-if [[ "$1" = "debug" || "$2" = "debug" ]]
+if [[ "$1" = "debug" || "$2" = "debug" || "$3" = "debug" ]]
 then
     flagdebug="-DCMAKE_BUILD_TYPE=Debug"
 else
@@ -21,14 +21,22 @@ else
 fi
 
 flagtestnet=""
-if [[ "$1" = "testnet" || "$2" = "testnet" ]]
+if [[ "$1" = "testnet" || "$2" = "testnet" || "$3" = "testnet" ]]
 then
     flagtestnet="-DTESTNET=on"
 else
     flagtestnet="-DTESTNET=off"
 fi
 
-cmake .. $flagdebug $flagtestnet
+flagarm64crypto=''
+if [[ "$1" = "arm64crypto" || "$2" = "arm64crypto" || "$3" = "arm64crypto" ]]
+then
+    flagarm64crypto="-DARM_CRYPTO=on"
+else
+    flagarm64crypto="-DARM_CRYPTO=off"
+fi
+
+cmake .. $flagdebug $flagtestnet $flagarm64crypto
 if [ $? -ne 0 ]; then 
     cd $origin_path
     exit 1 

@@ -159,10 +159,17 @@ endif()
 
 if(ALPINE_LINUX)
     add_definitions(-DALPINE_LINUX)
+    set(ARM_CRYPTO TRUE)
 endif()
 
 if(TESTNET)
     add_definitions(-DBIGBANG_TESTNET)
+endif()
+
+if(ARM_CRYPTO)
+    if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
+        add_definitions(-DBIGBANG_ARM_CRYPTO)
+    endif() 
 endif()
 
 # include directories
