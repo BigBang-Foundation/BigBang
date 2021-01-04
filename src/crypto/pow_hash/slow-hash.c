@@ -2257,7 +2257,7 @@ union cn_slow_hash_state
 };
 #pragma pack(pop)
 
-static void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height)
+void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height)
 {
     printf("cn_slow_hash - 4\n");
 #ifndef FORCE_USE_HEAP
