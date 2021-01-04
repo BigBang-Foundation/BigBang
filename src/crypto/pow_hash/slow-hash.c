@@ -1452,18 +1452,18 @@ STATIC INLINE void aligned_free(void* ptr)
 }
 #endif /* FORCE_USE_HEAP */
 
-#define bbc_math_0_a()
-{
-    _c_aes = veorq_u8(_c_aes, _c_aes);
-    _c_aes = veorq_u8(_c_aes, _c_aes);
-    _c_aes = veorq_u8(_c_aes, _c_aes);
-    _c_aes = veorq_u8(_c_aes, _c_aes);
-    _c_aes = veorq_u8(_c_aes, _c_aes);
-    _c_aes = veorq_u8(_c_aes, _c_aes);
-    _c_aes = veorq_u8(_c_aes, _c_aes);
-    _c_aes = veorq_u8(_c_aes, _c_aes);
-    _c_aes = veorq_u8(_c_aes, _c_aes);
-}
+#define bbc_math_0_a()                     \
+    {                                      \
+        _c_aes = veorq_u8(_c_aes, _c_aes); \
+        _c_aes = veorq_u8(_c_aes, _c_aes); \
+        _c_aes = veorq_u8(_c_aes, _c_aes); \
+        _c_aes = veorq_u8(_c_aes, _c_aes); \
+        _c_aes = veorq_u8(_c_aes, _c_aes); \
+        _c_aes = veorq_u8(_c_aes, _c_aes); \
+        _c_aes = veorq_u8(_c_aes, _c_aes); \
+        _c_aes = veorq_u8(_c_aes, _c_aes); \
+        _c_aes = veorq_u8(_c_aes, _c_aes); \
+    }
 
 #define SL_0_0_a()                                     \
     {                                                  \
