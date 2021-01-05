@@ -62,4 +62,5 @@ target_link_libraries(test_ctsdb
     common
     crypto
     storage
+    ${Boost_LOG_LIBRARY}
 )
