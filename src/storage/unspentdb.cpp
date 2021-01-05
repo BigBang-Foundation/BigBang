@@ -143,8 +143,8 @@ bool CForkUnspentDB::Copy(CForkUnspentDB& dbUnspent)
 
     try
     {
-        xengine::CReadLock rulock(rwUpper);
         xengine::CReadLock rdlock(rwLower);
+        xengine::CReadLock rulock(rwUpper);
 
         if (!WalkThrough(boost::bind(&CForkUnspentDB::CopyWalker, this, _1, _2, boost::ref(dbUnspent))))
         {
@@ -165,8 +165,8 @@ bool CForkUnspentDB::WalkThroughUnspent(CForkUnspentDBWalker& walker)
 {
     try
     {
-        xengine::CReadLock rulock(rwUpper);
         xengine::CReadLock rdlock(rwLower);
+        xengine::CReadLock rulock(rwUpper);
 
         MapType& mapUpper = dblCache.GetUpperMap();
         MapType& mapLower = dblCache.GetLowerMap();
