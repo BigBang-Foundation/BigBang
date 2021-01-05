@@ -145,8 +145,13 @@ CSC25519& CSC25519::operator-=(const CSC25519& b)
 CSC25519& CSC25519::operator*=(const CSC25519& b)
 {
     uint64_t n[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    Print(n, 64, "CSC25519::operator*= 0 n: ");
     Multiply32_32(n, value, b.value);
+    Print(value, 32, "CSC25519::operator*= 1 value: ");
+    Print(b.value, 32, "CSC25519::operator*= 1 b.value: ");
+    Print(n, 64, "CSC25519::operator*= 1 n: ");
     BarrettReduce(n);
+    Print(n, 64, "CSC25519::operator*= 2 n: ");
     return *this;
 }
 

@@ -408,6 +408,7 @@ bool CryptoMultiSignDefect(const set<uint256>& setPubKey, const CCryptoKey& priv
         return false;
     }
 
+    printf("SHT CryptoMultiSignDefect 0\n");
     // unpack (index,R,S)
     CSC25519 S;
     CEdwards25519 R;
@@ -429,6 +430,7 @@ bool CryptoMultiSignDefect(const set<uint256>& setPubKey, const CCryptoKey& priv
         S.Unpack(&vchSig[nIndexLen + 32]);
     }
     uint8* pIndex = &vchSig[0];
+    printf("SHT CryptoMultiSignDefect 1\n");
 
     // apk
     uint256 apk;
@@ -436,8 +438,10 @@ bool CryptoMultiSignDefect(const set<uint256>& setPubKey, const CCryptoKey& priv
     {
         return false;
     }
+    printf("SHT CryptoMultiSignDefect 2\n");
     // H(X,apk,M)
     CSC25519 hash = MultiSignHashDefect(pX, lenX, apk.begin(), apk.size(), pM, lenM);
+    printf("SHT CryptoMultiSignDefect 3\n");
 
     // sign
     set<uint256>::const_iterator itPub = setPubKey.find(privkey.pubkey);
@@ -446,31 +450,49 @@ bool CryptoMultiSignDefect(const set<uint256>& setPubKey, const CCryptoKey& priv
         return false;
     }
     size_t index = distance(setPubKey.begin(), itPub);
+    printf("SHT CryptoMultiSignDefect 4\n");
 
     if (!(pIndex[index / 8] & (1 << (index % 8))))
     {
         // ri = H(H(si,pi),M)
         CSC25519 ri = MultiSignRDefect(privkey, pM, lenM);
+        printf("SHT CryptoMultiSignDefect 5\n");
         // hi = H(Ai,A1,...,An)
         vector<uint8> vecHash = MultiSignPreApkDefect(setPubKey);
         memcpy(&vecHash[0], itPub->begin(), itPub->size());
         CSC25519 hi = CSC25519(CryptoHash(&vecHash[0], vecHash.size()).begin());
+        printf("SHT CryptoMultiSignDefect 6\n");
         // si = H(privkey)
         CSC25519 si = ClampPrivKeyDefect(privkey.secret);
+        printf("SHT CryptoMultiSignDefect 7\n");
         // Si = ri + H(X,apk,M) * hi * si
         CSC25519 Si = ri + hash * hi * si;
+        printf("SHT CryptoMultiSignDefect 8\n");
         // S += Si
         S += Si;
+        printf("SHT CryptoMultiSignDefect 9\n");
         // R += Ri
         CEdwards25519 Ri;
         Ri.Generate(ri);
+        printf("SHT CryptoMultiSignDefect 10\n");
         R += Ri;
+        printf("SHT CryptoMultiSignDefect 11\n");
 
         pIndex[index / 8] |= (1 << (index % 8));
     }
 
+    uint8_t md64[64];
+    printf("SHT CryptoMultiSignDefect 12\n");
+    R.Pack(&md64[0]);
+    printf("SHT CryptoMultiSignDefect 13\n");
+    S.Pack(&md64[32]);
+    printf("SHT CryptoMultiSignDefect md64: %s\n", xengine::ToHexString(md64, 64).c_str());
+
+    printf("SHT CryptoMultiSignDefect 14\n");
     R.Pack(&vchSig[nIndexLen]);
+    printf("SHT CryptoMultiSignDefect 15\n");
     S.Pack(&vchSig[nIndexLen + 32]);
+    printf("SHT CryptoMultiSignDefect 16\n");
 
     return true;
 }
