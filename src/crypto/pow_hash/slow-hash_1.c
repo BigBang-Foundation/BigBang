@@ -40,7 +40,6 @@
 #include <sys/time.h>
 
 #include "defs.h"
-#include "common/int-util.h"
 #include "hash-ops.h"
 #include "oaes_lib.h"
 #include "variant2_int_sqrt.h"
@@ -1084,6 +1083,9 @@ STATIC INLINE void aligned_free(void *ptr)
 void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, int prehashed, uint64_t height)
 {
     printf("cn_slow_hash - 2_2\n");
+struct timeval entertime, leavetime;
+gettimeofday(&entertime, NULL);
+printf("CN_SLOW_HASH - enter time: [%lu]s[%lu]us\n", entertime.tv_sec, entertime.tv_usec);
 
     RDATA_ALIGN16 uint8_t expandedKey[240];
 
@@ -1164,8 +1166,7 @@ void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, 
 //suseconds_t c = 0;
 //unsigned long long ecl = 0;
 long long ecl = 0;
-//struct timeval s, e;
-//struct timespec s{0, 0}, e{0, 0};
+long long its = 0;
 struct timespec time_start = { 0, 0 }, time_end = { 0, 0 };
     for(i = 0; i < ITER / 2; i++)
     {
@@ -1179,30 +1180,44 @@ struct timespec time_start = { 0, 0 }, time_end = { 0, 0 };
  //       _c = vaesmcq_u8(_c);
   //      _c = vaeseq_u8(_c, _a);
    //     _c = veorq_u8(_c, _a);
-//gettimeofday(&s, NULL);
+time_start.tv_sec = 0; 
+time_start.tv_nsec = 0; 
+time_end.tv_sec = 0; 
+time_end.tv_nsec = 0; 
 clock_gettime(CLOCK_REALTIME, &time_start);
-//printf("starttime:%lus,%lu ns\n", time_start.tv_sec,time_start.tv_nsec);
 aesb_single_round((uint8_t*)&_c, (uint8_t*)&_c, (uint8_t*)&_a);
-//gettimeofday(&e, NULL);
 clock_gettime(CLOCK_REALTIME, &time_end);
-//printf("endtime %lus,%lu ns\n", time_end.tv_sec,time_end.tv_nsec);
-//printf("calcduration:%lds %ldns\n", time_end.tv_sec-time_start.tv_sec, time_end.tv_nsec-time_start.tv_nsec);
+++its;
 //ecl = (e.tv_sec-s.tv_sec) * 1000000 + (e.tv_usec - s.tv_usec);
 ecl += (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+//long temp = (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
 //printf("gap is [%010lld]\n", ecl);
-printf("gap is [%.10llu]\n", ecl);
+//printf("gap is [%.10llu] at iteration of [% 5d]\n", ecl, i);
+//printf("gap is [%.10lu] at iteration of [% 5ld]\n", temp, its);
 //print128_num(_c);
         //_c =  vaeseq_u8(_c, _a);
     		_c_aes = _c;
         for (int j = 0; j < 10; j++)
         {
+clock_gettime(CLOCK_REALTIME, &time_start);
 aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
+clock_gettime(CLOCK_REALTIME, &time_end);
+++its;
+ecl += (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+//long temp = (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+//printf("gap is [%.10lu] at iteration of [% 5lld]\n", temp, its);
         }
         if (height < HEIGHT_HASH_MULTI_SIGNER)
         {
             for (int j = 0; j < 17; j++)
             {
+clock_gettime(CLOCK_REALTIME, &time_start);
 aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
+clock_gettime(CLOCK_REALTIME, &time_end);
+++its;
+ecl += (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+//long temp = (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+//printf("gap is [%.10lu] at iteration of [% 5lld]\n", temp, its);
             }
         }
         post_aes();
@@ -1210,7 +1225,7 @@ aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
         a[0] ^= U64(&_c_aes)[0];
         a[1] ^= U64(&_c_aes)[1];
     }
-printf("gap is [%.16llu]ns with average of [%.10llu]ns at height of [%ld]\n", ecl, ecl / ITER / 2, height);
+printf("gap is [%.16llu]ns with average of [%.10llu]ns and [%.10llu]iterations at height of [%lu]\n", ecl, (ecl/its), its, height);
 
     /* CryptoNight Step 4:  Sequentially pass through the mixing buffer and use 10 rounds
      * of AES encryption to mix the random data back into the 'text' buffer.  'text'
@@ -1250,6 +1265,9 @@ break;*/
 #ifdef FORCE_USE_HEAP
     aligned_free(hp_state);
 #endif
+gettimeofday(&leavetime, NULL);
+printf("CN_SLOW_HASH - leave time: [%lu]s[%lu]us\n", leavetime.tv_sec, leavetime.tv_usec);
+printf("CN_SLOW_HASH - calcduration: [%10lu]us\n", (leavetime.tv_sec-entertime.tv_sec) * 1000000 + (leavetime.tv_usec-entertime.tv_usec));
 }
 #else /* aarch64 && crypto */
 
