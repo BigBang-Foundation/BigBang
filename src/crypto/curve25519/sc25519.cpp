@@ -145,13 +145,8 @@ CSC25519& CSC25519::operator-=(const CSC25519& b)
 CSC25519& CSC25519::operator*=(const CSC25519& b)
 {
     uint64_t n[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-    Print(n, 64, "CSC25519::operator*= 0 n: ");
     Multiply32_32(n, value, b.value);
-    Print(value, 32, "CSC25519::operator*= 1 value: ");
-    Print(b.value, 32, "CSC25519::operator*= 1 b.value: ");
-    Print(n, 64, "CSC25519::operator*= 1 n: ");
     BarrettReduce(n);
-    Print(value, 32, "CSC25519::operator*= 2 value: ");
     return *this;
 }
 
@@ -311,7 +306,6 @@ void CSC25519::BarrettReduce(uint64_t* m)
     // r1 = m % 2^254
     Copy32(r1, m);
     r1[3] &= 0x3fffffffffffffff;
-    Print(r1, 32, "CSC25519::BarrettReduce r1: ");
 
     // r2 = ((((m / 2^252) * mu) / 2^254) * prime) % 2^254
     uint64_t r2[4] = { 0, 0, 0, 0 };
@@ -320,82 +314,52 @@ void CSC25519::BarrettReduce(uint64_t* m)
         // q1 = m / 2^252
         uint64_t q1[4];
         ShiftLeft32(q1, m + 4, 4);
-        // Print(q1, 32, "CSC25519::BarrettReduce q1 1: ");
         q1[0] |= m[3] >> 60;
-        // Print(q1, 32, "CSC25519::BarrettReduce q1 2: ");
 
         // q2 = q1 * mu
         uint64_t q2[8];
         Multiply32_32(q2, q1, mu);
-        // Print(q2, 64, "CSC25519::BarrettReduce q2: ");
 
         // q3 = q2 / 2^254
         uint64_t q3[4];
         q3[0] = (q2[4] << 2) | (q2[3] >> 62);
-        // Print(q3, 32, "CSC25519::BarrettReduce q3 1: ");
         q3[1] = (q2[5] << 2) | (q2[4] >> 62);
-        // Print(q3, 32, "CSC25519::BarrettReduce q3 2: ");
         q3[2] = (q2[6] << 2) | (q2[5] >> 62);
-        // Print(q3, 32, "CSC25519::BarrettReduce q3 3: ");
         q3[3] = (q2[7] << 2) | (q2[6] >> 62);
-        // Print(q3, 32, "CSC25519::BarrettReduce q3 4: ");
 
         // r2 = q3 * prime % 2^254
         uint32_t tmp[10][4];
         Multiply8_8(&tmp[0][0], q3, prime);
-        // Print(&tmp[0][0], 16, "CSC25519::BarrettReduce tmp[0]: ");
         Multiply8_8(&tmp[1][0], q3, prime + 1);
-        // Print(&tmp[1][0], 16, "CSC25519::BarrettReduce tmp[1]: ");
         Multiply8_8(&tmp[2][0], q3 + 1, prime);
-        // Print(&tmp[2][0], 16, "CSC25519::BarrettReduce tmp[2]: ");
         Multiply8_8(&tmp[3][0], q3, prime + 2);
-        // Print(&tmp[3][0], 16, "CSC25519::BarrettReduce tmp[3]: ");
         Multiply8_8(&tmp[4][0], q3 + 1, prime + 1);
-        // Print(&tmp[4][0], 16, "CSC25519::BarrettReduce tmp[4]: ");
         Multiply8_8(&tmp[5][0], q3 + 2, prime);
-        // Print(&tmp[5][0], 16, "CSC25519::BarrettReduce tmp[5]: ");
         Multiply8_8(&tmp[6][0], q3, prime + 3);
-        // Print(&tmp[6][0], 16, "CSC25519::BarrettReduce tmp[6]: ");
         Multiply8_8(&tmp[7][0], q3 + 1, prime + 2);
-        // Print(&tmp[7][0], 16, "CSC25519::BarrettReduce tmp[7]: ");
         Multiply8_8(&tmp[8][0], q3 + 2, prime + 1);
-        // Print(&tmp[8][0], 16, "CSC25519::BarrettReduce tmp[8]: ");
         Multiply8_8(&tmp[9][0], q3 + 3, prime);
-        // Print(&tmp[9][0], 16, "CSC25519::BarrettReduce tmp[9]: ");
 
         uint32_t* p = (uint32_t*)r2;
         p[0] = tmp[0][0];
-        // Print(&p[0], 4, "CSC25519::BarrettReduce p[0]: ");
         p[1] = tmp[0][1];
-        // Print(&p[1], 4, "CSC25519::BarrettReduce p[1]: ");
         *(uint64_t*)&p[2] += (uint64_t)tmp[0][2] + tmp[1][0] + tmp[2][0];
-        // Print(&p[2], 8, "CSC25519::BarrettReduce p[2]: ");
         *(uint64_t*)&p[3] += (uint64_t)tmp[0][3] + tmp[1][1] + tmp[2][1];
-        // Print(&p[3], 8, "CSC25519::BarrettReduce p[3]: ");
         *(uint64_t*)&p[4] += (uint64_t)tmp[1][2] + tmp[2][2] + tmp[3][0] + tmp[4][0] + tmp[5][0];
-        // Print(&p[4], 8, "CSC25519::BarrettReduce p[4]: ");
         *(uint64_t*)&p[5] += (uint64_t)tmp[1][3] + tmp[2][3] + tmp[3][1] + tmp[4][1] + tmp[5][1];
-        // Print(&p[5], 8, "CSC25519::BarrettReduce p[5]: ");
-        *(uint64_t*)&p[6] += (uint64_t)tmp[3][2] + tmp[4][2] + tmp[5][2] + tmp[6][0] + tmp[7][0] + tmp[8][0] + tmp[9][0];
-        // Print(&p[6], 8, "CSC25519::BarrettReduce p[6]: ");
-        // *(&((uint32_t*)r2)[7]) += tmp[3][3] + tmp[4][3] + tmp[5][3] + tmp[6][1] + tmp[7][1] + tmp[8][1] + tmp[9][1];
-        p[7] += tmp[3][3] + tmp[4][3] + tmp[5][3] + tmp[6][1] + tmp[7][1] + tmp[8][1] + tmp[9][1];
-        Print(&p[7], 4, "CSC25519::BarrettReduce p[7]: ");
+        uint64_t top = tmp[3][3] + tmp[4][3] + tmp[5][3] + tmp[6][1] + tmp[7][1] + tmp[8][1] + tmp[9][1];
+        *(uint64_t*)&p[6] += (top << 32) + ((uint64_t)tmp[3][2] + tmp[4][2] + tmp[5][2] + tmp[6][0] + tmp[7][0] + tmp[8][0] + tmp[9][0]);
+        // *(uint32_t*)&p[7] += tmp[3][3] + tmp[4][3] + tmp[5][3] + tmp[6][1] + tmp[7][1] + tmp[8][1] + tmp[9][1];
 
         r2[3] &= 0x3fffffffffffffff;
-        // Print(r2, 32, "CSC25519::BarrettReduce r2: ");
     }
 
     if (Compare32(r1, r2) < 0)
     {
         r1[3] |= 0x4000000000000000;
-        Print(r1, 32, "CSC25519::BarrettReduce (Compare32(r1, r2) < 0) r1: ");
     }
 
     Sub32(value, r1, r2);
-    Print(r1, 32, "CSC25519::BarrettReduce Sub32(value, r1, r2) r1: ");
-    Print(r2, 32, "CSC25519::BarrettReduce Sub32(value, r1, r2) r2: ");
-    Print(value, 32, "CSC25519::BarrettReduce Sub32(value, r1, r2) value: ");
 
     Reduce(0);
 }
