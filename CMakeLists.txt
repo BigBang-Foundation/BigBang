@@ -158,6 +158,7 @@ if(MSVC)
 endif()
 
 if(ALPINE_LINUX)
+    add_definitions(-DBOOST_ALL_DYN_LINK)
     add_definitions(-DALPINE_LINUX)
     set(ARM_CRYPTO TRUE)
 endif()
