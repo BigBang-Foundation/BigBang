@@ -363,7 +363,7 @@ void CSC25519::BarrettReduce(uint64_t* m)
         Multiply8_8(&tmp[9][0], q3 + 3, prime);
         // Print(&tmp[9][0], 16, "CSC25519::BarrettReduce tmp[9]: ");
 
-        volatile uint32_t* p = (uint32_t*)r2;
+        uint32_t* p = (uint32_t*)r2;
         p[0] = tmp[0][0];
         // Print(&p[0], 4, "CSC25519::BarrettReduce p[0]: ");
         p[1] = tmp[0][1];
@@ -378,8 +378,9 @@ void CSC25519::BarrettReduce(uint64_t* m)
         // Print(&p[5], 8, "CSC25519::BarrettReduce p[5]: ");
         *(uint64_t*)&p[6] += (uint64_t)tmp[3][2] + tmp[4][2] + tmp[5][2] + tmp[6][0] + tmp[7][0] + tmp[8][0] + tmp[9][0];
         // Print(&p[6], 8, "CSC25519::BarrettReduce p[6]: ");
-        *(&((uint32_t*)r2)[7]) += tmp[3][3] + tmp[4][3] + tmp[5][3] + tmp[6][1] + tmp[7][1] + tmp[8][1] + tmp[9][1];
-        // Print(&p[7], 4, "CSC25519::BarrettReduce p[7]: ");
+        // *(&((uint32_t*)r2)[7]) += tmp[3][3] + tmp[4][3] + tmp[5][3] + tmp[6][1] + tmp[7][1] + tmp[8][1] + tmp[9][1];
+        p[7] += tmp[3][3] + tmp[4][3] + tmp[5][3] + tmp[6][1] + tmp[7][1] + tmp[8][1] + tmp[9][1];
+        Print(&p[7], 4, "CSC25519::BarrettReduce p[7]: ");
 
         r2[3] &= 0x3fffffffffffffff;
         // Print(r2, 32, "CSC25519::BarrettReduce r2: ");
