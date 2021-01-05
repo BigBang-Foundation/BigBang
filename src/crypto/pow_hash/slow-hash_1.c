@@ -1185,7 +1185,8 @@ time_start.tv_nsec = 0;
 time_end.tv_sec = 0; 
 time_end.tv_nsec = 0; 
 clock_gettime(CLOCK_REALTIME, &time_start);
-aesb_single_round((uint8_t*)&_c, (uint8_t*)&_c, (uint8_t*)&_a);
+//aesb_single_round((uint8_t*)&_c, (uint8_t*)&_c, (uint8_t*)&_a);
+_c = vaesmcq_u8(vaeseq_u8(_c, (uint8x16_t){})) ^ _a;
 clock_gettime(CLOCK_REALTIME, &time_end);
 ++its;
 //ecl = (e.tv_sec-s.tv_sec) * 1000000 + (e.tv_usec - s.tv_usec);
@@ -1200,7 +1201,8 @@ ecl += (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - ti
         for (int j = 0; j < 10; j++)
         {
 clock_gettime(CLOCK_REALTIME, &time_start);
-aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
+//aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes;
 clock_gettime(CLOCK_REALTIME, &time_end);
 ++its;
 ecl += (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
@@ -1212,7 +1214,8 @@ ecl += (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - ti
             for (int j = 0; j < 17; j++)
             {
 clock_gettime(CLOCK_REALTIME, &time_start);
-aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
+//aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes;
 clock_gettime(CLOCK_REALTIME, &time_end);
 ++its;
 ecl += (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
