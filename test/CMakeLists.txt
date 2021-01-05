@@ -56,11 +56,13 @@ target_link_libraries(test_ctsdb
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${Boost_LOG_LIBRARY}
     OpenSSL::SSL
     OpenSSL::Crypto
     mpvss
     common
     crypto
+    libbigbang
+    xengine
     storage
-    ${Boost_LOG_LIBRARY}
 )
