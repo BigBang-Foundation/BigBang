@@ -51,6 +51,8 @@ void KeyGenerator(uint256& priv, uint256& pub)
 
 BOOST_AUTO_TEST_CASE(base25519)
 {
+    srand(time(0));
+
     // n[0, 15] = 0
     // void Zero16(void* b);
     {
@@ -115,7 +117,6 @@ BOOST_AUTO_TEST_CASE(base25519)
         uint8_t lhs[32];
         RandGeneretor(lhs, 32);
         uint8_t rhs[32];
-        vector<uint8_t> vchData;
 
         for (int i = 0; i < 32; i++)
         {
@@ -158,7 +159,6 @@ BOOST_AUTO_TEST_CASE(base25519)
         uint8_t lhs[32] = { 0x01, 0xfe, 0xab, 0x0f, 0xec, 0xff, 0xff, 0xcc, 0xbc, 0x23, 0x64, 0x00, 0x1e, 0xee, 0x3c,
                             0x23, 0x01, 0xfe, 0xab, 0x0f, 0xec, 0xff, 0xff, 0xcc, 0x01, 0xfe, 0xab, 0x0f, 0xec, 0xff, 0xff, 0xcc };
         uint8_t rhs[32];
-        vector<uint8_t> vchData;
 
         for (int i = 0; i < 32; i++)
         {
@@ -665,51 +665,26 @@ BOOST_AUTO_TEST_CASE(sc25519)
 
 BOOST_AUTO_TEST_CASE(ed25519)
 {
-    // srand(time(0));
+    srand(time(0));
 
     // sign, verify
     uint8_t md32[32];
-    for (int i = 0; i < 1; i++)
+    for (int i = 0; i < 10; i++)
     {
         uint256 priv1, pub1;
         uint256 priv2, pub2;
-        priv1.SetHex("0a09e50b794f871a565409e8e2c868c721691862553f9eafcc7d597372afc512");
-        pub1.SetHex("63ce7a5928bfa4d9fca659dc46c8d76b256a34bce2a005fc9ec71ef8582dee0b");
-        priv2.SetHex("025f0a975880b80cdfa9c27a6adbc71e94318d6d100c4744b62349d0f55f41ed");
-        pub2.SetHex("80cb3666d06aec2b78511393128947f62a4a23f2e043c107f9df678d21207a52");
-        // KeyGenerator(priv1, pub1);
-        // KeyGenerator(priv2, pub2);
-        cout << "SHT priv1: " << priv1.ToString() << ", pub1: " << pub1.ToString() << endl;
-        cout << "SHT priv2: " << priv2.ToString() << ", pub2: " << pub2.ToString() << endl;
+        KeyGenerator(priv1, pub1);
+        KeyGenerator(priv2, pub2);
 
         RandGeneretor(md32);
         CSC25519 hash(md32);
-        auto vecHash = xengine::ParseHexString("c59d7506c88974ee7d146b598afb95569e12c1d0083440b2ecba0616892c7e06");
-        hash.Unpack(&vecHash[0]);
-        hash.Pack(md32);
-        cout << "SHT hash: " << xengine::ToHexString(md32, 32) << endl;
 
-        // CSC25519 sign = CSC25519(priv1.begin()) + CSC25519(priv2.begin()) * hash;
-        CSC25519 priv = CSC25519(priv2.begin()) * hash;
-        priv.Pack(md32);
-        cout << "SHT priv: " << xengine::ToHexString(md32, 32) << endl;
-        CSC25519 sign = CSC25519(priv1.begin()) + priv;
-        sign.Pack(md32);
-        cout << "SHT sign: " << xengine::ToHexString(md32, 32) << endl;
+        CSC25519 sign = CSC25519(priv1.begin()) + CSC25519(priv2.begin()) * hash;
 
         CEdwards25519 P, R, S;
         P.Unpack(pub1.begin());
         R.Unpack(pub2.begin());
         S.Generate(sign);
-        P.Pack(md32);
-        cout << "SHT P: " << xengine::ToHexString(md32, 32) << endl;
-        R.Pack(md32);
-        cout << "SHT R: " << xengine::ToHexString(md32, 32) << endl;
-        S.Pack(md32);
-        cout << "SHT S: " << xengine::ToHexString(md32, 32) << endl;
-        auto S0 = (P + R.ScalarMult(hash));
-        S0.Pack(md32);
-        cout << "SHT (P + R.ScalarMult(hash)): " << xengine::ToHexString(md32, 32) << endl;
 
         BOOST_CHECK(S == (P + R.ScalarMult(hash)));
     }

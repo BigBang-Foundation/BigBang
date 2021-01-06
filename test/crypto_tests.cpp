@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_CASE(multisign)
 
 BOOST_AUTO_TEST_CASE(multisign_defect)
 {
-    // srand(time(0));
+    srand(time(0));
 
     int64_t signCount = 0, signTime1 = 0, verifyTime1 = 0, signTime2 = 0, verifyTime2 = 0;
     int count = 5;
@@ -99,7 +99,6 @@ BOOST_AUTO_TEST_CASE(multisign_defect)
         uint32_t nKey = CryptoGetRand32() % 256 + 1;
         uint32_t nPartKey = CryptoGetRand32() % nKey + 1;
 
-        cout << "SHT multisign_defect 0" << endl;
         CCryptoKey* keys = new CCryptoKey[nKey];
         std::set<uint256> setPubKey;
         for (int i = 0; i < nKey; i++)
@@ -108,20 +107,16 @@ BOOST_AUTO_TEST_CASE(multisign_defect)
             setPubKey.insert(keys[i].pubkey);
         }
 
-        cout << "SHT multisign_defect 1" << endl;
         uint256 msg;
         CryptoGetRand256(msg);
         uint256 seed;
         CryptoGetRand256(seed);
 
-        cout << "SHT multisign_defect 2" << endl;
         std::vector<uint8_t> vchSig;
         for (int i = 0; i < nPartKey; i++)
         {
             boost::posix_time::ptime t0 = boost::posix_time::microsec_clock::universal_time();
-            cout << "SHT multisign_defect 3" << endl;
             BOOST_CHECK(CryptoMultiSignDefect(setPubKey, keys[i], seed.begin(), seed.size(), msg.begin(), msg.size(), vchSig));
-            cout << "SHT multisign_defect 4" << endl;
             boost::posix_time::ptime t1 = boost::posix_time::microsec_clock::universal_time();
             signTime1 += (t1 - t0).ticks();
             ++signCount;
@@ -130,9 +125,7 @@ BOOST_AUTO_TEST_CASE(multisign_defect)
         {
             boost::posix_time::ptime t0 = boost::posix_time::microsec_clock::universal_time();
             std::set<uint256> setPartKey;
-            cout << "SHT multisign_defect 5" << endl;
             BOOST_CHECK(CryptoMultiVerifyDefect(setPubKey, seed.begin(), seed.size(), msg.begin(), msg.size(), vchSig, setPartKey) && (setPartKey.size() == nPartKey));
-            cout << "SHT multisign_defect 6" << endl;
             boost::posix_time::ptime t1 = boost::posix_time::microsec_clock::universal_time();
             verifyTime1 += (t1 - t0).ticks();
         }
