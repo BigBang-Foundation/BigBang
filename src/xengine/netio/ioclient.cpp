@@ -98,10 +98,10 @@ void CIOClient::Connect(const tcp::endpoint& epRemote, CallBackConn fnConnected)
     AsyncConnect(epRemote, fnConnected);
 }
 
-void CIOClient::ConnectByBindAddress(const tcp::endpoint& epLocal, const tcp::endpoint& epRemote, CallBackConn fnConnected)
+bool CIOClient::ConnectByBindAddress(const tcp::endpoint& epLocal, const tcp::endpoint& epRemote, CallBackConn fnConnected)
 {
     ++nRefCount;
-    AsyncConnectByBindAddress(epLocal, epRemote, fnConnected);
+    return AsyncConnectByBindAddress(epLocal, epRemote, fnConnected);
 }
 
 void CIOClient::Read(CBufStream& ssRecv, size_t nLength, CallBackFunc fnCompleted)
@@ -166,20 +166,34 @@ void CSocketClient::AsyncConnect(const tcp::endpoint& epRemote, CallBackConn fnC
                                                    fnConnected, boost::asio::placeholders::error));
 }
 
-void CSocketClient::AsyncConnectByBindAddress(const tcp::endpoint& epLocal, const tcp::endpoint& epRemote, CallBackConn fnConnected)
+bool CSocketClient::AsyncConnectByBindAddress(const tcp::endpoint& epLocal, const tcp::endpoint& epRemote, CallBackConn fnConnected)
 {
-    if (epLocal.address().is_v4())
+    boost::asio::ip::address addrLocal = epLocal.address();
+    if (!addrLocal.is_unspecified() || epLocal.port() != 0)
     {
-        sockClient.open(boost::asio::ip::tcp::v4());
-        sockClient.bind(epLocal);
-    }
-    else if (epLocal.address().is_v6())
-    {
-        sockClient.open(boost::asio::ip::tcp::v6());
-        sockClient.bind(epLocal);
+        if (addrLocal.is_v4() || addrLocal.is_v6())
+        {
+            boost::system::error_code ecOpen;
+            sockClient.open((addrLocal.is_v4() ? boost::asio::ip::tcp::v4() : boost::asio::ip::tcp::v6()), ecOpen);
+            if (ecOpen)
+            {
+                StdLog("CSocketClient", "Asynchronous connection address open fail, err: %s", ecOpen.message().c_str());
+                return false;
+            }
+            boost::system::error_code ecBind;
+            sockClient.bind(epLocal, ecBind);
+            if (ecBind)
+            {
+                boost::system::error_code ec;
+                StdLog("CSocketClient", "Asynchronous connection address bind fail, local address: %s:%d, err: %s",
+                       addrLocal.to_string(ec).c_str(), epLocal.port(), ecBind.message().c_str());
+                return false;
+            }
+        }
     }
     sockClient.async_connect(epRemote, boost::bind(&CSocketClient::HandleConnCompleted, this,
                                                    fnConnected, boost::asio::placeholders::error));
+    return true;
 }
 
 void CSocketClient::AsyncRead(CBufStream& ssRecv, size_t nLength, CallBackFunc fnCompleted)
@@ -270,22 +284,36 @@ void CSSLClient::AsyncConnect(const tcp::endpoint& epRemote, CallBackConn fnConn
                                                        boost::asio::placeholders::error));
 }
 
-void CSSLClient::AsyncConnectByBindAddress(const tcp::endpoint& epLocal, const tcp::endpoint& epRemote, CallBackConn fnConnected)
+bool CSSLClient::AsyncConnectByBindAddress(const tcp::endpoint& epLocal, const tcp::endpoint& epRemote, CallBackConn fnConnected)
 {
-    if (epLocal.address().is_v4())
+    boost::asio::ip::address addrLocal = epLocal.address();
+    if (!addrLocal.is_unspecified() || epLocal.port() != 0)
     {
-        sslClient.lowest_layer().open(boost::asio::ip::tcp::v4());
-        sslClient.lowest_layer().bind(epLocal);
-    }
-    else if (epLocal.address().is_v6())
-    {
-        sslClient.lowest_layer().open(boost::asio::ip::tcp::v6());
-        sslClient.lowest_layer().bind(epLocal);
+        if (addrLocal.is_v4() || addrLocal.is_v6())
+        {
+            boost::system::error_code ecOpen;
+            sslClient.lowest_layer().open((addrLocal.is_v4() ? boost::asio::ip::tcp::v4() : boost::asio::ip::tcp::v6()), ecOpen);
+            if (ecOpen)
+            {
+                StdLog("CSSLClient", "Asynchronous connection address open fail, err: %s", ecOpen.message().c_str());
+                return false;
+            }
+            boost::system::error_code ecBind;
+            sslClient.lowest_layer().bind(epLocal, ecBind);
+            if (ecBind)
+            {
+                boost::system::error_code ec;
+                StdLog("CSSLClient", "Asynchronous connection address bind fail, local address: %s:%d, err: %s",
+                       addrLocal.to_string(ec).c_str(), epLocal.port(), ecBind.message().c_str());
+                return false;
+            }
+        }
     }
     sslClient.lowest_layer().async_connect(epRemote,
                                            boost::bind(&CSSLClient::HandleConnected, this, fnConnected,
                                                        boost::asio::ssl::stream_base::client,
                                                        boost::asio::placeholders::error));
+    return true;
 }
 
 void CSSLClient::AsyncRead(CBufStream& ssRecv, size_t nLength, CallBackFunc fnCompleted)

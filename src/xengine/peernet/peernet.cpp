@@ -113,13 +113,31 @@ void CPeerNet::HeartBeat()
             bool fRet = true;
             if (epRemote.address().is_v4() && !confNetwork.strSocketBindLocalIpV4.empty())
             {
-                tcp::endpoint epLocal(boost::asio::ip::address_v4::from_string(confNetwork.strSocketBindLocalIpV4), 0);
-                fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);
+                boost::system::error_code ec;
+                tcp::endpoint epLocal(boost::asio::ip::address_v4::from_string(confNetwork.strSocketBindLocalIpV4, ec), 0);
+                if (ec)
+                {
+                    StdLog("CPeerNet", "from_string local fail, local: %s, err: %s", confNetwork.strSocketBindLocalIpV4.c_str(), ec.message().c_str());
+                    fRet = false;
+                }
+                else
+                {
+                    fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);
+                }
             }
             else if (epRemote.address().is_v6() && !confNetwork.strSocketBindLocalIpV6.empty())
             {
-                tcp::endpoint epLocal(boost::asio::ip::address_v6::from_string(confNetwork.strSocketBindLocalIpV6), 0);
-                fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);
+                boost::system::error_code ec;
+                tcp::endpoint epLocal(boost::asio::ip::address_v6::from_string(confNetwork.strSocketBindLocalIpV6, ec), 0);
+                if (ec)
+                {
+                    StdLog("CPeerNet", "from_string local fail, local: %s, err: %s", confNetwork.strSocketBindLocalIpV6.c_str());
+                    fRet = false;
+                }
+                else
+                {
+                    fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);
+                }
             }
             else
             {

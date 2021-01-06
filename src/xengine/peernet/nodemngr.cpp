@@ -241,11 +241,12 @@ void CNodeManager::RemoveInactiveNodes()
 
 const std::string CNodeManager::GetEpString(const tcp::endpoint& ep)
 {
+    boost::system::error_code ec;
     if (ep.address().is_v6())
     {
-        return string("[") + ep.address().to_string() + string("]:") + to_string(ep.port());
+        return string("[") + ep.address().to_string(ec) + string("]:") + to_string(ep.port());
     }
-    return ep.address().to_string() + string(":") + to_string(ep.port());
+    return ep.address().to_string(ec) + string(":") + to_string(ep.port());
 }
 
 } // namespace xengine
