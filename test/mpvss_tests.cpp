@@ -169,13 +169,6 @@ BOOST_AUTO_TEST_CASE(base25519)
                 BOOST_CHECK(curve25519::Compare32(lhs, rhs) > 0);
                 rhs[i]++;
                 BOOST_CHECK(curve25519::Compare32(lhs, rhs) == 0);
-                // rhs[i]++;
-                // std::cout << "CSH::Debug "
-                //           << "i: " << i << std::endl;
-                // std::cout
-                //     << "lhs: " << xengine::ToHexString(&lhs[0], 32) << std::endl
-                //     << "rhs: " << xengine::ToHexString(&rhs[0], 32) << std::endl;
-                // BOOST_CHECK(curve25519::Compare32(lhs, rhs) < 0);
                 if (rhs[i] != 0xff)
                 {
                     rhs[i]++;
