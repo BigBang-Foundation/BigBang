@@ -36,8 +36,9 @@
 #ifndef _WIN32
 #include <unistd.h>
 #endif
+#include <sys/time.h>
+#include <time.h>
 
-#include "common/int-util.h"
 #include "defs.h"
 #include "hash-ops.h"
 #include "oaes_lib.h"
@@ -51,7 +52,8 @@
 #define INIT_SIZE_BLK 8
 #define INIT_SIZE_BYTE (INIT_SIZE_BLK * AES_BLOCK_SIZE)
 
-extern void aesb_single_round(const uint8_t* in, uint8_t* out, const uint8_t* expandedKey);
+extern void
+aesb_single_round(const uint8_t* in, uint8_t* out, const uint8_t* expandedKey);
 extern void aesb_pseudo_round(const uint8_t* in, uint8_t* out, const uint8_t* expandedKey);
 
 #define VARIANT1_1(p)                                                  \
@@ -1136,6 +1138,9 @@ STATIC INLINE void aligned_free(void* ptr)
 void cn_slow_hash_1_a(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height)
 {
     printf("cn_slow_hash - 2_2\n");
+    struct timeval entertime, leavetime;
+    gettimeofday(&entertime, NULL);
+    printf("CN_SLOW_HASH - enter time: [%lu]s[%lu]us\n", entertime.tv_sec, entertime.tv_usec);
 
     RDATA_ALIGN16 uint8_t expandedKey[240];
 
@@ -1216,6 +1221,11 @@ void cn_slow_hash_1_a(const void* data, size_t length, char* hash, int variant, 
     _b = vld1q_u8((const uint8_t*)b);                     //todo: review later
     _b1 = vld1q_u8(((const uint8_t*)b) + AES_BLOCK_SIZE); //todo: review later
 
+    //suseconds_t c = 0;
+    //unsigned long long ecl = 0;
+    long long ecl = 0;
+    long long its = 0;
+    struct timespec time_start = { 0, 0 }, time_end = { 0, 0 };
     for (i = 0; i < ITER / 2; i++)
     {
         pre_aes();
@@ -1228,19 +1238,47 @@ void cn_slow_hash_1_a(const void* data, size_t length, char* hash, int variant, 
         //       _c = vaesmcq_u8(_c);
         //      _c = vaeseq_u8(_c, _a);
         //     _c = veorq_u8(_c, _a);
-        aesb_single_round((uint8_t*)&_c, (uint8_t*)&_c, (uint8_t*)&_a);
+        time_start.tv_sec = 0;
+        time_start.tv_nsec = 0;
+        time_end.tv_sec = 0;
+        time_end.tv_nsec = 0;
+        clock_gettime(CLOCK_REALTIME, &time_start);
+        //aesb_single_round((uint8_t*)&_c, (uint8_t*)&_c, (uint8_t*)&_a);
+        _c = vaesmcq_u8(vaeseq_u8(_c, (uint8x16_t){})) ^ _a;
+        clock_gettime(CLOCK_REALTIME, &time_end);
+        ++its;
+        //ecl = (e.tv_sec-s.tv_sec) * 1000000 + (e.tv_usec - s.tv_usec);
+        ecl += (time_end.tv_sec - time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+        //long temp = (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+        //printf("gap is [%010lld]\n", ecl);
+        //printf("gap is [%.10llu] at iteration of [% 5d]\n", ecl, i);
+        //printf("gap is [%.10lu] at iteration of [% 5ld]\n", temp, its);
         //print128_num(_c);
         //_c =  vaeseq_u8(_c, _a);
         _c_aes = _c;
         for (int j = 0; j < 10; j++)
         {
-            aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
+            clock_gettime(CLOCK_REALTIME, &time_start);
+            //aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
+            _c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes;
+            clock_gettime(CLOCK_REALTIME, &time_end);
+            ++its;
+            ecl += (time_end.tv_sec - time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+            //long temp = (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+            //printf("gap is [%.10lu] at iteration of [% 5lld]\n", temp, its);
         }
         if (height < HEIGHT_HASH_MULTI_SIGNER)
         {
             for (int j = 0; j < 17; j++)
             {
-                aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
+                clock_gettime(CLOCK_REALTIME, &time_start);
+                //aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
+                _c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes;
+                clock_gettime(CLOCK_REALTIME, &time_end);
+                ++its;
+                ecl += (time_end.tv_sec - time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+                //long temp = (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
+                //printf("gap is [%.10lu] at iteration of [% 5lld]\n", temp, its);
             }
         }
         post_aes();
@@ -1248,6 +1286,7 @@ void cn_slow_hash_1_a(const void* data, size_t length, char* hash, int variant, 
         a[0] ^= U64(&_c_aes)[0];
         a[1] ^= U64(&_c_aes)[1];
     }
+    printf("gap is [%.16llu]ns with average of [%.10llu]ns and [%.10llu]iterations at height of [%lu]\n", ecl, (ecl / its), its, height);
 
     /* CryptoNight Step 4:  Sequentially pass through the mixing buffer and use 10 rounds
      * of AES encryption to mix the random data back into the 'text' buffer.  'text'
@@ -1287,6 +1326,9 @@ break;*/
 #ifdef FORCE_USE_HEAP
     aligned_free(hp_state);
 #endif
+    gettimeofday(&leavetime, NULL);
+    printf("CN_SLOW_HASH - leave time: [%lu]s[%lu]us\n", leavetime.tv_sec, leavetime.tv_usec);
+    printf("CN_SLOW_HASH - calcduration: [%10lu]us\n", (leavetime.tv_sec - entertime.tv_sec) * 1000000 + (leavetime.tv_usec - entertime.tv_usec));
 }
 #else /* aarch64 && crypto */
 
