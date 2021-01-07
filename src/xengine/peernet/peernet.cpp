@@ -131,7 +131,7 @@ void CPeerNet::HeartBeat()
                 tcp::endpoint epLocal(boost::asio::ip::address_v6::from_string(confNetwork.strSocketBindLocalIpV6, ec), 0);
                 if (ec)
                 {
-                    StdLog("CPeerNet", "from_string local fail, local: %s, err: %s", confNetwork.strSocketBindLocalIpV6.c_str());
+                    StdLog("CPeerNet", "from_string local fail, local: %s, err: %s", confNetwork.strSocketBindLocalIpV6.c_str(), ec.message().c_str());
                     fRet = false;
                 }
                 else

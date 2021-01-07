@@ -337,7 +337,6 @@ bool CIOOutBound::ConnectToByBindAddress(const tcp::endpoint& epLocal, const tcp
     {
         pIOProc->CancelTimer(nTimerId);
         pClient->Release();
-        delete pClient;
         return false;
     }
 
@@ -564,7 +563,6 @@ bool CIOSSLOutBound::ConnectToByBindAddress(const tcp::endpoint& epLocal, const 
     {
         pIOProc->CancelTimer(nTimerId);
         pClient->Release();
-        delete pClient;
         return false;
     }
 
