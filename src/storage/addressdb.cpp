@@ -266,8 +266,8 @@ bool CForkAddressDB::Copy(CForkAddressDB& dbAddress)
 
     try
     {
-        xengine::CReadLock rulock(rwUpper);
         xengine::CReadLock rdlock(rwLower);
+        xengine::CReadLock rulock(rwUpper);
 
         if (!WalkThrough(boost::bind(&CForkAddressDB::CopyWalker, this, _1, _2, boost::ref(dbAddress))))
         {
@@ -288,8 +288,8 @@ bool CForkAddressDB::WalkThroughAddress(CForkAddressDBWalker& walker)
 {
     try
     {
-        xengine::CReadLock rulock(rwUpper);
         xengine::CReadLock rdlock(rwLower);
+        xengine::CReadLock rulock(rwUpper);
 
         MapType& mapUpper = dblCache.GetUpperMap();
         MapType& mapLower = dblCache.GetLowerMap();
