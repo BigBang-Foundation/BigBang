@@ -103,11 +103,13 @@ bool CForkAddressDB::UpdateAddress(const vector<pair<CDestination, CAddrInfo>>& 
             }
             else
             {
+                xengine::StdWarn("CForkAddressDB", "UpdateAddress addr: %s find loop, parent: %s, root: %s", vd.first.ToString().c_str(), addrInfo.destParent.ToString().c_str(), addrInfo.destRoot.ToString().c_str());
                 return false;
             }
         }
         else
         {
+            xengine::StdWarn("CForkAddressDB", "UpdateAddress addr: %s already has parent: %s", vd.first.ToString().c_str(), addrInfo.destParent.ToString().c_str());
             return false;
         }
     }
@@ -570,6 +572,7 @@ bool CAddressDB::Update(const uint256& hashFork,
     {
         return (*it).second->UpdateAddress(vAddNew, vRemove);
     }
+    xengine::StdWarn("CAddressDB", "Update no address DB, fork: %s", hashFork.ToString().c_str());
     return false;
 }
 

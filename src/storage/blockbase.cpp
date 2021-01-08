@@ -176,11 +176,13 @@ bool CBlockView::AddTx(const uint256& txid, const CTransaction& tx, int nHeight,
         CDestination root;
         if (!relationAddNew.CheckInsert(tx.sendTo, destIn, root))
         {
+            StdLog("CBlockView", "AddTx relationAddNew.CheckInsert fail, addr: %s, parent: %s", tx.sendTo.ToString().c_str(), destIn.ToString().c_str());
             return false;
         }
 
         if (!spFork->GetRelation().CheckInsert(tx.sendTo, root, root, relationRemove))
         {
+            StdLog("CBlockView", "AddTx spFork->GetRelation().CheckInsert fail, addr: %s, parent: %s", tx.sendTo.ToString().c_str(), destIn.ToString().c_str());
             return false;
         }
 
@@ -1295,13 +1297,13 @@ bool CBlockBase::CommitBlockView(CBlockView& view, CBlockIndex* pIndexNew)
 
         if (!AddDeFiRelation(hashFork, spFork, vAdd, vRemove))
         {
-            StdTrace("BlockBase", "CommitBlockView: AddDeFiRelation fail, fork: %s", hashFork.ToString().c_str());
+            StdLog("CBlockBase", "CommitBlockView: AddDeFiRelation fail, fork: %s", hashFork.ToString().c_str());
             return false;
         }
 
         if (!UpdateDeFiMintHeight(hashFork, spFork, vAdd, vRemove))
         {
-            StdTrace("BlockBase", "CommitBlockView: AddDeFiRelation fail, fork: %s", hashFork.ToString().c_str());
+            StdLog("CBlockBase", "CommitBlockView: UpdateDeFiMintHeight fail, fork: %s", hashFork.ToString().c_str());
             return false;
         }
     }
@@ -2124,6 +2126,7 @@ bool CBlockBase::AddDeFiRelation(const uint256& hashFork, boost::shared_ptr<CBlo
 
     if (!dbBlock.UpdateAddressInfo(hashFork, vNewAddress, vRemoveAddress))
     {
+        StdWarn("CBlockBase", "AddDeFiRelation: UpdateAddressInfo fail, fork: %s", hashFork.ToString().c_str());
         return false;
     }
 
@@ -2197,6 +2200,8 @@ bool CBlockBase::InitDeFiRelation(boost::shared_ptr<CBlockFork> spFork)
     {
         if (!relation.Insert(r.first, r.second.destParent, r.second.destParent))
         {
+            StdError("CBlockBase", "InitDeFiRelation: Insert relation fail, fork: %s, addr: %s, parent: %s",
+                     spFork->GetOrigin()->GetBlockHash().ToString().c_str(), r.first.ToString().c_str(), r.second.destParent.ToString().c_str());
             return false;
         }
     }
