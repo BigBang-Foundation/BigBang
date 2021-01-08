@@ -56,6 +56,7 @@ endif()
 if(UNIX)
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " -O0")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " -O2 -DNDEBUG")
+    # string(APPEND CMAKE_CXX_FLAGS_RELEASE " -O0")
     if(APPLE)
     else()
         string(APPEND CMAKE_CXX_FLAGS_DEBUG " -rdynamic")
@@ -154,6 +155,7 @@ endif()
 
 if(ARM_CRYPTO)
     add_definitions(-DBIGBANG_ARM_CRYPTO)
+    add_definitions(-DSANITIZE)
 endif()
 
 # include directories

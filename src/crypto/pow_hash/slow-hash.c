@@ -1181,23 +1181,23 @@ STATIC INLINE void aligned_free(void *ptr)
 
 #define bbc_math_0_a() \
 	{ \
-		_c_aes = veorq_u8(_c_aes, _c_aes); \
-		_c_aes = veorq_u8(_c_aes, _c_aes); \
-		_c_aes = veorq_u8(_c_aes, _c_aes); \
-		_c_aes = veorq_u8(_c_aes, _c_aes); \
-		_c_aes = veorq_u8(_c_aes, _c_aes); \
-		_c_aes = veorq_u8(_c_aes, _c_aes); \
-		_c_aes = veorq_u8(_c_aes, _c_aes); \
-		_c_aes = veorq_u8(_c_aes, _c_aes); \
-		_c_aes = veorq_u8(_c_aes, _c_aes); \
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes; \
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes; \
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes; \
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes; \
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes; \
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes; \
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes; \
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes; \
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes; \
 	}
 
 #define SL_0_0_a() { \
 	const uint64_t sqrt_input = U64(&_c_aes)[0]; \
-	VARIANT2_INTEGER_MATH_SQRT_STEP_SSE2(); \
+	VARIANT2_INTEGER_MATH_SQRT_STEP_FP64(); \
 	VARIANT2_INTEGER_MATH_SQRT_FIXUP(sqrt_result); \
 	for(int i=0; i<10; i++) { \
-		_c_aes = veorq_u8(_c_aes, _c_aes); \
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes; \
 	} \
 	U64(&_c_aes)[0] ^= sqrt_result; \
 }
@@ -1222,7 +1222,7 @@ STATIC INLINE void aligned_free(void *ptr)
 	U64(&_b1)[0] = U64(&sha3_out)[4]; \
 	U64(&_b1)[1] = U64(&sha3_out)[5]; \
 	for(int i=0; i<30; i++) { \
-		_c_aes = veorq_u8(_c_aes, _c_aes); \
+_c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes; \
 	} \
 	U64(&_c_aes)[0] ^= U64(&_b)[0]; \
 	U64(&_c_aes)[1] ^= U64(&_b)[1]; \
@@ -1282,7 +1282,7 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     else
     {
         printf("phase - 2 (not 1 or 3)\n");
-        return;
+//        return;
     }
 
     RDATA_ALIGN16 uint8_t expandedKey[240];
@@ -1370,7 +1370,9 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
         pre_aes();
 //        _c = vaeseq_u8(_c, zero);
 //        _c = vaesmcq_u8(_c);
-        _c = veorq_u8(_c, _a);
+//        _c = veorq_u8(_c, _a);
+//		_c_aes = _c;
+_c = vaesmcq_u8(vaeseq_u8(_c, (uint8x16_t){})) ^ _a;
 		_c_aes = _c;
         post_aes();
 

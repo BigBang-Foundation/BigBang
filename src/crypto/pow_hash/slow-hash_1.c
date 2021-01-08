@@ -923,11 +923,15 @@ union cn_slow_hash_state
  * key schedule. Don't try to use this for vanilla AES.
 */
 static void aes_expand_key(const uint8_t *key, uint8_t *expandedKey) {
+//static inline void aes_expand_key(const uint8_t *key, uint8_t *expandedKey) {
+//void aes_expand_key(const uint8_t *key, uint8_t *expandedKey) {
 static const int rcon[] = {
+//const int rcon[] = {
 	0x01,0x01,0x01,0x01,
 	0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d,	// rotate-n-splat
 	0x1b,0x1b,0x1b,0x1b };
-__asm__(
+__asm__ (
+//__asm__  __volatile__(
 "	eor	v0.16b,v0.16b,v0.16b\n"
 "	ld1	{v3.16b},[%0],#16\n"
 "	ld1	{v1.4s,v2.4s},[%2],#32\n"
