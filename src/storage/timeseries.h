@@ -72,7 +72,7 @@ protected:
     bool CheckDiskSpace();
     const std::string FileName(uint32 nFile);
     bool GetFilePath(uint32 nFile, std::string& strPath);
-    bool GetLastFilePath(uint32& nFile, std::string& strPath, const uint32 nWriteDataSize);
+    bool GetLastFilePath(uint32& nFile, std::string& strPath);
     bool RemoveFollowUpFile(uint32 nBeginFile);
     bool TruncateFile(const std::string& pathFile, uint32 nOffset);
     bool RepairFile(uint32 nFile, uint32 nOffset);
@@ -81,7 +81,7 @@ protected:
     enum
     {
         MAX_FILE_SIZE = 0x7F000000,
-        MAX_CHUNK_SIZE = 0x200000
+        MAX_CHUNK_SIZE = 0x300000
     };
     boost::filesystem::path pathLocation;
     std::string strPrefix;
@@ -104,7 +104,7 @@ public:
         ss << t;
 
         std::string pathFile;
-        if (!GetLastFilePath(nFile, pathFile, ss.GetSize()))
+        if (!GetLastFilePath(nFile, pathFile))
         {
             return false;
         }
@@ -140,7 +140,7 @@ public:
         ss << t;
 
         std::string pathFile;
-        if (!GetLastFilePath(pos.nFile, pathFile, ss.GetSize()))
+        if (!GetLastFilePath(pos.nFile, pathFile))
         {
             return false;
         }
@@ -493,7 +493,7 @@ public:
         ss << t;
 
         std::string pathFile;
-        if (!GetLastFilePath(pos.nFile, pathFile, ss.GetSize()))
+        if (!GetLastFilePath(pos.nFile, pathFile))
         {
             return false;
         }
@@ -522,12 +522,9 @@ public:
 
         while (n < vBatch.size())
         {
-            xengine::CBufStream ss;
-            ss << vBatch[n];
-
             uint32 nFile, nOffset;
             std::string pathFile;
-            if (!GetLastFilePath(nFile, pathFile, ss.GetSize()))
+            if (!GetLastFilePath(nFile, pathFile))
             {
                 return false;
             }
@@ -537,18 +534,12 @@ public:
                 fs.SeekToEnd();
                 do
                 {
-                    uint32 nSize = ss.GetSize();
+                    uint32 nSize = fs.GetSerializeSize(vBatch[n]);
                     fs << nMagicNum << nSize;
                     nOffset = fs.GetCurPos();
-                    fs.Write(ss.GetData(), ss.GetSize());
+                    fs << vBatch[n++];
                     vPos.push_back(CDiskPos(nFile, nOffset));
-                    if (++n >= vBatch.size())
-                    {
-                        break;
-                    }
-                    ss.Clear();
-                    ss << vBatch[n];
-                } while (fs.GetCurPos() + ss.GetSize() + 8 <= MAX_FILE_SIZE);
+                } while (n < vBatch.size() && fs.GetCurPos() + MAX_CHUNK_SIZE + 8 <= MAX_FILE_SIZE);
             }
             catch (std::exception& e)
             {
