@@ -1279,11 +1279,8 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
         cn_slow_hash_1_a(data, length, hash, variant, prehashed, height_);
         return;
     }
-    else
-    {
-        printf("phase - 2 (not 1 or 3)\n");
-//        return;
-    }
+
+    printf("phase - 2 (not 1 or 3)\n");
 
     RDATA_ALIGN16 uint8_t expandedKey[240];
 
@@ -1314,6 +1311,10 @@ void cn_slow_hash(const void *data, size_t length, char *hash, int variant, int 
     {
         hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
     };
+
+    // this isn't supposed to happen, but guard against it for now.
+    if(hp_state == NULL)
+        slow_hash_allocate_state();
 
     /* CryptoNight Step 1:  Use Keccak1600 to initialize the 'state' (and 'text') buffers from the data. */
     printf("step - 1\n");
