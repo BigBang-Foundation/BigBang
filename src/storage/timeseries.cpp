@@ -41,6 +41,15 @@ bool CTimeSeriesBase::Initialize(const path& pathLocationIn, const string& strPr
     strPrefix = strPrefixIn;
     nLastFile = 1;
 
+    for (;;)
+    {
+        path last = pathLocation / FileName(nLastFile + 1);
+        if (!exists(last))
+        {
+            break;
+        }
+        nLastFile++;
+    }
     return CheckDiskSpace();
 }
 
