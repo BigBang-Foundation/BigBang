@@ -72,7 +72,7 @@ bool CTimeSeriesBase::GetFilePath(uint32 nFile, string& strPath)
     return false;
 }
 
-bool CTimeSeriesBase::GetLastFilePath(uint32& nFile, std::string& strPath)
+bool CTimeSeriesBase::GetLastFilePath(uint32& nFile, std::string& strPath, const uint32 nWriteDataSize)
 {
     for (;;)
     {
@@ -86,7 +86,7 @@ bool CTimeSeriesBase::GetLastFilePath(uint32& nFile, std::string& strPath)
             }
             fclose(fp);
         }
-        if (is_regular_file(last) && file_size(last) + MAX_CHUNK_SIZE + 8 <= MAX_FILE_SIZE)
+        if (is_regular_file(last) && file_size(last) + nWriteDataSize + 8 <= MAX_FILE_SIZE)
         {
             nFile = nLastFile;
             strPath = last.string();
