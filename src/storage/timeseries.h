@@ -72,7 +72,7 @@ protected:
     bool CheckDiskSpace();
     const std::string FileName(uint32 nFile);
     bool GetFilePath(uint32 nFile, std::string& strPath);
-    bool GetLastFilePath(uint32& nFile, std::string& strPath);
+    bool GetLastFilePath(uint32& nFile, std::string& strPath, const uint32 nWriteDataSize);
     bool RemoveFollowUpFile(uint32 nBeginFile);
     bool TruncateFile(const std::string& pathFile, uint32 nOffset);
     bool RepairFile(uint32 nFile, uint32 nOffset);
@@ -100,8 +100,11 @@ public:
     {
         boost::unique_lock<boost::mutex> lock(mtxCache);
 
+        xengine::CBufStream ss;
+        ss << t;
+
         std::string pathFile;
-        if (!GetLastFilePath(nFile, pathFile))
+        if (!GetLastFilePath(nFile, pathFile, ss.GetSize()))
         {
             return false;
         }
@@ -109,10 +112,10 @@ public:
         {
             xengine::CFileStream fs(pathFile.c_str());
             fs.SeekToEnd();
-            uint32 nSize = fs.GetSerializeSize(t);
+            uint32 nSize = ss.GetSize();
             fs << nMagicNum << nSize;
             nOffset = fs.GetCurPos();
-            fs << t;
+            fs.Write(ss.GetData(), ss.GetSize());
         }
         catch (std::exception& e)
         {
@@ -121,7 +124,7 @@ public:
         }
         if (fWriteCache)
         {
-            if (!WriteToCache(t, CDiskPos(nFile, nOffset)))
+            if (!WriteToCache(ss.GetData(), ss.GetSize(), CDiskPos(nFile, nOffset)))
             {
                 ResetCache();
             }
@@ -133,8 +136,11 @@ public:
     {
         boost::unique_lock<boost::mutex> lock(mtxCache);
 
+        xengine::CBufStream ss;
+        ss << t;
+
         std::string pathFile;
-        if (!GetLastFilePath(pos.nFile, pathFile))
+        if (!GetLastFilePath(pos.nFile, pathFile, ss.GetSize()))
         {
             return false;
         }
@@ -142,10 +148,10 @@ public:
         {
             xengine::CFileStream fs(pathFile.c_str());
             fs.SeekToEnd();
-            uint32 nSize = fs.GetSerializeSize(t);
+            uint32 nSize = ss.GetSize();
             fs << nMagicNum << nSize;
             pos.nOffset = fs.GetCurPos();
-            fs << t;
+            fs.Write(ss.GetData(), ss.GetSize());
         }
         catch (std::exception& e)
         {
@@ -154,7 +160,7 @@ public:
         }
         if (fWriteCache)
         {
-            if (!WriteToCache(t, pos))
+            if (!WriteToCache(ss.GetData(), ss.GetSize(), pos))
             {
                 ResetCache();
             }
@@ -259,50 +265,74 @@ public:
                 {
                     xengine::StdError("TimeSeriesCached", "WalkThrough: File size error, nFile: %d, size: %lu", nFile, nFileSize);
                     fFileDataError = true;
-                    break;
                 }
-                while (!fs.IsEOF() && fRet && nOffset < (uint32)nFileSize)
+                else
                 {
-                    uint32 nMagic, nSize;
-                    T t;
-                    try
+                    while (!fs.IsEOF() && fRet && nOffset < (uint32)nFileSize)
                     {
-                        fs >> nMagic >> nSize >> t;
-                    }
-                    catch (std::exception& e)
-                    {
-                        xengine::StdError("TimeSeriesCached", "WalkThrough: Read error, nFile: %d, msg: %s", nFile, e.what());
-                        fFileDataError = true;
-                        break;
-                    }
-                    if (nMagic != nMagicNum || (fs.GetCurPos() - nOffset - 8 != nSize))
-                    {
+                        if (nOffset + 8 > (uint32)nFileSize)
+                        {
+                            xengine::StdError("TimeSeriesCached", "WalkThrough: (nOffset + 8) error, nFile: %d, nFileSize: %lu, nOffset: %d", nFile, nFileSize, nOffset);
+                            fFileDataError = true;
+                            break;
+                        }
+                        uint32 nMagic, nSize;
+                        try
+                        {
+                            fs >> nMagic >> nSize;
+                        }
+                        catch (std::exception& e)
+                        {
+                            xengine::StdError("TimeSeriesCached", "WalkThrough: Read nMagic and nSize error, nFile: %d, msg: %s", nFile, e.what());
+                            fFileDataError = true;
+                            break;
+                        }
                         if (nMagic != nMagicNum)
                         {
-                            xengine::StdError("TimeSeriesCached", "WalkThrough: nMagic error, nFile: %d, nMagic=%x, right magic: %x",
-                                              nFile, nMagic, nMagicNum);
+                            xengine::StdError("TimeSeriesCached", "WalkThrough: nMagic error, nFile: %d, nOffset: %d, nMagic: %x, right magic: %x",
+                                              nFile, nOffset, nMagic, nMagicNum);
+                            fFileDataError = true;
+                            break;
+                        }
+                        if (nOffset + 8 + nSize > (uint32)nFileSize)
+                        {
+                            xengine::StdError("TimeSeriesCached", "WalkThrough: (nOffset + 8 + nSize) error, nFile: %d, nFileSize: %lu, nOffset: %d, nSize: %d",
+                                              nFile, nFileSize, nOffset, nSize);
+                            fFileDataError = true;
+                            break;
+                        }
+                        T t;
+                        try
+                        {
+                            fs >> t;
+                        }
+                        catch (std::exception& e)
+                        {
+                            xengine::StdError("TimeSeriesCached", "WalkThrough: Read t error, nFile: %d, msg: %s", nFile, e.what());
+                            fFileDataError = true;
+                            break;
                         }
                         if (fs.GetCurPos() - nOffset - 8 != nSize)
                         {
-                            xengine::StdError("TimeSeriesCached", "WalkThrough: read size error, nFile: %d, GetCurPos: %lu, nOffset: %d, nSize: %d",
+                            xengine::StdError("TimeSeriesCached", "WalkThrough: Read size error, nFile: %d, GetCurPos: %lu, nOffset: %d, nSize: %d",
                                               nFile, fs.GetCurPos(), nOffset, nSize);
+                            fFileDataError = true;
+                            break;
                         }
-                        fFileDataError = true;
-                        break;
+                        if (!walker.Walk(t, nFile, nOffset + 8))
+                        {
+                            xengine::StdLog("TimeSeriesCached", "WalkThrough: Walk fail");
+                            fRet = false;
+                            break;
+                        }
+                        nOffset = fs.GetCurPos();
                     }
-                    if (!walker.Walk(t, nFile, nOffset + 8))
+                    if (fRet && !fFileDataError)
                     {
-                        xengine::StdLog("TimeSeriesCached", "WalkThrough: Walk fail");
-                        fRet = false;
-                        break;
-                    }
-                    nOffset = fs.GetCurPos();
-                }
-                if (fRet && !fFileDataError)
-                {
-                    if (nOffset != (uint32)nFileSize)
-                    {
-                        xengine::StdLog("TimeSeriesCached", "WalkThrough: nOffset error, nOffset: %d, nFileSize: %lu", nOffset, nFileSize);
+                        if (nOffset != (uint32)nFileSize)
+                        {
+                            xengine::StdLog("TimeSeriesCached", "WalkThrough: nOffset error, nOffset: %d, nFileSize: %lu", nOffset, nFileSize);
+                        }
                     }
                 }
             }
@@ -386,11 +416,16 @@ protected:
     template <typename T>
     bool WriteToCache(const T& t, const CDiskPos& diskpos)
     {
+        xengine::CBufStream ss;
+        ss << t;
+        return WriteToCache(ss.GetData(), ss.GetSize(), diskpos);
+    }
+    bool WriteToCache(const char* pData, const uint32 nSize, const CDiskPos& diskpos)
+    {
         if (mapCachePos.count(diskpos))
         {
             return true;
         }
-        uint32 nSize = cacheStream.GetSerializeSize(t);
         if (!VacateCache(nSize))
         {
             return false;
@@ -400,7 +435,7 @@ protected:
             std::size_t nPos;
             cacheStream << diskpos << nSize;
             nPos = cacheStream.GetWritePos();
-            cacheStream << t;
+            cacheStream.Write(pData, nSize);
             mapCachePos.insert(std::make_pair(diskpos, nPos));
             return true;
         }
@@ -454,8 +489,11 @@ public:
     {
         boost::unique_lock<boost::mutex> lock(mtxWriter);
 
+        xengine::CBufStream ss;
+        ss << t;
+
         std::string pathFile;
-        if (!GetLastFilePath(pos.nFile, pathFile))
+        if (!GetLastFilePath(pos.nFile, pathFile, ss.GetSize()))
         {
             return false;
         }
@@ -463,10 +501,10 @@ public:
         {
             xengine::CFileStream fs(pathFile.c_str());
             fs.SeekToEnd();
-            uint32 nSize = fs.GetSerializeSize(t);
+            uint32 nSize = ss.GetSize();
             fs << nMagicNum << nSize;
             pos.nOffset = fs.GetCurPos();
-            fs << t;
+            fs.Write(ss.GetData(), ss.GetSize());
         }
         catch (std::exception& e)
         {
@@ -484,9 +522,12 @@ public:
 
         while (n < vBatch.size())
         {
+            xengine::CBufStream ss;
+            ss << vBatch[n];
+
             uint32 nFile, nOffset;
             std::string pathFile;
-            if (!GetLastFilePath(nFile, pathFile))
+            if (!GetLastFilePath(nFile, pathFile, ss.GetSize()))
             {
                 return false;
             }
@@ -496,12 +537,18 @@ public:
                 fs.SeekToEnd();
                 do
                 {
-                    uint32 nSize = fs.GetSerializeSize(vBatch[n]);
+                    uint32 nSize = ss.GetSize();
                     fs << nMagicNum << nSize;
                     nOffset = fs.GetCurPos();
-                    fs << vBatch[n++];
+                    fs.Write(ss.GetData(), ss.GetSize());
                     vPos.push_back(CDiskPos(nFile, nOffset));
-                } while (n < vBatch.size() && nOffset < MAX_FILE_SIZE - MAX_CHUNK_SIZE - 8);
+                    if (++n >= vBatch.size())
+                    {
+                        break;
+                    }
+                    ss.Clear();
+                    ss << vBatch[n];
+                } while (fs.GetCurPos() + ss.GetSize() + 8 <= MAX_FILE_SIZE);
             }
             catch (std::exception& e)
             {
