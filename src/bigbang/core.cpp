@@ -833,9 +833,7 @@ Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* p
 
     vector<unsigned char> vchProofOfWork;
     block.GetSerializedProofOfWorkData(vchProofOfWork);
-    DEBUG(OK, "oijen prepare to hash\n");
     uint256 hash = crypto::CryptoPowHash(&vchProofOfWork[0], vchProofOfWork.size());
-    DEBUG(OK, "oijen done to hash\n");
 
 #if defined(BIGBANG_ARM_CRYPTO)
     uint32 height = block.GetBlockHeight();
@@ -854,17 +852,17 @@ Errno CCoreProtocol::VerifyProofOfWork(const CBlock& block, const CBlockIndex* p
     if ((height >= HEIGHT_HASH_MULTI_SIGNER) && (height <= HEIGHT_HASH_TX_DATA))
     {
         DEBUG(OK, "entering verification for arm64 with crypto - phase 2, height[%d]\n", height);
-        string prf = ToHexString(vchProofOfWork);
-        DEBUG(OK, "monero height[%d] - proof[%s] hash[%s] vs. target[%s]", height, prf.c_str(), hash.ToString().c_str(), hashTarget.ToString().c_str());
-        //return OK;
+        DEBUG(OK, "oijen fully verify hashing for arm64 for phase 2: armhash[%s] vs. thresholdhash[%s] with bits[%d] and height[%d]", hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits, height);
     }
     if ((height < HEIGHT_HASH_MULTI_SIGNER))
     {
         DEBUG(OK, "entering verification for arm64 with crypto - phase 1, height[%d]\n", height);
+        DEBUG(OK, "oijen fully verify hashing for arm64 for phase 1: armhash[%s] vs. thresholdhash[%s] with bits[%d] and height[%d]", hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits, height);
     }
     if ((height > HEIGHT_HASH_TX_DATA))
     {
         DEBUG(OK, "entering verification for arm64 with crypto - phase 3, height[%d]\n", height);
+        DEBUG(OK, "oijen fully verify hashing for arm64 for phase 3: armhash[%s] vs. thresholdhash[%s] with bits[%d] and height[%d]", hash.ToString().c_str(), hashTarget.ToString().c_str(), nBits, height);
     }
 #endif
 
