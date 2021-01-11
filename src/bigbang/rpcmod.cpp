@@ -298,6 +298,8 @@ CRPCMod::CRPCMod()
         ("listunspentold", &CRPCMod::RPCListUnspentOld)
         //
         ("getdefirelation", &CRPCMod::RPCGetDeFiRelation)
+        //
+        ("reversehex", &CRPCMod::RPCReverseHex)
         /* Mint */
         ("getwork", &CRPCMod::RPCGetWork)
         //
@@ -3515,6 +3517,32 @@ CRPCResultPtr CRPCMod::RPCListUnspentOld(CRPCParamPtr param)
     spResult->dTotal = dTotal;
 
     return spResult;
+}
+
+CRPCResultPtr CRPCMod::RPCReverseHex(rpc::CRPCParamPtr param)
+{
+    // reversehex <"hex">
+    auto spParam = CastParamPtr<CReverseHexParam>(param);
+
+    string strHex = spParam->strHex;
+    if (strHex.empty() || (strHex.size() % 2 != 0))
+    {
+        throw CRPCException(RPC_INVALID_PARAMS, "hex string size is not even");
+    }
+
+    regex r(R"([^0-9a-fA-F]+)");
+    smatch sm;
+    if (regex_search(strHex, sm, r))
+    {
+        throw CRPCException(RPC_INVALID_PARAMS, string("invalid hex string: ") + sm.str());
+    }
+
+    for (auto itBegin = strHex.begin(), itEnd = strHex.end() - 2; itBegin < itEnd; itBegin += 2, itEnd -= 2)
+    {
+        swap_ranges(itBegin, itBegin + 2, itEnd);
+    }
+
+    return MakeCReverseHexResultPtr(strHex);
 }
 
 // /* Mint */

@@ -101,6 +101,7 @@ private:
     rpc::CRPCResultPtr RPCGetForkHeight(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetVotes(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListDelegate(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCGetDeFiRelation(rpc::CRPCParamPtr param);
     /* Wallet */
     rpc::CRPCResultPtr RPCListKey(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetNewKey(rpc::CRPCParamPtr param);
@@ -143,7 +144,7 @@ private:
     rpc::CRPCResultPtr RPCAesDecrypt(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListUnspent(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListUnspentOld(rpc::CRPCParamPtr param);
-    rpc::CRPCResultPtr RPCGetDeFiRelation(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCReverseHex(rpc::CRPCParamPtr param);
     /* Mint */
     rpc::CRPCResultPtr RPCGetWork(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSubmitWork(rpc::CRPCParamPtr param);
