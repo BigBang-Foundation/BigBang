@@ -383,6 +383,12 @@ void CAddressUnspentDB::Deinitialize()
     }
 }
 
+bool CAddressUnspentDB::ExistFork(const uint256& hashFork)
+{
+    CReadLock rlock(rwAccess);
+    return mapAddressDB.find(hashFork) != mapAddressDB.end();
+}
+
 bool CAddressUnspentDB::LoadFork(const uint256& hashFork, const uint256& hashLastBlock)
 {
     CWriteLock wlock(rwAccess);
@@ -412,13 +418,11 @@ void CAddressUnspentDB::RemoveFork(const uint256& hashFork)
         (*it).second->RemoveAll();
         mapAddressDB.erase(it);
     }
-    else
+
+    boost::filesystem::path forkPath = pathAddress / hashFork.GetHex();
+    if (boost::filesystem::exists(forkPath))
     {
-        boost::filesystem::path forkPath = pathAddress / hashFork.GetHex();
-        if (boost::filesystem::exists(forkPath))
-        {
-            boost::filesystem::remove_all(forkPath);
-        }
+        boost::filesystem::remove_all(forkPath);
     }
 }
 

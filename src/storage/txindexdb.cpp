@@ -85,6 +85,12 @@ void CTxIndexDB::Deinitialize()
     }
 }
 
+bool CTxIndexDB::ExistFork(const uint256& hashFork)
+{
+    CReadLock rlock(rwAccess);
+    return mapTxDB.find(hashFork) != mapTxDB.end();
+}
+
 bool CTxIndexDB::LoadFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
@@ -114,13 +120,11 @@ void CTxIndexDB::RemoveFork(const uint256& hashFork)
         (*it).second->RemoveAll();
         mapTxDB.erase(it);
     }
-    else
+
+    boost::filesystem::path forkPath = pathTxIndex / hashFork.GetHex();
+    if (boost::filesystem::exists(forkPath))
     {
-        boost::filesystem::path forkPath = pathTxIndex / hashFork.GetHex();
-        if (boost::filesystem::exists(forkPath))
-        {
-            boost::filesystem::remove_all(forkPath);
-        }
+        boost::filesystem::remove_all(forkPath);
     }
 }
 

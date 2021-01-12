@@ -515,6 +515,12 @@ void CAddressDB::Deinitialize()
     }
 }
 
+bool CAddressDB::ExistFork(const uint256& hashFork)
+{
+    CReadLock rlock(rwAccess);
+    return mapAddressDB.find(hashFork) != mapAddressDB.end();
+}
+
 bool CAddressDB::LoadFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
@@ -544,13 +550,11 @@ void CAddressDB::RemoveFork(const uint256& hashFork)
         (*it).second->RemoveAll();
         mapAddressDB.erase(it);
     }
-    else
+
+    boost::filesystem::path forkPath = pathAddress / hashFork.GetHex();
+    if (boost::filesystem::exists(forkPath))
     {
-        boost::filesystem::path forkPath = pathAddress / hashFork.GetHex();
-        if (boost::filesystem::exists(forkPath))
-        {
-            boost::filesystem::remove_all(forkPath);
-        }
+        boost::filesystem::remove_all(forkPath);
     }
 }
 

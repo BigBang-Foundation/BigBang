@@ -359,6 +359,12 @@ void CUnspentDB::Deinitialize()
     }
 }
 
+bool CUnspentDB::ExistFork(const uint256& hashFork)
+{
+    CReadLock rlock(rwAccess);
+    return mapUnspentDB.find(hashFork) != mapUnspentDB.end();
+}
+
 bool CUnspentDB::LoadFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
@@ -388,13 +394,11 @@ void CUnspentDB::RemoveFork(const uint256& hashFork)
         (*it).second->RemoveAll();
         mapUnspentDB.erase(it);
     }
-    else
+
+    boost::filesystem::path forkPath = pathUnspent / hashFork.GetHex();
+    if (boost::filesystem::exists(forkPath))
     {
-        boost::filesystem::path forkPath = pathUnspent / hashFork.GetHex();
-        if (boost::filesystem::exists(forkPath))
-        {
-            boost::filesystem::remove_all(forkPath);
-        }
+        boost::filesystem::remove_all(forkPath);
     }
 }
 

@@ -235,6 +235,7 @@ public:
     {
         return (!!mapUnspentDB.count(hashFork));
     }
+    bool ExistFork(const uint256& hashFork);
     bool LoadFork(const uint256& hashFork);
     void RemoveFork(const uint256& hashFork);
     bool AddNewFork(const uint256& hashFork);

@@ -174,6 +174,7 @@ public:
     {
         return (!!mapAddressDB.count(hashFork));
     }
+    bool ExistFork(const uint256& hashFork);
     bool LoadFork(const uint256& hashFork, const uint256& hashLastBlock = uint256());
     void RemoveFork(const uint256& hashFork);
     bool AddNewFork(const uint256& hashFork, const uint256& hashLastBlock = uint256());

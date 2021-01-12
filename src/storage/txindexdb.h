@@ -24,6 +24,7 @@ public:
     CTxIndexDB();
     bool Initialize(const boost::filesystem::path& pathData, const bool fFlush = true);
     void Deinitialize();
+    bool ExistFork(const uint256& hashFork);
     bool LoadFork(const uint256& hashFork);
     void RemoveFork(const uint256& hashFork);
     bool AddNewFork(const uint256& hashFork);
