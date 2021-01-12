@@ -121,8 +121,9 @@ public:
     {
         return (!!mapAddressDB.count(hashFork));
     }
+    bool LoadFork(const uint256& hashFork);
+    void RemoveFork(const uint256& hashFork);
     bool AddNewFork(const uint256& hashFork);
-    bool RemoveFork(const uint256& hashFork);
     void Clear();
     bool UpdateAddressTxIndex(const uint256& hashFork, const std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddNew, const std::vector<CAddrTxIndex>& vRemove);
     bool RepairAddressTxIndex(const uint256& hashFork, const std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddUpdate, const std::vector<CAddrTxIndex>& vRemove);

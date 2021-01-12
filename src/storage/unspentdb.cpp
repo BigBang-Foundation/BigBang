@@ -359,7 +359,7 @@ void CUnspentDB::Deinitialize()
     }
 }
 
-bool CUnspentDB::AddNewFork(const uint256& hashFork)
+bool CUnspentDB::LoadFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -378,7 +378,7 @@ bool CUnspentDB::AddNewFork(const uint256& hashFork)
     return true;
 }
 
-bool CUnspentDB::RemoveFork(const uint256& hashFork)
+void CUnspentDB::RemoveFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -387,9 +387,21 @@ bool CUnspentDB::RemoveFork(const uint256& hashFork)
     {
         (*it).second->RemoveAll();
         mapUnspentDB.erase(it);
-        return true;
     }
-    return false;
+    else
+    {
+        boost::filesystem::path forkPath = pathUnspent / hashFork.GetHex();
+        if (boost::filesystem::exists(forkPath))
+        {
+            boost::filesystem::remove_all(forkPath);
+        }
+    }
+}
+
+bool CUnspentDB::AddNewFork(const uint256& hashFork)
+{
+    RemoveFork(hashFork);
+    return LoadFork(hashFork);
 }
 
 void CUnspentDB::Clear()

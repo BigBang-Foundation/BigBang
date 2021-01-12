@@ -478,7 +478,7 @@ void CAddressTxIndexDB::Deinitialize()
     }
 }
 
-bool CAddressTxIndexDB::AddNewFork(const uint256& hashFork)
+bool CAddressTxIndexDB::LoadFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -497,7 +497,7 @@ bool CAddressTxIndexDB::AddNewFork(const uint256& hashFork)
     return true;
 }
 
-bool CAddressTxIndexDB::RemoveFork(const uint256& hashFork)
+void CAddressTxIndexDB::RemoveFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -506,9 +506,21 @@ bool CAddressTxIndexDB::RemoveFork(const uint256& hashFork)
     {
         (*it).second->RemoveAll();
         mapAddressDB.erase(it);
-        return true;
     }
-    return false;
+    else
+    {
+        boost::filesystem::path forkPath = pathAddress / hashFork.GetHex();
+        if (boost::filesystem::exists(forkPath))
+        {
+            boost::filesystem::remove_all(forkPath);
+        }
+    }
+}
+
+bool CAddressTxIndexDB::AddNewFork(const uint256& hashFork)
+{
+    RemoveFork(hashFork);
+    return LoadFork(hashFork);
 }
 
 void CAddressTxIndexDB::Clear()

@@ -383,7 +383,7 @@ void CAddressUnspentDB::Deinitialize()
     }
 }
 
-bool CAddressUnspentDB::AddNewFork(const uint256& hashFork, const uint256& hashLastBlock)
+bool CAddressUnspentDB::LoadFork(const uint256& hashFork, const uint256& hashLastBlock)
 {
     CWriteLock wlock(rwAccess);
 
@@ -402,7 +402,7 @@ bool CAddressUnspentDB::AddNewFork(const uint256& hashFork, const uint256& hashL
     return true;
 }
 
-bool CAddressUnspentDB::RemoveFork(const uint256& hashFork)
+void CAddressUnspentDB::RemoveFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -411,9 +411,21 @@ bool CAddressUnspentDB::RemoveFork(const uint256& hashFork)
     {
         (*it).second->RemoveAll();
         mapAddressDB.erase(it);
-        return true;
     }
-    return false;
+    else
+    {
+        boost::filesystem::path forkPath = pathAddress / hashFork.GetHex();
+        if (boost::filesystem::exists(forkPath))
+        {
+            boost::filesystem::remove_all(forkPath);
+        }
+    }
+}
+
+bool CAddressUnspentDB::AddNewFork(const uint256& hashFork, const uint256& hashLastBlock)
+{
+    RemoveFork(hashFork);
+    return LoadFork(hashFork, hashLastBlock);
 }
 
 void CAddressUnspentDB::Clear()

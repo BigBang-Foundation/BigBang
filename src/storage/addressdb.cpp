@@ -515,7 +515,7 @@ void CAddressDB::Deinitialize()
     }
 }
 
-bool CAddressDB::AddNewFork(const uint256& hashFork)
+bool CAddressDB::LoadFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -534,7 +534,7 @@ bool CAddressDB::AddNewFork(const uint256& hashFork)
     return true;
 }
 
-bool CAddressDB::RemoveFork(const uint256& hashFork)
+void CAddressDB::RemoveFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -543,9 +543,21 @@ bool CAddressDB::RemoveFork(const uint256& hashFork)
     {
         (*it).second->RemoveAll();
         mapAddressDB.erase(it);
-        return true;
     }
-    return false;
+    else
+    {
+        boost::filesystem::path forkPath = pathAddress / hashFork.GetHex();
+        if (boost::filesystem::exists(forkPath))
+        {
+            boost::filesystem::remove_all(forkPath);
+        }
+    }
+}
+
+bool CAddressDB::AddNewFork(const uint256& hashFork)
+{
+    RemoveFork(hashFork);
+    return LoadFork(hashFork);
 }
 
 void CAddressDB::Clear()

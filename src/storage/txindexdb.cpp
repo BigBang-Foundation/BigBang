@@ -104,6 +104,32 @@ bool CTxIndexDB::LoadFork(const uint256& hashFork)
     return true;
 }
 
+void CTxIndexDB::RemoveFork(const uint256& hashFork)
+{
+    CWriteLock wlock(rwAccess);
+
+    map<uint256, std::shared_ptr<CForkTxDB>>::iterator it = mapTxDB.find(hashFork);
+    if (it != mapTxDB.end())
+    {
+        (*it).second->RemoveAll();
+        mapTxDB.erase(it);
+    }
+    else
+    {
+        boost::filesystem::path forkPath = pathTxIndex / hashFork.GetHex();
+        if (boost::filesystem::exists(forkPath))
+        {
+            boost::filesystem::remove_all(forkPath);
+        }
+    }
+}
+
+bool CTxIndexDB::AddNewFork(const uint256& hashFork)
+{
+    RemoveFork(hashFork);
+    return LoadFork(hashFork);
+}
+
 bool CTxIndexDB::Update(const uint256& hashFork, const vector<pair<uint256, CTxIndex>>& vTxNew,
                         const vector<uint256>& vTxDel)
 {
