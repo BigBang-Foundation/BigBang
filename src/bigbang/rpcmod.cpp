@@ -169,7 +169,7 @@ namespace bigbang
 
 CRPCMod::CRPCMod()
   : IIOModule("rpcmod"),
-    thrHttpServer("3rdhttpserver", boost::bind(&CRPCMod::HttpServerThreadFunc, this))
+    thrHttpServer("httpserver", boost::bind(&CRPCMod::HttpServerThreadFunc, this))
 {
     pHttpServer = nullptr;
     pCoreProtocol = nullptr;
