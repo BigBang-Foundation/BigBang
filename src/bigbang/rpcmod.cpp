@@ -328,11 +328,11 @@ CRPCMod::~CRPCMod()
 
 bool CRPCMod::HandleInitialize()
 {
-    if (!GetObject("httpserver", pHttpServer))
-    {
-        Error("Failed to request httpserver");
-        return false;
-    }
+    // if (!GetObject("httpserver", pHttpServer))
+    // {
+    //     Error("Failed to request httpserver");
+    //     return false;
+    // }
 
     if (!GetObject("coreprotocol", pCoreProtocol))
     {
