@@ -781,14 +781,15 @@ void cn_slow_hash_1(const void* data, size_t length, char* hash, int variant, in
 
     size_t i, j;
     uint64_t* p = NULL;
-    oaes_ctx* aes_ctx = NULL;
     static void (*const extra_hashes[4])(const void*, size_t, char*) = {
         hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
     };
 
     // this isn't supposed to happen, but guard against it for now.
     if (hp_state == NULL)
+    {
         slow_hash_allocate_state();
+    }
 
     /* CryptoNight Step 1:  Use Keccak1600 to initialize the 'state' (and 'text') buffers from the data. */
     hash_process(&state.hs, data, length);
@@ -974,12 +975,16 @@ union cn_slow_hash_state
 */
 static void aes_expand_key(const uint8_t* key, uint8_t* expandedKey)
 {
+    //static inline void aes_expand_key(const uint8_t *key, uint8_t *expandedKey) {
+    //void aes_expand_key(const uint8_t *key, uint8_t *expandedKey) {
     static const int rcon[] = {
+        //const int rcon[] = {
         0x01, 0x01, 0x01, 0x01,
         0x0c0f0e0d, 0x0c0f0e0d, 0x0c0f0e0d, 0x0c0f0e0d, // rotate-n-splat
         0x1b, 0x1b, 0x1b, 0x1b
     };
     __asm__(
+        //__asm__  __volatile__(
         "	eor	v0.16b,v0.16b,v0.16b\n"
         "	ld1	{v3.16b},[%0],#16\n"
         "	ld1	{v1.4s,v2.4s},[%2],#32\n"
@@ -1065,12 +1070,6 @@ STATIC INLINE void aes_pseudo_round(const uint8_t* in, uint8_t* out, const uint8
     }
 }
 
-void print128_num(uint8x16_t var)
-{
-    uint16_t* val = (uint16_t*)&var;
-    printf("Numerical: %i %i %i %i %i %i %i %i \n", val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7]);
-}
-
 STATIC INLINE void aes_pseudo_round_xor(const uint8_t* in, uint8_t* out, const uint8_t* expandedKey, const uint8_t* xor, int nblocks)
 {
     const uint8x16_t* k = (const uint8x16_t*)expandedKey;
@@ -1078,15 +1077,11 @@ STATIC INLINE void aes_pseudo_round_xor(const uint8_t* in, uint8_t* out, const u
     uint8x16_t tmp;
     int i;
 
-    //print128_num(*x);
     for (i = 0; i < nblocks; i++)
     {
         uint8x16_t tmp = vld1q_u8(in + i * AES_BLOCK_SIZE);
-        //print128_num(tmp);
         tmp = vaeseq_u8(tmp, x[i]);
         tmp = vaesmcq_u8(tmp);
-        //printf("x[i][%d]\n", x[i]);
-        //print128_num(tmp);
         tmp = vaeseq_u8(tmp, k[0]);
         tmp = vaesmcq_u8(tmp);
         tmp = vaeseq_u8(tmp, k[1]);
@@ -1107,8 +1102,6 @@ STATIC INLINE void aes_pseudo_round_xor(const uint8_t* in, uint8_t* out, const u
         tmp = vaesmcq_u8(tmp);
         tmp = veorq_u8(tmp, k[9]);
         vst1q_u8(out + i * AES_BLOCK_SIZE, tmp);
-        //printf("aesblocksize[%d]\n", AES_BLOCK_SIZE);
-        //exit(-2);
     }
 }
 
@@ -1137,15 +1130,9 @@ STATIC INLINE void aligned_free(void* ptr)
 
 void cn_slow_hash_1_a(const void* data, size_t length, char* hash, int variant, int prehashed, uint64_t height)
 {
-    printf("cn_slow_hash - 2_2\n");
-    struct timeval entertime, leavetime;
-    gettimeofday(&entertime, NULL);
-    printf("CN_SLOW_HASH - enter time: [%lu]s[%lu]us\n", entertime.tv_sec, entertime.tv_usec);
-
     RDATA_ALIGN16 uint8_t expandedKey[240];
 
 #ifndef FORCE_USE_HEAP
-    printf("No FORCE_USE_HEAP\n");
     RDATA_ALIGN16 uint8_t hp_state[MEMORY];
 #else
     uint8_t* hp_state = (uint8_t*)aligned_malloc(MEMORY, 16);
@@ -1162,30 +1149,19 @@ void cn_slow_hash_1_a(const void* data, size_t length, char* hash, int variant, 
 
     size_t i, j;
     uint64_t* p = NULL;
-    oaes_ctx* aes_ctx = NULL; //todo: maybe useless
 
     static void (*const extra_hashes[4])(const void*, size_t, char*) = {
         hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
     };
 
     /* CryptoNight Step 1:  Use Keccak1600 to initialize the 'state' (and 'text') buffers from the data. */
-    printf("step - 1\n");
 
-    //    if (prehashed) {
-    //        memcpy(&state.hs, data, length);
-    //    } else {
     hash_process(&state.hs, data, length);
-    //    }
     memcpy(text, state.init, INIT_SIZE_BYTE);
-
-    //    VARIANT1_INIT64();
-    //    VARIANT2_INIT64();
-    //    VARIANT4_RANDOM_MATH_INIT();
 
     /* CryptoNight Step 2:  Iteratively encrypt the results from Keccak to fill
      * the 2MB large random access buffer.
      */
-    printf("step - 2\n");
 
     aes_expand_key(state.hs.b, expandedKey);
     for (i = 0; i < MEMORY / INIT_SIZE_BYTE; i++)
@@ -1216,69 +1192,24 @@ void cn_slow_hash_1_a(const void* data, size_t length, char* hash, int variant, 
      * using 524,288 iterations of the following mixing function.  Each execution
      * performs two reads and writes from the mixing buffer.
      */
-    printf("step - 3[%d]\n", ITER);
 
-    _b = vld1q_u8((const uint8_t*)b);                     //todo: review later
-    _b1 = vld1q_u8(((const uint8_t*)b) + AES_BLOCK_SIZE); //todo: review later
+    _b = vld1q_u8((const uint8_t*)b);
+    _b1 = vld1q_u8(((const uint8_t*)b) + AES_BLOCK_SIZE);
 
-    //suseconds_t c = 0;
-    //unsigned long long ecl = 0;
-    long long ecl = 0;
-    long long its = 0;
-    struct timespec time_start = { 0, 0 }, time_end = { 0, 0 };
     for (i = 0; i < ITER / 2; i++)
     {
         pre_aes();
-        //        _c = vaeseq_u8(_c, zero);
-        //        _c = vaesmcq_u8(_c);
-        //print128_num(_c);
-        //print128_num(_a);
-        //_c = veorq_u8(_c, _a);
-        //        _c = vaeseq_u8(_c, zero);
-        //       _c = vaesmcq_u8(_c);
-        //      _c = vaeseq_u8(_c, _a);
-        //     _c = veorq_u8(_c, _a);
-        time_start.tv_sec = 0;
-        time_start.tv_nsec = 0;
-        time_end.tv_sec = 0;
-        time_end.tv_nsec = 0;
-        clock_gettime(CLOCK_REALTIME, &time_start);
-        //aesb_single_round((uint8_t*)&_c, (uint8_t*)&_c, (uint8_t*)&_a);
         _c = vaesmcq_u8(vaeseq_u8(_c, (uint8x16_t){})) ^ _a;
-        clock_gettime(CLOCK_REALTIME, &time_end);
-        ++its;
-        //ecl = (e.tv_sec-s.tv_sec) * 1000000 + (e.tv_usec - s.tv_usec);
-        ecl += (time_end.tv_sec - time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
-        //long temp = (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
-        //printf("gap is [%010lld]\n", ecl);
-        //printf("gap is [%.10llu] at iteration of [% 5d]\n", ecl, i);
-        //printf("gap is [%.10lu] at iteration of [% 5ld]\n", temp, its);
-        //print128_num(_c);
-        //_c =  vaeseq_u8(_c, _a);
         _c_aes = _c;
         for (int j = 0; j < 10; j++)
         {
-            clock_gettime(CLOCK_REALTIME, &time_start);
-            //aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
             _c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes;
-            clock_gettime(CLOCK_REALTIME, &time_end);
-            ++its;
-            ecl += (time_end.tv_sec - time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
-            //long temp = (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
-            //printf("gap is [%.10lu] at iteration of [% 5lld]\n", temp, its);
         }
         if (height < HEIGHT_HASH_MULTI_SIGNER)
         {
             for (int j = 0; j < 17; j++)
             {
-                clock_gettime(CLOCK_REALTIME, &time_start);
-                //aesb_single_round((uint8_t*)&_c_aes, (uint8_t*)&_c_aes, (uint8_t*)&_c_aes);
                 _c_aes = vaesmcq_u8(vaeseq_u8(_c_aes, (uint8x16_t){})) ^ _c_aes;
-                clock_gettime(CLOCK_REALTIME, &time_end);
-                ++its;
-                ecl += (time_end.tv_sec - time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
-                //long temp = (time_end.tv_sec-time_start.tv_sec) * 1000000000 + (time_end.tv_nsec - time_start.tv_nsec);
-                //printf("gap is [%.10lu] at iteration of [% 5lld]\n", temp, its);
             }
         }
         post_aes();
@@ -1286,29 +1217,18 @@ void cn_slow_hash_1_a(const void* data, size_t length, char* hash, int variant, 
         a[0] ^= U64(&_c_aes)[0];
         a[1] ^= U64(&_c_aes)[1];
     }
-    printf("gap is [%.16llu]ns with average of [%.10llu]ns and [%.10llu]iterations at height of [%lu]\n", ecl, (ecl / its), its, height);
 
     /* CryptoNight Step 4:  Sequentially pass through the mixing buffer and use 10 rounds
      * of AES encryption to mix the random data back into the 'text' buffer.  'text'
      * was originally created with the output of Keccak1600. */
 
-    printf("step - 4[%d]init-size-blk[%d]\n", MEMORY / INIT_SIZE_BYTE, INIT_SIZE_BLK);
-
     memcpy(text, state.init, INIT_SIZE_BYTE);
 
     aes_expand_key(&state.hs.b[32], expandedKey);
-    //for (int i = 0; i < 64; i++)    {        printf("%02x", hp_state[i]);    }    exit(0);
-    //for (int i = 0; i < 240; i++)    {        printf("%02x", expandedKey[i]);    }    printf(" ----- 4 \n");
     for (i = 0; i < MEMORY / INIT_SIZE_BYTE; i++)
     {
         // add the xor to the pseudo round
         aes_pseudo_round_xor(text, text, expandedKey, &hp_state[i * INIT_SIZE_BYTE], INIT_SIZE_BLK);
-        /*for (int i = 0; i < 128; i++)    
-{        
-printf("%02x", text[i]);    
-}    
-printf("----- 4 \n");
-break;*/
     }
 
     /* CryptoNight Step 5:  Apply Keccak to the state again, and then
@@ -1317,7 +1237,6 @@ break;*/
      * Use this hash to squeeze the state array down
      * to the final 256 bit hash output.
      */
-    printf("step - 5\n");
 
     memcpy(state.init, text, INIT_SIZE_BYTE);
     hash_permutation(&state.hs);
@@ -1326,9 +1245,6 @@ break;*/
 #ifdef FORCE_USE_HEAP
     aligned_free(hp_state);
 #endif
-    gettimeofday(&leavetime, NULL);
-    printf("CN_SLOW_HASH - leave time: [%lu]s[%lu]us\n", leavetime.tv_sec, leavetime.tv_usec);
-    printf("CN_SLOW_HASH - calcduration: [%10lu]us\n", (leavetime.tv_sec - entertime.tv_sec) * 1000000 + (leavetime.tv_usec - entertime.tv_usec));
 }
 #else /* aarch64 && crypto */
 

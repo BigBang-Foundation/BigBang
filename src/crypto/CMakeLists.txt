@@ -70,6 +70,10 @@ if(UNIX)
 endif()
 
 
+if(SANITIZE)
+    message(status "oijen: sanitize is on")
+endif ()
+
 add_library(crypto ${sources})
 
 include_directories(../xengine ../common ./ ${sodium_INCLUDE_DIR})

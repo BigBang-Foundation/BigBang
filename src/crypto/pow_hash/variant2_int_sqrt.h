@@ -4,12 +4,6 @@
 #include <float.h>
 #include <math.h>
 
-#if defined(__aarch64__) && defined(__ARM_FEATURE_CRYPTO)
-#define VARIANT2_INTEGER_MATH_SQRT_STEP_SSE2()                                                                  \
-    do                                                                                                          \
-    {;                                                                                                          \
-    } while (0)
-#else
 #define VARIANT2_INTEGER_MATH_SQRT_STEP_SSE2()                                                                  \
     do                                                                                                          \
     {                                                                                 \
@@ -18,7 +12,6 @@
         x = _mm_sqrt_sd(_mm_setzero_pd(), x);                                                                   \
         sqrt_result = (uint64_t)(_mm_cvtsi128_si64(_mm_sub_epi64(_mm_castpd_si128(x), exp_double_bias))) >> 19; \
     } while (0)
-#endif
 
 #define VARIANT2_INTEGER_MATH_SQRT_STEP_FP64()                                        \
     do                                                                                \
