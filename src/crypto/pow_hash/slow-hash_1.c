@@ -931,6 +931,7 @@ static const int rcon[] = {
 	0x01,0x01,0x01,0x01,
 	0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d,	// rotate-n-splat
 	0x1b,0x1b,0x1b,0x1b };
+static char c[10];sprintf(c, "oijen");
 __asm__ (
 //__asm__  __volatile__(
 "	eor	v0.16b,v0.16b,v0.16b\n"
@@ -1109,6 +1110,7 @@ void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, 
      * the 2MB large random access buffer.
      */
 
+	printf("oijen: step 2\n");
     aes_expand_key(state.hs.b, expandedKey);
     for(i = 0; i < MEMORY / INIT_SIZE_BYTE; i++)
     {
@@ -1166,6 +1168,7 @@ void cn_slow_hash_1_a(const void *data, size_t length, char *hash, int variant, 
 
     memcpy(text, state.init, INIT_SIZE_BYTE);
 
+	printf("oijen: step 4\n");
     aes_expand_key(&state.hs.b[32], expandedKey);
     for(i = 0; i < MEMORY / INIT_SIZE_BYTE; i++)
     {
