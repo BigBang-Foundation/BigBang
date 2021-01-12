@@ -150,6 +150,7 @@ endif()
 if(MSVC)
     add_definitions(-D_WIN32_WINNT=0x0601)
     add_definitions(-DBOOST_ALL_DYN_LINK)
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
 endif()
 
 if(TESTNET)
