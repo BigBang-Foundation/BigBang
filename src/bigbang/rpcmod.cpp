@@ -396,7 +396,7 @@ void CRPCMod::HandleHalt()
 
     auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
 
-    httplib::Client cli(pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
+    httplib::Client cli(pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
     std::string path = std::string("/") + "stop";
     if (auto res = cli.Get(path.c_str()))
     {
@@ -4339,6 +4339,7 @@ void CRPCMod::HttpServerThreadFunc()
 
     using namespace httplib;
     Server svr;
+    svr.set_keep_alive_max_count(pConfig->nRPCMaxConnections);
 
     svr.Post("/sync/rpc", [this](const Request& req, Response& res) {
         auto lmdMask = [](const std::string& data) -> std::string {
@@ -4357,8 +4358,8 @@ void CRPCMod::HttpServerThreadFunc()
         res.set_content("Stopped Http Server", "text/plain");
     });
 
-    StdLog("CRPCMod::HttpServerThreadFunc", "Http Server started: %s:%d", pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
-    svr.listen(pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
+    StdLog("CRPCMod::HttpServerThreadFunc", "Http Server started: %s:%d", pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
+    svr.listen(pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
 }
 
 CPusher::CPusher()

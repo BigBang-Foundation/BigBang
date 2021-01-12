@@ -153,22 +153,6 @@
             "desc": "Listen for JSON-RPC connections on <port> (default: 9902 or testnet: 9904))"
         },
         {
-            "name": "nHTTPPortInt",
-            "type": "int",
-            "opt": "httpserverport",
-            "default": 0,
-            "format": "-httpserverport=port",
-            "desc": "Listen for JSON-RPC Http Server connections on <port> (default: 9908 or testnet: 9910))"
-        },
-        {
-            "name": "strHTTPHost",
-            "type": "string",
-            "opt": "httpserver",
-            "default": "0.0.0.0",
-            "format": "-httpserver=host",
-            "desc": "Listen for JSON-RPC Http Server Host (default: 0.0.0.0)"
-        },
-        {
             "name": "fRPCListen",
             "type": "bool",
             "opt": "rpclisten",

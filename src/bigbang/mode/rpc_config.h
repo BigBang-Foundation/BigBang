@@ -26,8 +26,6 @@ public:
 
 public:
     unsigned int nRPCPort;
-    unsigned int nHttpPort;
-    std::string strHttpHost;
 };
 
 class CRPCServerConfig : virtual public CRPCBasicConfig, virtual public CRPCServerConfigOption
