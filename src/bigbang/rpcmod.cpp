@@ -399,7 +399,7 @@ void CRPCMod::HandleHalt()
     auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
 
     httplib::Client cli(pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
-    std::string path = std::string("/") + "stop";
+    std::string path = std::string("/httpserver/stop");
     if (auto res = cli.Get(path.c_str()))
     {
         if (res->status == 200)
@@ -4394,7 +4394,7 @@ void CRPCMod::HttpServerThreadFunc()
     Server svr;
     svr.set_keep_alive_max_count(pConfig->nRPCMaxConnections);
 
-    svr.Post("/sync/rpc", [this](const Request& req, Response& res) {
+    svr.Post("/bigbang/rpc", [this](const Request& req, Response& res) {
         if (!IsAllowedRemote(req.remote_addr))
         {
             char msg[512] = { 0 };
@@ -4402,7 +4402,7 @@ void CRPCMod::HttpServerThreadFunc()
             std::string content(msg);
             content.append("\n");
             res.set_header("Connection", "close");
-            res.set_header("Server", "bigbang-data-sync-rpc");
+            res.set_header("Server", "bigbang-rpc");
             res.set_content(content.c_str(), "application/json");
             return;
         }
@@ -4413,14 +4413,19 @@ void CRPCMod::HttpServerThreadFunc()
         std::string content = this->CallRPCFromJSON(req.body, lmdMask, true);
         content.append("\n");
         res.set_header("Connection", "Keep-Alive");
-        res.set_header("Server", "bigbang-data-sync-rpc");
+        res.set_header("Server", "bigbang-rpc");
         res.set_content(content.c_str(), "application/json");
     });
 
-    svr.Get("/stop", [&svr](const Request& req, Response& res) {
+    svr.Get("/httpserver/stop", [&svr](const Request& req, Response& res) {
+        if (req.remote_addr != "127.0.0.1" && req.remote_addr != "::1")
+        {
+            return;
+        }
+
         svr.stop();
-        res.set_header("Server", "bigbang-data-sync-rpc");
-        res.set_content("Stopped Http Server", "text/plain");
+        res.set_header("Server", "bigbang-internal-rpc");
+        res.set_content("Stopped Http Server\n", "text/plain");
     });
 
     StdLog("CRPCMod::HttpServerThreadFunc", "Http Server started: %s:%d", pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
