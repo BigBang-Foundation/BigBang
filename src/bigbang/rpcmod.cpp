@@ -19,6 +19,7 @@
 #include "json/json.hpp"
 
 #include "address.h"
+#include "entry.h"
 #include "http/httplib.h"
 #include "rpc/auto_protocol.h"
 #include "template/fork.h"
@@ -4382,6 +4383,8 @@ void CRPCMod::HttpServerThreadFunc()
     if (!pConfig->vRPCAllowIP.empty() && !BuildWhiteList(pConfig->vRPCAllowIP))
     {
         StdError("RPCMod", "Http Server Build White List failed.");
+        bigbang::CBbEntry::GetInstance().Stop();
+        return;
     }
 
     using namespace httplib;
@@ -4400,7 +4403,6 @@ void CRPCMod::HttpServerThreadFunc()
             return;
         }
 
-        
         auto lmdMask = [](const std::string& data) -> std::string {
             return data;
         };
