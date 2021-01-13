@@ -1154,6 +1154,8 @@ union cn_slow_hash_state
  * it's been shortened since Cryptonight doesn't use the full
  * key schedule. Don't try to use this for vanilla AES.
 */
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 static void aes_expand_key(const uint8_t *key, uint8_t *expandedKey) {
 static const int rcon[] = {
 	0x01,0x01,0x01,0x01,
@@ -1200,6 +1202,7 @@ __asm__(
 "\n"
 "2:\n" : : "r"(key), "r"(expandedKey), "r"(rcon));
 }
+#pragma GCC pop_options
 
 /* An ordinary AES round is a sequence of SubBytes, ShiftRows, MixColumns, AddRoundKey. There
  * is also an InitialRound which consists solely of AddRoundKey. The ARM instructions slice
