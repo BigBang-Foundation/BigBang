@@ -1393,6 +1393,18 @@
                     "type": "uint",
                     "desc": "fork params, a json object"
                 },
+                "flag": {
+                    "type": "uint",
+                    "desc": "Fork Flag"
+                },
+                "mintxfee": {
+                    "type": "double",
+                    "desc": "min tx fee"
+                },
+                "jointheight": {
+                    "type": "uint",
+                    "desc": "Fork Joint Height"
+                },
                 "defi": {
                     "type": "object",
                     "desc": "Fork DeFi Parameters",

@@ -3983,6 +3983,9 @@ CRPCResultPtr CRPCMod::RPCGetFork(rpc::CRPCParamPtr param)
     spResult->fEnclosed = profile.IsEnclosed();
     spResult->strOwner = CAddress(profile.destOwner).ToString();
     spResult->nForktype = profile.nForkType;
+    spResult->nFlag = profile.nFlag;
+    spResult->nJointheight = profile.nJointHeight;
+    spResult->dMintxfee = ValueFromAmount(profile.nMinTxFee);
     if (spResult->nForktype == FORK_TYPE_DEFI)
     {
         spResult->defi.nMintheight = profile.defi.nMintHeight;
