@@ -2899,6 +2899,12 @@
                     "desc": "lock height",
                     "required": false,
                     "opt": "lh"
+                },
+                "cancel_order_sign": {
+                    "type": "string",
+                    "desc": "cancel order sign of match",
+                    "required": false,
+                    "opt": "cos"
                 }
             }
         },
@@ -3107,6 +3113,12 @@
                     "desc": "sign secret",
                     "required": false,
                     "opt": "sec"
+                },
+                "cancel_order_sign": {
+                    "type": "string",
+                    "desc": "cancel order sign of match",
+                    "required": false,
+                    "opt": "cos"
                 }
             }
         },
@@ -4516,6 +4528,44 @@
         "error": [
             "{\"code\":-8,\"message\":\"Raw tx decode failed\"}",
             "{\"code\":-10,\"message\":\"Tx rejected : xxx\"}"
+        ]
+    },
+    "signtransactiondata": {
+        "type": "command",
+        "name": "SignTransactionData",
+        "desc": "Sign transaction data offline using pubkey address.",
+        "request": {
+            "type": "object",
+            "content": {
+                "address": {
+                    "type": "string",
+                    "desc": "hex address string of pubkey address used to sign offline transaction"
+                },
+                "txdata": {
+                    "type": "string",
+                    "desc": "hex string of transaction binary data"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "signdata",
+            "desc": "sign raw data"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli signtransactiondata 15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd 0100000086b2fe5f0000000091d2b15e9aeeb57483889873bd0aea1273c8e5bb8df436c2bd4e850600000000013d793fedf94f1abdf68d081e0f8f5c4647ec2fc0953d4b7a8064e4ab73b2fe5f0001acaf34728eafb77c919f3b50b4da4c36b2d8f75ffa80502855009d7b3d9810a1002d31010000000010270000000000000000",
+                "response": "15d4268f5b04328a5ce3434c0ad97f4ce97cabd6f65a534944cf337fa0b504dd82e03d366bdd46db82bae97c627e92bb2ab74c1913bd0a18e325a049f564a805"
+            },
+            {
+                "request": "curl -d '{\"id\":3,\"method\":\"signtransactiondata\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd\",\"txdata\":\"0100000086b2fe5f0000000091d2b15e9aeeb57483889873bd0aea1273c8e5bb8df436c2bd4e850600000000013d793fedf94f1abdf68d081e0f8f5c4647ec2fc0953d4b7a8064e4ab73b2fe5f0001acaf34728eafb77c919f3b50b4da4c36b2d8f75ffa80502855009d7b3d9810a1002d31010000000010270000000000000000\"}}' http://127.0.0.1:19902",
+                "response": "{\"id\":3,\"jsonrpc\":\"2.0\",\"result\":\"15d4268f5b04328a5ce3434c0ad97f4ce97cabd6f65a534944cf337fa0b504dd82e03d366bdd46db82bae97c627e92bb2ab74c1913bd0a18e325a049f564a805\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-8,\"message\":\"Raw tx decode failed\"}",
+            "{\"code\":-10,\"message\":\"Tx rejected : xxx\"}",
+            "{\"code\":-401,\"message\":\"Failed to sign message\"}"
         ]
     }
 }

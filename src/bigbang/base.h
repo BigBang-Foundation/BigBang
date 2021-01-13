@@ -63,6 +63,7 @@ public:
     virtual bool IsDposHeight(int height) = 0;
     virtual bool IsDPoSNewTrustHeight(int height) = 0;
     virtual bool IsNewDiffPowHeight(int height) = 0;
+    virtual bool IsNewCancelDexOrderHeight(int height) = 0;
     virtual bool DPoSConsensusCheckRepeated(int height) = 0;
     virtual int64 GetPrimaryMintWorkReward(const CBlockIndex* pIndexPrev) = 0;
     virtual void GetDelegatedBallot(const uint256& nAgreement, const std::size_t nWeight, const std::map<CDestination, size_t>& mapBallot,

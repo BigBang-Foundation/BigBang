@@ -270,6 +270,8 @@ CRPCMod::CRPCMod()
         ("signrawtransactionwithwallet", &CRPCMod::RPCSignRawTransactionWithWallet)
         //
         ("sendrawtransaction", &CRPCMod::RPCSendRawTransaction)
+        //
+        ("signtransactiondata", &CRPCMod::RPCSignTransactionData)
         /* Util */
         ("verifymessage", &CRPCMod::RPCVerifyMessage)
         //
@@ -1963,6 +1965,20 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
             throw CRPCException(RPC_INVALID_PARAMETER, "Invalid from address");
         }
     }
+    if (from.IsTemplate() && from.GetTemplateId().GetType() == TEMPLATE_DEXORDER
+        && !(to.IsTemplate() && to.GetTemplateId().GetType() == TEMPLATE_DEXMATCH)
+        && pCoreProtocol->IsNewCancelDexOrderHeight(pService->GetForkHeight(hashFork) + 1))
+    {
+        if (!spParam->strCancel_Order_Sign.IsValid() || spParam->strCancel_Order_Sign.empty())
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid cancel_order_sign");
+        }
+        vchSignExtraData = ParseHexString(spParam->strCancel_Order_Sign);
+        if (vchSignExtraData.size() != 64)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid cancel_order_sign");
+        }
+    }
 
     if (from.IsTemplate() && from.GetTemplateId().GetType() == TEMPLATE_PAYMENT)
     {
@@ -2174,6 +2190,15 @@ CRPCResultPtr CRPCMod::RPCSignTransaction(CRPCParamPtr param)
         vector<uint8> vss = ParseHexString(spParam->strSign_S);
         CODataStream ds(vchSignExtraData);
         ds << vsm << vss;
+    }
+
+    if (spParam->strCancel_Order_Sign.IsValid() && !spParam->strCancel_Order_Sign.empty())
+    {
+        vchSignExtraData = ParseHexString(spParam->strCancel_Order_Sign);
+        if (vchSignExtraData.size() != 64)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid cancel_order_sign");
+        }
     }
 
     vector<uint8> vchFromData;
@@ -3007,6 +3032,33 @@ CRPCResultPtr CRPCMod::RPCSendRawTransaction(rpc::CRPCParamPtr param)
     }
 
     return MakeCSendRawTransactionResultPtr(rawTx.GetHash().GetHex());
+}
+
+CRPCResultPtr CRPCMod::RPCSignTransactionData(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CSignTransactionDataParam>(param);
+
+    CAddress addr(spParam->strAddress);
+    vector<unsigned char> txData = ParseHexString(spParam->strTxdata);
+    CBufStream ss;
+    ss.Write((char*)&txData[0], txData.size());
+    CTransaction rawTx;
+    try
+    {
+        ss >> rawTx;
+    }
+    catch (const std::exception& e)
+    {
+        throw CRPCException(RPC_DESERIALIZATION_ERROR, "Signed offline raw tx decode failed");
+    }
+
+    vector<unsigned char> vchSig;
+    if (!pService->SignSignature(addr.GetPubKey(), rawTx.GetSignatureHash(), vchSig))
+    {
+        throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+    }
+
+    return MakeCSignTransactionDataResultPtr(ToHexString(vchSig));
 }
 
 /* Util */

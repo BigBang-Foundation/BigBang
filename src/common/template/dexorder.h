@@ -7,6 +7,9 @@
 
 #include "template.h"
 
+class CTemplateDexOrder;
+typedef boost::shared_ptr<CTemplateDexOrder> CTemplateDexOrderPtr;
+
 class CTemplateDexOrder : virtual public CTemplate, virtual public CSendToRecordedTemplate
 {
 public:
@@ -17,6 +20,8 @@ public:
     virtual bool GetSignDestination(const CTransaction& tx, const uint256& hashFork, int nHeight, const std::vector<uint8>& vchSig,
                                     std::set<CDestination>& setSubDest, std::vector<uint8>& vchSubSig) const;
     virtual void GetTemplateData(bigbang::rpc::CTemplateResponse& obj, CDestination&& destInstance) const;
+
+    bool BuildDexOrderTxSignature(const std::vector<uint8>& vchSignExtraData, const std::vector<uint8>& vchPreSig, std::vector<uint8>& vchSig) const;
 
 protected:
     virtual bool ValidateParam() const;

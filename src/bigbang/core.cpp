@@ -83,6 +83,12 @@ static const uint32 VALID_FORK_VERIFY_HEIGHT = 525230;
 #endif
 
 #ifdef BIGBANG_TESTNET
+static const int NEW_CANCEL_DEX_ORDER_HEIGHT = 0;
+#else
+static const int NEW_CANCEL_DEX_ORDER_HEIGHT = 800000;
+#endif
+
+#ifdef BIGBANG_TESTNET
 static const int64 BBCP_TOKEN_INIT = 300000000;
 static const int64 BBCP_BASE_REWARD_TOKEN = 20;
 static const int64 BBCP_INIT_REWARD_TOKEN = 20;
@@ -1541,6 +1547,15 @@ bool CCoreProtocol::IsNewDiffPowHeight(int height)
     return false;
 }
 
+bool CCoreProtocol::IsNewCancelDexOrderHeight(int height)
+{
+    if (height >= NEW_CANCEL_DEX_ORDER_HEIGHT)
+    {
+        return true;
+    }
+    return false;
+}
+
 bool CCoreProtocol::DPoSConsensusCheckRepeated(int height)
 {
     return height >= DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED;
@@ -1841,6 +1856,40 @@ Errno CCoreProtocol::VerifyDexOrderTx(const CTransaction& tx, const CDestination
             return ERR_TRANSACTION_SIGNATURE_INVALID;
         }
     }
+    else
+    {
+        if (IsNewCancelDexOrderHeight(nHeight))
+        {
+            set<CDestination> setSubDest;
+            vector<uint8> vchSigOut;
+            if (!objOrder->GetSignDestination(tx, uint256(), 0, vchSig, setSubDest, vchSigOut))
+            {
+                Log("Verify dex order tx: get sign data fail, tx: %s", tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+
+            vector<uint8> vCancelOrderSign;
+            vector<uint8> vchSigSub;
+            try
+            {
+                xengine::CIDataStream is(vchSigOut);
+                is >> vCancelOrderSign >> vchSigSub;
+            }
+            catch (std::exception& e)
+            {
+                Log("Verify dex order tx: get cancel order verify fail, tx: %s, err: %s", tx.GetHash().GetHex().c_str(), e.what());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+
+            uint256 hashSign = tx.GetSignatureHash();
+            if (!crypto::CryptoVerify(objOrder->destMatch.GetPubKey(), hashSign.begin(), hashSign.size(), vCancelOrderSign))
+            {
+                Log("Verify dex order tx: Verify cancel order fail, cancel order sign: [%d] %s, tx: %s",
+                    vCancelOrderSign.size(), ToHexString(vCancelOrderSign).c_str(), tx.GetHash().GetHex().c_str());
+                return ERR_TRANSACTION_SIGNATURE_INVALID;
+            }
+        }
+    }
     return OK;
 }
 
@@ -1958,7 +2007,6 @@ Errno CCoreProtocol::VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, in
         vector<uint8> vchSigSub;
         try
         {
-            vector<uint8> head;
             xengine::CIDataStream is(vchSigOut);
             is >> vms >> vss >> vchSigSub;
         }

@@ -9,6 +9,7 @@
 #include "param.h"
 #include "template/delegate.h"
 #include "template/dexmatch.h"
+#include "template/dexorder.h"
 #include "template/exchange.h"
 #include "template/fork.h"
 #include "template/mint.h"
@@ -823,6 +824,11 @@ bool CWallet::SignDestination(const CDestination& destIn, const CTransaction& tx
         {
             CTemplateDexMatchPtr pe = boost::dynamic_pointer_cast<CTemplateDexMatch>(ptr);
             return pe->BuildDexMatchTxSignature(vchSignExtraData, vchSubSig, vchSig);
+        }
+        else if (ptr->GetTemplateType() == TEMPLATE_DEXORDER)
+        {
+            CTemplateDexOrderPtr pe = boost::dynamic_pointer_cast<CTemplateDexOrder>(ptr);
+            return pe->BuildDexOrderTxSignature(vchSignExtraData, vchSubSig, vchSig);
         }
         else
         {

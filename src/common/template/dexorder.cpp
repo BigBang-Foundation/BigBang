@@ -206,9 +206,45 @@ void CTemplateDexOrder::BuildTemplateData()
 bool CTemplateDexOrder::VerifyTxSignature(const uint256& hash, const uint16 nType, const uint256& hashAnchor, const CDestination& destTo,
                                           const vector<uint8>& vchSig, const int32 nForkHeight, bool& fCompleted) const
 {
+    vector<uint8> vchSigSub;
+    if (vchSig.size() <= 64)
+    {
+        vchSigSub = vchSig;
+    }
+    else
+    {
+        xengine::CIDataStream ds(vchSig);
+        try
+        {
+            vector<uint8> vCancelOrderSign;
+            ds >> vCancelOrderSign >> vchSigSub;
+        }
+        catch (const std::exception& e)
+        {
+            StdError(__PRETTY_FUNCTION__, e.what());
+            return false;
+        }
+    }
+
     if (destTo.IsTemplate() && destTo.GetTemplateId().GetType() == TEMPLATE_DEXMATCH)
     {
-        return destMatch.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSig, nForkHeight, fCompleted);
+        return destMatch.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSigSub, nForkHeight, fCompleted);
     }
-    return destSeller.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSig, nForkHeight, fCompleted);
+
+    if (!destSeller.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSigSub, nForkHeight, fCompleted))
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CTemplateDexOrder::BuildDexOrderTxSignature(const vector<uint8>& vchSignExtraData, const vector<uint8>& vchPreSig, vector<uint8>& vchSig) const
+{
+    vector<uint8_t> vchTempSigData;
+    xengine::CODataStream odsStream(vchTempSigData);
+    odsStream << vchSignExtraData << vchPreSig;
+
+    vchSig = vchData;
+    vchSig.insert(vchSig.end(), vchTempSigData.begin(), vchTempSigData.end());
+    return true;
 }
