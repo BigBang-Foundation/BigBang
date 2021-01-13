@@ -4400,6 +4400,7 @@ void CRPCMod::HttpServerThreadFunc()
             char msg[512] = { 0 };
             snprintf(msg, sizeof(msg), "{\"error\": \"remote address: %s is not allowed in table.\"}", req.remote_addr.c_str());
             std::string content(msg);
+            content.append("\n");
             res.set_header("Connection", "close");
             res.set_header("Server", "bigbang-data-sync-rpc");
             res.set_content(content.c_str(), "application/json");
