@@ -7,6 +7,7 @@
 
 #include "json/json_spirit.h"
 #include <boost/function.hpp>
+#include <boost/regex.hpp>
 #include <boost/thread.hpp>
 #include <unordered_map>
 
@@ -171,6 +172,8 @@ protected:
     // bool GetBlocks(const uint256& forkHash, const uint256& startHash, int32 n, std::vector<CBlockEx>& blocks);
     rpc::Cblockdatadetail BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block);
     void HttpServerThreadFunc();
+    bool BuildWhiteList(const std::vector<std::string>& vAllowMask);
+    bool IsAllowedRemote(const std::string& remoteAddress);
 
 protected:
     xengine::IIOProc* pHttpServer;
@@ -184,7 +187,7 @@ protected:
 
 private:
     std::map<std::string, RPCFunc> mapRPCFunc;
-
+    std::vector<boost::regex> vWhiteList;
     bool fWriteRPCLog;
 };
 

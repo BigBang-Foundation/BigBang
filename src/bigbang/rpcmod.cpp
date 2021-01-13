@@ -12,6 +12,7 @@
 #include <boost/format.hpp>
 #include <boost/range/adaptor/reversed.hpp>
 #include <boost/regex.hpp>
+#include <cstdio>
 #include <regex>
 //#include <algorithm>
 
@@ -4333,15 +4334,73 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
     return MakeCPushBlockResultPtr(spParam->block.strHash);
 }
 
+bool CRPCMod::BuildWhiteList(const std::vector<std::string>& vAllowMask)
+{
+    const boost::regex expr("(\\*)|(\\?)|(\\.)");
+    const string fmt = "(?1.*)(?2.)(?3\\\\.)";
+    vWhiteList.clear();
+    try
+    {
+        for (const string& mask : vAllowMask)
+        {
+            string strRegex = boost::regex_replace(mask, expr, fmt,
+                                                   boost::match_default | boost::format_all);
+            vWhiteList.push_back(boost::regex(strRegex));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        StdError(__PRETTY_FUNCTION__, e.what());
+        return false;
+    }
+    return true;
+}
+
+bool CRPCMod::IsAllowedRemote(const std::string& remoteAddress)
+{
+    try
+    {
+        for (const boost::regex& expr : vWhiteList)
+        {
+            if (boost::regex_match(remoteAddress, expr))
+            {
+                return true;
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        StdError(__PRETTY_FUNCTION__, e.what());
+    }
+    return (vWhiteList.empty());
+}
+
 void CRPCMod::HttpServerThreadFunc()
 {
     auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
+
+    if (!pConfig->vRPCAllowIP.empty() && !BuildWhiteList(pConfig->vRPCAllowIP))
+    {
+        StdError("RPCMod", "Http Server Build White List failed.");
+    }
 
     using namespace httplib;
     Server svr;
     svr.set_keep_alive_max_count(pConfig->nRPCMaxConnections);
 
     svr.Post("/sync/rpc", [this](const Request& req, Response& res) {
+        if (!IsAllowedRemote(req.remote_addr))
+        {
+            char msg[512] = { 0 };
+            snprintf(msg, sizeof(msg), "{\"error\": \"remote address: %s is not allowed in table.\"}", req.remote_addr.c_str());
+            std::string content(msg);
+            res.set_header("Connection", "close");
+            res.set_header("Server", "bigbang-data-sync-rpc");
+            res.set_content(content.c_str(), "application/json");
+            return;
+        }
+
+        
         auto lmdMask = [](const std::string& data) -> std::string {
             return data;
         };
