@@ -31,6 +31,7 @@ public:
     // bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
     // bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
     std::string CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask, bool fNewHttp = false);
+    bool CheckVersion(std::string& strVersion);
 
 protected:
     bool HandleInitialize() override;
@@ -81,7 +82,6 @@ protected:
     }
     bool CheckWalletError(Errno err);
     void ListDestination(std::vector<CDestination>& vDestination);
-    bool CheckVersion(std::string& strVersion);
     std::string GetWidthString(const std::string& strIn, int nWidth);
     std::string GetWidthString(uint64 nCount, int nWidth);
 

@@ -4394,11 +4394,24 @@ void CRPCMod::HttpServerThreadFunc()
     Server svr;
     svr.set_keep_alive_max_count(pConfig->nRPCMaxConnections);
 
-    svr.Post("/bigbang/rpc", [this](const Request& req, Response& res) {
+    svr.Post("/rpc", [this](const Request& req, Response& res) {
         if (!IsAllowedRemote(req.remote_addr))
         {
             char msg[512] = { 0 };
             snprintf(msg, sizeof(msg), "{\"error\": \"remote address: %s is not allowed in table.\"}", req.remote_addr.c_str());
+            std::string content(msg);
+            content.append("\n");
+            res.set_header("Connection", "close");
+            res.set_header("Server", "bigbang-rpc");
+            res.set_content(content.c_str(), "application/json");
+            return;
+        }
+
+        std::string strVersion = req.get_header_value("BigBang-Version");
+        if (!strVersion.empty() && !this->CheckVersion(strVersion))
+        {
+            char msg[512] = { 0 };
+            snprintf(msg, sizeof(msg), "{\"error\": \"out of date version: client version is %s but server version is %s\"}", strVersion.c_str(), VERSION_STR.c_str());
             std::string content(msg);
             content.append("\n");
             res.set_header("Connection", "close");
