@@ -247,20 +247,12 @@ void CTxIndexDB::FlushProc()
 
         if (!fStopFlush)
         {
-            vector<std::shared_ptr<CForkTxDB>> vTxDB;
-            vTxDB.reserve(mapTxDB.size());
-            {
-                CReadLock rlock(rwAccess);
+            CReadLock rlock(rwAccess);
 
-                for (map<uint256, std::shared_ptr<CForkTxDB>>::iterator it = mapTxDB.begin();
-                     it != mapTxDB.end(); ++it)
-                {
-                    vTxDB.push_back((*it).second);
-                }
-            }
-            for (int i = 0; i < vTxDB.size(); i++)
+            for (map<uint256, std::shared_ptr<CForkTxDB>>::iterator it = mapTxDB.begin();
+                 it != mapTxDB.end(); ++it)
             {
-                vTxDB[i]->Flush(false);
+                it->second->Flush(false);
             }
         }
     }

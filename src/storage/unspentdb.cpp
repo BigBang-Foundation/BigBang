@@ -519,20 +519,12 @@ void CUnspentDB::FlushProc()
 
         if (!fStopFlush)
         {
-            vector<std::shared_ptr<CForkUnspentDB>> vUnspentDB;
-            vUnspentDB.reserve(mapUnspentDB.size());
-            {
-                CReadLock rlock(rwAccess);
+            CReadLock rlock(rwAccess);
 
-                for (map<uint256, std::shared_ptr<CForkUnspentDB>>::iterator it = mapUnspentDB.begin();
-                     it != mapUnspentDB.end(); ++it)
-                {
-                    vUnspentDB.push_back((*it).second);
-                }
-            }
-            for (int i = 0; i < vUnspentDB.size(); i++)
+            for (map<uint256, std::shared_ptr<CForkUnspentDB>>::iterator it = mapUnspentDB.begin();
+                 it != mapUnspentDB.end(); ++it)
             {
-                vUnspentDB[i]->Flush();
+                it->second->Flush();
             }
         }
     }

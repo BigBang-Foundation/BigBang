@@ -675,20 +675,12 @@ void CAddressDB::FlushProc()
 
         if (!fStopFlush)
         {
-            vector<std::shared_ptr<CForkAddressDB>> vAddressDB;
-            vAddressDB.reserve(mapAddressDB.size());
-            {
-                CReadLock rlock(rwAccess);
+            CReadLock rlock(rwAccess);
 
-                for (map<uint256, std::shared_ptr<CForkAddressDB>>::iterator it = mapAddressDB.begin();
-                     it != mapAddressDB.end(); ++it)
-                {
-                    vAddressDB.push_back((*it).second);
-                }
-            }
-            for (int i = 0; i < vAddressDB.size(); i++)
+            for (map<uint256, std::shared_ptr<CForkAddressDB>>::iterator it = mapAddressDB.begin();
+                 it != mapAddressDB.end(); ++it)
             {
-                vAddressDB[i]->Flush();
+                it->second->Flush();
             }
         }
     }
