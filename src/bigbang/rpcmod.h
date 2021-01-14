@@ -19,18 +19,15 @@
 namespace bigbang
 {
 
-class CRPCMod : public xengine::IIOModule, virtual public xengine::CHttpEventListener //, virtual public CRPCModEventListener
+class CRPCMod : public xengine::IIOModule //, virtual public CRPCModEventListener
 {
 public:
     typedef rpc::CRPCResultPtr (CRPCMod::*RPCFunc)(rpc::CRPCParamPtr param);
     CRPCMod();
     ~CRPCMod();
-    bool HandleEvent(xengine::CEventHttpReq& eventHttpReq) override;
-    bool HandleEvent(xengine::CEventHttpBroken& eventHttpBroken) override;
-    //bool HandleEvent(xengine::CEventHttpGetRsp& event) override;
     // bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
     // bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
-    std::string CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask, bool fNewHttp = false);
+    std::string CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask);
     bool CheckVersion(std::string& strVersion);
 
 protected:
@@ -176,7 +173,6 @@ protected:
     bool IsAllowedRemote(const std::string& remoteAddress);
 
 protected:
-    xengine::IIOProc* pHttpServer;
     ICoreProtocol* pCoreProtocol;
     IService* pService;
     IDataStat* pDataStat;

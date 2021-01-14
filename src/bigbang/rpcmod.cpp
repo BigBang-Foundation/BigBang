@@ -173,12 +173,10 @@ CRPCMod::CRPCMod()
   : IIOModule("rpcmod"),
     thrHttpServer("httpserver", boost::bind(&CRPCMod::HttpServerThreadFunc, this))
 {
-    pHttpServer = nullptr;
     pCoreProtocol = nullptr;
     pService = nullptr;
     pDataStat = nullptr;
     pForkManager = nullptr;
-    // pHttpGet = nullptr;
     pPusher = nullptr;
 
     std::map<std::string, RPCFunc> temp_map = boost::assign::map_list_of
@@ -330,12 +328,6 @@ CRPCMod::~CRPCMod()
 
 bool CRPCMod::HandleInitialize()
 {
-    // if (!GetObject("httpserver", pHttpServer))
-    // {
-    //     Error("Failed to request httpserver");
-    //     return false;
-    // }
-
     if (!GetObject("coreprotocol", pCoreProtocol))
     {
         Error("Failed to request coreprotocol");
@@ -371,7 +363,6 @@ bool CRPCMod::HandleInitialize()
 
 void CRPCMod::HandleDeinitialize()
 {
-    pHttpServer = nullptr;
     pCoreProtocol = nullptr;
     pService = nullptr;
     pDataStat = nullptr;
@@ -423,7 +414,7 @@ void CRPCMod::HandleHalt()
     IIOModule::HandleHalt();
 }
 
-std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask, bool fNewHttp)
+std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask)
 {
     bool fArray;
     std::string strResult;
@@ -441,12 +432,9 @@ std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::func
                 throw CRPCException(RPC_METHOD_NOT_FOUND, "Method not found");
             }
 
-            if (!fNewHttp)
+            if (fWriteRPCLog)
             {
-                if (fWriteRPCLog)
-                {
-                    Debug("request : %s ", lmdMask(spReq->Serialize()).c_str());
-                }
+                Debug("request : %s ", lmdMask(spReq->Serialize()).c_str());
             }
 
             spResult = (this->*(*it).second)(spReq->spParam);
@@ -487,83 +475,12 @@ std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::func
         // no result means no return
     }
 
-    return strResult;
-}
-
-bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
-{
-    auto lmdMask = [](const string& data) -> string {
-        //remove all sensible information such as private key
-        // or passphrass from log content
-
-        //log for debug mode
-        boost::regex ptnSec(R"raw(("privkey"|"passphrase"|"oldpassphrase"|"signsecret"|"privkeyaddress")(\s*:\s*)(".*?"))raw", boost::regex::perl);
-        return boost::regex_replace(data, ptnSec, string(R"raw($1$2"***")raw"));
-    };
-
-    uint64 nNonce = eventHttpReq.nNonce;
-
-    string strResult;
-    try
-    {
-        // check version
-        string strVersion = eventHttpReq.data.mapHeader["url"].substr(1);
-        if (!strVersion.empty())
-        {
-            if (!CheckVersion(strVersion))
-            {
-                throw CRPCException(RPC_VERSION_OUT_OF_DATE,
-                                    string("Out of date version. Server version is v") + VERSION_STR
-                                        + ", but client version is v" + strVersion);
-            }
-        }
-
-        strResult = CallRPCFromJSON(eventHttpReq.data.strContent, lmdMask);
-    }
-    catch (CRPCException& e)
-    {
-        auto spError = MakeCRPCErrorPtr(e);
-        CRPCResp resp(e.valData, spError);
-        strResult = resp.Serialize();
-    }
-    catch (exception& e)
-    {
-        cout << "error: " << e.what() << endl;
-        auto spError = MakeCRPCErrorPtr(RPC_MISC_ERROR, e.what());
-        CRPCResp resp(Value(), spError);
-        strResult = resp.Serialize();
-    }
-
     if (fWriteRPCLog)
     {
         Debug("response : %s ", lmdMask(strResult).c_str());
     }
 
-    // no result means no return
-    if (!strResult.empty())
-    {
-        JsonReply(nNonce, strResult);
-    }
-
-    return true;
-}
-
-bool CRPCMod::HandleEvent(CEventHttpBroken& eventHttpBroken)
-{
-    (void)eventHttpBroken;
-    return true;
-}
-
-void CRPCMod::JsonReply(uint64 nNonce, const std::string& result)
-{
-    CEventHttpRsp eventHttpRsp(nNonce);
-    eventHttpRsp.data.nStatusCode = 200;
-    eventHttpRsp.data.mapHeader["content-type"] = "application/json";
-    eventHttpRsp.data.mapHeader["connection"] = "Keep-Alive";
-    eventHttpRsp.data.mapHeader["server"] = "bigbang-rpc";
-    eventHttpRsp.data.strContent = result + "\n";
-
-    pHttpServer->DispatchEvent(&eventHttpRsp);
+    return strResult;
 }
 
 bool CRPCMod::CheckWalletError(Errno err)
@@ -4393,7 +4310,6 @@ void CRPCMod::HttpServerThreadFunc()
     using namespace httplib;
     Server svr;
     svr.set_keep_alive_max_count(pConfig->nRPCMaxConnections);
-
     svr.Post("/rpc", [this](const Request& req, Response& res) {
         if (!IsAllowedRemote(req.remote_addr))
         {
@@ -4424,7 +4340,7 @@ void CRPCMod::HttpServerThreadFunc()
         auto lmdMask = [](const std::string& data) -> std::string {
             return data;
         };
-        std::string content = this->CallRPCFromJSON(req.body, lmdMask, true);
+        std::string content = this->CallRPCFromJSON(req.body, lmdMask);
         content.append("\n");
         res.set_header("Connection", "Keep-Alive");
         res.set_header("Server", "bigbang-rpc");
