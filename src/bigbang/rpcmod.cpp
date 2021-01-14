@@ -4398,7 +4398,7 @@ void CRPCMod::HttpServerThreadFunc()
         if (!IsAllowedRemote(req.remote_addr))
         {
             char msg[512] = { 0 };
-            snprintf(msg, sizeof(msg), "{\"error\": \"remote address: %s is not allowed in table.\"}", req.remote_addr.c_str());
+            snprintf(msg, sizeof(msg), "{\"code\": %d, \"message\": \"remote address: %s is not allowed in table.\"}", (int)RPC_FORBIDDEN_BY_SAFE_MODE, req.remote_addr.c_str());
             std::string content(msg);
             content.append("\n");
             res.set_header("Connection", "close");
@@ -4411,7 +4411,8 @@ void CRPCMod::HttpServerThreadFunc()
         if (!strVersion.empty() && !this->CheckVersion(strVersion))
         {
             char msg[512] = { 0 };
-            snprintf(msg, sizeof(msg), "{\"error\": \"out of date version: client version is %s but server version is %s\"}", strVersion.c_str(), VERSION_STR.c_str());
+            snprintf(msg, sizeof(msg), "{\"code\": %d, \"message\": \"out of date version: client version is %s but server version is %s\"}",
+                     (int)RPC_VERSION_OUT_OF_DATE, strVersion.c_str(), VERSION_STR.c_str());
             std::string content(msg);
             content.append("\n");
             res.set_header("Connection", "close");
