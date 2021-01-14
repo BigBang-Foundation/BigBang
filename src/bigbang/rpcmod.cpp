@@ -4310,7 +4310,7 @@ void CRPCMod::HttpServerThreadFunc()
     using namespace httplib;
     Server svr;
     svr.set_keep_alive_max_count(pConfig->nRPCMaxConnections);
-    svr.Post("/rpc", [this](const Request& req, Response& res) {
+    svr.Post("/", [this](const Request& req, Response& res) {
         if (!IsAllowedRemote(req.remote_addr))
         {
             char msg[512] = { 0 };
