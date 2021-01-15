@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -156,8 +156,8 @@ bool CForkAddressUnspentDB::Copy(CForkAddressUnspentDB& dbAddressUnspent)
 
     try
     {
-        xengine::CReadLock rulock(rwUpper);
         xengine::CReadLock rdlock(rwLower);
+        xengine::CReadLock rulock(rwUpper);
 
         if (!WalkThrough(boost::bind(&CForkAddressUnspentDB::CopyWalker, this, _1, _2, boost::ref(dbAddressUnspent))))
         {
@@ -178,8 +178,8 @@ bool CForkAddressUnspentDB::WalkThroughAddressUnspent(CForkAddressUnspentDBWalke
 {
     try
     {
-        xengine::CReadLock rulock(rwUpper);
         xengine::CReadLock rdlock(rwLower);
+        xengine::CReadLock rulock(rwUpper);
 
         MapType& mapUpper = dblCache.GetUpperMap();
         MapType& mapLower = dblCache.GetLowerMap();

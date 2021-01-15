@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -66,19 +66,17 @@ BOOST_AUTO_TEST_CASE(txcache_test)
     BOOST_CHECK(cache.Retrieve(uint256(125, uint224("awdaweawrawfasdadawd")), vecTx) == false);
 }
 
-
 static uint64 GetSequenceNumber()
 {
     static uint64 nLastSequenceNumber = 0;
     return ((++nLastSequenceNumber) << 24);
 }
 
-
 // tx1
-//  |         
-// tx2 
-//  |   
-// tx3   
+//  |
+// tx2
+//  |
+// tx3
 BOOST_AUTO_TEST_CASE(seq_test)
 {
     CTxPoolView view;
@@ -102,7 +100,6 @@ BOOST_AUTO_TEST_CASE(seq_test)
     BOOST_CHECK(view.AddNew(tx1.GetHash(), tx1));
     BOOST_CHECK(view.AddNew(tx2.GetHash(), tx2));
 }
-
 
 // tx1         tx4
 //  |           |
@@ -146,7 +143,6 @@ BOOST_AUTO_TEST_CASE(txpoolview_test)
     tx7.nTimeStamp = 1007;
     tx7.nSequenceNumber = GetSequenceNumber();
 
-    
     CPooledTx tx8;
     tx8.nTimeStamp = 1008;
     tx8.nSequenceNumber = GetSequenceNumber();
@@ -157,7 +153,7 @@ BOOST_AUTO_TEST_CASE(txpoolview_test)
     CPooledTx tx9;
     tx9.nTimeStamp = 1009;
     tx9.nSequenceNumber = GetSequenceNumber();
-    
+
     CPooledTx tx10;
     tx10.nTimeStamp = 1010;
     tx10.nSequenceNumber = GetSequenceNumber();
@@ -222,7 +218,7 @@ BOOST_AUTO_TEST_CASE(txpoolview_test)
     BOOST_CHECK(!involvedTxPoolView.Exists(tx8.GetHash()));
     BOOST_CHECK(!involvedTxPoolView.Exists(tx9.GetHash()));
     BOOST_CHECK(involvedTxPoolView.Exists(tx10.GetHash()));
-    
+
     BOOST_CHECK(involvedTxPoolView.IsSpent(CTxOutPoint(tx2.GetHash(), 0)));
     BOOST_CHECK(involvedTxPoolView.IsSpent(CTxOutPoint(tx3.GetHash(), 0)));
     BOOST_CHECK(!involvedTxPoolView.IsSpent(CTxOutPoint(tx10.GetHash(), 0)));
