@@ -88,7 +88,7 @@ static const int64 BBCP_BASE_REWARD_TOKEN = 20;
 static const int64 BBCP_INIT_REWARD_TOKEN = 20;
 #else
 static const int64 BBCP_TOKEN_INIT = 0;
-static const int64 BBCP_YEAR_INC_REWARD_TOKEN = 20;
+static const int64 BBCP_YEAR_INC_REWARD_TOKEN = 10;
 
 #define BBCP_TOKEN_SET_COUNT 16
 static const int64 BBCP_END_HEIGHT[BBCP_TOKEN_SET_COUNT] = {
@@ -98,18 +98,19 @@ static const int64 BBCP_END_HEIGHT[BBCP_TOKEN_SET_COUNT] = {
     129600,
     172800,
     216000,
-    //CPOW+EDPOS
+    //the first section of CPOW+EDPOS
     432000,
     648000,
-    864000,
-    1080000,
-    1296000,
-    1512000,
+    //the second section of CPOW+EDPOS
     1728000,
-    1944000,
-    2160000,
-    2376000,
-    2592000
+    2808000,
+    3888000,
+    4968000,
+    6048000,
+    7128000,
+    8208000,
+    9288000,
+    10368000,
 };
 static const int64 BBCP_REWARD_TOKEN[BBCP_TOKEN_SET_COUNT] = {
     //CPOW
@@ -118,18 +119,19 @@ static const int64 BBCP_REWARD_TOKEN[BBCP_TOKEN_SET_COUNT] = {
     933,
     823,
     713,
-    //CPOW+EDPOS
+    //the first section of CPOW+EDPOS
     603,
     550,
-    497,
-    444,
-    391,
-    338,
-    285,
-    232,
-    179,
-    126,
-    73
+    //the second section of CPOW+EDPOS
+    100,
+    90,
+    80,
+    70,
+    60,
+    50,
+    40,
+    30,
+    20,
 };
 static const int64 BBCP_INIT_REWARD_TOKEN = BBCP_REWARD_TOKEN[0];
 #endif
