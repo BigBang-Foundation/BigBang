@@ -38,7 +38,7 @@ jobs:
       # install libsodium with cache
       - name: Install cache libsodium-1.0.18
         if: steps.libsodium.outputs.cache-hit == 'true'
-        run: cd ~/libsodium-1.0.18 && sudo make install
+        run: cd ~/libsodium-1.0.18 && ./configure && make -j2 && sudo make install
 
       # download & install libsodium without cache
       - name: Download and Install libsodium-1.0.18
