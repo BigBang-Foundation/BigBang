@@ -234,16 +234,16 @@ extern void aesb_pseudo_round(const uint8_t* in, uint8_t* out, const uint8_t* ex
         xor_blocks(d, long_state + (j ^ 0x20)); \
     }
 
-#define VARIANT2_2() \
-    do               \
-        if (variant >= 2)
-{
-    *U64(hp_state + (j ^ 0x10)) ^= SWAP64LE(hi);
-    *(U64(hp_state + (j ^ 0x10)) + 1) ^= SWAP64LE(lo);
-    hi ^= SWAP64LE(*U64(hp_state + (j ^ 0x20)));
-    lo ^= SWAP64LE(*(U64(hp_state + (j ^ 0x20)) + 1));
-}
-while (0)
+#define VARIANT2_2()                                           \
+    do                                                         \
+        if (variant >= 2)                                      \
+        {                                                      \
+            *U64(hp_state + (j ^ 0x10)) ^= SWAP64LE(hi);       \
+            *(U64(hp_state + (j ^ 0x10)) + 1) ^= SWAP64LE(lo); \
+            hi ^= SWAP64LE(*U64(hp_state + (j ^ 0x20)));       \
+            lo ^= SWAP64LE(*(U64(hp_state + (j ^ 0x20)) + 1)); \
+        }                                                      \
+    while (0)
 
 #define VARIANT4_RANDOM_MATH_INIT()                            \
     v4_reg r[8];                                               \
@@ -603,14 +603,6 @@ while (0)
         [1] += U64(&_c)[1] ^ a[1]; \
     }
 
-#define SSE2_001()
-{
-    U64(&_c_aes)
-    [0] += U64(&_c)[0] ^ a[0];
-    U64(&_c_aes)
-    [1] += U64(&_c)[1] ^ a[1];
-}
-
 #define SSE2_002()                                    \
     {                                                 \
         U64(&_c_aes)                                  \
@@ -638,237 +630,237 @@ while (0)
         SL_0_0(); \
     }
 
-#define bbc_math_1()
-{
-    uint32_t n = *((uint32_t*)&_c_aes);
-    switch (n & 31)
-    {
-    case 0:
-        SL_0();
-        SL_0();
-        SL_0();
-        SL_0();
-        SL_0();
-        break;
-    case 1:
-        SL_0();
-        SL_0();
-        SL_0();
-        SL_0();
-        SL_1();
-        break;
-    case 2:
-        SL_0();
-        SL_0();
-        SL_0();
-        SL_1();
-        SL_0();
-        break;
-    case 3:
-        SL_0();
-        SL_0();
-        SL_0();
-        SL_1();
-        SL_1();
-        break;
-    case 4:
-        SL_0();
-        SL_0();
-        SL_1();
-        SL_0();
-        SL_0();
-        break;
-    case 5:
-        SL_0();
-        SL_0();
-        SL_1();
-        SL_0();
-        SL_1();
-        break;
-    case 6:
-        SL_0();
-        SL_0();
-        SL_1();
-        SL_1();
-        SL_0();
-        break;
-    case 7:
-        SL_0();
-        SL_0();
-        SL_1();
-        SL_1();
-        SL_1();
-        break;
-    case 8:
-        SL_0();
-        SL_1();
-        SL_0();
-        SL_0();
-        SL_0();
-        break;
-    case 9:
-        SL_0();
-        SL_1();
-        SL_0();
-        SL_0();
-        SL_1();
-        break;
-    case 10:
-        SL_0();
-        SL_1();
-        SL_0();
-        SL_1();
-        SL_0();
-        break;
-    case 11:
-        SL_0();
-        SL_1();
-        SL_0();
-        SL_1();
-        SL_1();
-        break;
-    case 12:
-        SL_0();
-        SL_1();
-        SL_1();
-        SL_0();
-        SL_0();
-        break;
-    case 13:
-        SL_0();
-        SL_1();
-        SL_1();
-        SL_0();
-        SL_1();
-        break;
-    case 14:
-        SL_0();
-        SL_1();
-        SL_1();
-        SL_1();
-        SL_0();
-        break;
-    case 15:
-        SL_0();
-        SL_1();
-        SL_1();
-        SL_1();
-        SL_1();
-        break;
-    case 16:
-        SL_1();
-        SL_0();
-        SL_0();
-        SL_0();
-        SL_0();
-        break;
-    case 17:
-        SL_1();
-        SL_0();
-        SL_0();
-        SL_0();
-        SL_1();
-        break;
-    case 18:
-        SL_1();
-        SL_0();
-        SL_0();
-        SL_1();
-        SL_0();
-        break;
-    case 19:
-        SL_1();
-        SL_0();
-        SL_0();
-        SL_1();
-        SL_1();
-        break;
-    case 20:
-        SL_1();
-        SL_0();
-        SL_1();
-        SL_0();
-        SL_0();
-        break;
-    case 21:
-        SL_1();
-        SL_0();
-        SL_1();
-        SL_0();
-        SL_1();
-        break;
-    case 22:
-        SL_1();
-        SL_0();
-        SL_1();
-        SL_1();
-        SL_0();
-        break;
-    case 23:
-        SL_1();
-        SL_0();
-        SL_1();
-        SL_1();
-        SL_1();
-        break;
-    case 24:
-        SL_1();
-        SL_1();
-        SL_0();
-        SL_0();
-        SL_0();
-        break;
-    case 25:
-        SL_1();
-        SL_1();
-        SL_0();
-        SL_0();
-        SL_1();
-        break;
-    case 26:
-        SL_1();
-        SL_1();
-        SL_0();
-        SL_1();
-        SL_0();
-        break;
-    case 27:
-        SL_1();
-        SL_1();
-        SL_0();
-        SL_1();
-        SL_1();
-        break;
-    case 28:
-        SL_1();
-        SL_1();
-        SL_1();
-        SL_0();
-        SL_0();
-        break;
-    case 29:
-        SL_1();
-        SL_1();
-        SL_1();
-        SL_0();
-        SL_1();
-        break;
-    case 30:
-        SL_1();
-        SL_1();
-        SL_1();
-        SL_1();
-        SL_0();
-        break;
-    case 31:
-        SL_1();
-        SL_1();
-        SL_1();
-        SL_1();
-        SL_1();
-        break;
+#define bbc_math_1()                        \
+    {                                       \
+        uint32_t n = *((uint32_t*)&_c_aes); \
+        switch (n & 31)                     \
+        {                                   \
+        case 0:                             \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            break;                          \
+        case 1:                             \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            break;                          \
+        case 2:                             \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            break;                          \
+        case 3:                             \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            break;                          \
+        case 4:                             \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            break;                          \
+        case 5:                             \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            break;                          \
+        case 6:                             \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            break;                          \
+        case 7:                             \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            break;                          \
+        case 8:                             \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            break;                          \
+        case 9:                             \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            break;                          \
+        case 10:                            \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            break;                          \
+        case 11:                            \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            break;                          \
+        case 12:                            \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            break;                          \
+        case 13:                            \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            break;                          \
+        case 14:                            \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            break;                          \
+        case 15:                            \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            break;                          \
+        case 16:                            \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            break;                          \
+        case 17:                            \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            break;                          \
+        case 18:                            \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            break;                          \
+        case 19:                            \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            break;                          \
+        case 20:                            \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            break;                          \
+        case 21:                            \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            break;                          \
+        case 22:                            \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            break;                          \
+        case 23:                            \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            break;                          \
+        case 24:                            \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_0();                         \
+            break;                          \
+        case 25:                            \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            SL_1();                         \
+            break;                          \
+        case 26:                            \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_0();                         \
+            break;                          \
+        case 27:                            \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            SL_1();                         \
+            break;                          \
+        case 28:                            \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_0();                         \
+            break;                          \
+        case 29:                            \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            SL_1();                         \
+            break;                          \
+        case 30:                            \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_0();                         \
+            break;                          \
+        case 31:                            \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            SL_1();                         \
+            break;                          \
+        }                                   \
     }
-}
 #endif
 
 #if !defined NO_AES && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
@@ -978,15 +970,15 @@ while (0)
 #endif
 
 #pragma pack(push, 1)
-    union cn_slow_hash_state
+union cn_slow_hash_state
+{
+    union hash_state hs;
+    struct
     {
-        union hash_state hs;
-        struct
-        {
-            uint8_t k[64];
-            uint8_t init[INIT_SIZE_BYTE];
-        };
+        uint8_t k[64];
+        uint8_t init[INIT_SIZE_BYTE];
     };
+};
 #pragma pack(pop)
 
 static THREADV uint8_t* hp_state = NULL;
@@ -2194,13 +2186,13 @@ void cn_slow_hash(const void* data, size_t length, char* hash, int variant, int 
 #endif /* !aarch64 || !crypto */
 
 #else
-    // Portable implementation as a fallback
+// Portable implementation as a fallback
 
-    static void slow_hash_allocate_state(void)
-    {
-        // Do nothing, this is just to maintain compatibility with the upgraded slow-hash.c
-        return;
-    }
+static void slow_hash_allocate_state(void)
+{
+    // Do nothing, this is just to maintain compatibility with the upgraded slow-hash.c
+    return;
+}
 
 static void slow_hash_free_state(void)
 {
