@@ -60,13 +60,13 @@ static const uint32 DELEGATE_PROOF_OF_STAKE_HEIGHT = 243800;
 #endif
 
 #ifdef BIGBANG_TESTNET
-static const int ADJUST_POW_DIFF_HEIGHT = 0;
+static const int ADJUST_POW_DIFF_HEIGHT = 800000;
 #else
-static const int ADJUST_POW_DIFF_HEIGHT = 581329;
+static const int ADJUST_POW_DIFF_HEIGHT = 800000;
 #endif
 
 #ifdef BIGBANG_TESTNET
-static const uint32 REF_VACANT_HEIGHT = 20;
+static const uint32 REF_VACANT_HEIGHT = 56690; //20;
 #else
 static const uint32 REF_VACANT_HEIGHT = 368638;
 #endif
@@ -78,7 +78,7 @@ static const uint32 MATCH_VERIFY_ERROR_HEIGHT = 525230;
 #endif
 
 #ifdef BIGBANG_TESTNET
-static const uint32 VALID_FORK_VERIFY_HEIGHT = 0;
+static const uint32 VALID_FORK_VERIFY_HEIGHT = 242240;
 #else
 static const uint32 VALID_FORK_VERIFY_HEIGHT = 525230;
 #endif
@@ -137,7 +137,7 @@ static const int64 BBCP_INIT_REWARD_TOKEN = BBCP_REWARD_TOKEN[0];
 
 // Fix mpvss bug begin height
 #ifdef BIGBANG_TESTNET
-static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 0;
+static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 56550;
 #else
 static const int32 DELEGATE_PROOF_OF_STAKE_CONSENSUS_CHECK_REPEATED = 340935;
 #endif
