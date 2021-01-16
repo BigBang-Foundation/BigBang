@@ -630,6 +630,45 @@ extern void aesb_pseudo_round(const uint8_t* in, uint8_t* out, const uint8_t* ex
         SL_0_0(); \
     }
 
+#define SL_1()                                                                   \
+    {                                                                            \
+        U64(&sha3_in)                                                            \
+        [0] = a[0];                                                              \
+        U64(&sha3_in)                                                            \
+        [1] = a[1];                                                              \
+        U64(&sha3_in)                                                            \
+        [2] = U64(&_b)[0];                                                       \
+        U64(&sha3_in)                                                            \
+        [3] = U64(&_b)[1];                                                       \
+        U64(&sha3_in)                                                            \
+        [4] = U64(&_b1)[0];                                                      \
+        U64(&sha3_in)                                                            \
+        [5] = U64(&_b1)[1];                                                      \
+        hash_process((union hash_state*)sha3_out, (const uint8_t*)sha3_in, 128); \
+        a[0] = U64(&sha3_out)[0];                                                \
+        a[1] = U64(&sha3_out)[1];                                                \
+        U64(&_b)                                                                 \
+        [0] = U64(&sha3_out)[2];                                                 \
+        U64(&_b)                                                                 \
+        [1] = U64(&sha3_out)[3];                                                 \
+        U64(&_b1)                                                                \
+        [0] = U64(&sha3_out)[4];                                                 \
+        U64(&_b1)                                                                \
+        [1] = U64(&sha3_out)[5];                                                 \
+        for (int i = 0; i < 30; i++)                                             \
+        {                                                                        \
+            _c_aes = _mm_aesenc_si128(_c_aes, _c_aes);                           \
+        }                                                                        \
+        U64(&_c_aes)                                                             \
+        [0] ^= U64(&_b)[0];                                                      \
+        U64(&_c_aes)                                                             \
+        [1] ^= U64(&_b)[1];                                                      \
+        U64(&_c_aes)                                                             \
+        [0] ^= U64(&_b1)[0];                                                     \
+        U64(&_c_aes)                                                             \
+        [1] ^= U64(&_b1)[1];                                                     \
+    }
+
 #define bbc_math_1()                        \
     {                                       \
         uint32_t n = *((uint32_t*)&_c_aes); \
