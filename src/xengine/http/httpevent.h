@@ -18,8 +18,7 @@ enum
     EVENT_HTTP_RSP,
     EVENT_HTTP_GET,
     EVENT_HTTP_GETRSP,
-    EVENT_HTTP_ABORT,
-    EVENT_HTTP_BROKEN
+    EVENT_HTTP_ABORT
 };
 
 class CHttpEventListener;
@@ -32,7 +31,6 @@ typedef TYPE_HTTPEVENT(EVENT_HTTP_RSP, CHttpRsp) CEventHttpRsp;
 typedef TYPE_HTTPEVENT(EVENT_HTTP_GET, CHttpReqData) CEventHttpGet;
 typedef TYPE_HTTPEVENT(EVENT_HTTP_GETRSP, CHttpRsp) CEventHttpGetRsp;
 typedef TYPE_HTTPEVENT(EVENT_HTTP_ABORT, CHttpAbort) CEventHttpAbort;
-typedef TYPE_HTTPEVENT(EVENT_HTTP_BROKEN, CHttpBroken) CEventHttpBroken;
 
 class CHttpEventListener : virtual public CEventListener
 {
@@ -43,7 +41,6 @@ public:
     DECLARE_EVENTHANDLER(CEventHttpAbort);
     DECLARE_EVENTHANDLER(CEventHttpGet);
     DECLARE_EVENTHANDLER(CEventHttpGetRsp);
-    DECLARE_EVENTHANDLER(CEventHttpBroken);
 };
 
 } // namespace xengine
