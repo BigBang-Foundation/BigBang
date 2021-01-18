@@ -80,7 +80,7 @@ protected:
                       const uint32& nPrevHeight, const CDelegateAgreement& agreement);
     void ArrangeBlockTx(CBlock& block, const uint256& hashFork, const CBlockMakerProfile& profile);
     bool SignBlock(CBlock& block, const CBlockMakerProfile& profile);
-    bool DispatchBlock(const CBlock& block);
+    bool DispatchBlock(const uint256& hashFork, const CBlock& block);
     void ProcessDelegatedProofOfStake(const CAgreementBlock& consParam);
     void ProcessSubFork(const CBlockMakerProfile& profile, const CDelegateAgreement& agreement,
                         const uint256& hashRefBlock, int64 nRefBlockTime, const int32 nPrevHeight, const uint16 nPrevMintType);
@@ -110,6 +110,7 @@ protected:
     std::map<int, CBlockMakerHashAlgo*> mapHashAlgo;
     std::map<int, CBlockMakerProfile> mapWorkProfile;
     std::map<CDestination, CBlockMakerProfile> mapDelegatedProfile;
+    std::map<uint256, std::pair<int, int>> mapForkLastStat;
     ICoreProtocol* pCoreProtocol;
     IBlockChain* pBlockChain;
     IForkManager* pForkManager;
