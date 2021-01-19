@@ -4340,9 +4340,9 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
 
 CRPCResultPtr CRPCMod::RPCPushTransaction(rpc::CRPCParamPtr param)
 {
-    auto spParam = CastParamPtr<CPushTransactionParam>(param);
-    StdDebug("CRPCMod::CSH", "Push Transaction called hash: %s", spParam->transaction.strTxid.c_str());
-    return MakeCPushTransactionResultPtr(spParam->transaction.strTxid);
+    auto spParam = CastParamPtr<CPushTxEventParam>(param);
+    StdDebug("CRPCMod::CSH", "Push Transaction event called hash: %s", spParam->transaction.strTxid.c_str());
+    return MakeCPushTxEventResultPtr(spParam->transaction.strTxid);
 }
 
 void CRPCMod::HttpServerThreadFunc()

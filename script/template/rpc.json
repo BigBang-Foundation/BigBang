@@ -1646,7 +1646,7 @@
                 },
                 "transaction": {
                     "type": "transactiondata",
-                    "desc": "transaction dara"
+                    "desc": "transaction data"
                 }
             }
         },
@@ -1654,6 +1654,48 @@
             "type": "string",
             "name": "hash",
             "desc": "push transaction hash"
+        },
+        "example": [
+
+        ]
+    },
+    "getfulltx": {
+        "typde": "command",
+        "name": "GetFullTx",
+        "desc": "Get Fork's Full Tx from Tx Pool",
+        "request": {
+            "type": "object",
+            "content": {
+                "fork": {
+                    "type": "string",
+                    "desc": "hash Fork hex string"
+                },
+                "nonce": {
+                    "type": "uint",
+                    "desc": "random value"
+                }
+            }
+        },
+        "response": {
+            "type": "object",
+            "name": "tx",
+            "content": {
+                "nonce": {
+                    "type": "uint",
+                    "desc": "random value"
+                },
+                "tx": {
+                    "type": "array",
+                    "desc": "tx array",
+                    "content": {
+                        "tx": {
+                            "type": "transactiondata",
+                            "desc": "transaction data"
+                        }
+                    }
+
+                }
+            }
         },
         "example": [
 
