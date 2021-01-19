@@ -207,7 +207,7 @@ CRPCMod::CRPCMod()
         //
         ("pushblock", &CRPCMod::RPCPushBlock)
         //
-        ("pushtransaction", &CRPCMod::RPCPushTransaction)
+        ("pushtxevent", &CRPCMod::RPCPushTransaction)
         ////////////////////////////////////////
         ("getgenealogy", &CRPCMod::RPCGetForkGenealogy)
         //

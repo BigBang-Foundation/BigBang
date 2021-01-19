@@ -1625,16 +1625,24 @@
             "response": "{\"id\":69,\"jsonrpc\":\"2.0\",\"result\":\"0000497da49cf85b3f7faabe13716534b6dfd9e287b109356cb6bcb8c795f0d7\"}"
         }]
     },
-    "pushtransaction": {
+    "pushtxevent": {
         "typde": "command",
-        "name": "PushTransaction",
-        "desc": "Push Transaction to remote RPC Server",
+        "name": "PushTxEvent",
+        "desc": "Push Transaction Event to remote RPC Server",
         "request": {
             "type": "object",
             "content": {
-                "opcode": {
+                "eventtype": {
                     "type": "uint",
-                    "desc": "0 is added tx, 1 is removed tx"
+                    "desc": "0 is added tx event, 1 is removed tx event"
+                },
+                "eventid": {
+                    "type": "uint",
+                    "desc": "event id"
+                },
+                "nonce": {
+                    "type": "uint",
+                    "desc": "random value"
                 },
                 "transaction": {
                     "type": "transactiondata",
