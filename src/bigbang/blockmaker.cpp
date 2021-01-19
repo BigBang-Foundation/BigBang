@@ -20,7 +20,7 @@ using namespace xengine;
 #define WAIT_NEWBLOCK_TIME (BLOCK_TARGET_SPACING + 5)
 #define WAIT_LAST_EXTENDED_TIME 0 //(BLOCK_TARGET_SPACING - 10)
 #define FORK_LAST_BLOCK_COUNT 30
-#define FORK_WAIT_BLOCK_COUNT 10
+#define FORK_WAIT_BLOCK_COUNT 60
 #define FORK_WAIT_BLOCK_SECT 100000
 
 namespace bigbang
@@ -546,10 +546,9 @@ void CBlockMaker::ProcessSubFork(const CBlockMakerProfile& profile, const CDeleg
                             if (forkStat.first != status.nBlockHeight)
                             {
                                 forkStat.first = status.nBlockHeight;
-                                forkStat.second = 0;
+                                forkStat.second = nPrevHeight + 1;
                             }
-                            forkStat.second++;
-                            if (forkStat.second >= FORK_WAIT_BLOCK_COUNT * ((nPrevHeight + 1 - status.nBlockHeight) / FORK_WAIT_BLOCK_SECT + 1))
+                            if (nPrevHeight + 1 - forkStat.second >= FORK_WAIT_BLOCK_COUNT * ((nPrevHeight + 1 - status.nBlockHeight) / FORK_WAIT_BLOCK_SECT + 1))
                             {
                                 if (ReplenishSubForkVacant(hashFork, status.nBlockHeight, status.hashBlock, profile, agreement, hashRefBlock, nPrevHeight))
                                 {
