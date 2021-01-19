@@ -187,6 +187,7 @@ public:
     void SetNull()
     {
         hashFork = 0;
+        opCode = 0;
     }
     bool IsNull() const
     {
@@ -194,6 +195,7 @@ public:
     }
 
 public:
+    uint8 opCode;
     uint256 hashFork;
     int64 nChange;
     CTransaction txUpdate;
