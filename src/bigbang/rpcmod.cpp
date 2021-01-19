@@ -206,6 +206,8 @@ CRPCMod::CRPCMod()
         ("getblocks", &CRPCMod::RPCGetBlocks)
         //
         ("pushblock", &CRPCMod::RPCPushBlock)
+        //
+        ("pushtransaction", &CRPCMod::RPCPushTransaction)
         ////////////////////////////////////////
         ("getgenealogy", &CRPCMod::RPCGetForkGenealogy)
         //
@@ -4334,6 +4336,13 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
     auto spParam = CastParamPtr<CPushBlockParam>(param);
     StdDebug("CRPCMod::CSH", "Push Block called hash: %s", spParam->block.strHash.c_str());
     return MakeCPushBlockResultPtr(spParam->block.strHash);
+}
+
+CRPCResultPtr CRPCMod::RPCPushTransaction(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CPushTransactionParam>(param);
+    StdDebug("CRPCMod::CSH", "Push Transaction called hash: %s", spParam->transaction.strTxid.c_str());
+    return MakeCPushTransactionResultPtr(spParam->transaction.strTxid);
 }
 
 void CRPCMod::HttpServerThreadFunc()
