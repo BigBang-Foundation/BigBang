@@ -207,7 +207,11 @@ CRPCMod::CRPCMod()
         //
         ("pushblock", &CRPCMod::RPCPushBlock)
         //
-        ("pushtxevent", &CRPCMod::RPCPushTransaction)
+        ("pushtxevent", &CRPCMod::RPCPushTxEvent)
+        //
+        ("getfulltx", &CRPCMod::RPCGetFullTx)
+        //
+        ("gettxevents", &CRPCMod::RPCGetTxEvents)
         ////////////////////////////////////////
         ("getgenealogy", &CRPCMod::RPCGetForkGenealogy)
         //
@@ -4338,11 +4342,23 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
     return MakeCPushBlockResultPtr(spParam->block.strHash);
 }
 
-CRPCResultPtr CRPCMod::RPCPushTransaction(rpc::CRPCParamPtr param)
+CRPCResultPtr CRPCMod::RPCPushTxEvent(rpc::CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CPushTxEventParam>(param);
     StdDebug("CRPCMod::CSH", "Push Transaction event called hash: %s", spParam->transaction.strTxid.c_str());
     return MakeCPushTxEventResultPtr(spParam->transaction.strTxid);
+}
+
+CRPCResultPtr CRPCMod::RPCGetFullTx(rpc::CRPCParamPtr param)
+{
+    (void)param;
+    return MakeCGetFullTxResultPtr();
+}
+
+CRPCResultPtr CRPCMod::RPCGetTxEvents(rpc::CRPCParamPtr param)
+{
+    (void)param;
+    return MakeCGetTxEventsResultPtr();
 }
 
 void CRPCMod::HttpServerThreadFunc()
