@@ -209,6 +209,7 @@ public:
     bool HandleEvent(xengine::CEventHttpGetRsp& event) override;
     bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
     //bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
+    uint64 GetNonce() const override;
 
 protected:
     const CRPCServerConfig* RPCServerConfig();
@@ -234,6 +235,7 @@ protected:
 private:
     boost::mutex mMutex;
     std::map<std::string, LiveClientInfo> mapRPCClient; //  IP:PORT -> LiveClientInfo
+    uint64 nNonce;
 };
 
 } // namespace bigbang

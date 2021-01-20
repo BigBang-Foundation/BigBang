@@ -4351,8 +4351,51 @@ CRPCResultPtr CRPCMod::RPCPushTxEvent(rpc::CRPCParamPtr param)
 
 CRPCResultPtr CRPCMod::RPCGetFullTx(rpc::CRPCParamPtr param)
 {
-    (void)param;
-    return MakeCGetFullTxResultPtr();
+    auto spParam = CastParamPtr<CGetFullTxParam>(param);
+    uint256 hashFork;
+    if (!GetForkHashOfDef(spParam->strFork, hashFork))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
+    }
+
+    if (!pService->HaveFork(hashFork))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
+    }
+
+    if (pPusher->GetNonce() != spParam->nNonce)
+    {
+        throw CRPCException(RPC_DATA_SYNC_NONCE_ERROR, "Nonce error");
+    }
+
+    std::vector<std::pair<uint256, size_t>> vTxPool;
+    pService->GetTxPool(hashFork, vTxPool);
+
+    auto spResult = MakeCGetFullTxResultPtr();
+    spResult->nNonce = pPusher->GetNonce();
+    for (const auto& tx : vTxPool)
+    {
+        const uint256& txid = tx.first;
+        CTransaction tempTx;
+        uint256 tempHashFork;
+        int nHeight = -1;
+        uint256 hashBlock;
+        CDestination destIn;
+        if (!pService->GetTransaction(txid, tempTx, tempHashFork, nHeight, hashBlock, destIn))
+        {
+            throw CRPCException(RPC_INVALID_REQUEST, "No information available about transaction from GetTxPool");
+        }
+
+        int nDepth = nHeight < 0 ? 0 : pService->GetForkHeight(hashFork) - nHeight;
+        if (hashFork != pCoreProtocol->GetGenesisBlockHash())
+        {
+            nDepth = nDepth * 30;
+        }
+
+        spResult->vecTx.push_back(TxToJSON(txid, tempTx, hashFork, hashBlock, nDepth, CAddress(destIn).ToString()));
+    }
+
+    return spResult;
 }
 
 CRPCResultPtr CRPCMod::RPCGetTxEvents(rpc::CRPCParamPtr param)
@@ -4393,6 +4436,7 @@ CPusher::CPusher()
 {
     pCoreProtocol = nullptr;
     pService = nullptr;
+    nNonce = 0;
 }
 
 CPusher::~CPusher()
@@ -4421,6 +4465,8 @@ bool CPusher::HandleInitialize()
         return false;
     }
 
+    RAND_bytes((unsigned char*)&nNonce, sizeof(nNonce));
+
     return true;
 }
 
@@ -4444,6 +4490,11 @@ void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& c
 {
     boost::lock_guard<boost::mutex> lock(mMutex);
     mapRPCClient[ipport] = client;
+}
+
+uint64 CPusher::GetNonce() const
+{
+    return nNonce;
 }
 
 Cblockdatadetail CPusher::BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block)
