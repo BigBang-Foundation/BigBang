@@ -1646,7 +1646,13 @@
                 },
                 "transaction": {
                     "type": "transactiondata",
-                    "desc": "transaction data"
+                    "desc": "transaction data",
+                    "condition": "eventtype=0"
+                },
+                "txid": {
+                    "type": "string",
+                    "desc": "transaction id hex string",
+                    "condition": "eventtype=1"
                 }
             }
         },
@@ -1699,6 +1705,12 @@
         },
         "example": [
 
+        ],
+        "error": [
+            "{\"code\":-6,\"message\":\"Invalid fork\"}",
+            "{\"code\":-6,\"message\":\"Unknown fork\"}",
+            "{\"code\":-500,\"message\":\"Nonce error\"}",
+            "{\"code\":-32600, \"message\": \"No information available about transaction from GetTxPool\"}"
         ]
     },
     "gettxevents": {
@@ -1753,7 +1765,13 @@
                                 },
                                 "transaction": {
                                     "type": "transactiondata",
-                                    "desc": "transaction data"
+                                    "desc": "transaction data",
+                                    "condition": "eventtype=0"
+                                },
+                                "txid": {
+                                    "type": "string",
+                                    "desc": "transaction id hex string",
+                                    "condition": "eventtype=1"
                                 }
                             }
                         }
