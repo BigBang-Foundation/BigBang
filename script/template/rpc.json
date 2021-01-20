@@ -1701,6 +1701,71 @@
 
         ]
     },
+    "gettxevents": {
+        "typde": "command",
+        "name": "GetTxEvents",
+        "desc": "Get Fork's Tx Events",
+        "request": {
+            "type": "object",
+            "content": {
+                "fork": {
+                    "type": "string",
+                    "desc": "hash Fork hex string"
+                },
+                "nonce": {
+                    "type": "uint",
+                    "desc": "random value"
+                },
+                "eventid": {
+                    "type": "uint",
+                    "desc": "Event ID"
+                },
+                "num": {
+                    "type": "uint",
+                    "desc": "number of events for request"
+                }
+
+            }
+        },
+        "response": {
+            "type": "object",
+            "name": "tx",
+            "content": {
+                "nonce": {
+                    "type": "uint",
+                    "desc": "random value"
+                },
+                "events": {
+                    "type": "array",
+                    "desc": "event array",
+                    "content": {
+                        "event": {
+                            "type": "object",
+                            "desc": "tx event",
+                            "content": {
+                                "eventtype": {
+                                    "type": "uint",
+                                    "desc": "0 is added tx event, 1 is removed tx event"
+                                },
+                                "eventid": {
+                                    "type": "uint",
+                                    "desc": "event id"
+                                },
+                                "transaction": {
+                                    "type": "transactiondata",
+                                    "desc": "transaction data"
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+        },
+        "example": [
+
+        ]
+    },
     "getgenealogy": {
         "type": "command",
         "name": "GetGenealogy",
