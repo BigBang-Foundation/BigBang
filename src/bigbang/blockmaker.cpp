@@ -403,7 +403,7 @@ bool CBlockMaker::DispatchBlock(const uint256& hashFork, const CBlock& block)
 {
     Debug("Dispatching block: %s, type: %u", block.GetHash().ToString().c_str(), block.nType);
     int nWait = block.nTimeStamp - GetNetTime();
-    if (nWait > 0 && !WaitExit(nWait))
+    if (!WaitExit(nWait))
     {
         return false;
     }
@@ -758,18 +758,19 @@ bool CBlockMaker::CreateVacant(CBlock& block, const CBlockMakerProfile& profile,
 bool CBlockMaker::ReplenishSubForkVacant(const uint256& hashFork, int nLastBlockHeight, uint256& hashLastBlock, const CBlockMakerProfile& profile,
                                          const CDelegateAgreement& agreement, const uint256& hashRefBlock, const int32 nPrevHeight)
 {
+    vector<int64> vTime;
+    int nPrimaryHeight = nPrevHeight + 1;
     int nNextHeight = nLastBlockHeight + 1;
-    while (nNextHeight <= nPrevHeight)
+    int nDepth = nPrimaryHeight - nLastBlockHeight;
+    if (!pBlockChain->GetLastBlockTime(pCoreProtocol->GetGenesisBlockHash(), nDepth, vTime))
     {
-        uint256 hashPrimaryBlock;
-        int64 nPrimaryTime = 0;
-        if (!pBlockChain->GetPrimaryHeightBlockTime(hashRefBlock, nNextHeight, hashPrimaryBlock, nPrimaryTime))
-        {
-            StdError("blockmaker", "Replenish vacant: get same height time fail");
-            return false;
-        }
+        StdError("blockmaker", "Replenish vacant: GetLastBlockTime fail");
+        return false;
+    }
+    while (nNextHeight < nPrimaryHeight)
+    {
         CBlock block;
-        if (!CreateVacant(block, profile, agreement, hashRefBlock, hashFork, hashLastBlock, nPrimaryTime))
+        if (!CreateVacant(block, profile, agreement, hashRefBlock, hashFork, hashLastBlock, vTime[nPrimaryHeight - nNextHeight]))
         {
             StdError("blockmaker", "Replenish vacant: create vacane fail");
             return false;

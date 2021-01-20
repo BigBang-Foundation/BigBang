@@ -368,6 +368,7 @@ bool CBlockChain::GetLastBlockTime(const uint256& hashFork, int nDepth, vector<i
     }
 
     vTime.clear();
+    vTime.reserve(nDepth);
     while (nDepth > 0 && pIndex != nullptr)
     {
         vTime.push_back(pIndex->GetBlockTime());
@@ -1911,20 +1912,23 @@ Errno CBlockChain::VerifyBlock(const uint256& hashBlock, const CBlock& block, CB
                 }
             }
 
-            uint256 hashPrimaryBlock;
-            int64 nPrimaryTime = 0;
-            if (!cntrBlock.GetPrimaryHeightBlockTime((*ppIndexRef)->GetBlockHash(), block.GetBlockHeight(), hashPrimaryBlock, nPrimaryTime))
+            if (!cntrBlock.VerifyPrimaryHeightRefBlockTime(block.GetBlockHeight(), block.GetBlockTime()))
             {
-                Log("Verify block : Vacant get height time, block ref: %s, block: %s",
-                    (*ppIndexRef)->GetBlockHash().GetHex().c_str(), hashBlock.GetHex().c_str());
-                return ERR_BLOCK_PROOF_OF_STAKE_INVALID;
-            }
-            if (block.GetBlockTime() != nPrimaryTime)
-            {
-                Log("Verify block : Vacant time error, block time: %d, primary time: %d, ref block: %s, same height block: %s, block: %s",
-                    block.GetBlockTime(), nPrimaryTime, (*ppIndexRef)->GetBlockHash().GetHex().c_str(),
-                    hashPrimaryBlock.GetHex().c_str(), hashBlock.GetHex().c_str());
-                return ERR_BLOCK_TIMESTAMP_OUT_OF_RANGE;
+                uint256 hashPrimaryBlock;
+                int64 nPrimaryTime = 0;
+                if (!cntrBlock.GetPrimaryHeightBlockTime((*ppIndexRef)->GetBlockHash(), block.GetBlockHeight(), hashPrimaryBlock, nPrimaryTime))
+                {
+                    Log("Verify block : Vacant get height time, block ref: %s, block: %s",
+                        (*ppIndexRef)->GetBlockHash().GetHex().c_str(), hashBlock.GetHex().c_str());
+                    return ERR_BLOCK_PROOF_OF_STAKE_INVALID;
+                }
+                if (block.GetBlockTime() != nPrimaryTime)
+                {
+                    Log("Verify block : Vacant time error, block time: %d, primary time: %d, ref block: %s, same height block: %s, block: %s",
+                        block.GetBlockTime(), nPrimaryTime, (*ppIndexRef)->GetBlockHash().GetHex().c_str(),
+                        hashPrimaryBlock.GetHex().c_str(), hashBlock.GetHex().c_str());
+                    return ERR_BLOCK_TIMESTAMP_OUT_OF_RANGE;
+                }
             }
         }
     }
