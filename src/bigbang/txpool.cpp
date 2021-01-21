@@ -1615,7 +1615,8 @@ void CTxPool::RemoveTx(const uint256& txid)
 
 void CTxPool::NotifyTxChanged(const uint256& hashFork, const CPooledTx& tx, uint8 nState)
 {
-    uint64 nNonce = 0;
+    static uint64 nNonce = 0;
+    nNonce++;
     CRPCModEventUpdateTx* pUpdateTxEvent = new CRPCModEventUpdateTx(nNonce, hashFork, tx.GetChange(), nState);
     pUpdateTxEvent->data = tx;
     pPusher->PostEvent(pUpdateTxEvent);
