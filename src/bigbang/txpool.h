@@ -477,7 +477,7 @@ protected:
                              std::vector<CTransaction>& vtx, int64& nTotalTxFee, int nHeight, std::vector<std::pair<uint256, std::vector<CTxIn>>>& vTxRemove);
 
     void ListUnspent(const CTxPoolView& txPoolView, const CDestination& dest, uint32 nMax, const std::vector<CTxUnspent>& vUnspentOnChain, std::vector<CTxUnspent>& vUnspent);
-    void NotifyTxChanged(const uint256& hashFork, const CPooledTx& tx, uint8 nState);
+    void NotifyTxChanged(const uint256& hashFork, const CTransaction& tx, uint8 nState);
 
 protected:
     storage::CTxPoolData datTxPool;

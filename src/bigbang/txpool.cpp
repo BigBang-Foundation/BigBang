@@ -1196,6 +1196,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                         txView.relation.RemoveRelation(tx.sendTo);
                     }
                     mapTx.erase(txid);
+                    NotifyTxChanged(update.hashFork, tx, (uint8)CHANGE_STATE::STATE_REMOVED);
                     change.mapTxUpdate.insert(make_pair(txid, nBlockHeight));
                 }
                 else
@@ -1310,6 +1311,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                 txView.relation.RemoveRelation(it->second.sendTo);
             }
             mapTx.erase(it);
+            NotifyTxChanged(update.hashFork, it->second, (uint8)CHANGE_STATE::STATE_REMOVED);
         }
     }
     change.vTxRemove.insert(change.vTxRemove.end(), vTxRemove.rbegin(), vTxRemove.rend());
@@ -1608,18 +1610,24 @@ void CTxPool::RemoveTx(const uint256& txid)
             certTxDest.RemoveCertTx(mi->ptx->sendTo, mi->hashTX);
         }
         mapTx.erase(mi->hashTX);
+        NotifyTxChanged(hashFork, *(mi->ptx), (uint8)CHANGE_STATE::STATE_REMOVED);
     }
 
     StdTrace("CTxPool", "RemoveTx success, txid: %s", txid.GetHex().c_str());
 }
 
-void CTxPool::NotifyTxChanged(const uint256& hashFork, const CPooledTx& tx, uint8 nState)
+void CTxPool::NotifyTxChanged(const uint256& hashFork, const CTransaction& tx, uint8 nState)
 {
-    static uint64 nNonce = 0;
-    nNonce++;
-    CRPCModEventUpdateTx* pUpdateTxEvent = new CRPCModEventUpdateTx(nNonce, hashFork, tx.GetChange(), nState);
+    static std::map<uint256, uint64> mapEventID;
+    if (mapEventID.find(hashFork) == mapEventID.end())
+    {
+        mapEventID[hashFork] = 0;
+    }
+    uint64& nEventID = mapEventID[hashFork];
+    CRPCModEventUpdateTx* pUpdateTxEvent = new CRPCModEventUpdateTx(nEventID, hashFork, 0, nState);
     pUpdateTxEvent->data = tx;
     pPusher->PostEvent(pUpdateTxEvent);
+    nEventID++;
 }
 
 } // namespace bigbang
