@@ -1698,6 +1698,10 @@
                     "type": "uint",
                     "desc": "random value"
                 },
+                "eventid": {
+                    "type": "uint",
+                    "desc": "event id"
+                },
                 "tx": {
                     "type": "array",
                     "desc": "tx array",

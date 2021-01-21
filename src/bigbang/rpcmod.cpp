@@ -4359,6 +4359,7 @@ CRPCResultPtr CRPCMod::RPCGetFullTx(rpc::CRPCParamPtr param)
 
     auto spResult = MakeCGetFullTxResultPtr();
     spResult->nNonce = pPusher->GetNonce();
+    spResult->nEventid = pPusher->GetLatestEventId();
     for (const auto& tx : vTxPool)
     {
         const uint256& txid = tx.first;
@@ -4481,6 +4482,11 @@ void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& c
 uint64 CPusher::GetNonce() const
 {
     return nNonce;
+}
+
+uint64 CPusher::GetLatestEventId() const
+{
+    return 0;
 }
 
 Cblockdatadetail CPusher::BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block)

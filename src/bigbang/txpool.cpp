@@ -1574,6 +1574,7 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     {
         certTxDest.AddCertTx(tx.sendTo, txid);
     }
+    NotifyTxChanged(hashFork, tx, (uint8)CHANGE_STATE::STATE_ADDED);
     return OK;
 }
 

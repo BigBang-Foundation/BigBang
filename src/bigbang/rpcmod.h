@@ -210,6 +210,7 @@ public:
     bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
     bool HandleEvent(CRPCModEventUpdateTx& event) override;
     uint64 GetNonce() const override;
+    uint64 GetLatestEventId() const override;
 
 protected:
     const CRPCServerConfig* RPCServerConfig();
