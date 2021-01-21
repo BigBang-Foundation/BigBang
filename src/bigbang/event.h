@@ -29,7 +29,7 @@ enum
 
     ///////// RPCMod ////////////////
     EVENT_RPCMOD_UPDATE_NEW_BLOCK,
-    EVENT_RPCMOD_UPDATE_NEW_TRANSACTION
+    EVENT_RPCMOD_UPDATE_TRANSACTION
 };
 
 class CBlockMakerEventListener;
@@ -92,14 +92,14 @@ class CRPCModEventListener;
     CRPCModEventData<type, CRPCModEventListener, body>
 
 typedef TYPE_RPCMOD_EVENT(EVENT_RPCMOD_UPDATE_NEW_BLOCK, CBlockEx) CRPCModEventUpdateNewBlock;
-typedef TYPE_RPCMOD_EVENT(EVENT_RPCMOD_UPDATE_NEW_TRANSACTION, CTransaction) CRPCModEventUpdateNewTx;
+typedef TYPE_RPCMOD_EVENT(EVENT_RPCMOD_UPDATE_TRANSACTION, CTransaction) CRPCModEventUpdateTx;
 
 class CRPCModEventListener : virtual public CEventListener
 {
 public:
     virtual ~CRPCModEventListener() {}
     DECLARE_EVENTHANDLER(CRPCModEventUpdateNewBlock);
-    DECLARE_EVENTHANDLER(CRPCModEventUpdateNewTx);
+    DECLARE_EVENTHANDLER(CRPCModEventUpdateTx);
 };
 
 } // namespace bigbang

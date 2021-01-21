@@ -4607,11 +4607,11 @@ void CPusher::RemoveClient(uint64 nNonce)
     }
 }
 
-// bool CRPCMod::HandleEvent(CRPCModEventUpdateNewTx& event)
-// {
-//     (void)event;
-//     return true;
-// }
+bool CPusher::HandleEvent(CRPCModEventUpdateTx& event)
+{
+    (void)event;
+    return true;
+}
 
 void CPusher::PushBlock(const PushBlockMessage& message)
 {

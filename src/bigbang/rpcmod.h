@@ -208,7 +208,7 @@ public:
     void InsertNewClient(const std::string& ipport, const LiveClientInfo& client) override;
     bool HandleEvent(xengine::CEventHttpGetRsp& event) override;
     bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
-    //bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
+    bool HandleEvent(CRPCModEventUpdateTx& event) override;
     uint64 GetNonce() const override;
 
 protected:
