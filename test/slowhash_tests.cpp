@@ -32,8 +32,8 @@ BOOST_AUTO_TEST_CASE(slowhash)
     BOOST_TEST_MESSAGE("Hashing with neon native instructions running on ARM64 WITH CRYPTO FEATURE");
 
     #else
-    //arm64 with optimised neon instructions
-    BOOST_TEST_MESSAGE("Hashing with neon native instructions running on ARM64 WITHOUT CRYPTO FEATURE");
+    //arm64 without optimised neon instructions
+    BOOST_TEST_MESSAGE("Hashing without neon native instructions running on ARM64 WITHOUT CRYPTO FEATURE");
 
     #endif
 #else

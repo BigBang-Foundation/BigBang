@@ -155,7 +155,6 @@ endif()
 
 if(ARM_CRYPTO)
     add_definitions(-DBIGBANG_ARM_CRYPTO)
-    add_definitions(-DSANITIZE)
 endif()
 
 # include directories
