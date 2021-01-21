@@ -4359,7 +4359,7 @@ CRPCResultPtr CRPCMod::RPCGetFullTx(rpc::CRPCParamPtr param)
 
     auto spResult = MakeCGetFullTxResultPtr();
     spResult->nNonce = pPusher->GetNonce();
-    spResult->nEventid = pPusher->GetLatestEventId();
+    spResult->nEventid = pPusher->GetLatestEventId(hashFork);
     for (const auto& tx : vTxPool)
     {
         const uint256& txid = tx.first;
@@ -4484,9 +4484,25 @@ uint64 CPusher::GetNonce() const
     return nNonce;
 }
 
-uint64 CPusher::GetLatestEventId() const
+uint64 CPusher::GetLatestEventId(const uint256& hashFork) const
 {
-    return 0;
+    boost::lock_guard<boost::mutex> lock(mMutex);
+    const auto iter = mapTxEventStream.find(hashFork);
+    if (iter == mapTxEventStream.end())
+    {
+        return 0;
+    }
+    else
+    {
+        if (!iter->second.empty())
+        {
+            return iter->second.end()->nNonce;
+        }
+        else
+        {
+            return 0;
+        }
+    }
 }
 
 Cblockdatadetail CPusher::BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block)
@@ -4589,6 +4605,12 @@ bool CPusher::HandleEvent(CRPCModEventUpdateTx& event)
     const CTransaction& tx = event.data;
     const uint256& hashFork = event.hashFork;
     StdDebug("CPusher", "Update New Tx hash: %s forkHash: %s", tx.GetHash().ToString().c_str(), hashFork.ToString().c_str());
+
+    // save event to event stream log
+    {
+        boost::lock_guard<boost::mutex> lock(mMutex);
+        mapTxEventStream[hashFork].push_back(event);
+    }
 
     std::vector<std::string> deletes;
 

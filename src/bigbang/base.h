@@ -475,7 +475,7 @@ public:
       : IIOModule("pusher") {}
     virtual void InsertNewClient(const std::string& ipport, const LiveClientInfo& client) = 0;
     virtual uint64 GetNonce() const = 0;
-    virtual uint64 GetLatestEventId() const = 0;
+    virtual uint64 GetLatestEventId(const uint256& hashFork) const = 0;
 };
 
 class IRecovery : public xengine::IBase
