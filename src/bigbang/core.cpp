@@ -215,6 +215,13 @@ static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 0;
 static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 565620;
 #endif
 
+// New DeFi reward type excluded blacklist address tokens
+#ifdef BIGBANG_TESTNET
+static const int32 DEFI_REWARD_EXCLUDED_BLACKLIST_TOKENS = 0;
+#else
+static const int32 DEFI_REWARD_EXCLUDED_BLACKLIST_TOKENS = 640798;
+#endif
+
 namespace bigbang
 {
 ///////////////////////////////
@@ -696,6 +703,10 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
         {
             return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nSupplyCycle must be [1, %ld]", 100 * YEAR_HEIGHT);
         }
+        if (defi.nSupplyCycle % defi.nRewardCycle != 0)
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nSupplyCycle must be divisible by nRewardCycle");
+        }
         if (defi.nCoinbaseType == FIXED_DEFI_COINBASE_TYPE)
         {
             if (defi.nInitCoinbasePercent == 0 || defi.nInitCoinbasePercent > 10000)
@@ -710,7 +721,7 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
             {
                 return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nDecayCycle must be [0, %ld]", 100 * YEAR_HEIGHT);
             }
-            if ((defi.nDecayCycle / defi.nSupplyCycle) * defi.nSupplyCycle != defi.nDecayCycle)
+            if (defi.nDecayCycle % defi.nSupplyCycle != 0)
             {
                 return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nDecayCycle must be divisible by nSupplyCycle");
             }
@@ -727,7 +738,7 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
                 {
                     return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param key of mapCoinbasePercent must be larger than 0");
                 }
-                if ((it->first / defi.nSupplyCycle) * defi.nSupplyCycle != it->first)
+                if (it->first % defi.nSupplyCycle != 0)
                 {
                     return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param key of mapCoinbasePercent must be divisible by nSupplyCycle");
                 }
@@ -1539,6 +1550,11 @@ bool CCoreProtocol::IsNewDiffPowHeight(int height)
         return true;
     }
     return false;
+}
+
+bool CCoreProtocol::IsNewDeFiRewardHeight(int height)
+{
+    return height >= DEFI_REWARD_EXCLUDED_BLACKLIST_TOKENS;
 }
 
 bool CCoreProtocol::DPoSConsensusCheckRepeated(int height)

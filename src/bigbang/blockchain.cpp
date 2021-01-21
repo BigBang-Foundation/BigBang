@@ -588,7 +588,9 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
 
             if ((itListDeFi->dest != tx.sendTo) || (itListDeFi->nReward != tx.nAmount + tx.nTxFee) || (itListDeFi->hashAnchor != tx.hashAnchor))
             {
-                Log("AddNewBlock Check defi reward tx error, block: %s, tx: %s", hash.ToString().c_str(), txid.ToString().c_str());
+                Log("AddNewBlock Check defi reward tx error, block: %s, tx: %s. dest: %s, should: %s. reward: %ld, should: %ld. anchor: %s, should: %s",
+                    hash.ToString().c_str(), txid.ToString().c_str(), CAddress(tx.sendTo).ToString().c_str(), CAddress(itListDeFi->dest).ToString().c_str(),
+                    tx.nAmount + tx.nTxFee, itListDeFi->nReward, tx.hashAnchor.ToString().c_str(), itListDeFi->hashAnchor.ToString().c_str());
                 return ERR_TRANSACTION_INVALID;
             }
             ++itListDeFi;
@@ -2373,11 +2375,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
 {
     CDeFiRewardSet s;
 
-    int64 nReward = defiReward.GetSectionReward(forkid, hash);
-    if (nReward <= 0)
-    {
-        return s;
-    }
+    int32 nHeight = CBlock::GetBlockHeightByHash(hash);
 
     storage::CBlockView view;
     if (!cntrBlock.GetBlockView(hash, view))
@@ -2393,7 +2391,15 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
         return s;
     }
 
-    if (CBlock::GetBlockHeightByHash(hash) > NO_DEFI_TEMPLATE_ADDRESS_HEIGHT)
+    int64 nSupply = 0;
+    for (auto& addrAmount : mapAddressAmount)
+    {
+        nSupply += addrAmount.second;
+    }
+
+    int64 nInvalidSupply = 0;
+    // unspendable address
+    if (nHeight > NO_DEFI_TEMPLATE_ADDRESS_HEIGHT)
     {
         auto iter = mapAddressAmount.begin();
         for (; iter != mapAddressAmount.end();)
@@ -2401,6 +2407,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
             const CDestination& destTo = iter->first;
             if (!CTemplate::IsTxSpendable(destTo))
             {
+                nInvalidSupply += iter->second;
                 mapAddressAmount.erase(iter++);
             }
             else
@@ -2411,10 +2418,29 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     }
 
     // blacklist
-    const set<CDestination> setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, CBlock::GetBlockHeightByHash(hash));
+    const set<CDestination> setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, nHeight);
     for (auto& dest : setBlacklist)
     {
-        mapAddressAmount.erase(dest);
+        auto iter = mapAddressAmount.find(dest);
+        if (iter != mapAddressAmount.end())
+        {
+            nInvalidSupply += iter->second;
+            mapAddressAmount.erase(iter);
+        }
+    }
+
+    int64 nReward = 0;
+    if (pCoreProtocol->IsNewDeFiRewardHeight(nHeight))
+    {
+        nReward = defiReward.GetSectionReward(forkid, hash, nSupply, nInvalidSupply);
+    }
+    else
+    {
+        nReward = defiReward.GetSectionReward(forkid, hash);
+    }
+    if (nReward <= 0)
+    {
+        return s;
     }
 
     int64 nStakeReward = nReward * profile.defi.nStakeRewardPercent / 100;
