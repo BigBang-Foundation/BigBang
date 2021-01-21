@@ -47,14 +47,23 @@ public:
     DECLARE_EVENTHANDLER(CEventBlockMakerAgree);
 };
 
+enum class CHANGE_STATE : uint8
+{
+    STATE_ADDED = 0,
+    STATE_REMOVED = 1
+};
+
 template <int type, typename L, typename D>
 class CRPCModEventData : public CEvent
 {
     friend class CStream;
 
 public:
-    CRPCModEventData(uint64 nNonceIn, const uint256& hashForkIn, int64 nChangeIn)
-      : CEvent(nNonceIn, type), hashFork(hashForkIn), nChange(nChangeIn) {}
+    CRPCModEventData(uint64 nNonceIn, const uint256& hashForkIn, int64 nChangeIn, uint8 nStateIn)
+      : CEvent(nNonceIn, type),
+        hashFork(hashForkIn), nChange(nChangeIn), nState(nStateIn)
+    {
+    }
     virtual ~CRPCModEventData() {}
     virtual bool Handle(CEventListener& listener)
     {
@@ -84,6 +93,7 @@ protected:
 public:
     uint256 hashFork;
     int64 nChange;
+    uint8 nState;
     D data;
 };
 

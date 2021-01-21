@@ -8,6 +8,8 @@
 #include <boost/range/adaptor/reversed.hpp>
 #include <deque>
 
+#include "event.h"
+
 using namespace std;
 using namespace xengine;
 
@@ -1609,6 +1611,14 @@ void CTxPool::RemoveTx(const uint256& txid)
     }
 
     StdTrace("CTxPool", "RemoveTx success, txid: %s", txid.GetHex().c_str());
+}
+
+void CTxPool::NotifyTxChanged(const uint256& hashFork, const CPooledTx& tx, uint8 nState)
+{
+    uint64 nNonce = 0;
+    CRPCModEventUpdateTx* pUpdateTxEvent = new CRPCModEventUpdateTx(nNonce, hashFork, tx.GetChange(), nState);
+    pUpdateTxEvent->data = tx;
+    pPusher->PostEvent(pUpdateTxEvent);
 }
 
 } // namespace bigbang
