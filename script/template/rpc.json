@@ -1527,6 +1527,14 @@
                     "type": "string",
                     "desc": "client ip and port, like: http://192.168.1.100:33 or https://192.168.1.100:33"
                 },
+                "blockurl": {
+                    "type": "string",
+                    "desc": "notify block's url like /nofiy/block"
+                },
+                "txurl": {
+                    "type": "string",
+                    "desc": "notify tx's url like /nofiy/tx"
+                },
                 "forks": {
                     "type": "array",
                     "desc": "client wants to subscribe fork array",
@@ -1643,6 +1651,10 @@
                 "nonce": {
                     "type": "uint",
                     "desc": "random value"
+                },
+                "fork": {
+                    "type": "string",
+                    "desc": "fork hash hex string"
                 },
                 "transaction": {
                     "type": "transactiondata",

@@ -631,6 +631,7 @@ CTxPool::CTxPool()
 {
     pCoreProtocol = nullptr;
     pBlockChain = nullptr;
+    pPusher = nullptr;
     nLastSequenceNumber = 0;
 }
 
@@ -652,6 +653,12 @@ bool CTxPool::HandleInitialize()
         return false;
     }
 
+    if (!GetObject("pusher", pPusher))
+    {
+        Error("Failed to request pusher");
+        return false;
+    }
+
     return true;
 }
 
@@ -659,6 +666,7 @@ void CTxPool::HandleDeinitialize()
 {
     pCoreProtocol = nullptr;
     pBlockChain = nullptr;
+    pPusher = nullptr;
 }
 
 bool CTxPool::HandleInvoke()

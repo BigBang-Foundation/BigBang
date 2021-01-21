@@ -483,6 +483,7 @@ protected:
     mutable boost::shared_mutex rwAccess;
     ICoreProtocol* pCoreProtocol;
     IBlockChain* pBlockChain;
+    xengine::IIOModule* pPusher;
     std::map<uint256, CTxPoolView> mapPoolView;
     std::map<uint256, CPooledTx> mapTx;
     uint64 nLastSequenceNumber;

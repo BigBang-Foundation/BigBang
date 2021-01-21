@@ -4065,16 +4065,6 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid Port");
     }
 
-    std::string urlPath = tokens[2].substr(sz);
-    if (urlPath.size() >= 2)
-    {
-        urlPath = tokens[2].substr(sz + 1);
-    }
-    else
-    {
-        urlPath = "";
-    }
-
     IPusher::LiveClientInfo client;
 
     for (const std::string& fork : spParam->vecForks)
@@ -4098,11 +4088,12 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
     client.fSSL = strProtocol == "http" ? false : true;
     client.strHost = strHost;
     client.nPort = nPort;
-    client.strURL = urlPath;
+    client.strBlockURL = spParam->strBlockurl;
+    client.strTxURL = spParam->strTxurl;
 
     pPusher->InsertNewClient(spParam->strIpport, client);
 
-    StdWarn("CRPCMod", "Inserted Client ipport: %s, url: %s", spParam->strIpport.c_str(), urlPath.c_str());
+    StdWarn("CRPCMod", "Inserted Client ipport: %s, url: %s", spParam->strIpport.c_str());
     spResult->strIpport = spParam->strIpport;
     return spResult;
 }
@@ -4629,7 +4620,7 @@ void CPusher::RemoveClient(uint64 nNonce)
 
 void CPusher::PushBlock(const PushBlockMessage& message)
 {
-    CallRPC(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strURL, message.client.nNonce, message.hashFork, message.block, message.client.nNonce);
+    CallRPC(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strBlockURL, message.client.nNonce, message.hashFork, message.block, message.client.nNonce);
 }
 
 bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CBlockEx& block, int nReqId)

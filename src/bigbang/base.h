@@ -466,7 +466,8 @@ public:
         bool fSSL;
         std::string strHost;
         int nPort;
-        std::string strURL;
+        std::string strBlockURL;
+        std::string strTxURL;
         std::set<uint256> registerForks;
     } LiveClientInfo;
 
