@@ -32,8 +32,8 @@ BOOST_AUTO_TEST_CASE(slowhash)
     BOOST_TEST_MESSAGE("Hashing with neon native instructions running on ARM64 WITH CRYPTO FEATURE");
 
     #else
-    //arm64 with optimised neon instructions
-    BOOST_TEST_MESSAGE("Hashing with neon native instructions running on ARM64 WITHOUT CRYPTO FEATURE");
+    //arm64 without optimised neon instructions
+    BOOST_TEST_MESSAGE("Hashing without neon native instructions running on ARM64 WITHOUT CRYPTO FEATURE");
 
     #endif
 #else
@@ -63,14 +63,8 @@ BOOST_AUTO_TEST_CASE(slowhash)
         {HEIGHT_HASH_TX_DATA + 1 ,{"010001007c25565e139563114eed88711d4bd4c865500ca9f8d4a0dffefbadee251859ccc40702004c0000000000000000000000000000000000000000000000000000000000000000000123020400c59176c8c281fa0e5307b61d262224d0de76719187305ff3056e8e03162f97aeaa7a04385c07",
                         "0000000016c8bb1da5e5734257022c62f2b5add51184cf8fca13424582e04895"}},
 
-        {581328, {"dpos","8e68251016045abb945a9eac4ef6f410767038e7ee5f496e1f2ef0806a8b69c8"}},
-        {581329, {"dpos","8e68251016045abb945a9eac4ef6f410767038e7ee5f496e1f2ef0806a8b69c8"}},
-        {581330, {"dpos","8e68251016045abb945a9eac4ef6f410767038e7ee5f496e1f2ef0806a8b69c8"}},
-
-        {581425, {"dpos","8e68251016045abb945a9eac4ef6f410767038e7ee5f496e1f2ef0806a8b69c8"}},
         {581426, {"0100010022a7e95f3dac5b6ec0b4ed88fc5bc4c6c6d93c48fa8456d05c6553632c9ab80c31df08004c000000000000000000000000000000000000000000000000000000000000000000011e020400eb78f2762cb61482504af4a560053fb774901e3139008cc361f58c0b3aec2babaad23652c9b2",
                         "00000000451ee0b2fd09f02bff86c39f93889ca705a13fca602bb5339cc8c262"}},
-        {581427, {"dpos","40d4aeb5f4fa8f66b93246697a7555f3d66dd35ec0acb135c6c8e42d47e31f72"}},
     };
 
     for (const auto& ph : test_table)
