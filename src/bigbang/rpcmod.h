@@ -203,6 +203,17 @@ public:
         CBlockEx block;
     } PushBlockMessage;
 
+    typedef struct _PushTxEventMessage
+    {
+        LiveClientInfo client;
+        uint64 nNonce;
+        int nReqId;
+        uint256 hashFork;
+        CTransaction tx;
+        uint64 nEventId;
+        uint8 nState;
+    } PushTxMessage;
+
     CPusher();
     ~CPusher();
     void InsertNewClient(const std::string& ipport, const LiveClientInfo& client) override;
@@ -221,6 +232,7 @@ protected:
     void HandleHalt() override;
 
     bool CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CBlockEx& block, int nReqId);
+    bool CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CTransaction& block, int nReqId);
     bool GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content, std::string& response);
     rpc::Cblockdatadetail BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block);
     void RemoveClients(const std::vector<std::string>& clients);
@@ -228,6 +240,7 @@ protected:
     void RemoveClient(uint64 nNonce);
 
     void PushBlock(const PushBlockMessage& message);
+    void PushTransaction(const PushTxMessage& message);
 
 protected:
     ICoreProtocol* pCoreProtocol;

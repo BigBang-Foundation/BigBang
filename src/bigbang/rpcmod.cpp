@@ -4584,6 +4584,60 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
     return true;
 }
 
+bool CPusher::HandleEvent(CRPCModEventUpdateTx& event)
+{
+    const CTransaction& tx = event.data;
+    const uint256& hashFork = event.hashFork;
+    StdDebug("CPusher", "Update New Tx hash: %s forkHash: %s", tx.GetHash().ToString().c_str(), hashFork.ToString().c_str());
+
+    std::vector<std::string> deletes;
+
+    static uint64 nNonce = 11;
+    {
+        decltype(mapRPCClient) tempMap;
+        {
+            boost::lock_guard<boost::mutex> lock(mMutex);
+            tempMap = mapRPCClient;
+        }
+
+        for (const auto& client : tempMap)
+        {
+            const std::string& ipport = client.first;
+            int64 nTimeStamp = client.second.timestamp;
+            StdDebug("CPusher", "Update Changed Tx ipport: %s", ipport.c_str());
+            if (GetTime() - nTimeStamp > 60 * 2)
+            {
+                StdDebug("CPusher", "Timeout IPORT: %s", ipport.c_str());
+                deletes.push_back(ipport);
+                continue;
+            }
+
+            if (client.second.registerForks.count(hashFork) == 0)
+            {
+                StdDebug("CPusher", "No register fork: %s", hashFork.ToString().c_str());
+                continue;
+            }
+
+            PushTxMessage message;
+            message.client = client.second;
+            message.hashFork = hashFork;
+            message.nNonce = nNonce;
+            message.nState = event.nState;
+            message.nEventId = event.nNonce;
+            message.nReqId = client.second.nNonce;
+            message.tx = tx;
+            PushTransaction(message);
+
+            StdDebug("CPusher", "Pushed changed tx event: Host: %s, Port: %d, tx timestamp: %d, txHash: %s, type: %d, fork: %s",
+                     client.second.strHost.c_str(), client.second.nPort, tx.GetTxTime(), tx.GetHash().ToString().c_str(), tx.nType, hashFork.ToString().c_str());
+        }
+
+        RemoveClients(deletes);
+    }
+
+    return true;
+}
+
 void CPusher::RemoveClient(const std::string& client)
 {
     mapRPCClient.erase(client);
@@ -4613,12 +4667,6 @@ void CPusher::RemoveClient(uint64 nNonce)
     }
 }
 
-bool CPusher::HandleEvent(CRPCModEventUpdateTx& event)
-{
-    (void)event;
-    return true;
-}
-
 void CPusher::PushBlock(const PushBlockMessage& message)
 {
     CallRPC(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strBlockURL, message.client.nNonce, message.hashFork, message.block, message.client.nNonce);
@@ -4633,6 +4681,37 @@ bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const st
         CRPCReqPtr spReq = MakeCRPCReqPtr(nReqId, spParam->Method(), spParam);
         std::string response;
         return GetResponse(fSSL, strHost, nPort, strURL, nNonce, spReq->Serialize(), response);
+    }
+    catch (const std::exception& e)
+    {
+        //cerr << e.what() << endl;
+        StdError("CPusher", "CallRPC Exception: %s", e.what());
+        return false;
+    }
+    catch (...)
+    {
+        //cerr << "Unknown error" << endl;
+        StdError("CPusher", "CallRPC Exception: Unknown error");
+        return false;
+    }
+    return false;
+}
+
+void CPusher::PushTransaction(const PushTxMessage& message)
+{
+    CallRPC(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strTxURL, message.client.nNonce, message.hashFork, message.tx, message.client.nNonce);
+}
+
+bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CTransaction& block, int nReqId)
+{
+    try
+    {
+        // Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
+        // auto spParam = MakeCPushBlockParamPtr(data);
+        // CRPCReqPtr spReq = MakeCRPCReqPtr(nReqId, spParam->Method(), spParam);
+        // std::string response;
+        // return GetResponse(fSSL, strHost, nPort, strURL, nNonce, spReq->Serialize(), response);
+        return false;
     }
     catch (const std::exception& e)
     {
