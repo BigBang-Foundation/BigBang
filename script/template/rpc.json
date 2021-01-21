@@ -1687,10 +1687,6 @@
                 "fork": {
                     "type": "string",
                     "desc": "hash Fork hex string"
-                },
-                "nonce": {
-                    "type": "uint",
-                    "desc": "random value"
                 }
             }
         },
@@ -1721,7 +1717,6 @@
         "error": [
             "{\"code\":-6,\"message\":\"Invalid fork\"}",
             "{\"code\":-6,\"message\":\"Unknown fork\"}",
-            "{\"code\":-500,\"message\":\"Nonce error\"}",
             "{\"code\":-32600, \"message\": \"No information available about transaction from GetTxPool\"}"
         ]
     },

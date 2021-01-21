@@ -4354,11 +4354,6 @@ CRPCResultPtr CRPCMod::RPCGetFullTx(rpc::CRPCParamPtr param)
         throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
-    if (pPusher->GetNonce() != spParam->nNonce)
-    {
-        throw CRPCException(RPC_DATA_SYNC_NONCE_ERROR, "Nonce error");
-    }
-
     std::vector<std::pair<uint256, size_t>> vTxPool;
     pService->GetTxPool(hashFork, vTxPool);
 
