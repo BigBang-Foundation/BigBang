@@ -1186,6 +1186,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             {
                 if (txView.Exists(txid))
                 {
+                    CDestination destFrom = txView.Get(txid)->destIn;
                     txView.Remove(txid);
                     if (tx.nType == CTransaction::TX_CERT)
                     {
@@ -1196,7 +1197,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                         txView.relation.RemoveRelation(tx.sendTo);
                     }
                     mapTx.erase(txid);
-                    NotifyTxChanged(update.hashFork, CDestination(), tx, (uint8)CHANGE_STATE::STATE_REMOVED);
+                    NotifyTxChanged(update.hashFork, destFrom, tx, (uint8)CHANGE_STATE::STATE_REMOVED);
                     change.mapTxUpdate.insert(make_pair(txid, nBlockHeight));
                 }
                 else
@@ -1310,8 +1311,10 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             {
                 txView.relation.RemoveRelation(it->second.sendTo);
             }
+            CDestination destFrom = it->second.destIn;
+            CPooledTx tx = it->second;
             mapTx.erase(it);
-            NotifyTxChanged(update.hashFork, it->second.destIn, it->second, (uint8)CHANGE_STATE::STATE_REMOVED);
+            NotifyTxChanged(update.hashFork, destFrom, tx, (uint8)CHANGE_STATE::STATE_REMOVED);
         }
     }
     change.vTxRemove.insert(change.vTxRemove.end(), vTxRemove.rbegin(), vTxRemove.rend());
@@ -1574,7 +1577,8 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     {
         certTxDest.AddCertTx(tx.sendTo, txid);
     }
-    NotifyTxChanged(hashFork, CDestination(), tx, (uint8)CHANGE_STATE::STATE_ADDED);
+    CDestination destFrom = txView.Get(txid)->destIn;
+    NotifyTxChanged(hashFork, destFrom, tx, (uint8)CHANGE_STATE::STATE_ADDED);
     return OK;
 }
 
