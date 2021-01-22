@@ -1645,11 +1645,11 @@
                     "desc": "0 is added tx event, 1 is removed tx event"
                 },
                 "eventid": {
-                    "type": "uint",
+                    "type": "int",
                     "desc": "event id"
                 },
                 "nonce": {
-                    "type": "uint",
+                    "type": "int",
                     "desc": "random value"
                 },
                 "fork": {
@@ -1695,11 +1695,11 @@
             "name": "tx",
             "content": {
                 "nonce": {
-                    "type": "uint",
+                    "type": "int",
                     "desc": "random value"
                 },
                 "eventid": {
-                    "type": "uint",
+                    "type": "int",
                     "desc": "event id"
                 },
                 "tx": {
@@ -1736,11 +1736,11 @@
                     "desc": "hash Fork hex string"
                 },
                 "nonce": {
-                    "type": "uint",
+                    "type": "int",
                     "desc": "random value"
                 },
                 "eventid": {
-                    "type": "uint",
+                    "type": "int",
                     "desc": "Event ID"
                 },
                 "num": {
@@ -1755,7 +1755,7 @@
             "name": "tx",
             "content": {
                 "nonce": {
-                    "type": "uint",
+                    "type": "int",
                     "desc": "random value"
                 },
                 "events": {
@@ -1771,7 +1771,7 @@
                                     "desc": "0 is added tx event, 1 is removed tx event"
                                 },
                                 "eventid": {
-                                    "type": "uint",
+                                    "type": "int",
                                     "desc": "event id"
                                 },
                                 "transaction": {

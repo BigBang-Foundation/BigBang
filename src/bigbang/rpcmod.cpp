@@ -4358,8 +4358,19 @@ CRPCResultPtr CRPCMod::RPCGetFullTx(rpc::CRPCParamPtr param)
     pService->GetTxPool(hashFork, vTxPool);
 
     auto spResult = MakeCGetFullTxResultPtr();
-    spResult->nNonce = pPusher->GetNonce();
-    spResult->nEventid = pPusher->GetLatestEventId(hashFork);
+
+    int64 nEventId = 0;
+    if (!pPusher->GetLatestEventId(hashFork, nEventId))
+    {
+        spResult->nNonce = pPusher->GetFixedNonce();
+    }
+    else
+    {
+        spResult->nNonce = pPusher->GetNonce();
+    }
+
+    spResult->nEventid = nEventId;
+
     for (const auto& tx : vTxPool)
     {
         const uint256& txid = tx.first;
@@ -4420,10 +4431,8 @@ void CRPCMod::HttpServerThreadFunc()
 }
 
 CPusher::CPusher()
+  : pCoreProtocol(nullptr), pService(nullptr), nNonce(0), nFixedNonce(0xFFFFFFFFFFFFFFFF)
 {
-    pCoreProtocol = nullptr;
-    pService = nullptr;
-    nNonce = 0;
 }
 
 CPusher::~CPusher()
@@ -4452,8 +4461,6 @@ bool CPusher::HandleInitialize()
         return false;
     }
 
-    RAND_bytes((unsigned char*)&nNonce, sizeof(nNonce));
-
     return true;
 }
 
@@ -4465,6 +4472,12 @@ void CPusher::HandleDeinitialize()
 
 bool CPusher::HandleInvoke()
 {
+    RAND_bytes((unsigned char*)&nNonce, sizeof(nNonce));
+    while (nNonce == nFixedNonce || nNonce == 0)
+    {
+        RAND_bytes((unsigned char*)&nNonce, sizeof(nNonce));
+    }
+
     return IIOModule::HandleInvoke();
 }
 
@@ -4479,28 +4492,34 @@ void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& c
     mapRPCClient[ipport] = client;
 }
 
-uint64 CPusher::GetNonce() const
+int64 CPusher::GetNonce() const
 {
     return nNonce;
 }
 
-uint64 CPusher::GetLatestEventId(const uint256& hashFork) const
+int64 CPusher::GetFixedNonce() const
+{
+    return nFixedNonce;
+}
+
+bool CPusher::GetLatestEventId(const uint256& hashFork, int64& nEventId) const
 {
     boost::lock_guard<boost::mutex> lock(mMutex);
     const auto iter = mapTxEventStream.find(hashFork);
     if (iter == mapTxEventStream.end())
     {
-        return 0;
+        return false;
     }
     else
     {
         if (!iter->second.empty())
         {
-            return iter->second.end()->nNonce;
+            nEventId = (int64)iter->second.end()->nNonce;
+            return true;
         }
         else
         {
-            return 0;
+            return false;
         }
     }
 }
