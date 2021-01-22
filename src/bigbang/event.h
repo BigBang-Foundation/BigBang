@@ -59,9 +59,9 @@ class CRPCModEventData : public CEvent
     friend class CStream;
 
 public:
-    CRPCModEventData(uint64 nNonceIn, const uint256& hashForkIn, int64 nChangeIn, uint8 nStateIn)
+    CRPCModEventData(uint64 nNonceIn, const uint256& hashForkIn, const CDestination& destFromIn, int64 nChangeIn, uint8 nStateIn)
       : CEvent(nNonceIn, type),
-        hashFork(hashForkIn), nChange(nChangeIn), nState(nStateIn)
+        hashFork(hashForkIn), destFrom(destFromIn), nChange(nChangeIn), nState(nStateIn)
     {
     }
     virtual ~CRPCModEventData() {}
@@ -92,6 +92,7 @@ protected:
 
 public:
     uint256 hashFork;
+    CDestination destFrom;
     int64 nChange;
     uint8 nState;
     D data;

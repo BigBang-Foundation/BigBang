@@ -4662,6 +4662,7 @@ bool CPusher::HandleEvent(CRPCModEventUpdateTx& event)
             PushTxMessage message;
             message.client = client.second;
             message.hashFork = hashFork;
+            message.destFrom = event.destFrom;
             message.nNonce = nNonce;
             message.nState = event.nState;
             message.nEventId = event.nNonce;
@@ -4710,18 +4711,18 @@ void CPusher::RemoveClient(uint64 nNonce)
 
 void CPusher::PushBlock(const PushBlockMessage& message)
 {
-    CallRPC(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strBlockURL, message.client.nNonce, message.hashFork, message.block, message.client.nNonce);
+    CallRPC(message);
 }
 
-bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CBlockEx& block, int nReqId)
+bool CPusher::CallRPC(const PushBlockMessage& message)
 {
     try
     {
-        Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
+        Cblockdatadetail data = BlockDetailToJSON(message.hashFork, message.block);
         auto spParam = MakeCPushBlockParamPtr(data);
-        CRPCReqPtr spReq = MakeCRPCReqPtr(nReqId, spParam->Method(), spParam);
+        CRPCReqPtr spReq = MakeCRPCReqPtr(message.client.nNonce, spParam->Method(), spParam);
         std::string response;
-        return GetResponse(fSSL, strHost, nPort, strURL, nNonce, spReq->Serialize(), response);
+        return GetResponse(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strBlockURL, spReq->Serialize(), response);
     }
     catch (const std::exception& e)
     {
@@ -4740,19 +4741,23 @@ bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const st
 
 void CPusher::PushTransaction(const PushTxMessage& message)
 {
-    CallRPC(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strTxURL, message.client.nNonce, message.hashFork, message.tx, message.client.nNonce);
+    CallRPC(message);
 }
 
-bool CPusher::CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CTransaction& block, int nReqId)
+bool CPusher::CallRPC(const PushTxMessage& message)
 {
     try
     {
-        // Cblockdatadetail data = BlockDetailToJSON(hashFork, block);
-        // auto spParam = MakeCPushBlockParamPtr(data);
-        // CRPCReqPtr spReq = MakeCRPCReqPtr(nReqId, spParam->Method(), spParam);
-        // std::string response;
-        // return GetResponse(fSSL, strHost, nPort, strURL, nNonce, spReq->Serialize(), response);
-        return false;
+        CTransactionData data = TxToJSON(message.tx.GetHash(), message.tx, message.hashFork, uint256(), 0, CAddress(message.destFrom).ToString());
+        auto spParam = MakeCPushTxEventParamPtr();
+        spParam->nEventid = message.nEventId;
+        spParam->nEventtype = message.nState;
+        spParam->strFork = message.hashFork.ToString();
+        spParam->strTxid = message.tx.GetHash().ToString();
+        spParam->transaction = data;
+        CRPCReqPtr spReq = MakeCRPCReqPtr(message.client.nNonce, spParam->Method(), spParam);
+        std::string response;
+        return GetResponse(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strTxURL, spReq->Serialize(), response);
     }
     catch (const std::exception& e)
     {
@@ -4774,7 +4779,7 @@ bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
     return true;
 }
 
-bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content, std::string& response)
+bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, const std::string& content, std::string& response)
 {
 
     httplib::Client cli(strHost, nPort);

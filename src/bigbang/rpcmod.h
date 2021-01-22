@@ -209,6 +209,7 @@ public:
         uint64 nNonce;
         int nReqId;
         uint256 hashFork;
+        CDestination destFrom;
         CTransaction tx;
         uint64 nEventId;
         uint8 nState;
@@ -232,9 +233,9 @@ protected:
     bool HandleInvoke() override;
     void HandleHalt() override;
 
-    bool CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CBlockEx& block, int nReqId);
-    bool CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CTransaction& block, int nReqId);
-    bool GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content, std::string& response);
+    bool CallRPC(const PushBlockMessage& message);
+    bool CallRPC(const PushTxMessage& message);
+    bool GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, const std::string& content, std::string& response);
     rpc::Cblockdatadetail BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block);
     void RemoveClients(const std::vector<std::string>& clients);
     void RemoveClient(const std::string& client);

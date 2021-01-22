@@ -1196,7 +1196,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                         txView.relation.RemoveRelation(tx.sendTo);
                     }
                     mapTx.erase(txid);
-                    NotifyTxChanged(update.hashFork, tx, (uint8)CHANGE_STATE::STATE_REMOVED);
+                    NotifyTxChanged(update.hashFork, CDestination(), tx, (uint8)CHANGE_STATE::STATE_REMOVED);
                     change.mapTxUpdate.insert(make_pair(txid, nBlockHeight));
                 }
                 else
@@ -1311,7 +1311,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                 txView.relation.RemoveRelation(it->second.sendTo);
             }
             mapTx.erase(it);
-            NotifyTxChanged(update.hashFork, it->second, (uint8)CHANGE_STATE::STATE_REMOVED);
+            NotifyTxChanged(update.hashFork, it->second.destIn, it->second, (uint8)CHANGE_STATE::STATE_REMOVED);
         }
     }
     change.vTxRemove.insert(change.vTxRemove.end(), vTxRemove.rbegin(), vTxRemove.rend());
@@ -1574,7 +1574,7 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     {
         certTxDest.AddCertTx(tx.sendTo, txid);
     }
-    NotifyTxChanged(hashFork, tx, (uint8)CHANGE_STATE::STATE_ADDED);
+    NotifyTxChanged(hashFork, CDestination(), tx, (uint8)CHANGE_STATE::STATE_ADDED);
     return OK;
 }
 
@@ -1611,13 +1611,13 @@ void CTxPool::RemoveTx(const uint256& txid)
             certTxDest.RemoveCertTx(mi->ptx->sendTo, mi->hashTX);
         }
         mapTx.erase(mi->hashTX);
-        NotifyTxChanged(hashFork, *(mi->ptx), (uint8)CHANGE_STATE::STATE_REMOVED);
+        NotifyTxChanged(hashFork, mi->ptx->destIn, *(mi->ptx), (uint8)CHANGE_STATE::STATE_REMOVED);
     }
 
     StdTrace("CTxPool", "RemoveTx success, txid: %s", txid.GetHex().c_str());
 }
 
-void CTxPool::NotifyTxChanged(const uint256& hashFork, const CTransaction& tx, uint8 nState)
+void CTxPool::NotifyTxChanged(const uint256& hashFork, const CDestination& destFrom, const CTransaction& tx, uint8 nState)
 {
     static std::map<uint256, uint64> mapEventID;
     if (mapEventID.find(hashFork) == mapEventID.end())
@@ -1625,7 +1625,7 @@ void CTxPool::NotifyTxChanged(const uint256& hashFork, const CTransaction& tx, u
         mapEventID[hashFork] = 0;
     }
     uint64& nEventID = mapEventID[hashFork];
-    CRPCModEventUpdateTx* pUpdateTxEvent = new CRPCModEventUpdateTx(nEventID, hashFork, 0, nState);
+    CRPCModEventUpdateTx* pUpdateTxEvent = new CRPCModEventUpdateTx(nEventID, hashFork, destFrom, 0, nState);
     pUpdateTxEvent->data = tx;
     pPusher->PostEvent(pUpdateTxEvent);
     nEventID++;
