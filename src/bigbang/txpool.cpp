@@ -1632,7 +1632,7 @@ void CTxPool::NotifyTxChanged(const uint256& hashFork, const CDestination& destF
     CRPCModEventUpdateTx* pUpdateTxEvent = new CRPCModEventUpdateTx(nEventID, hashFork, destFrom, 0, nState);
     pUpdateTxEvent->data = tx;
     pPusher->PostEvent(pUpdateTxEvent);
-    nEventID++;
+    nEventID = (nEventID + 1) % 1000000;
 }
 
 } // namespace bigbang

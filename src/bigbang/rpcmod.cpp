@@ -4398,8 +4398,43 @@ CRPCResultPtr CRPCMod::RPCGetFullTx(rpc::CRPCParamPtr param)
 
 CRPCResultPtr CRPCMod::RPCGetTxEvents(rpc::CRPCParamPtr param)
 {
-    (void)param;
-    return MakeCGetTxEventsResultPtr();
+    auto spParam = CastParamPtr<CGetTxEventsParam>(param);
+    uint256 hashFork;
+    if (!GetForkHashOfDef(spParam->strFork, hashFork))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
+    }
+
+    if (!pService->HaveFork(hashFork))
+    {
+        throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
+    }
+
+    if (pPusher->GetNonce() != spParam->nNonce)
+    {
+        throw CRPCException(RPC_DATA_SYNC_NONCE_ERROR, "Nonce error");
+    }
+
+    auto spResult = MakeCGetTxEventsResultPtr();
+
+    std::vector<CRPCModEventUpdateTx> txEvents;
+    spResult->nNonce = pPusher->GetNonce();
+    if (!pPusher->GetTxEvents(hashFork, spParam->nEventid, spParam->nNum, txEvents))
+    {
+        spResult->nNonce = pPusher->GetFixedNonce();
+    }
+
+    for (const auto& txEvent : txEvents)
+    {
+        CGetTxEventsResult::CEvents event;
+        event.nEventid = txEvent.nNonce;
+        event.nEventtype = txEvent.nState;
+        event.strTxid = txEvent.data.GetHash().ToString();
+        event.transaction = TxToJSON(txEvent.data.GetHash(), txEvent.data, hashFork, uint256(), 0, CAddress(txEvent.destFrom).ToString());
+        spResult->vecEvents.push_back(event);
+    }
+
+    return spResult;
 }
 
 void CRPCMod::HttpServerThreadFunc()
