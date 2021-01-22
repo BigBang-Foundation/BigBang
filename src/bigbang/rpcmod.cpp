@@ -4508,6 +4508,7 @@ bool CPusher::GetLatestEventId(const uint256& hashFork, int64& nEventId) const
     const auto iter = mapTxEventStream.find(hashFork);
     if (iter == mapTxEventStream.end())
     {
+        StdDebug("CPusher::GetLatestEventId", "Cannot find hashFork: %s", hashFork.ToString().c_str());
         return false;
     }
     else
@@ -4519,6 +4520,47 @@ bool CPusher::GetLatestEventId(const uint256& hashFork, int64& nEventId) const
         }
         else
         {
+            StdDebug("CPusher::GetLatestEventId", "Events list is empty: %s", hashFork.ToString().c_str());
+            return false;
+        }
+    }
+}
+
+bool CPusher::GetTxEvents(const uint256& hashFork, int64 nStartEventId, int64 num, std::vector<CRPCModEventUpdateTx>& events)
+{
+    boost::lock_guard<boost::mutex> lock(mMutex);
+    const auto iter = mapTxEventStream.find(hashFork);
+    if (iter == mapTxEventStream.end())
+    {
+        StdDebug("CPusher::GetTxEvents", "Cannot find hashFork: %s", hashFork.ToString().c_str());
+        return false;
+    }
+    else
+    {
+        if (!iter->second.empty())
+        {
+            auto find_iter = std::find_if(iter->second.begin(), iter->second.end(), [nStartEventId](const CRPCModEventUpdateTx& event) {
+                return (int64)event.nNonce == nStartEventId;
+            });
+
+            if (find_iter == iter->second.end())
+            {
+                StdDebug("CPusher::GetTxEvents", "Cannot find start event id: %d", nStartEventId);
+                return false;
+            }
+
+            int64 count = 0;
+            while (find_iter != iter->second.end() && count < num)
+            {
+                events.push_back(*find_iter);
+                count++;
+                find_iter++;
+            }
+            return true;
+        }
+        else
+        {
+            StdDebug("CPusher::GetTxEvents", "Events list is empty: %s", hashFork.ToString().c_str());
             return false;
         }
     }

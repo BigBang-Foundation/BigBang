@@ -224,7 +224,7 @@ public:
     int64 GetNonce() const override;
     int64 GetFixedNonce() const override;
     bool GetLatestEventId(const uint256& hashFork, int64& nEventId) const override;
-
+    bool GetTxEvents(const uint256& hashFork, int64 nStartEventId, int64 num, std::vector<CRPCModEventUpdateTx>& events) override;
 protected:
     const CRPCServerConfig* RPCServerConfig();
 
