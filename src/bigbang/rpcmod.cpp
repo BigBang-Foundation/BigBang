@@ -4878,7 +4878,7 @@ bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, cons
 {
 
     httplib::Client cli(strHost, nPort);
-    std::string path = std::string("/") + strURL;
+    std::string path = (strURL.find_first_of('/') == 0) ? strURL : (std::string("/") + strURL);
     httplib::Headers headers = {
         { "Accept-Encoding", "gzip, deflate" },
         { "Connection", "Keep-Alive" },
