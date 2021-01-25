@@ -51,6 +51,8 @@ void KeyGenerator(uint256& priv, uint256& pub)
 
 BOOST_AUTO_TEST_CASE(base25519)
 {
+    srand(time(0));
+
     // n[0, 15] = 0
     // void Zero16(void* b);
     {
@@ -115,6 +117,7 @@ BOOST_AUTO_TEST_CASE(base25519)
         uint8_t lhs[32];
         RandGeneretor(lhs, 32);
         uint8_t rhs[32];
+
         for (int i = 0; i < 32; i++)
         {
             curve25519::Copy32(rhs, lhs);
@@ -124,8 +127,58 @@ BOOST_AUTO_TEST_CASE(base25519)
                 BOOST_CHECK(curve25519::Compare32(lhs, rhs) > 0);
                 rhs[i]++;
                 BOOST_CHECK(curve25519::Compare32(lhs, rhs) == 0);
+
+                if (rhs[i] != 0xff)
+                {
+                    rhs[i]++;
+                    BOOST_CHECK(curve25519::Compare32(lhs, rhs) < 0);
+                }
+                else
+                {
+                    rhs[i]++;
+                    BOOST_CHECK(curve25519::Compare32(lhs, rhs) > 0);
+                }
+            }
+            else
+            {
+                rhs[i]--;
+                BOOST_CHECK(curve25519::Compare32(lhs, rhs) < 0);
+                rhs[i]++;
+                BOOST_CHECK(curve25519::Compare32(lhs, rhs) == 0);
                 rhs[i]++;
                 BOOST_CHECK(curve25519::Compare32(lhs, rhs) < 0);
+            }
+        }
+    }
+    // Fixed lhs
+    // if uint(lhs[0, 31]) > uint(rhs[0, 31]), return 1
+    // if uint(lhs[0, 31]) == uint(rhs[0, 31], return 0
+    // if uint(lhs[0, 31]) < uint(rhs[0, 31], return -1
+    // int Compare32(const void* lhs, const void* rhs);
+    {
+        uint8_t lhs[32] = { 0x01, 0xfe, 0xab, 0x0f, 0xec, 0xff, 0xff, 0xcc, 0xbc, 0x23, 0x64, 0x00, 0x1e, 0xee, 0x3c,
+                            0x23, 0x01, 0xfe, 0xab, 0x0f, 0xec, 0xff, 0xff, 0xcc, 0x01, 0xfe, 0xab, 0x0f, 0xec, 0xff, 0xff, 0xcc };
+        uint8_t rhs[32];
+
+        for (int i = 0; i < 32; i++)
+        {
+            curve25519::Copy32(rhs, lhs);
+            if (lhs[i] > 0)
+            {
+                rhs[i]--;
+                BOOST_CHECK(curve25519::Compare32(lhs, rhs) > 0);
+                rhs[i]++;
+                BOOST_CHECK(curve25519::Compare32(lhs, rhs) == 0);
+                if (rhs[i] != 0xff)
+                {
+                    rhs[i]++;
+                    BOOST_CHECK(curve25519::Compare32(lhs, rhs) < 0);
+                }
+                else
+                {
+                    rhs[i]++;
+                    BOOST_CHECK(curve25519::Compare32(lhs, rhs) > 0);
+                }
             }
             else
             {

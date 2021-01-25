@@ -469,6 +469,10 @@ bool CryptoMultiSignDefect(const set<uint256>& setPubKey, const CCryptoKey& priv
         pIndex[index / 8] |= (1 << (index % 8));
     }
 
+    uint8_t md64[64];
+    R.Pack(&md64[0]);
+    S.Pack(&md64[32]);
+
     R.Pack(&vchSig[nIndexLen]);
     S.Pack(&vchSig[nIndexLen + 32]);
 

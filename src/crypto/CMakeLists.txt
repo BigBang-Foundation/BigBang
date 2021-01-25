@@ -13,7 +13,6 @@ set(pow_hash
     pow_hash/hash-extra-skein.c
     pow_hash/jh.h     
     pow_hash/slow-hash.c
-    pow_hash/slow-hash_1.c
     pow_hash/variant4_random_math.h
     pow_hash/blake256.c
     pow_hash/groestl.c
@@ -57,9 +56,22 @@ set(sources
     ${pow_hash}
 )
 
-if(NOT MSVC)
-    set(CMAKE_C_FLAGS "-msse2 -maes")
+if(UNIX)
+    if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^x86")
+        set(CMAKE_C_FLAGS "-maes")
+        set(USE_SSE2_INSTRUCTIONS ON)
+    endif()
+    if(ARM_CRYPTO)
+        if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
+            set(CMAKE_C_FLAGS "-march=armv8-a+crypto")
+        endif()
+    endif()
 endif()
+
+
+if(SANITIZE)
+    message(status "oijen: sanitize is on")
+endif ()
 
 add_library(crypto ${sources})
 
@@ -85,3 +97,4 @@ target_link_libraries(crypto
     xengine
     common
 )
+

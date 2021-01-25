@@ -544,12 +544,14 @@ void CDocker::Log(const char* pszFormat, ...)
     va_end(ap);
 }
 
-void CDocker::LogException(const char* pszThread, std::exception* pex)
+void CDocker::LogException(const char* pszThread, std::exception* pex, ...)
 {
     ostringstream oss;
     oss << "(" << (pszThread != nullptr ? pszThread : "") << "): " << ((pex != nullptr) ? pex->what() : "unknown") << '\n';
     va_list ap;
+    va_start(ap, pex);
     LogOutput("docker", "[ERROR]", oss.str().c_str(), ap);
+    va_end(ap);
 }
 
 void CDocker::TimerProc()

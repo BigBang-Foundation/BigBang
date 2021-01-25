@@ -60,7 +60,7 @@ public:
 protected:
     void Halt(std::vector<IBase*>& vWorkQueue);
     void Log(const char* pszFormat, ...);
-    void LogException(const char* pszThread, std::exception* pex);
+    void LogException(const char* pszThread, std::exception* pex, ...);
     void ListConfig();
     void TimerProc();
 

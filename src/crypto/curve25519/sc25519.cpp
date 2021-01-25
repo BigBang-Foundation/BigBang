@@ -348,7 +348,9 @@ void CSC25519::BarrettReduce(uint64_t* m)
         *(uint64_t*)&p[4] += (uint64_t)tmp[1][2] + tmp[2][2] + tmp[3][0] + tmp[4][0] + tmp[5][0];
         *(uint64_t*)&p[5] += (uint64_t)tmp[1][3] + tmp[2][3] + tmp[3][1] + tmp[4][1] + tmp[5][1];
         *(uint64_t*)&p[6] += (uint64_t)tmp[3][2] + tmp[4][2] + tmp[5][2] + tmp[6][0] + tmp[7][0] + tmp[8][0] + tmp[9][0];
-        p[7] += tmp[3][3] + tmp[4][3] + tmp[5][3] + tmp[6][1] + tmp[7][1] + tmp[8][1] + tmp[9][1];
+        // Prevent compiler optimization on aarch64. "volatile" key word is not effective.
+        // p[7] += tmp[3][3] + tmp[4][3] + tmp[5][3] + tmp[6][1] + tmp[7][1] + tmp[8][1] + tmp[9][1];
+        *(uint64_t*)&p[6] += ((uint64_t)tmp[3][3] + tmp[4][3] + tmp[5][3] + tmp[6][1] + tmp[7][1] + tmp[8][1] + tmp[9][1]) << 32;
 
         r2[3] &= 0x3fffffffffffffff;
     }

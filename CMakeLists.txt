@@ -40,6 +40,8 @@ configure_file(
         "${PROJECT_SOURCE_DIR}/src/bigbang/git_version.h.in"
         "${PROJECT_BINARY_DIR}/src/bigbang/git_version.h")
 
+message(STATUS "Detected Processor Arch: ${CMAKE_SYSTEM_PROCESSOR}")
+
 if(CYGWIN)
     set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 elseif(UNIX)
@@ -56,6 +58,7 @@ endif()
 if(UNIX)
     string(APPEND CMAKE_CXX_FLAGS_DEBUG " -O0")
     string(APPEND CMAKE_CXX_FLAGS_RELEASE " -O2 -DNDEBUG")
+    # string(APPEND CMAKE_CXX_FLAGS_RELEASE " -O0")
     if(APPLE)
     else()
         string(APPEND CMAKE_CXX_FLAGS_DEBUG " -rdynamic")
@@ -67,9 +70,11 @@ endif()
 
 # warnings
 if(UNIX AND NOT CYGWIN)
-    string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra -Werror -Wno-char-subscripts -Wno-unused-parameter -Wno-sign-compare -Wno-reorder -Wno-unused-local-typedefs -Wno-implicit-fallthrough -Wno-overloaded-virtual -Wno-strict-aliasing")
-    if (APPLE)
-        string(APPEND CMAKE_CXX_FLAGS " -fvisibility-inlines-hidden -fvisibility=hidden -Wno-unknown-warning-option -Wno-tautological-overlap-compare")
+    if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^x86")
+        string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra -Werror -Wno-char-subscripts -Wno-unused-parameter -Wno-sign-compare -Wno-reorder -Wno-unused-local-typedefs -Wno-implicit-fallthrough -Wno-overloaded-virtual -Wno-strict-aliasing")
+        if (APPLE)
+            string(APPEND CMAKE_CXX_FLAGS " -fvisibility-inlines-hidden -fvisibility=hidden -Wno-unknown-warning-option -Wno-tautological-overlap-compare")
+        endif()
     endif()
 elseif(MSVC)
     # C4018: 'expression' : signed/unsigned mismatch
@@ -127,8 +132,11 @@ find_package(Boost 1.58.0 REQUIRED COMPONENTS
 )
 find_package(OpenSSL 1.0.0 REQUIRED) 
 find_package(sodium 1.0.18 REQUIRED)
-find_package(Protobuf 3.0.0 REQUIRED)
 find_package(Readline 5.0 REQUIRED)
+if(ALPINE_LINUX)
+    find_package(LevelDB 1.20 REQUIRED)
+    find_package(Snappy 1.1.5 REQUIRED)
+endif()
 
 if(OPENSSL_VERSION VERSION_EQUAL 1.1.0 OR 
     (OPENSSL_VERSION VERSION_GREATER 1.1.0 AND OPENSSL_VERSION VERSION_LESS 1.2.0))
@@ -148,8 +156,21 @@ if(MSVC)
     add_definitions(-DBOOST_ALL_DYN_LINK)
 endif()
 
+if(ALPINE_LINUX)
+    add_definitions(-DBOOST_ALL_DYN_LINK)
+    add_definitions(-DALPINE_LINUX)
+    set(ARM_CRYPTO TRUE)
+endif()
+
 if(TESTNET)
     add_definitions(-DBIGBANG_TESTNET)
+endif()
+
+if(ARM_CRYPTO)
+    if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm" OR ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^aarch64")
+        add_definitions(-DBIGBANG_ARM_CRYPTO)
+        add_definitions(-DSANITIZE)
+    endif() 
 endif()
 
 # include directories
@@ -158,6 +179,8 @@ include_directories(${OpenSSL_INCLUDE_DIR})
 include_directories(${sodium_INCLUDE_DIR})
 include_directories(${Protobuf_INCLUDE_DIR})
 include_directories(${Readline_INCLUDE_DIR})
+include_directories(${Snappy_INCLUDE_DIRS})
+include_directories(${LEVELDB_INCLUDE_DIRS})
 
 # sub directories
 add_subdirectory(src)

@@ -24,6 +24,7 @@ set(sources
     txpool_tests.cpp
     util_tests.cpp
     defi_test.cpp
+    slowhash_tests.cpp
 )
 
 #set(lib_src ../src/common/destination.h ../src/common/destination.cpp)
@@ -56,10 +57,13 @@ target_link_libraries(test_ctsdb
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${Boost_LOG_LIBRARY}
     OpenSSL::SSL
     OpenSSL::Crypto
     mpvss
     common
     crypto
+    libbigbang
+    xengine
     storage
 )
