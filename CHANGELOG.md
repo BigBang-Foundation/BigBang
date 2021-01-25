@@ -1,3 +1,21 @@
+# Version 2.4.0 (2021-01-25)
+
+### Features
+
+- New coinbase plan of BBC
+- New DeFi reward algorithm
+- Add RPC "reversehex" to reverse hex string
+
+### Improvements
+
+- Clear dbs when add new fork
+
+### Fixs
+
+- fix rwlock deadlock bug
+- Fix repairfile bug and optimize file read and write function
+- Fixed bug of generating too many vacant blocks and add check point
+- Fix peernet bug
 
 
 # Version 2.3.1 (2020-12-28)
