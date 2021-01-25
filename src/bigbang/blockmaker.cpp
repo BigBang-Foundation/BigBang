@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -19,6 +19,9 @@ using namespace xengine;
 #define WAIT_AGREEMENT_TIME_OFFSET -5
 #define WAIT_NEWBLOCK_TIME (BLOCK_TARGET_SPACING + 5)
 #define WAIT_LAST_EXTENDED_TIME 0 //(BLOCK_TARGET_SPACING - 10)
+#define FORK_LAST_BLOCK_COUNT 30
+#define FORK_WAIT_BLOCK_COUNT 60
+#define FORK_WAIT_BLOCK_SECT 100000
 
 namespace bigbang
 {
@@ -396,14 +399,21 @@ bool CBlockMaker::SignBlock(CBlock& block, const CBlockMakerProfile& profile)
     return profile.templMint->BuildBlockSignature(hashSig, vchMintSig, block.vchSig);
 }
 
-bool CBlockMaker::DispatchBlock(const CBlock& block)
+bool CBlockMaker::DispatchBlock(const uint256& hashFork, const CBlock& block)
 {
     Debug("Dispatching block: %s, type: %u", block.GetHash().ToString().c_str(), block.nType);
     int nWait = block.nTimeStamp - GetNetTime();
-    if (nWait > 0 && !WaitExit(nWait))
+    if (!WaitExit(nWait))
     {
         return false;
     }
+
+    if (!block.IsExtended() && !pBlockChain->VerifyCheckPoint(hashFork, block.GetBlockHeight(), block.GetHash()))
+    {
+        Error("Fork %s block at height %d does not match checkpoint hash", hashFork.ToString().c_str(), block.GetBlockHeight());
+        return false;
+    }
+
     Errno err = pDispatcher->AddNewBlock(block);
     if (err != OK)
     {
@@ -443,7 +453,7 @@ void CBlockMaker::ProcessDelegatedProofOfStake(const CAgreementBlock& consParam)
         }
 
         // dispatch DPoS primary block
-        if (DispatchBlock(block))
+        if (DispatchBlock(pCoreProtocol->GetGenesisBlockHash(), block))
         {
             pDispatcher->SetConsensus(consParam);
 
@@ -529,20 +539,49 @@ void CBlockMaker::ProcessSubFork(const CBlockMakerProfile& profile, const CDeleg
                     }
                     else
                     {
-                        if (nPrevMintType != CTransaction::TX_STAKE || GetNetTime() - nRefBlockTime >= WAIT_LAST_EXTENDED_TIME)
+                        if (status.nBlockHeight != CBlock::GetBlockHeightByHash(hashFork)
+                            && status.nBlockHeight < nPrevHeight + 1 - FORK_LAST_BLOCK_COUNT)
                         {
-                            if (ReplenishSubForkVacant(hashFork, status.nBlockHeight, status.hashBlock, profile, agreement, hashRefBlock, nPrevHeight))
+                            auto& forkStat = mapForkLastStat[hashFork];
+                            if (forkStat.first != status.nBlockHeight)
                             {
-                                block.hashPrev = status.hashBlock;
+                                forkStat.first = status.nBlockHeight;
+                                forkStat.second = nPrevHeight + 1;
+                            }
+                            if (nPrevHeight + 1 - forkStat.second >= FORK_WAIT_BLOCK_COUNT * ((nPrevHeight + 1 - status.nBlockHeight) / FORK_WAIT_BLOCK_SECT + 1))
+                            {
+                                if (ReplenishSubForkVacant(hashFork, status.nBlockHeight, status.hashBlock, profile, agreement, hashRefBlock, nPrevHeight))
+                                {
+                                    block.hashPrev = status.hashBlock;
+                                }
+                                else
+                                {
+                                    Error("ProcessSubFork replenish vacant error, fork: %s", hashFork.ToString().c_str());
+                                }
                             }
                             else
                             {
-                                Error("ProcessSubFork replenish vacant error, fork: %s", hashFork.ToString().c_str());
+                                Error("ProcessSubFork fork is missing too many blocks, primary height: %d, fork height: %d, fork: %s",
+                                      nPrevHeight + 1, status.nBlockHeight, hashFork.ToString().c_str());
                             }
                         }
                         else
                         {
-                            mapBlocks.insert(make_pair(GetNetTime() + 1, make_pair(hashFork, block)));
+                            if (nPrevMintType != CTransaction::TX_STAKE || GetNetTime() - nRefBlockTime >= WAIT_LAST_EXTENDED_TIME)
+                            {
+                                if (ReplenishSubForkVacant(hashFork, status.nBlockHeight, status.hashBlock, profile, agreement, hashRefBlock, nPrevHeight))
+                                {
+                                    block.hashPrev = status.hashBlock;
+                                }
+                                else
+                                {
+                                    Error("ProcessSubFork replenish vacant error, fork: %s", hashFork.ToString().c_str());
+                                }
+                            }
+                            else
+                            {
+                                mapBlocks.insert(make_pair(GetNetTime() + 1, make_pair(hashFork, block)));
+                            }
                         }
                     }
                 }
@@ -550,26 +589,6 @@ void CBlockMaker::ProcessSubFork(const CBlockMakerProfile& profile, const CDeleg
                 {
                     Error("ProcessSubFork GetLastBlock fail, fork: %s", hashFork.ToString().c_str());
                 }
-
-                /*uint256 hashLastBlock;
-                int64 nLastTime;
-
-                bool fInWaitTime = (nPrevMintType == CTransaction::TX_STAKE) && (GetNetTime() - nRefBlockTime < WAIT_LAST_EXTENDED_TIME);
-                if (pBlockChain->GetLastBlockOfHeight(hashFork, nPrevHeight, hashLastBlock, nLastTime)
-                    && (!fInWaitTime || (nLastTime + EXTENDED_BLOCK_SPACING == nRefBlockTime)))
-                {
-                    // last is PoW or last extended or timeout
-                    block.hashPrev = hashLastBlock;
-                }
-                else if (fInWaitTime)
-                {
-                    // wait the last exteded block for 1s
-                    mapBlocks.insert(make_pair(GetNetTime() + 1, make_pair(hashFork, block)));
-                }
-                else
-                {
-                    Error("ProcessSubFork get last block error, fork: %s", hashFork.ToString().c_str());
-                }*/
             }
 
             // make subsidiary block
@@ -577,7 +596,7 @@ void CBlockMaker::ProcessSubFork(const CBlockMakerProfile& profile, const CDeleg
             {
                 if (CreateDelegatedBlock(block, hashFork, profile))
                 {
-                    if (DispatchBlock(block))
+                    if (DispatchBlock(hashFork, block))
                     {
                         fCreateExtendedTask = true;
                         hashExtendedPrevBlock = block.GetHash();
@@ -610,7 +629,7 @@ void CBlockMaker::ProcessSubFork(const CBlockMakerProfile& profile, const CDeleg
                       hashFork.ToString().c_str(), block.GetHash().ToString().c_str(),
                       ((int64)(block.nTimeStamp) - nRefBlockTime) / EXTENDED_BLOCK_SPACING);
             }
-            else if (!DispatchBlock(block))
+            else if (!DispatchBlock(hashFork, block))
             {
                 Error("ProcessSubFork dispatch subsidiary block error, fork: %s, block: %s",
                       hashFork.ToString().c_str(), block.GetHash().ToString().c_str());
@@ -739,23 +758,24 @@ bool CBlockMaker::CreateVacant(CBlock& block, const CBlockMakerProfile& profile,
 bool CBlockMaker::ReplenishSubForkVacant(const uint256& hashFork, int nLastBlockHeight, uint256& hashLastBlock, const CBlockMakerProfile& profile,
                                          const CDelegateAgreement& agreement, const uint256& hashRefBlock, const int32 nPrevHeight)
 {
+    vector<int64> vTime;
+    int nPrimaryHeight = nPrevHeight + 1;
     int nNextHeight = nLastBlockHeight + 1;
-    while (nNextHeight <= nPrevHeight)
+    int nDepth = nPrimaryHeight - nLastBlockHeight;
+    if (!pBlockChain->GetLastBlockTime(pCoreProtocol->GetGenesisBlockHash(), nDepth, vTime))
     {
-        uint256 hashPrimaryBlock;
-        int64 nPrimaryTime = 0;
-        if (!pBlockChain->GetPrimaryHeightBlockTime(hashRefBlock, nNextHeight, hashPrimaryBlock, nPrimaryTime))
-        {
-            StdError("blockmaker", "Replenish vacant: get same height time fail");
-            return false;
-        }
+        StdError("blockmaker", "Replenish vacant: GetLastBlockTime fail");
+        return false;
+    }
+    while (nNextHeight < nPrimaryHeight)
+    {
         CBlock block;
-        if (!CreateVacant(block, profile, agreement, hashRefBlock, hashFork, hashLastBlock, nPrimaryTime))
+        if (!CreateVacant(block, profile, agreement, hashRefBlock, hashFork, hashLastBlock, vTime[nPrimaryHeight - nNextHeight]))
         {
             StdError("blockmaker", "Replenish vacant: create vacane fail");
             return false;
         }
-        if (!DispatchBlock(block))
+        if (!DispatchBlock(hashFork, block))
         {
             StdError("blockmaker", "Replenish vacant: dispatch block fail");
             return false;

@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -174,8 +174,10 @@ public:
     {
         return (!!mapAddressDB.count(hashFork));
     }
+    bool ExistFork(const uint256& hashFork);
+    bool LoadFork(const uint256& hashFork, const uint256& hashLastBlock = uint256());
+    void RemoveFork(const uint256& hashFork);
     bool AddNewFork(const uint256& hashFork, const uint256& hashLastBlock = uint256());
-    bool RemoveFork(const uint256& hashFork);
     void Clear();
     bool UpdateAddressUnspent(const uint256& hashFork, const uint256& hashLastBlockIn, const std::vector<CTxUnspent>& vAddNew, const std::vector<CTxUnspent>& vRemove);
     bool RepairAddressUnspent(const uint256& hashFork, const std::vector<std::pair<CAddrUnspentKey, CUnspentOut>>& vAddUpdate, const std::vector<CAddrUnspentKey>& vRemove);
