@@ -153,7 +153,8 @@ bool CIOInBound::Invoke(const tcp::endpoint& epListen, size_t nMaxConnection, co
         acceptorService.bind(epListen, ec);
         if (ec)
         {
-            throw runtime_error((string("IOInBound tcp bind fail, addr: ") + epListen.address().to_string() + string(":") + to_string(epListen.port()) + string(", cause: ") + ec.message()).c_str());
+            boost::system::error_code ec;
+            throw runtime_error((string("IOInBound tcp bind fail, addr: ") + epListen.address().to_string(ec) + string(":") + to_string(epListen.port()) + string(", cause: ") + ec.message()).c_str());
         }
 
         acceptorService.listen();
@@ -222,7 +223,8 @@ bool CIOInBound::BuildWhiteList(const vector<string>& vAllowMask)
 
 bool CIOInBound::IsAllowedRemote(const tcp::endpoint& ep)
 {
-    string strAddress = ep.address().to_string();
+    boost::system::error_code ec;
+    string strAddress = ep.address().to_string(ec);
     try
     {
         for (const boost::regex& expr : vWhiteList)
@@ -247,9 +249,10 @@ void CIOInBound::HandleAccept(CIOClient* pClient, const boost::system::error_cod
     {
         if (!IsAllowedRemote(pClient->GetRemote()))
         {
+            boost::system::error_code ec;
             const boost::asio::ip::tcp::endpoint epRemote = pClient->GetRemote();
-            StdError("HandleAccept", (string("Accept error: Listen: ") + epService.address().to_string() + ":" + to_string(epService.port())
-                                      + ", Remote: " + epRemote.address().to_string() + ":" + to_string(epRemote.port())
+            StdError("HandleAccept", (string("Accept error: Listen: ") + epService.address().to_string(ec) + ":" + to_string(epService.port())
+                                      + ", Remote: " + epRemote.address().to_string(ec) + ":" + to_string(epRemote.port())
                                       + ", Not in the allowed table.")
                                          .c_str());
             pClient->Close();
@@ -259,9 +262,10 @@ void CIOInBound::HandleAccept(CIOClient* pClient, const boost::system::error_cod
         string strFailCause;
         if (!pIOProc->ClientAccepted(acceptorService.local_endpoint(), pClient, strFailCause))
         {
+            boost::system::error_code ec;
             const boost::asio::ip::tcp::endpoint epRemote = pClient->GetRemote();
-            StdError("HandleAccept", (string("Accept error: Listen: ") + epService.address().to_string() + ":" + to_string(epService.port())
-                                      + ", Remote: " + epRemote.address().to_string() + ":" + to_string(epRemote.port())
+            StdError("HandleAccept", (string("Accept error: Listen: ") + epService.address().to_string(ec) + ":" + to_string(epService.port())
+                                      + ", Remote: " + epRemote.address().to_string(ec) + ":" + to_string(epRemote.port())
                                       + ", Client accepted fail, Cause: " + strFailCause)
                                          .c_str());
             pClient->Close();
@@ -276,7 +280,8 @@ void CIOInBound::HandleAccept(CIOClient* pClient, const boost::system::error_cod
     }
     else
     {
-        StdError(__PRETTY_FUNCTION__, (string("Other error ") + epService.address().to_string() + ". " + "[" + std::to_string(err.value()) + "]: " + err.message()).c_str());
+        boost::system::error_code ec;
+        StdError(__PRETTY_FUNCTION__, (string("Other error ") + epService.address().to_string(ec) + ". " + "[" + std::to_string(err.value()) + "]: " + err.message()).c_str());
         pClient->Close();
     }
 }
@@ -328,7 +333,12 @@ bool CIOOutBound::ConnectToByBindAddress(const tcp::endpoint& epLocal, const tcp
     }
 
     uint32 nTimerId = pIOProc->SetTimer(0, nTimeout, "CIOOutBound ConnectToByBindAddress");
-    pClient->ConnectByBindAddress(epLocal, epRemote, boost::bind(&CIOOutBound::HandleConnect, this, pClient, epRemote, nTimerId, _1));
+    if (!pClient->ConnectByBindAddress(epLocal, epRemote, boost::bind(&CIOOutBound::HandleConnect, this, pClient, epRemote, nTimerId, _1)))
+    {
+        pIOProc->CancelTimer(nTimerId);
+        pClient->Release();
+        return false;
+    }
 
     mapPending.insert(make_pair(nTimerId, pClient));
     return true;
@@ -549,7 +559,13 @@ bool CIOSSLOutBound::ConnectToByBindAddress(const tcp::endpoint& epLocal, const 
     }
 
     uint32 nTimerId = pIOProc->SetTimer(0, nTimeout, "CIOSSLOutBound ConnectToByBindAddress");
-    pClient->ConnectByBindAddress(epLocal, epRemote, boost::bind(&CIOSSLOutBound::HandleConnect, this, pClient, epRemote, nTimerId, _1));
+    if (!pClient->ConnectByBindAddress(epLocal, epRemote, boost::bind(&CIOSSLOutBound::HandleConnect, this, pClient, epRemote, nTimerId, _1)))
+    {
+        pIOProc->CancelTimer(nTimerId);
+        pClient->Release();
+        return false;
+    }
+
     setInuseClient.insert(pClient);
     mapPending.insert(make_pair(nTimerId, pClient));
     return true;

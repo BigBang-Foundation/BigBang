@@ -448,8 +448,9 @@ bool CBbPeerNet::HandlePeerRecvMessage(CPeer* pPeer, int nChannel, int nCommand,
                 {
                     CAddress& addr = vAddr[i];
                     tcp::endpoint ep;
+                    boost::system::error_code ec;
                     addr.ssEndpoint.GetEndpoint(ep);
-                    if ((i == 0 && ep.address().to_string() == NODE_DEFAULT_GATEWAY) || (fHaveGateway && ep == epGateway))
+                    if ((i == 0 && ep.address().to_string(ec) == NODE_DEFAULT_GATEWAY) || (fHaveGateway && ep == epGateway))
                     {
                         continue;
                     }
@@ -458,7 +459,7 @@ bool CBbPeerNet::HandlePeerRecvMessage(CPeer* pPeer, int nChannel, int nCommand,
                         && !setDNSeed.count(ep)
                         && !setProtocolInvalidIP.count(ep.address()))
                     {
-                        AddNewNode(ep, ep.address().to_string(), boost::any(addr.nService));
+                        AddNewNode(ep, ep.address().to_string(ec), boost::any(addr.nService));
                     }
                 }
 

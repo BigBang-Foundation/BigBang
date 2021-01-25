@@ -115,7 +115,8 @@ bool CNetHost::Set(const std::string& strHostIn, unsigned short nDefPortIn,
 bool CNetHost::Set(const boost::asio::ip::tcp::endpoint& ep,
                    const std::string& strNameIn, const boost::any& dataIn)
 {
-    strHost = ep.address().to_string();
+    boost::system::error_code ec;
+    strHost = ep.address().to_string(ec);
     nPort = ep.port();
     strName = (!strNameIn.empty() ? strNameIn : strHost);
     data = dataIn;
