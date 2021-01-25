@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -194,16 +194,17 @@ bool CHttpServer::CreateProfile(const CHttpHostConfig& confHost)
 
     if (confHost.optSSL.fEnable)
     {
+        boost::system::error_code ec;
         profile.pSSLContext = new boost::asio::ssl::context(boost::asio::ssl::context::sslv23);
         if (profile.pSSLContext == nullptr)
         {
-            Error("Failed to alloc ssl context for %s:%u", confHost.epHost.address().to_string().c_str(),
+            Error("Failed to alloc ssl context for %s:%u", confHost.epHost.address().to_string(ec).c_str(),
                   confHost.epHost.port());
             return false;
         }
         if (!confHost.optSSL.SetupSSLContext(*profile.pSSLContext))
         {
-            Error("Failed to setup ssl context for %s:%u", confHost.epHost.address().to_string().c_str(),
+            Error("Failed to setup ssl context for %s:%u", confHost.epHost.address().to_string(ec).c_str(),
                   confHost.epHost.port());
             delete profile.pSSLContext;
             return false;

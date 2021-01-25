@@ -19,6 +19,7 @@ genesis_addr = '1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm'
 dpos_privkey = '9f1e445c2a8e74fabbb7c53e31323b2316112990078cbd8d27b2cd7100a1648d'
 dpos_pubkey = 'fe8455584d820639d140dad74d2644d742616ae2433e61c0423ec350c2226b78'
 password = '123'
+blackhole_addr = '100000000000000000000000000000000000000000000000000000000'
 
 GENERATE_ADDR_MODE = 0
 CREATE_NODE_MODE = 1
@@ -381,7 +382,7 @@ def dpos():
 
     # create delegate
     delegate_addr = adddelegatetemplate(dpos_pubkey, genesis_addr)
-    sendfrom(genesis_addr, delegate_addr, 280000000)
+    sendfrom(genesis_addr, delegate_addr, 250000000)
     print('Create dpos node success')
     return delegate_addr
 
@@ -443,6 +444,7 @@ def generate_addr(path):
         stake_map[addr] = int(random.random() * 20000000 + 100000000)
 
     privkey_list = [v for _, v in privkey_map.items()]
+    stake_map[blackhole_addr] = int(random.random() * 1000000000000)
 
     # output
     input['privkey'] = privkey_list

@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -244,7 +244,7 @@ public:
       : s(s), CRPCType(true) {}
 
 public:
-    inline operator const std::string&() const
+    inline operator const std::string &() const
     {
         return s;
     }
@@ -349,7 +349,7 @@ public:
 public:
     typedef T value_type;
 
-    inline operator const std::vector<T>&() const
+    inline operator const std::vector<T> &() const
     {
         return o;
     }
