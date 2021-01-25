@@ -1688,17 +1688,17 @@ CRPCResultPtr CRPCMod::RPCGetBalance(CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CGetBalanceParam>(param);
 
-    uint64 nNonce = 0;
+   // uint64 nNonce = 0;
 
-    for (int i = 0; i < 100000; ++i)
-    {
-        CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, pCoreProtocol->GetGenesisBlockHash(), 0);
+    // for (int i = 0; i < 100000; ++i)
+    // {
+    //     CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, pCoreProtocol->GetGenesisBlockHash(), 0);
 
-        CBlockEx block;
-        pCoreProtocol->GetGenesisBlock(block);
-        pUpdateNewBlockEvent->data = block;
-        pPusher->PostEvent(pUpdateNewBlockEvent);
-    }
+    //     CBlockEx block;
+    //     pCoreProtocol->GetGenesisBlock(block);
+    //     pUpdateNewBlockEvent->data = block;
+    //     pPusher->PostEvent(pUpdateNewBlockEvent);
+    // }
 
     //getbalance (-f="fork") (-a="address")
     uint256 hashFork;
