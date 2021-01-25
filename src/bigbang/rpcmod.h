@@ -8,6 +8,8 @@
 #include "json/json_spirit.h"
 #include <boost/function.hpp>
 #include <boost/thread.hpp>
+#include <boost/thread/locks.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <unordered_map>
 
 #include "base.h"
@@ -225,6 +227,7 @@ public:
     int64 GetFixedNonce() const override;
     bool GetLatestEventId(const uint256& hashFork, int64& nEventId) const override;
     bool GetTxEvents(const uint256& hashFork, int64 nStartEventId, int64 num, std::vector<CRPCModEventUpdateTx>& events) override;
+
 protected:
     const CRPCServerConfig* RPCServerConfig();
 
@@ -249,9 +252,10 @@ protected:
     IService* pService;
 
 private:
-    mutable boost::mutex mMutex;
+    mutable boost::shared_mutex mMutex;
     std::map<std::string, LiveClientInfo> mapRPCClient;                  //  IP:PORT -> LiveClientInfo
     std::map<uint256, std::list<CRPCModEventUpdateTx>> mapTxEventStream; // hashFork -> Tx Event Stream
+    std::map<uint256, std::set<int64>> mapTxEventId;                     // hashFork -> Tx Event ID
     int64 nNonce;
     const int64 nFixedNonce;
 };

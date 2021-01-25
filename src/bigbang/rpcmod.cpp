@@ -4523,7 +4523,7 @@ void CPusher::HandleHalt()
 
 void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& client)
 {
-    boost::lock_guard<boost::mutex> lock(mMutex);
+    boost::unique_lock<boost::shared_mutex> lock(mMutex);
     mapRPCClient[ipport] = client;
 }
 
@@ -4539,7 +4539,7 @@ int64 CPusher::GetFixedNonce() const
 
 bool CPusher::GetLatestEventId(const uint256& hashFork, int64& nEventId) const
 {
-    boost::lock_guard<boost::mutex> lock(mMutex);
+    boost::shared_lock<boost::shared_mutex> lock(mMutex);
     const auto iter = mapTxEventStream.find(hashFork);
     if (iter == mapTxEventStream.end())
     {
@@ -4563,7 +4563,7 @@ bool CPusher::GetLatestEventId(const uint256& hashFork, int64& nEventId) const
 
 bool CPusher::GetTxEvents(const uint256& hashFork, int64 nStartEventId, int64 num, std::vector<CRPCModEventUpdateTx>& events)
 {
-    boost::lock_guard<boost::mutex> lock(mMutex);
+    boost::shared_lock<boost::shared_mutex> lock(mMutex);
     const auto iter = mapTxEventStream.find(hashFork);
     if (iter == mapTxEventStream.end())
     {
@@ -4657,7 +4657,7 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
     {
         decltype(mapRPCClient) tempMap;
         {
-            boost::lock_guard<boost::mutex> lock(mMutex);
+            boost::shared_lock<boost::shared_mutex> lock(mMutex);
             tempMap = mapRPCClient;
         }
 
@@ -4702,9 +4702,27 @@ bool CPusher::HandleEvent(CRPCModEventUpdateTx& event)
     const uint256& hashFork = event.hashFork;
     StdDebug("CPusher", "Update New Tx hash: %s forkHash: %s", tx.GetHash().ToString().c_str(), hashFork.ToString().c_str());
 
+    bool isExists = false;
+    {
+        boost::shared_lock<boost::shared_mutex> lock(mMutex);
+        isExists = mapTxEventId[hashFork].count(event.nNonce) > 0 ? true : false;
+    }
+
+    if (isExists)
+    {
+        // Clean history event stream log
+        boost::unique_lock<boost::shared_mutex> lock(mMutex);
+        mapTxEventStream[hashFork].clear();
+    }
+    else
+    {
+        boost::unique_lock<boost::shared_mutex> lock(mMutex);
+        mapTxEventId[hashFork].insert(event.nNonce);
+    }
+
     // save event to event stream log
     {
-        boost::lock_guard<boost::mutex> lock(mMutex);
+        boost::unique_lock<boost::shared_mutex> lock(mMutex);
         mapTxEventStream[hashFork].push_back(event);
     }
 
@@ -4714,7 +4732,7 @@ bool CPusher::HandleEvent(CRPCModEventUpdateTx& event)
     {
         decltype(mapRPCClient) tempMap;
         {
-            boost::lock_guard<boost::mutex> lock(mMutex);
+            boost::shared_lock<boost::shared_mutex> lock(mMutex);
             tempMap = mapRPCClient;
         }
 
