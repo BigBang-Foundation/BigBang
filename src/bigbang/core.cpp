@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+﻿// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -88,7 +88,7 @@ static const int64 BBCP_BASE_REWARD_TOKEN = 20;
 static const int64 BBCP_INIT_REWARD_TOKEN = 20;
 #else
 static const int64 BBCP_TOKEN_INIT = 0;
-static const int64 BBCP_YEAR_INC_REWARD_TOKEN = 20;
+static const int64 BBCP_YEAR_INC_REWARD_TOKEN = 10;
 
 #define BBCP_TOKEN_SET_COUNT 16
 static const int64 BBCP_END_HEIGHT[BBCP_TOKEN_SET_COUNT] = {
@@ -98,18 +98,19 @@ static const int64 BBCP_END_HEIGHT[BBCP_TOKEN_SET_COUNT] = {
     129600,
     172800,
     216000,
-    //CPOW+EDPOS
+    //the first section of CPOW+EDPOS
     432000,
     648000,
-    864000,
-    1080000,
-    1296000,
-    1512000,
+    //the second section of CPOW+EDPOS
     1728000,
-    1944000,
-    2160000,
-    2376000,
-    2592000
+    2808000,
+    3888000,
+    4968000,
+    6048000,
+    7128000,
+    8208000,
+    9288000,
+    10368000,
 };
 static const int64 BBCP_REWARD_TOKEN[BBCP_TOKEN_SET_COUNT] = {
     //CPOW
@@ -118,18 +119,19 @@ static const int64 BBCP_REWARD_TOKEN[BBCP_TOKEN_SET_COUNT] = {
     933,
     823,
     713,
-    //CPOW+EDPOS
+    //the first section of CPOW+EDPOS
     603,
     550,
-    497,
-    444,
-    391,
-    338,
-    285,
-    232,
-    179,
-    126,
-    73
+    //the second section of CPOW+EDPOS
+    100,
+    90,
+    80,
+    70,
+    60,
+    50,
+    40,
+    30,
+    20,
 };
 static const int64 BBCP_INIT_REWARD_TOKEN = BBCP_REWARD_TOKEN[0];
 #endif
@@ -213,6 +215,13 @@ static const int32 NEW_DEFI_RELATION_TX_HEIGHT = 565620;
 static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 0;
 #else
 static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 565620;
+#endif
+
+// New DeFi reward type excluded blacklist address tokens
+#ifdef BIGBANG_TESTNET
+static const int32 DEFI_REWARD_EXCLUDED_BLACKLIST_TOKENS = 0;
+#else
+static const int32 DEFI_REWARD_EXCLUDED_BLACKLIST_TOKENS = 640798;
 #endif
 
 namespace bigbang
@@ -696,6 +705,10 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
         {
             return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nSupplyCycle must be [1, %ld]", 100 * YEAR_HEIGHT);
         }
+        if (defi.nSupplyCycle % defi.nRewardCycle != 0)
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nSupplyCycle must be divisible by nRewardCycle");
+        }
         if (defi.nCoinbaseType == FIXED_DEFI_COINBASE_TYPE)
         {
             if (defi.nInitCoinbasePercent == 0 || defi.nInitCoinbasePercent > 10000)
@@ -710,7 +723,7 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
             {
                 return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nDecayCycle must be [0, %ld]", 100 * YEAR_HEIGHT);
             }
-            if ((defi.nDecayCycle / defi.nSupplyCycle) * defi.nSupplyCycle != defi.nDecayCycle)
+            if (defi.nDecayCycle % defi.nSupplyCycle != 0)
             {
                 return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nDecayCycle must be divisible by nSupplyCycle");
             }
@@ -727,7 +740,7 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
                 {
                     return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param key of mapCoinbasePercent must be larger than 0");
                 }
-                if ((it->first / defi.nSupplyCycle) * defi.nSupplyCycle != it->first)
+                if (it->first % defi.nSupplyCycle != 0)
                 {
                     return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param key of mapCoinbasePercent must be divisible by nSupplyCycle");
                 }
@@ -1539,6 +1552,11 @@ bool CCoreProtocol::IsNewDiffPowHeight(int height)
         return true;
     }
     return false;
+}
+
+bool CCoreProtocol::IsNewDeFiRewardHeight(int height)
+{
+    return height >= DEFI_REWARD_EXCLUDED_BLACKLIST_TOKENS;
 }
 
 bool CCoreProtocol::DPoSConsensusCheckRepeated(int height)

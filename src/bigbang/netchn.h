@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -151,14 +151,15 @@ public:
         mapSubscribedFork.insert(std::make_pair(hashPrimary, CNetChannelPeerFork()));
 
         boost::asio::ip::tcp::endpoint ep;
+        boost::system::error_code ec;
         addressRemote.ssEndpoint.GetEndpoint(ep);
         if (ep.address().is_v6())
         {
-            strRemoteAddress = string("[") + ep.address().to_string() + "]:" + std::to_string(ep.port());
+            strRemoteAddress = string("[") + ep.address().to_string(ec) + "]:" + std::to_string(ep.port());
         }
         else
         {
-            strRemoteAddress = ep.address().to_string() + ":" + std::to_string(ep.port());
+            strRemoteAddress = ep.address().to_string(ec) + ":" + std::to_string(ep.port());
         }
     }
     bool IsSynchronized(const uint256& hashFork) const;
