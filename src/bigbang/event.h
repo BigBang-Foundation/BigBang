@@ -29,7 +29,7 @@ enum
 
     ///////// RPCMod ////////////////
     EVENT_RPCMOD_UPDATE_NEW_BLOCK,
-    EVENT_RPCMOD_UPDATE_NEW_TRANSACTION
+    EVENT_RPCMOD_UPDATE_TRANSACTION
 };
 
 class CBlockMakerEventListener;
@@ -47,14 +47,23 @@ public:
     DECLARE_EVENTHANDLER(CEventBlockMakerAgree);
 };
 
+enum class CHANGE_STATE : uint8
+{
+    STATE_ADDED = 0,
+    STATE_REMOVED = 1
+};
+
 template <int type, typename L, typename D>
 class CRPCModEventData : public CEvent
 {
     friend class CStream;
 
 public:
-    CRPCModEventData(uint64 nNonceIn, const uint256& hashForkIn, int64 nChangeIn)
-      : CEvent(nNonceIn, type), hashFork(hashForkIn), nChange(nChangeIn) {}
+    CRPCModEventData(uint64 nNonceIn, const uint256& hashForkIn, const CDestination& destFromIn, int64 nChangeIn, uint8 nStateIn)
+      : CEvent(nNonceIn, type),
+        hashFork(hashForkIn), destFrom(destFromIn), nChange(nChangeIn), nState(nStateIn)
+    {
+    }
     virtual ~CRPCModEventData() {}
     virtual bool Handle(CEventListener& listener)
     {
@@ -83,7 +92,9 @@ protected:
 
 public:
     uint256 hashFork;
+    CDestination destFrom;
     int64 nChange;
+    uint8 nState;
     D data;
 };
 
@@ -92,14 +103,14 @@ class CRPCModEventListener;
     CRPCModEventData<type, CRPCModEventListener, body>
 
 typedef TYPE_RPCMOD_EVENT(EVENT_RPCMOD_UPDATE_NEW_BLOCK, CBlockEx) CRPCModEventUpdateNewBlock;
-typedef TYPE_RPCMOD_EVENT(EVENT_RPCMOD_UPDATE_NEW_TRANSACTION, CTransaction) CRPCModEventUpdateNewTx;
+typedef TYPE_RPCMOD_EVENT(EVENT_RPCMOD_UPDATE_TRANSACTION, CTransaction) CRPCModEventUpdateTx;
 
 class CRPCModEventListener : virtual public CEventListener
 {
 public:
     virtual ~CRPCModEventListener() {}
     DECLARE_EVENTHANDLER(CRPCModEventUpdateNewBlock);
-    DECLARE_EVENTHANDLER(CRPCModEventUpdateNewTx);
+    DECLARE_EVENTHANDLER(CRPCModEventUpdateTx);
 };
 
 } // namespace bigbang

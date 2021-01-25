@@ -165,7 +165,7 @@ void CService::NotifyBlockChainUpdate(const CBlockChainUpdate& update)
     }
 
     uint64 nNonce = 0;
-    CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, update.hashFork, 0);
+    CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, update.hashFork, CDestination(), 0, (uint8)CHANGE_STATE::STATE_ADDED);
     pUpdateNewBlockEvent->data = update.vBlockAddNew[update.vBlockAddNew.size() - 1];
     pPusher->PostEvent(pUpdateNewBlockEvent);
 }
@@ -1201,9 +1201,18 @@ bool CService::GetWork(vector<unsigned char>& vchWorkData, int& nPrevBlockHeight
         nPrevBlockHeight = (*it).second.nLastBlockHeight;
         block.hashPrev = hashPrev;
 
-        if (pCoreProtocol->IsDposHeight(nPrevBlockHeight + 1))
+        if (pCoreProtocol->IsNewDiffPowHeight(nPrevBlockHeight + 1))
         {
-            nPrevTime = pCoreProtocol->GetNextBlockTimeStamp((*it).second.nMintType, (*it).second.nLastBlockTime, CTransaction::TX_WORK, nPrevBlockHeight + 1);
+            nPrevTime = pCoreProtocol->GetNextBlockTimeStamp((*it).second.nMintType, (*it).second.nLastBlockTime, CTransaction::TX_WORK);
+            block.nTimeStamp = (uint32)GetNetTime() + (nPrevTime - (*it).second.nLastBlockTime);
+            if (block.nTimeStamp < nPrevTime)
+            {
+                block.nTimeStamp = nPrevTime;
+            }
+        }
+        else if (pCoreProtocol->IsDposHeight(nPrevBlockHeight + 1))
+        {
+            nPrevTime = pCoreProtocol->GetNextBlockTimeStamp((*it).second.nMintType, (*it).second.nLastBlockTime, CTransaction::TX_WORK);
             block.nTimeStamp = max(nPrevTime, (uint32)GetNetTime());
         }
         else

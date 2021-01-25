@@ -2759,6 +2759,7 @@ public:
         strm_.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(data));
 
         int ret = Z_OK;
+        (void)ret;
 
         std::array<char, CPPHTTPLIB_COMPRESSION_BUFSIZ> buff{};
         do

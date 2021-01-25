@@ -477,12 +477,14 @@ protected:
                              std::vector<CTransaction>& vtx, int64& nTotalTxFee, int nHeight, std::vector<std::pair<uint256, std::vector<CTxIn>>>& vTxRemove);
 
     void ListUnspent(const CTxPoolView& txPoolView, const CDestination& dest, uint32 nMax, const std::vector<CTxUnspent>& vUnspentOnChain, std::vector<CTxUnspent>& vUnspent);
+    void NotifyTxChanged(const uint256& hashFork, const CDestination& destFrom, const CTransaction& tx, uint8 nState);
 
 protected:
     storage::CTxPoolData datTxPool;
     mutable boost::shared_mutex rwAccess;
     ICoreProtocol* pCoreProtocol;
     IBlockChain* pBlockChain;
+    xengine::IIOModule* pPusher;
     std::map<uint256, CTxPoolView> mapPoolView;
     std::map<uint256, CPooledTx> mapTx;
     uint64 nLastSequenceNumber;
