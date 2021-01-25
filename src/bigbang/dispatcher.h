@@ -34,7 +34,6 @@ protected:
     void ActivateFork(const uint256& hashFork, const uint64& nNonce);
     bool ProcessForkTx(const uint256& txid, const CTransaction& tx);
     void CheckSubForkLastBlock(const uint256& hashFork);
-    void SyncForkHeight(int nPrimaryHeight);
 
 protected:
     ICoreProtocol* pCoreProtocol;

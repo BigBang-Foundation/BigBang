@@ -461,15 +461,22 @@ bool CNetChannel::SubmitCachePowBlock(const CConsensusParam& consParam)
                 CBlock block;
                 if (sched.GetCacheLocalPowBlock(hashBlock, block))
                 {
-                    Errno err = pDispatcher->AddNewBlock(block, 0);
-                    if (err != OK)
+                    if (!pBlockChain->VerifyCheckPoint(hashFork, block.GetBlockHeight(), block.GetHash()))
                     {
-                        StdLog("NetChannel", "SubmitCachePowBlock AddNewBlock fail, block: %s, err: [%d] %s",
-                               hashBlock.GetHex().c_str(), err, ErrorString(err));
+                        StdWarn("NetChannel", "Fork %s block at height %d does not match checkpoint hash", hashFork.ToString().c_str(), block.GetBlockHeight());
                     }
                     else
                     {
-                        StdTrace("NetChannel", "SubmitCachePowBlock: add local pow block success, block: %s", hashBlock.GetHex().c_str());
+                        Errno err = pDispatcher->AddNewBlock(block, 0);
+                        if (err != OK)
+                        {
+                            StdLog("NetChannel", "SubmitCachePowBlock AddNewBlock fail, block: %s, err: [%d] %s",
+                                   hashBlock.GetHex().c_str(), err, ErrorString(err));
+                        }
+                        else
+                        {
+                            StdWarn("NetChannel", "SubmitCachePowBlock: add local pow block success, block: %s", hashBlock.GetHex().c_str());
+                        }
                     }
                     GetSchedule(hashFork).RemoveCacheLocalPowBlock(hashBlock); // Resolve unsubscribefork errors
                 }

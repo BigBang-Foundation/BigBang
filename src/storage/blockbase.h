@@ -382,6 +382,7 @@ public:
     bool VerifySameChain(const uint256& hashPrevBlock, const uint256& hashAfterBlock);
     bool GetLastRefBlockHash(const uint256& hashFork, const uint256& hashBlock, uint256& hashRefBlock, bool& fOrigin);
     bool GetPrimaryHeightBlockTime(const uint256& hashLastBlock, int nHeight, uint256& hashBlock, int64& nTime);
+    bool VerifyPrimaryHeightRefBlockTime(const int nHeight, const int64 nTime);
 
 protected:
     CBlockIndex* GetIndex(const uint256& hash) const;
