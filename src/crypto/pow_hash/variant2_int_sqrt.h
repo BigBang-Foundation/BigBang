@@ -6,7 +6,7 @@
 
 #define VARIANT2_INTEGER_MATH_SQRT_STEP_SSE2()                                                                  \
     do                                                                                                          \
-    {                                                                                 \
+    {                                                                                                           \
         const __m128i exp_double_bias = _mm_set_epi64x(0, 1023ULL << 52);                                       \
         __m128d x = _mm_castsi128_pd(_mm_add_epi64(_mm_cvtsi64_si128(sqrt_input >> 12), exp_double_bias));      \
         x = _mm_sqrt_sd(_mm_setzero_pd(), x);                                                                   \

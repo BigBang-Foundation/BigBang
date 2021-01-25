@@ -1,7 +1,7 @@
 #!/bin/bash
 
-origin_path=$(dirname "$0"); pwd
-cd "$(dirname "$0")" || exit 1
+origin_path=$(cd `dirname $0`; pwd)
+cd `dirname $0`
 
 # create build directory
 if [ ! -d "build/" ]; then
@@ -9,61 +9,58 @@ if [ ! -d "build/" ]; then
 fi
 
 # go to build
-cd build || exit 1
+cd build
 
 # cmake
-flagdebug='-DCMAKE_BUILD_TYPE=Release'
-flagtestnet='-DTESTNET=off'
-flagarm64crypto='-DARM_CRYPTO=off'
-while [ -n "$1" ]
-do
-    if [ "$1" = "debug" ]; then
-        flagdebug="-DCMAKE_BUILD_TYPE=Debug"
-    fi
-    if [ "$1" = "testnet" ]; then
-        flagtestnet="-DTESTNET=on"
-    fi
-    if [ "$1" = "arm64crypto" ]; then
-        flagarm64crypto="-DARM_CRYPTO=on"
-    fi
-    shift
-done
-
-if ! cmake .. $flagdebug $flagtestnet $flagarm64crypto;
+flagdebug=""
+if [[ "$1" = "debug" || "$2" = "debug" ]]
 then
-    echo "cmake failed"
-    cd "$origin_path" || exit 1
-fi 
+    flagdebug="-DCMAKE_BUILD_TYPE=Debug"
+else
+    flagdebug="-DCMAKE_BUILD_TYPE=Release"
+fi
+
+flagtestnet=""
+if [[ "$1" = "testnet" || "$2" = "testnet" ]]
+then
+    flagtestnet="-DTESTNET=on"
+else
+    flagtestnet="-DTESTNET=off"
+fi
+
+cmake .. $flagdebug $flagtestnet
+if [ $? -ne 0 ]; then
+    cd $origin_path
+    exit 1
+fi
 
 # make & install
-os=$(uname)
+os=`uname`
 if [ "$os" == "Darwin" ]; then
-    cores=$(sysctl -n hw.logicalcpu)
+    cores=`sysctl -n hw.logicalcpu`
     if [ "${cores}" == "" ]; then
-        cores=1
+        cores = 1
     fi
     echo "make install -j${cores}"
+    make install -j${cores}
 
-    if ! make install -j${cores};
-    then
-        echo "make failed on Mac"
-        exit 1 
+    if [ $? -ne 0 ]; then
+        exit 1
     fi
 else
-    cores=$(nproc --all)
+    cores=`nproc --all`
     if [ "${cores}" == "" ]; then
-        cores=1
+        cores = 1
     fi
     echo "make -j${cores}"
+    make -j${cores}
 
-    if ! make -j${cores};
-    then
-        echo "make failed on Linux"
+    if [ $? -ne 0 ]; then
         exit 1
-    fi 
+    fi
 
     echo "sudo make install"
     sudo make install
 fi
 
-cd "$origin_path" || exit 1
+cd $origin_path
