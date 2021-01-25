@@ -235,8 +235,10 @@ public:
     {
         return (!!mapUnspentDB.count(hashFork));
     }
+    bool ExistFork(const uint256& hashFork);
+    bool LoadFork(const uint256& hashFork);
+    void RemoveFork(const uint256& hashFork);
     bool AddNewFork(const uint256& hashFork);
-    bool RemoveFork(const uint256& hashFork);
     void Clear();
     bool Update(const uint256& hashFork,
                 const std::vector<CTxUnspent>& vAddNew, const std::vector<CTxUnspent>& vRemove);

@@ -85,6 +85,12 @@ void CTxIndexDB::Deinitialize()
     }
 }
 
+bool CTxIndexDB::ExistFork(const uint256& hashFork)
+{
+    CReadLock rlock(rwAccess);
+    return mapTxDB.find(hashFork) != mapTxDB.end();
+}
+
 bool CTxIndexDB::LoadFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
@@ -102,6 +108,30 @@ bool CTxIndexDB::LoadFork(const uint256& hashFork)
     }
     mapTxDB.insert(make_pair(hashFork, spTxDB));
     return true;
+}
+
+void CTxIndexDB::RemoveFork(const uint256& hashFork)
+{
+    CWriteLock wlock(rwAccess);
+
+    map<uint256, std::shared_ptr<CForkTxDB>>::iterator it = mapTxDB.find(hashFork);
+    if (it != mapTxDB.end())
+    {
+        (*it).second->RemoveAll();
+        mapTxDB.erase(it);
+    }
+
+    boost::filesystem::path forkPath = pathTxIndex / hashFork.GetHex();
+    if (boost::filesystem::exists(forkPath))
+    {
+        boost::filesystem::remove_all(forkPath);
+    }
+}
+
+bool CTxIndexDB::AddNewFork(const uint256& hashFork)
+{
+    RemoveFork(hashFork);
+    return LoadFork(hashFork);
 }
 
 bool CTxIndexDB::Update(const uint256& hashFork, const vector<pair<uint256, CTxIndex>>& vTxNew,
@@ -217,20 +247,12 @@ void CTxIndexDB::FlushProc()
 
         if (!fStopFlush)
         {
-            vector<std::shared_ptr<CForkTxDB>> vTxDB;
-            vTxDB.reserve(mapTxDB.size());
-            {
-                CReadLock rlock(rwAccess);
+            CReadLock rlock(rwAccess);
 
-                for (map<uint256, std::shared_ptr<CForkTxDB>>::iterator it = mapTxDB.begin();
-                     it != mapTxDB.end(); ++it)
-                {
-                    vTxDB.push_back((*it).second);
-                }
-            }
-            for (int i = 0; i < vTxDB.size(); i++)
+            for (map<uint256, std::shared_ptr<CForkTxDB>>::iterator it = mapTxDB.begin();
+                 it != mapTxDB.end(); ++it)
             {
-                vTxDB[i]->Flush(false);
+                it->second->Flush(false);
             }
         }
     }

@@ -515,7 +515,13 @@ void CAddressDB::Deinitialize()
     }
 }
 
-bool CAddressDB::AddNewFork(const uint256& hashFork)
+bool CAddressDB::ExistFork(const uint256& hashFork)
+{
+    CReadLock rlock(rwAccess);
+    return mapAddressDB.find(hashFork) != mapAddressDB.end();
+}
+
+bool CAddressDB::LoadFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -534,7 +540,7 @@ bool CAddressDB::AddNewFork(const uint256& hashFork)
     return true;
 }
 
-bool CAddressDB::RemoveFork(const uint256& hashFork)
+void CAddressDB::RemoveFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -543,9 +549,19 @@ bool CAddressDB::RemoveFork(const uint256& hashFork)
     {
         (*it).second->RemoveAll();
         mapAddressDB.erase(it);
-        return true;
     }
-    return false;
+
+    boost::filesystem::path forkPath = pathAddress / hashFork.GetHex();
+    if (boost::filesystem::exists(forkPath))
+    {
+        boost::filesystem::remove_all(forkPath);
+    }
+}
+
+bool CAddressDB::AddNewFork(const uint256& hashFork)
+{
+    RemoveFork(hashFork);
+    return LoadFork(hashFork);
 }
 
 void CAddressDB::Clear()
@@ -659,20 +675,12 @@ void CAddressDB::FlushProc()
 
         if (!fStopFlush)
         {
-            vector<std::shared_ptr<CForkAddressDB>> vAddressDB;
-            vAddressDB.reserve(mapAddressDB.size());
-            {
-                CReadLock rlock(rwAccess);
+            CReadLock rlock(rwAccess);
 
-                for (map<uint256, std::shared_ptr<CForkAddressDB>>::iterator it = mapAddressDB.begin();
-                     it != mapAddressDB.end(); ++it)
-                {
-                    vAddressDB.push_back((*it).second);
-                }
-            }
-            for (int i = 0; i < vAddressDB.size(); i++)
+            for (map<uint256, std::shared_ptr<CForkAddressDB>>::iterator it = mapAddressDB.begin();
+                 it != mapAddressDB.end(); ++it)
             {
-                vAddressDB[i]->Flush();
+                it->second->Flush();
             }
         }
     }

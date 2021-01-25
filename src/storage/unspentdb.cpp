@@ -359,7 +359,13 @@ void CUnspentDB::Deinitialize()
     }
 }
 
-bool CUnspentDB::AddNewFork(const uint256& hashFork)
+bool CUnspentDB::ExistFork(const uint256& hashFork)
+{
+    CReadLock rlock(rwAccess);
+    return mapUnspentDB.find(hashFork) != mapUnspentDB.end();
+}
+
+bool CUnspentDB::LoadFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -378,7 +384,7 @@ bool CUnspentDB::AddNewFork(const uint256& hashFork)
     return true;
 }
 
-bool CUnspentDB::RemoveFork(const uint256& hashFork)
+void CUnspentDB::RemoveFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -387,9 +393,19 @@ bool CUnspentDB::RemoveFork(const uint256& hashFork)
     {
         (*it).second->RemoveAll();
         mapUnspentDB.erase(it);
-        return true;
     }
-    return false;
+
+    boost::filesystem::path forkPath = pathUnspent / hashFork.GetHex();
+    if (boost::filesystem::exists(forkPath))
+    {
+        boost::filesystem::remove_all(forkPath);
+    }
+}
+
+bool CUnspentDB::AddNewFork(const uint256& hashFork)
+{
+    RemoveFork(hashFork);
+    return LoadFork(hashFork);
 }
 
 void CUnspentDB::Clear()
@@ -503,20 +519,12 @@ void CUnspentDB::FlushProc()
 
         if (!fStopFlush)
         {
-            vector<std::shared_ptr<CForkUnspentDB>> vUnspentDB;
-            vUnspentDB.reserve(mapUnspentDB.size());
-            {
-                CReadLock rlock(rwAccess);
+            CReadLock rlock(rwAccess);
 
-                for (map<uint256, std::shared_ptr<CForkUnspentDB>>::iterator it = mapUnspentDB.begin();
-                     it != mapUnspentDB.end(); ++it)
-                {
-                    vUnspentDB.push_back((*it).second);
-                }
-            }
-            for (int i = 0; i < vUnspentDB.size(); i++)
+            for (map<uint256, std::shared_ptr<CForkUnspentDB>>::iterator it = mapUnspentDB.begin();
+                 it != mapUnspentDB.end(); ++it)
             {
-                vUnspentDB[i]->Flush();
+                it->second->Flush();
             }
         }
     }
