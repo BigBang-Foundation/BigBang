@@ -48,7 +48,6 @@ public:
     {
         MapSectionReward reward;
         CProfile profile;
-        int32 nMaxRewardHeight;
     };
     typedef std::map<uint256, CForkReward> MapForkReward;
 
@@ -60,12 +59,10 @@ public:
     void AddFork(const uint256& forkid, const CProfile& profile);
     // get a fork profile
     CProfile GetForkProfile(const uint256& forkid);
-    // get the max reward height of fork
-    int32 GetForkMaxRewardHeight(const uint256& forkid);
     // return the last height of previous reward cycle of nHeight
     int32 PrevRewardHeight(const uint256& forkid, const int32 nHeight);
-    // return the total reward from the beginning of section to the height of hash
-    int64 GetSectionReward(const uint256& forkid, const uint256& hash);
+    // return the reward of section. section range is [section_height - nRewardCycle + 1, section_height]
+    int64 GetSectionReward(const uint256& forkid, const uint256& section, const int64 nSupply = -1, const int64 nInvalidSupply = 0);
     // return exist section cache of fork or not
     bool ExistForkSection(const uint256& forkid, const uint256& section);
     // return the section reward set. Should use ExistForkSection to determine if it exists first.
@@ -82,14 +79,17 @@ public:
                                           const std::map<int64, uint32>& mapPromotionTokenTimes,
                                           CDeFiRelationGraph& relation,
                                           const std::set<CDestination>& setBlackList);
-    // for fixed decay coinbase, return the reward of between [nBeginHeight, nEndHeight)
-    int64 GetFixedDecayReward(const CProfile& profile, const int32 nBeginHeight, const int32 nEndHeight);
-    // for specific decay coinbase, return the reward of between [nBeginHeight, nEndHeight)
-    int64 GetSpecificDecayReward(const CProfile& profile, const int32 nBeginHeight, const int32 nEndHeight);
 
-protected:
-    // return the max reward height with profile
-    int32 GetMaxRewardHeight(const CProfile& profile);
+    // for fixed decay coinbase, return the reward of between [nHeight, nHeight + nRewardCycle), nHeight must be a beginning of nRewardCycle
+    int64 GetFixedDecayReward(const CProfile& profile, const int32 nHeight);
+    // for specific decay coinbase, return the reward of between [nHeight, nHeight + nRewardCycle), nHeight must be a beginning of nRewardCycle
+    int64 GetSpecificDecayReward(const CProfile& profile, const int32 nHeight);
+    // for fixed decay coinbase, return the reward of between [nHeight, nHeight + nRewardCycle), nHeight must be a beginning of nRewardCycle
+    // Use profile.defi.nSupplyCycle and profile.defi.nRewardCycle to compute increasing rate per nRewardCycle, and multiply nSupply to get reward.
+    int64 GetFixedDecayRewardWithSupply(const CProfile& profile, const int32 nHeight, const int64 nSupply, const int64 nInvalidSupply = 0);
+    // for specific decay coinbase, return the reward of between [nHeight, nHeight + nRewardCycle), nHeight must be a beginning of nRewardCycle
+    // Use profile.defi.nSupplyCycle and profile.defi.nRewardCycle to compute increasing rate per nRewardCycle, and multiply nSupply to get reward.
+    int64 GetSpecificDecayRewardWithSupply(const CProfile& profile, const int32 nHeight, const int64 nSupply, const int64 nInvalidSupply = 0);
 
 protected:
     MapForkReward forkReward;
