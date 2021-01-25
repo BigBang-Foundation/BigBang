@@ -4845,6 +4845,7 @@ bool CPusher::CallRPC(const PushTxMessage& message)
     {
         CTransactionData data = TxToJSON(message.tx.GetHash(), message.tx, message.hashFork, uint256(), 0, CAddress(message.destFrom).ToString());
         auto spParam = MakeCPushTxEventParamPtr();
+        spParam->nNonce = nNonce;
         spParam->nEventid = message.nEventId;
         spParam->nEventtype = message.nState;
         spParam->strFork = message.hashFork.ToString();
