@@ -705,7 +705,7 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
         {
             return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nSupplyCycle must be [1, %ld]", 100 * YEAR_HEIGHT);
         }
-        if (defi.nSupplyCycle % defi.nRewardCycle != 0)
+        if (block.GetBlockHeight() >= 330000 && defi.nSupplyCycle % defi.nRewardCycle != 0)
         {
             return DEBUG(ERR_BLOCK_INVALID_FORK, "DeFi param nSupplyCycle must be divisible by nRewardCycle");
         }
