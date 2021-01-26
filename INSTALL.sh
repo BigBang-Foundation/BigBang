@@ -1,7 +1,7 @@
 #!/bin/bash
 
-origin_path=$(cd `dirname $0`; pwd)
-cd `dirname $0`
+origin_path=$(dirname "$0"); pwd
+cd "$(dirname "$0")" || exit 1
 
 # create build directory
 if [ ! -d "build/" ]; then
@@ -9,58 +9,61 @@ if [ ! -d "build/" ]; then
 fi
 
 # go to build
-cd build
+cd build || exit 1
 
 # cmake
-flagdebug=""
-if [[ "$1" = "debug" || "$2" = "debug" ]]
-then
-    flagdebug="-DCMAKE_BUILD_TYPE=Debug"
-else
-    flagdebug="-DCMAKE_BUILD_TYPE=Release"
-fi
+flagdebug='-DCMAKE_BUILD_TYPE=Release'
+flagtestnet='-DTESTNET=off'
+flagarm64crypto='-DARM_CRYPTO=off'
+while [ -n "$1" ]
+do
+    if [ "$1" = "debug" ]; then
+        flagdebug="-DCMAKE_BUILD_TYPE=Debug"
+    fi
+    if [ "$1" = "testnet" ]; then
+        flagtestnet="-DTESTNET=on"
+    fi
+    if [ "$1" = "arm64crypto" ]; then
+        flagarm64crypto="-DARM_CRYPTO=on"
+    fi
+    shift
+done
 
-flagtestnet=""
-if [[ "$1" = "testnet" || "$2" = "testnet" ]]
+if ! cmake .. $flagdebug $flagtestnet $flagarm64crypto;
 then
-    flagtestnet="-DTESTNET=on"
-else
-    flagtestnet="-DTESTNET=off"
-fi
-
-cmake .. $flagdebug $flagtestnet
-if [ $? -ne 0 ]; then 
-    cd $origin_path
-    exit 1 
+    echo "cmake failed"
+    cd "$origin_path" || exit 1
 fi 
 
 # make & install
-os=`uname`
+os=$(uname)
 if [ "$os" == "Darwin" ]; then
-    cores=`sysctl -n hw.logicalcpu`
+    cores=$(sysctl -n hw.logicalcpu)
     if [ "${cores}" == "" ]; then
-        cores = 1
+        cores=1
     fi
     echo "make install -j${cores}"
-    make install -j${cores}
-    
-    if [ $? -ne 0 ]; then   
+
+    if ! make install -j${cores};
+    then
+        echo "make failed on Mac"
         exit 1 
     fi
 else
-    cores=`nproc --all`
+    cores=$(nproc --all)
     if [ "${cores}" == "" ]; then
-        cores = 1
+        cores=1
     fi
     echo "make -j${cores}"
-    make -j${cores}
 
-    if [ $? -ne 0 ]; then   
-        exit 1 
+    if ! make -j${cores};
+    then
+        echo "make failed on Linux"
+        exit 1
     fi 
 
     echo "sudo make install"
     sudo make install
 fi
 
-cd $origin_path
+cd "$origin_path" || exit 1

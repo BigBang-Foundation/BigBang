@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 # CMake file for Bigbang
 #
-# Copyright (c) 2019-2020 The Bigbang developers
+# Copyright (c) 2019-2021 The Bigbang developers
 # Distributed under the MIT/X11 software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #------------------------------------------------------------------------------
@@ -24,6 +24,7 @@ set(sources
     txpool_tests.cpp
     util_tests.cpp
     defi_test.cpp
+    slowhash_tests.cpp
 )
 
 #set(lib_src ../src/common/destination.h ../src/common/destination.cpp)

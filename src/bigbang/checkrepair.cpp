@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -1289,7 +1289,7 @@ bool CCheckBlockFork::InheritCopyData(const CCheckBlockFork& fromParent, const C
 
 bool CCheckBlockFork::CheckForkAddressTxIndex(const uint256& hashFork, const int nCheckHeight)
 {
-    if (!dbAddressTxIndex.AddNewFork(hashFork))
+    if (!dbAddressTxIndex.LoadFork(hashFork))
     {
         StdLog("check", "Check fork address tx index: dbAddressTxIndex LoadFork fail");
         return false;
@@ -2556,7 +2556,7 @@ bool CCheckRepairData::CheckRepairUnspent(uint64& nUnspentCount)
     for (; it != objBlockWalker.mapCheckFork.end(); ++it)
     {
         const uint256& hashFork = it->first;
-        if (!dbUnspent.AddNewFork(hashFork))
+        if (!dbUnspent.LoadFork(hashFork))
         {
             StdError("check", "Check repair unspent: dbUnspent AddNewFork fail.");
             dbUnspent.Deinitialize();
@@ -2605,7 +2605,7 @@ bool CCheckRepairData::CheckRepairAddressUnspent()
     for (; it != objBlockWalker.mapCheckFork.end(); ++it)
     {
         const uint256& hashFork = it->first;
-        if (!dbAddressUnspent.AddNewFork(hashFork))
+        if (!dbAddressUnspent.LoadFork(hashFork))
         {
             StdError("check", "Check address unspent: dbAddress AddNewFork fail.");
             dbAddressUnspent.Deinitialize();
@@ -2654,7 +2654,7 @@ bool CCheckRepairData::CheckRepairAddress(uint64& nAddressCount)
     for (; it != objBlockWalker.mapCheckFork.end(); ++it)
     {
         const uint256& hashFork = it->first;
-        if (!dbAddress.AddNewFork(hashFork))
+        if (!dbAddress.LoadFork(hashFork))
         {
             StdError("check", "Check address: dbAddress AddNewFork fail.");
             dbAddress.Deinitialize();

@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -368,6 +368,7 @@ bool CBlockChain::GetLastBlockTime(const uint256& hashFork, int nDepth, vector<i
     }
 
     vTime.clear();
+    vTime.reserve(nDepth);
     while (nDepth > 0 && pIndex != nullptr)
     {
         vTime.push_back(pIndex->GetBlockTime());
@@ -588,7 +589,9 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
 
             if ((itListDeFi->dest != tx.sendTo) || (itListDeFi->nReward != tx.nAmount + tx.nTxFee) || (itListDeFi->hashAnchor != tx.hashAnchor))
             {
-                Log("AddNewBlock Check defi reward tx error, block: %s, tx: %s", hash.ToString().c_str(), txid.ToString().c_str());
+                Log("AddNewBlock Check defi reward tx error, block: %s, tx: %s. dest: %s, should: %s. reward: %ld, should: %ld. anchor: %s, should: %s",
+                    hash.ToString().c_str(), txid.ToString().c_str(), CAddress(tx.sendTo).ToString().c_str(), CAddress(itListDeFi->dest).ToString().c_str(),
+                    tx.nAmount + tx.nTxFee, itListDeFi->nReward, tx.hashAnchor.ToString().c_str(), itListDeFi->hashAnchor.ToString().c_str());
                 return ERR_TRANSACTION_INVALID;
             }
             ++itListDeFi;
@@ -1911,20 +1914,23 @@ Errno CBlockChain::VerifyBlock(const uint256& hashBlock, const CBlock& block, CB
                 }
             }
 
-            uint256 hashPrimaryBlock;
-            int64 nPrimaryTime = 0;
-            if (!cntrBlock.GetPrimaryHeightBlockTime((*ppIndexRef)->GetBlockHash(), block.GetBlockHeight(), hashPrimaryBlock, nPrimaryTime))
+            if (!cntrBlock.VerifyPrimaryHeightRefBlockTime(block.GetBlockHeight(), block.GetBlockTime()))
             {
-                Log("Verify block : Vacant get height time, block ref: %s, block: %s",
-                    (*ppIndexRef)->GetBlockHash().GetHex().c_str(), hashBlock.GetHex().c_str());
-                return ERR_BLOCK_PROOF_OF_STAKE_INVALID;
-            }
-            if (block.GetBlockTime() != nPrimaryTime)
-            {
-                Log("Verify block : Vacant time error, block time: %d, primary time: %d, ref block: %s, same height block: %s, block: %s",
-                    block.GetBlockTime(), nPrimaryTime, (*ppIndexRef)->GetBlockHash().GetHex().c_str(),
-                    hashPrimaryBlock.GetHex().c_str(), hashBlock.GetHex().c_str());
-                return ERR_BLOCK_TIMESTAMP_OUT_OF_RANGE;
+                uint256 hashPrimaryBlock;
+                int64 nPrimaryTime = 0;
+                if (!cntrBlock.GetPrimaryHeightBlockTime((*ppIndexRef)->GetBlockHash(), block.GetBlockHeight(), hashPrimaryBlock, nPrimaryTime))
+                {
+                    Log("Verify block : Vacant get height time, block ref: %s, block: %s",
+                        (*ppIndexRef)->GetBlockHash().GetHex().c_str(), hashBlock.GetHex().c_str());
+                    return ERR_BLOCK_PROOF_OF_STAKE_INVALID;
+                }
+                if (block.GetBlockTime() != nPrimaryTime)
+                {
+                    Log("Verify block : Vacant time error, block time: %d, primary time: %d, ref block: %s, same height block: %s, block: %s",
+                        block.GetBlockTime(), nPrimaryTime, (*ppIndexRef)->GetBlockHash().GetHex().c_str(),
+                        hashPrimaryBlock.GetHex().c_str(), hashBlock.GetHex().c_str());
+                    return ERR_BLOCK_TIMESTAMP_OUT_OF_RANGE;
+                }
             }
         }
     }
@@ -2394,11 +2400,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
 {
     CDeFiRewardSet s;
 
-    int64 nReward = defiReward.GetSectionReward(forkid, hash);
-    if (nReward <= 0)
-    {
-        return s;
-    }
+    int32 nHeight = CBlock::GetBlockHeightByHash(hash);
 
     storage::CBlockView view;
     if (!cntrBlock.GetBlockView(hash, view))
@@ -2414,7 +2416,15 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
         return s;
     }
 
-    if (CBlock::GetBlockHeightByHash(hash) > NO_DEFI_TEMPLATE_ADDRESS_HEIGHT)
+    int64 nSupply = 0;
+    for (auto& addrAmount : mapAddressAmount)
+    {
+        nSupply += addrAmount.second;
+    }
+
+    int64 nInvalidSupply = 0;
+    // unspendable address
+    if (nHeight > NO_DEFI_TEMPLATE_ADDRESS_HEIGHT)
     {
         auto iter = mapAddressAmount.begin();
         for (; iter != mapAddressAmount.end();)
@@ -2422,6 +2432,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
             const CDestination& destTo = iter->first;
             if (!CTemplate::IsTxSpendable(destTo))
             {
+                nInvalidSupply += iter->second;
                 mapAddressAmount.erase(iter++);
             }
             else
@@ -2432,10 +2443,29 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     }
 
     // blacklist
-    const set<CDestination> setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, CBlock::GetBlockHeightByHash(hash));
+    const set<CDestination> setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, nHeight);
     for (auto& dest : setBlacklist)
     {
-        mapAddressAmount.erase(dest);
+        auto iter = mapAddressAmount.find(dest);
+        if (iter != mapAddressAmount.end())
+        {
+            nInvalidSupply += iter->second;
+            mapAddressAmount.erase(iter);
+        }
+    }
+
+    int64 nReward = 0;
+    if (pCoreProtocol->IsNewDeFiRewardHeight(nHeight))
+    {
+        nReward = defiReward.GetSectionReward(forkid, hash, nSupply, nInvalidSupply);
+    }
+    else
+    {
+        nReward = defiReward.GetSectionReward(forkid, hash);
+    }
+    if (nReward <= 0)
+    {
+        return s;
     }
 
     int64 nStakeReward = nReward * profile.defi.nStakeRewardPercent / 100;
