@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -115,7 +115,8 @@ bool CNetHost::Set(const std::string& strHostIn, unsigned short nDefPortIn,
 bool CNetHost::Set(const boost::asio::ip::tcp::endpoint& ep,
                    const std::string& strNameIn, const boost::any& dataIn)
 {
-    strHost = ep.address().to_string();
+    boost::system::error_code ec;
+    strHost = ep.address().to_string(ec);
     nPort = ep.port();
     strName = (!strNameIn.empty() ? strNameIn : strHost);
     data = dataIn;

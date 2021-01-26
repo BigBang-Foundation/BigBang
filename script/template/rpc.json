@@ -4551,5 +4551,38 @@
             "{\"code\":-8,\"message\":\"Raw tx decode failed\"}",
             "{\"code\":-10,\"message\":\"Tx rejected : xxx\"}"
         ]
+    },
+    "reversehex": {
+        "type": "command",
+        "name": "ReverseHex",
+        "desc": "Reverse a hex string by byte",
+        "request": {
+            "type": "object",
+            "content": {
+                "hex": {
+                    "type": "string",
+                    "desc": "hex string"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "hex",
+            "desc": "reversed hex string"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli reversehex e8e3770e774d5ad84a8ea65ed08cc7c5c30b42e045623604d5c5c6be95afb4f9",
+                "response": "f9b4af95bec6c5d504366245e0420bc3c5c78cd05ea68e4ad85a4d770e77e3e8"
+            },
+            {
+                "request": "curl -d '{\"id\":15,\"method\":\"reversehex\",\"jsonrpc\":\"2.0\",\"params\":{\"hex\":\"e8e3770e774d5ad84a8ea65ed08cc7c5c30b42e045623604d5c5c6be95afb4f9\"}}' http://127.0.0.1:19902",
+                "response": "{\"id\":15,\"jsonrpc\":\"2.0\",\"result\":\"f9b4af95bec6c5d504366245e0420bc3c5c78cd05ea68e4ad85a4d770e77e3e8\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-32602,\"message\":\"hex string size is not even\"}",
+            "{\"code\":-32602,\"message\":\"invalid hex string: g\"}"
+        ]
     }
 }

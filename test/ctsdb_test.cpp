@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -41,9 +41,9 @@ typedef CCTSDB<uint224, CMetaData, CCTSChunkSnappy<uint224, CMetaData>> CMetaDB;
 BOOST_AUTO_TEST_CASE(ctsdb)
 {
     CMetaDB db;
-    
-    std::string fullpath = boost::filesystem::initial_path<boost::filesystem::path>().string() + "/dbpath";  
-    std::cout << "init path: " << fullpath << std::endl; 
+
+    std::string fullpath = boost::filesystem::initial_path<boost::filesystem::path>().string() + "/dbpath";
+    std::cout << "init path: " << fullpath << std::endl;
     BOOST_CHECK(db.Initialize(boost::filesystem::path(fullpath)));
 
     db.RemoveAll();

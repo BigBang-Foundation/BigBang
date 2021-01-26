@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:    
       - master
+  push:
+    branches: 
+      - master
 
 env:
   BUILD_TYPE: release
@@ -35,7 +38,7 @@ jobs:
       # install libsodium with cache
       - name: Install cache libsodium-1.0.18
         if: steps.libsodium.outputs.cache-hit == 'true'
-        run: cd ~/libsodium-1.0.18 && sudo make install
+        run: cd ~/libsodium-1.0.18 && ./configure && make -j2 && sudo make install
 
       # download & install libsodium without cache
       - name: Download and Install libsodium-1.0.18
@@ -66,14 +69,20 @@ jobs:
           ./build/test/test_big
           ./build/test/test_ctsdb
 
-      # cppcheck
-      - name: CPPCheck
+      # Check
+      - name: CppCheck
         working-directory: ${{github.workspace}}
         shell: bash
         if: matrix.os == 'ubuntu-18.04'
         run: |
           cppcheck --error-exitcode=1 --std=c++11 --enable=warning,performance,portability -i libsodium-1.0.18 -i src/leveldb -i build -i src/snappy -i src/crypto -i src/jsonrpc/json -i src/xengine/docker -i script -i test .
 
+      - name: InvalidCharCheck
+        working-directory: ${{github.workspace}}
+        shell: bash
+        if: matrix.os == 'ubuntu-20.04'
+        run: |
+          ./tools/check-char.py ./src
   build-macos:
     runs-on: macos-latest
 

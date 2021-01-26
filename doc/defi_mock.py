@@ -11,6 +11,7 @@ from pprint import pprint
 
 COIN = 1000000
 TX_FEE = 10000
+blackhole_addr = '100000000000000000000000000000000000000000000000000000000'
 
 
 # Mark tree node level recursively
@@ -23,7 +24,7 @@ def MarkTreeLevel(root_addr, root_level, addrset):
 
 
 # Compute DeFi rewards
-def Compute(addrset, total_level, input, output, begin, end):
+def Compute(addrset, total_level, input, output, begin, end, new_type_height, blackhole_token):
     makeorigin = input['makeorigin']
     delegate_addr = makeorigin['delegate_addr']
     amount = makeorigin['amount'] * COIN
@@ -50,6 +51,7 @@ def Compute(addrset, total_level, input, output, begin, end):
 
     reward_count = supplycycle / rewardcycle
     supply = amount
+    real_supply = amount
     next_supply = amount
     reward_percent = initcoinbasepercent if coinbasetype == 0 else mapcoinbasepercent[
         0]['percent']
@@ -60,7 +62,7 @@ def Compute(addrset, total_level, input, output, begin, end):
 
     for i in range(0, end):
         # to upper limit
-        if supply >= maxsupply:
+        if supply >= maxsupply or real_supply >= maxsupply:
             break
 
         height = mintheight + (i + 1) * rewardcycle
@@ -85,26 +87,36 @@ def Compute(addrset, total_level, input, output, begin, end):
                 if next_reward_percent_height < 0:
                     break
 
-        if (height - mintheight - rewardcycle) % supplycycle == 0:
-            supply = next_supply
-            next_supply = int(supply * (1 + reward_percent))
-            coinbase = float(next_supply - supply) / supplycycle
-            # too lower reward
-            if next_supply - supply < COIN:
-                break
+        if (new_type_height < 0) or (height < new_type_height):
+            if (height - mintheight - rewardcycle) % supplycycle == 0:
+                supply = next_supply
+                next_supply = int(supply * (1 + reward_percent))
+                coinbase = float(next_supply - supply) / supplycycle
+                print("next_supply: %d, supply: %d, reward_percent: %f, coinbase: %f" %
+                      (next_supply, supply, reward_percent, coinbase))
+                # too lower reward
+                if next_supply - supply < COIN:
+                    break
 
-        total_reward = int(round(coinbase * rewardcycle))
-        # to upper limit
-        if next_supply > maxsupply:
-            last_reward = 0 if i == 0 else int(
-                round(coinbase * (i % reward_count) * rewardcycle))
-            max_reward = max(0, maxsupply - supply - last_reward)
-            total_reward = min(total_reward, max_reward)
+            total_reward = int(round(coinbase * rewardcycle))
+            # to upper limit
+            if next_supply > maxsupply:
+                last_reward = 0 if i == 0 else int(
+                    round(coinbase * (i % reward_count) * rewardcycle))
+                max_reward = max(0, maxsupply - supply - last_reward)
+                total_reward = min(total_reward, max_reward)
+        else:
+            rp = (1 + reward_percent) ** (1.0 / (supplycycle / rewardcycle))
+            total_reward = int((real_supply - blackhole_token) * (rp - 1))
+            print("rp: %f, total_reward: %f, real_supply: %d,blackhole_token: %d" % (
+                rp, total_reward, real_supply, blackhole_token))
+            if real_supply + total_reward > maxsupply:
+                total_reward = maxsupply - real_supply
 
         # to upper limit
         if total_reward <= 0:
             break
-        # print("height: %d, reward: %d" % (height, total_reward))
+        print("height: %d, reward: %d" % (height, total_reward))
 
         addrset_addrlist = [
             {'addr': k, 'info': v} for k, v in addrset.items()]
@@ -153,7 +165,7 @@ def Compute(addrset, total_level, input, output, begin, end):
             addr = v['addr']
             info = v['info']
             result[addr] += int(info['rank'] * stake_unit_reward)
-            # print('stake reward addr: %s, reward: %d' % (addr, result[addr]))
+            print('stake reward addr: %s, reward: %d' % (addr, result[addr]))
 
         # compute promotion reward
         promotion_reward = int(
@@ -209,9 +221,9 @@ def Compute(addrset, total_level, input, output, begin, end):
         # print("promotion reward: %d, size: %d" %
         #       (promotion_reward, promo_count))
         # promo_addrlist = sorted(promo_addrlist, key=lambda x: x['addr'])
-        # for v in promo_addrlist:
-        #     print('promotion reward addr: %s, reward: %d' %
-        #           (v['addr'], v['info']))
+        for v in promo_addrlist:
+            print('promotion reward addr: %s, reward: %d' %
+                  (v['addr'], v['info']))
 
         # result_addrlist = [
         #     {'addr': k, 'info': v} for k, v in result.items()]
@@ -225,14 +237,15 @@ def Compute(addrset, total_level, input, output, begin, end):
                 del(result[addr])
         for addr, reward in result.items():
             addrset[addr]['stake'] += reward - TX_FEE
+            real_supply += reward
 
         # dpos mint
-        addrset[delegate_addr]['stake'] += (TX_FEE * len(result))
+        # addrset[delegate_addr]['stake'] += (TX_FEE * len(result))
 
         if i >= begin:
             output.append({'height': height, 'reward': result})
             print("computed begin: %d, end: %d, now: %d, height: %d" %
-                (begin, end, i, height))
+                  (begin, end, i, height))
 
     addrlist = [
         {'addr': k, 'info': v['stake']} for k, v in addrset.items()]
@@ -243,13 +256,14 @@ def Compute(addrset, total_level, input, output, begin, end):
 
 if __name__ == "__main__":
     # json path
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 4:
         raise Exception(
-            'Not enough param, should be "python defi_mock.py file.json count"')
+            'Not enough param, should be "python defi_mock.py file.json (new_type_height, -1 is old_type) (count | begin) [end] "')
 
     path = os.path.join(os.getcwd(), sys.argv[1])
-    begin = 0 if len(sys.argv) == 3 else int(sys.argv[2])
-    end = int(sys.argv[2]) if len(sys.argv) == 3 else int(sys.argv[3])
+    new_type_height = int(sys.argv[2])
+    begin = 0 if len(sys.argv) == 4 else int(sys.argv[3])
+    end = int(sys.argv[3]) if len(sys.argv) == 4 else int(sys.argv[4])
 
     input = {}
     output = []
@@ -260,12 +274,16 @@ if __name__ == "__main__":
 
     # compute balance by stake and relation
     addrset = {}
+    blackhole_token = 0
     for addr, stake in input['stake'].items():
-        addrset[addr] = {
-            'stake': stake,
-            'upper': None,
-            'lower': []
-        }
+        if addr != blackhole_addr:
+            addrset[addr] = {
+                'stake': stake,
+                'upper': None,
+                'lower': []
+            }
+        else:
+            blackhole_token = stake
 
     for lower_addr, upper_addr in input['relation'].items():
         if lower_addr not in addrset:
@@ -315,7 +333,8 @@ if __name__ == "__main__":
     #print ("addrset:", addrset)
 
     # compute reward
-    Compute(addrset, total_level, input, output, begin, end)
+    Compute(addrset, total_level, input, output,
+            begin, end, new_type_height, blackhole_token)
 
     # output
     result = {

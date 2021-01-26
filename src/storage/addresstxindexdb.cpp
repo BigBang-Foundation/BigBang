@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -235,8 +235,8 @@ bool CForkAddressTxIndexDB::Copy(CForkAddressTxIndexDB& dbAddressTxIndex)
 
     try
     {
-        xengine::CReadLock rulock(rwUpper);
         xengine::CReadLock rdlock(rwLower);
+        xengine::CReadLock rulock(rwUpper);
 
         if (!WalkThrough(boost::bind(&CForkAddressTxIndexDB::CopyWalker, this, _1, _2, boost::ref(dbAddressTxIndex))))
         {
@@ -257,8 +257,8 @@ bool CForkAddressTxIndexDB::WalkThroughAddressTxIndex(CForkAddressTxIndexDBWalke
 {
     try
     {
-        xengine::CReadLock rulock(rwUpper);
         xengine::CReadLock rdlock(rwLower);
+        xengine::CReadLock rulock(rwUpper);
 
         MapType& mapUpper = dblCache.GetUpperMap();
         MapType& mapLower = dblCache.GetLowerMap();
@@ -478,7 +478,13 @@ void CAddressTxIndexDB::Deinitialize()
     }
 }
 
-bool CAddressTxIndexDB::AddNewFork(const uint256& hashFork)
+bool CAddressTxIndexDB::ExistFork(const uint256& hashFork)
+{
+    CReadLock rlock(rwAccess);
+    return mapAddressDB.find(hashFork) != mapAddressDB.end();
+}
+
+bool CAddressTxIndexDB::LoadFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -497,7 +503,7 @@ bool CAddressTxIndexDB::AddNewFork(const uint256& hashFork)
     return true;
 }
 
-bool CAddressTxIndexDB::RemoveFork(const uint256& hashFork)
+void CAddressTxIndexDB::RemoveFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -506,9 +512,19 @@ bool CAddressTxIndexDB::RemoveFork(const uint256& hashFork)
     {
         (*it).second->RemoveAll();
         mapAddressDB.erase(it);
-        return true;
     }
-    return false;
+
+    boost::filesystem::path forkPath = pathAddress / hashFork.GetHex();
+    if (boost::filesystem::exists(forkPath))
+    {
+        boost::filesystem::remove_all(forkPath);
+    }
+}
+
+bool CAddressTxIndexDB::AddNewFork(const uint256& hashFork)
+{
+    RemoveFork(hashFork);
+    return LoadFork(hashFork);
 }
 
 void CAddressTxIndexDB::Clear()
@@ -637,20 +653,12 @@ void CAddressTxIndexDB::FlushProc()
 
         if (!fStopFlush)
         {
-            vector<std::shared_ptr<CForkAddressTxIndexDB>> vAddressDB;
-            vAddressDB.reserve(mapAddressDB.size());
-            {
-                CReadLock rlock(rwAccess);
+            CReadLock rlock(rwAccess);
 
-                for (map<uint256, std::shared_ptr<CForkAddressTxIndexDB>>::iterator it = mapAddressDB.begin();
-                     it != mapAddressDB.end(); ++it)
-                {
-                    vAddressDB.push_back((*it).second);
-                }
-            }
-            for (int i = 0; i < vAddressDB.size(); i++)
+            for (map<uint256, std::shared_ptr<CForkAddressTxIndexDB>>::iterator it = mapAddressDB.begin();
+                 it != mapAddressDB.end(); ++it)
             {
-                vAddressDB[i]->Flush();
+                it->second->Flush();
             }
         }
     }

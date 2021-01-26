@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -156,8 +156,8 @@ bool CForkAddressUnspentDB::Copy(CForkAddressUnspentDB& dbAddressUnspent)
 
     try
     {
-        xengine::CReadLock rulock(rwUpper);
         xengine::CReadLock rdlock(rwLower);
+        xengine::CReadLock rulock(rwUpper);
 
         if (!WalkThrough(boost::bind(&CForkAddressUnspentDB::CopyWalker, this, _1, _2, boost::ref(dbAddressUnspent))))
         {
@@ -178,8 +178,8 @@ bool CForkAddressUnspentDB::WalkThroughAddressUnspent(CForkAddressUnspentDBWalke
 {
     try
     {
-        xengine::CReadLock rulock(rwUpper);
         xengine::CReadLock rdlock(rwLower);
+        xengine::CReadLock rulock(rwUpper);
 
         MapType& mapUpper = dblCache.GetUpperMap();
         MapType& mapLower = dblCache.GetLowerMap();
@@ -383,7 +383,13 @@ void CAddressUnspentDB::Deinitialize()
     }
 }
 
-bool CAddressUnspentDB::AddNewFork(const uint256& hashFork, const uint256& hashLastBlock)
+bool CAddressUnspentDB::ExistFork(const uint256& hashFork)
+{
+    CReadLock rlock(rwAccess);
+    return mapAddressDB.find(hashFork) != mapAddressDB.end();
+}
+
+bool CAddressUnspentDB::LoadFork(const uint256& hashFork, const uint256& hashLastBlock)
 {
     CWriteLock wlock(rwAccess);
 
@@ -402,7 +408,7 @@ bool CAddressUnspentDB::AddNewFork(const uint256& hashFork, const uint256& hashL
     return true;
 }
 
-bool CAddressUnspentDB::RemoveFork(const uint256& hashFork)
+void CAddressUnspentDB::RemoveFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -411,9 +417,19 @@ bool CAddressUnspentDB::RemoveFork(const uint256& hashFork)
     {
         (*it).second->RemoveAll();
         mapAddressDB.erase(it);
-        return true;
     }
-    return false;
+
+    boost::filesystem::path forkPath = pathAddress / hashFork.GetHex();
+    if (boost::filesystem::exists(forkPath))
+    {
+        boost::filesystem::remove_all(forkPath);
+    }
+}
+
+bool CAddressUnspentDB::AddNewFork(const uint256& hashFork, const uint256& hashLastBlock)
+{
+    RemoveFork(hashFork);
+    return LoadFork(hashFork, hashLastBlock);
 }
 
 void CAddressUnspentDB::Clear()
@@ -530,20 +546,12 @@ void CAddressUnspentDB::FlushProc()
 
         if (!fStopFlush)
         {
-            vector<std::shared_ptr<CForkAddressUnspentDB>> vAddressDB;
-            vAddressDB.reserve(mapAddressDB.size());
-            {
-                CReadLock rlock(rwAccess);
+            CReadLock rlock(rwAccess);
 
-                for (map<uint256, std::shared_ptr<CForkAddressUnspentDB>>::iterator it = mapAddressDB.begin();
-                     it != mapAddressDB.end(); ++it)
-                {
-                    vAddressDB.push_back((*it).second);
-                }
-            }
-            for (int i = 0; i < vAddressDB.size(); i++)
+            for (map<uint256, std::shared_ptr<CForkAddressUnspentDB>>::iterator it = mapAddressDB.begin();
+                 it != mapAddressDB.end(); ++it)
             {
-                vAddressDB[i]->Flush();
+                it->second->Flush();
             }
         }
     }
