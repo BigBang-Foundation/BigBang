@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -103,11 +103,13 @@ bool CForkAddressDB::UpdateAddress(const vector<pair<CDestination, CAddrInfo>>& 
             }
             else
             {
+                xengine::StdWarn("CForkAddressDB", "UpdateAddress addr: %s find loop, parent: %s, root: %s", vd.first.ToString().c_str(), addrInfo.destParent.ToString().c_str(), addrInfo.destRoot.ToString().c_str());
                 return false;
             }
         }
         else
         {
+            xengine::StdWarn("CForkAddressDB", "UpdateAddress addr: %s already has parent: %s", vd.first.ToString().c_str(), addrInfo.destParent.ToString().c_str());
             return false;
         }
     }
@@ -515,7 +517,13 @@ void CAddressDB::Deinitialize()
     }
 }
 
-bool CAddressDB::AddNewFork(const uint256& hashFork)
+bool CAddressDB::ExistFork(const uint256& hashFork)
+{
+    CReadLock rlock(rwAccess);
+    return mapAddressDB.find(hashFork) != mapAddressDB.end();
+}
+
+bool CAddressDB::LoadFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -534,7 +542,7 @@ bool CAddressDB::AddNewFork(const uint256& hashFork)
     return true;
 }
 
-bool CAddressDB::RemoveFork(const uint256& hashFork)
+void CAddressDB::RemoveFork(const uint256& hashFork)
 {
     CWriteLock wlock(rwAccess);
 
@@ -543,9 +551,19 @@ bool CAddressDB::RemoveFork(const uint256& hashFork)
     {
         (*it).second->RemoveAll();
         mapAddressDB.erase(it);
-        return true;
     }
-    return false;
+
+    boost::filesystem::path forkPath = pathAddress / hashFork.GetHex();
+    if (boost::filesystem::exists(forkPath))
+    {
+        boost::filesystem::remove_all(forkPath);
+    }
+}
+
+bool CAddressDB::AddNewFork(const uint256& hashFork)
+{
+    RemoveFork(hashFork);
+    return LoadFork(hashFork);
 }
 
 void CAddressDB::Clear()
@@ -570,6 +588,7 @@ bool CAddressDB::Update(const uint256& hashFork,
     {
         return (*it).second->UpdateAddress(vAddNew, vRemove);
     }
+    xengine::StdWarn("CAddressDB", "Update no address DB, fork: %s", hashFork.ToString().c_str());
     return false;
 }
 
@@ -659,20 +678,12 @@ void CAddressDB::FlushProc()
 
         if (!fStopFlush)
         {
-            vector<std::shared_ptr<CForkAddressDB>> vAddressDB;
-            vAddressDB.reserve(mapAddressDB.size());
-            {
-                CReadLock rlock(rwAccess);
+            CReadLock rlock(rwAccess);
 
-                for (map<uint256, std::shared_ptr<CForkAddressDB>>::iterator it = mapAddressDB.begin();
-                     it != mapAddressDB.end(); ++it)
-                {
-                    vAddressDB.push_back((*it).second);
-                }
-            }
-            for (int i = 0; i < vAddressDB.size(); i++)
+            for (map<uint256, std::shared_ptr<CForkAddressDB>>::iterator it = mapAddressDB.begin();
+                 it != mapAddressDB.end(); ++it)
             {
-                vAddressDB[i]->Flush();
+                it->second->Flush();
             }
         }
     }

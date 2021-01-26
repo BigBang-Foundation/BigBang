@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -101,6 +101,7 @@ private:
     rpc::CRPCResultPtr RPCGetForkHeight(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetVotes(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListDelegate(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCGetDeFiRelation(rpc::CRPCParamPtr param);
     /* Wallet */
     rpc::CRPCResultPtr RPCListKey(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetNewKey(rpc::CRPCParamPtr param);
@@ -143,7 +144,7 @@ private:
     rpc::CRPCResultPtr RPCAesDecrypt(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListUnspent(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListUnspentOld(rpc::CRPCParamPtr param);
-    rpc::CRPCResultPtr RPCGetDeFiRelation(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCReverseHex(rpc::CRPCParamPtr param);
     /* Mint */
     rpc::CRPCResultPtr RPCGetWork(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSubmitWork(rpc::CRPCParamPtr param);
