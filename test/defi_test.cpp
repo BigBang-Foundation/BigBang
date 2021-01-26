@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -286,6 +286,7 @@ BOOST_AUTO_TEST_CASE(reward)
     // boost::filesystem::path logPath = boost::filesystem::absolute(boost::unit_test::framework::master_test_suite().argv[0]).parent_path();
     // InitLog(logPath, true, true, 1024, 1024);
 
+    srand(time(0));
     CDeFiForkReward r;
     uint256 forkid1;
     RandGeneretor256(forkid1.begin());
@@ -341,41 +342,9 @@ BOOST_AUTO_TEST_CASE(reward)
     BOOST_CHECK(r.ExistFork(forkid1));
     BOOST_CHECK(r.GetForkProfile(forkid1).strSymbol == "BBCA");
 
-    // supply = 21000000000000
-    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.1
-    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.05
-    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.025
-    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.0125
-    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.00625
-    // for (i = 0; i < (1036000 / 43200); i++ ) supply *= 1.003125
-    // for (i = 0; i < 20; i++ ) supply *= 1.0015625
-    // supply = 2099250670895780, height = 164 * 43200 = 7084800
-    // coinbase = 2099250670895780 * 1.0015625 / 43200 = 75927758.64061704
-    // supply = max = 2100000000000000, height = 7084800 + ceil((max - supply) / coinbase) + 151(mint_height - 1) = 7094820
-    BOOST_CHECK(r.GetForkMaxRewardHeight(forkid1) == 7094820);
-    // supply = 10000000000000
-    // for (i = 0; i < (259200 / 43200); i++ ) supply *= 1.1
-    // for (i = 0; i < ((777600 - 259200) / 43200); i++ ) supply *= 1.08
-    // for (i = 0; i < ((1814400 - 777600) / 43200); i++ ) supply *= 1.05
-    // for (i = 0; i < ((3369600 - 3369600) / 43200); i++ ) supply *= 1.03
-    // for (i = 0; i < ((5184000 - 3369600) / 43200); i++ ) supply *= 1.02
-    // max = 1000000000000000, supply = 957925331297192, supply < max, height = 518400 + 1499(mint_height - 1) = 5185499
-    BOOST_CHECK(r.GetForkMaxRewardHeight(forkid2) == 5185499);
-
     // test common reward
-    BOOST_CHECK(r.GetFixedDecayReward(profile1, 152, 1592) == 70000000000);
-    BOOST_CHECK(r.GetFixedDecayReward(profile1, 152, 1036952) == 185844386191952);
-    BOOST_CHECK(r.GetFixedDecayReward(profile1, 1036952, 1036953) == 239403225);
-    BOOST_CHECK(r.GetFixedDecayReward(profile1, 152, 1036953) == 185844625595177);
-    BOOST_CHECK(r.GetFixedDecayReward(profile1, 7094819, 7094820) == 75927759);
-    BOOST_CHECK(r.GetFixedDecayReward(profile1, 7094820, 7094821) == 73981955);
-
-    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 2940) == 33333333333);
-    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 260700) == 7715610000000);
-    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 260700, 260701) == 32806685);
-    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 260701) == 7715642806685);
-    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500, 5185500) == 947925331297192);
-    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 5185500, 5185501) == 0);
+    BOOST_CHECK(r.GetFixedDecayReward(profile1, 152) == 70000000000);
+    BOOST_CHECK(r.GetSpecificDecayReward(profile2, 1500) == 33333333333);
 
     // test PrevRewardHeight
     BOOST_CHECK(r.PrevRewardHeight(forkid1, -10) == -1);
@@ -389,30 +358,111 @@ BOOST_AUTO_TEST_CASE(reward)
 
     // test coinbase
     // fixed coinbase
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(0, uint224(0))) == 0);
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(151, uint224(0))) == 0);
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(152, uint224(0))) == 48611111);
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(1591, uint224(0))) == 70000000000);
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(43352, uint224(0))) == 53472222);
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(100000, uint224(0))) == 28762708333);
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7086391, uint224(0))) == 109335972442);
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7095031, uint224(0))) == 93313269565);
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7095032, uint224(0))) == 0);
-    BOOST_CHECK(r.GetSectionReward(forkid1, uint256(10000000, uint224(0))) == 0);
-    int64 nReward = r.GetSectionReward(forkid1, uint256(100000, uint224(0)));
+    {
+        // old type
+        BOOST_CHECK(r.GetSectionReward(forkid1, uint256(0, uint224(0))) == 0);
+        BOOST_CHECK(r.GetSectionReward(forkid1, uint256(151, uint224(0))) == 0);
+        BOOST_CHECK(r.GetSectionReward(forkid1, uint256(1591, uint224(0))) == 70000000000);
+        BOOST_CHECK(r.GetSectionReward(forkid1, uint256(44791, uint224(0))) == 77000000000);
+        BOOST_CHECK(r.GetSectionReward(forkid1, uint256(1038391, uint224(0))) == 344740643653);
+        BOOST_CHECK(r.GetSectionReward(forkid1, uint256(4148791, uint224(0))) == 338687535219);
+        BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7086391, uint224(0))) == 109335972442);
+        BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7093591, uint224(0))) == 109335972442);
+        BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7095031, uint224(0))) == 93313269565);
+        BOOST_CHECK(r.GetSectionReward(forkid1, uint256(7096471, uint224(0))) == 0);
+
+        // new type
+        int64 nInitSupply = 21000000 * COIN;
+        int64 nSupply = nInitSupply;
+        int64 nInvalidSupply = rand() % nInitSupply;
+        int64 nHeight = ((profile1.defi.nMintHeight == 0) ? (profile1.nJointHeight + 2) : profile1.defi.nMintHeight) - 1;
+        double fRate = (double)profile1.defi.nInitCoinbasePercent / 100;
+        bool fTerminate = false;
+        for (int i = 0; i < 1000 && !fTerminate; i++)
+        {
+            for (int j = 0; j < profile1.defi.nDecayCycle / profile1.defi.nSupplyCycle && !fTerminate; j++)
+            {
+                for (int k = 0; k < profile1.defi.nSupplyCycle / profile1.defi.nRewardCycle && !fTerminate; k++)
+                {
+                    nHeight += profile1.defi.nRewardCycle;
+                    int64 nReward = r.GetSectionReward(forkid1, uint256(nHeight, uint224(0)), nSupply, nInvalidSupply);
+                    // cout << "... height: " << nHeight << ", reward: " << nReward << ", supply begin: " << nSupply << ", supply end: " << (nSupply + nReward) << ", rate: " << ((double)nReward / nSupply) << endl;
+                    nSupply += nReward;
+                    if (nReward == 0 || nSupply >= profile1.defi.nMaxSupply)
+                    {
+                        fTerminate = true;
+                    }
+                }
+                if (!fTerminate)
+                {
+                    // cout << "rate: " << ((double)(nSupply - nInvalidSupply) / (nInitSupply - nInvalidSupply) - 1) << ", should be: " << fRate << endl;
+                    BOOST_CHECK(fabs(((double)(nSupply - nInvalidSupply) / (nInitSupply - nInvalidSupply) - 1) - fRate) < numeric_limits<float>::epsilon());
+                    nInitSupply = nSupply;
+                }
+            }
+            fRate *= (double)profile1.defi.nCoinbaseDecayPercent / 100;
+            // cout << "decay count: " << (i + 1) << ", rate: " << fRate << endl;
+        }
+        // cout << "supply: " << nSupply << endl;
+    }
 
     // specific coinbase
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(0, uint224(0))) == 0);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1499, uint224(0))) == 0);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1500, uint224(0))) == 23148148);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(2939, uint224(0))) == 33333333333);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(44700, uint224(0))) == 25462963);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(260700, uint224(0))) == 32806685);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1001348, uint224(0))) == 32224247818);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(2001348, uint224(0))) == 126959353756);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(4001348, uint224(0))) == 246829392556);
-    BOOST_CHECK(r.GetSectionReward(forkid2, uint256(10001348, uint224(0))) == 0);
+    {
+        // old type
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(0, uint224(0))) == 0);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1499, uint224(0))) == 0);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(2939, uint224(0))) == 33333333333);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(46139, uint224(0))) == 36666666667);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(260699, uint224(0))) == 53683666667);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(262139, uint224(0))) == 47241626667);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(779099, uint224(0))) == 110150419020);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(780539, uint224(0))) == 74351532839);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1815899, uint224(0))) == 228372499403);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(1817339, uint224(0))) == 143874674624);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(3371099, uint224(0))) == 404843545059);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(3372539, uint224(0))) == 277992567607);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(3371099, uint224(0))) == 404843545059);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(3372539, uint224(0))) == 277992567607);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(5185499, uint224(0))) == 626094987776);
+        BOOST_CHECK(r.GetSectionReward(forkid2, uint256(5186939, uint224(0))) == 0);
 
+        // new type
+        int64 nInitSupply = 10000000 * COIN;
+        int64 nSupply = nInitSupply;
+        int64 nInvalidSupply = rand() % nInitSupply;
+        int64 nHeight = ((profile2.defi.nMintHeight == 0) ? (profile2.nJointHeight + 2) : profile2.defi.nMintHeight) - 1;
+        bool fTerminate = false;
+        int32 nLastHeight = 0;
+        for (auto& x : profile2.defi.mapCoinbasePercent)
+        {
+            double fRate = (double)x.second / 100;
+            for (int i = 0; i < (x.first - nLastHeight) / profile2.defi.nSupplyCycle && !fTerminate; i++)
+            {
+                for (int k = 0; k < profile2.defi.nSupplyCycle / profile2.defi.nRewardCycle && !fTerminate; k++)
+                {
+                    nHeight += profile2.defi.nRewardCycle;
+                    int64 nReward = r.GetSectionReward(forkid2, uint256(nHeight, uint224(0)), nSupply, nInvalidSupply);
+                    // cout << "... height: " << nHeight << ", reward: " << nReward << ", supply begin: " << nSupply << ", supply end: " << (nSupply + nReward) << ", rate: " << ((double)nReward / nSupply) << endl;
+                    nSupply += nReward;
+                    if (nReward == 0 || nSupply >= profile2.defi.nMaxSupply)
+                    {
+                        fTerminate = true;
+                    }
+                }
+                if (!fTerminate)
+                {
+                    // cout << "rate: " << ((double)(nSupply - nInvalidSupply) / (nInitSupply - nInvalidSupply) - 1) << ", should be: " << fRate << endl;
+                    BOOST_CHECK(fabs(((double)(nSupply - nInvalidSupply) / (nInitSupply - nInvalidSupply) - 1) - fRate) < numeric_limits<float>::epsilon());
+                    nInitSupply = nSupply;
+                }
+            }
+            nLastHeight = x.first;
+            // cout << "specific height: " << x.first << ", rate: " << fRate << endl;
+        }
+        // cout << "supply: " << nSupply << endl;
+    }
+
+    int64 nReward = 28762708333;
     CAddress A("1632srrskscs1d809y3x5ttf50f0gabf86xjz2s6aetc9h9ewwhm58dj3");
     CAddress a1("1f1nj5gjgrcz45g317s1y4tk18bbm89jdtzd41m9s0t14tp2ngkz4cg0x");
     CAddress a11("1pmj5p47zhqepwa9vfezkecxkerckhrks31pan5fh24vs78s6cbkrqnxp");
@@ -585,7 +635,7 @@ BOOST_AUTO_TEST_CASE(reward2)
         { A, 0 },
         { B, 100 * COIN },
     };
-    std::cout << "nReward " << nReward << std::endl;
+    // std::cout << "nReward " << nReward << std::endl;
     {
         CDeFiRewardSet reward = r.ComputeStakeReward(profile.defi.nStakeMinToken, (nReward), balance);
         BOOST_CHECK(reward.size() == 1);
@@ -611,7 +661,7 @@ BOOST_AUTO_TEST_CASE(reward2)
         auto it = destIdx.find(a1);
         // 1 / 12 * nReward
         BOOST_CHECK(it != destIdx.end() && it->nReward == (2777777777));
-        std::cout << "a1 " << it->nReward << std::endl;
+        // std::cout << "a1 " << it->nReward << std::endl;
         it = destIdx.find(a11);
         // 5 / 12 * nReward
         BOOST_CHECK(it != destIdx.end() && it->nReward == (13888888888));
@@ -876,8 +926,6 @@ BOOST_AUTO_TEST_CASE(reward_fixed)
         BOOST_CHECK(relation.Insert(x.first, x.second.destParent, x.second.destParent));
     }
 
-    cout << r.GetForkMaxRewardHeight(forkid) << endl;
-
     for (int i = 0; i < 2000; i++)
     {
         // for (auto& x : mapReward)
@@ -1085,8 +1133,6 @@ BOOST_AUTO_TEST_CASE(reward_specific)
     {
         BOOST_CHECK(relation.Insert(x.first, x.second.destParent, x.second.destParent));
     }
-
-    cout << r.GetForkMaxRewardHeight(forkid) << endl;
 
     int64 nTotalTxFee = 0;
     int64 nTotalSupply = 0;

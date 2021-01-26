@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
 # CMake file for Bigbang
 #
-# Copyright (c) 2019-2020 The Bigbang developers
+# Copyright (c) 2019-2021 The Bigbang developers
 # Distributed under the MIT/X11 software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #------------------------------------------------------------------------------
@@ -13,7 +13,6 @@ set(pow_hash
     pow_hash/hash-extra-skein.c
     pow_hash/jh.h     
     pow_hash/slow-hash.c
-    pow_hash/slow-hash_1.c
     pow_hash/variant4_random_math.h
     pow_hash/blake256.c
     pow_hash/groestl.c
@@ -57,9 +56,13 @@ set(sources
     ${pow_hash}
 )
 
-if(NOT MSVC)
+if(NOT MSVC AND NOT ARM_CRYPTO)
     set(CMAKE_C_FLAGS "-msse2 -maes")
 endif()
+
+if(ARM_CRYPTO)
+    set(CMAKE_C_FLAGS "-march=armv8-a+crypto")
+endif ()
 
 add_library(crypto ${sources})
 
@@ -85,3 +88,4 @@ target_link_libraries(crypto
     xengine
     common
 )
+
