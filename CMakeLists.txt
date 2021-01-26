@@ -67,7 +67,7 @@ endif()
 
 # warnings
 if(UNIX AND NOT CYGWIN)
-    string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra -Werror -Wno-char-subscripts -Wno-unused-parameter -Wno-sign-compare -Wno-reorder -Wno-unused-local-typedefs -Wno-implicit-fallthrough -Wno-overloaded-virtual -Wno-strict-aliasing")
+    string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra -Werror -Wno-char-subscripts -Wno-unused-parameter -Wno-sign-compare -Wno-reorder -Wno-unused-local-typedefs -Wno-implicit-fallthrough -Wno-overloaded-virtual -Wno-strict-aliasing -Wno-narrowing")
     if (APPLE)
         string(APPEND CMAKE_CXX_FLAGS " -fvisibility-inlines-hidden -fvisibility=hidden -Wno-unknown-warning-option -Wno-tautological-overlap-compare")
     endif()
@@ -153,6 +153,10 @@ endif()
 
 if(TESTNET)
     add_definitions(-DBIGBANG_TESTNET)
+endif()
+
+if(ARM_CRYPTO)
+    add_definitions(-DBIGBANG_ARM_CRYPTO)
 endif()
 
 # include directories
