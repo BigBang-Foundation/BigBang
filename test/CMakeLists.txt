@@ -24,6 +24,7 @@ set(sources
     txpool_tests.cpp
     util_tests.cpp
     defi_test.cpp
+    slowhash_tests.cpp
 )
 
 #set(lib_src ../src/common/destination.h ../src/common/destination.cpp)
