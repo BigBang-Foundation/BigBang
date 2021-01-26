@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -139,27 +139,27 @@ bool CBlockDB::AddNewFork(const uint256& hash)
         return false;
     }
 
-    if (!dbTxIndex.LoadFork(hash))
+    if (!dbTxIndex.AddNewFork(hash))
     {
-        dbFork.RemoveFork(hash);
+        RemoveFork(hash);
         return false;
     }
 
     if (!dbUnspent.AddNewFork(hash))
     {
-        dbFork.RemoveFork(hash);
+        RemoveFork(hash);
         return false;
     }
 
     if (!dbAddress.AddNewFork(hash))
     {
-        dbFork.RemoveFork(hash);
+        RemoveFork(hash);
         return false;
     }
 
     if (!dbAddressUnspent.AddNewFork(hash))
     {
-        dbFork.RemoveFork(hash);
+        RemoveFork(hash);
         return false;
     }
 
@@ -167,7 +167,7 @@ bool CBlockDB::AddNewFork(const uint256& hash)
     {
         if (!dbAddressTxIndex.AddNewFork(hash))
         {
-            dbFork.RemoveFork(hash);
+            RemoveFork(hash);
             return false;
         }
     }
@@ -177,29 +177,14 @@ bool CBlockDB::AddNewFork(const uint256& hash)
 
 bool CBlockDB::RemoveFork(const uint256& hash)
 {
-    if (!dbUnspent.RemoveFork(hash))
-    {
-        return false;
-    }
-
-    if (!dbAddress.RemoveFork(hash))
-    {
-        return false;
-    }
-
-    if (!dbAddressUnspent.RemoveFork(hash))
-    {
-        return false;
-    }
-
+    dbTxIndex.RemoveFork(hash);
+    dbUnspent.RemoveFork(hash);
+    dbAddress.RemoveFork(hash);
+    dbAddressUnspent.RemoveFork(hash);
     if (fDbCfgAddrTxIndex)
     {
-        if (!dbAddressTxIndex.RemoveFork(hash))
-        {
-            return false;
-        }
+        dbAddressTxIndex.RemoveFork(hash);
     }
-
     return dbFork.RemoveFork(hash);
 }
 
@@ -367,24 +352,24 @@ bool CBlockDB::LoadFork()
             return false;
         }
 
-        if (!dbUnspent.AddNewFork(vFork[i].first))
+        if (!dbUnspent.LoadFork(vFork[i].first))
         {
             return false;
         }
 
-        if (!dbAddress.AddNewFork(vFork[i].first))
+        if (!dbAddress.LoadFork(vFork[i].first))
         {
             return false;
         }
 
-        if (!dbAddressUnspent.AddNewFork(vFork[i].first, vFork[i].second))
+        if (!dbAddressUnspent.LoadFork(vFork[i].first, vFork[i].second))
         {
             return false;
         }
 
         if (fDbCfgAddrTxIndex)
         {
-            if (!dbAddressTxIndex.AddNewFork(vFork[i].first))
+            if (!dbAddressTxIndex.LoadFork(vFork[i].first))
             {
                 return false;
             }
