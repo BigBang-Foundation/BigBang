@@ -29,10 +29,10 @@ else
 fi
 
 cmake .. $flagdebug $flagtestnet
-if [ $? -ne 0 ]; then 
+if [ $? -ne 0 ]; then
     cd $origin_path
-    exit 1 
-fi 
+    exit 1
+fi
 
 # make & install
 os=`uname`
@@ -43,9 +43,9 @@ if [ "$os" == "Darwin" ]; then
     fi
     echo "make install -j${cores}"
     make install -j${cores}
-    
-    if [ $? -ne 0 ]; then   
-        exit 1 
+
+    if [ $? -ne 0 ]; then
+        exit 1
     fi
 else
     cores=`nproc --all`
@@ -55,9 +55,9 @@ else
     echo "make -j${cores}"
     make -j${cores}
 
-    if [ $? -ne 0 ]; then   
-        exit 1 
-    fi 
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
 
     echo "sudo make install"
     sudo make install
