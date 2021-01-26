@@ -5,10 +5,12 @@
 - New coinbase plan of BBC
 - New DeFi reward algorithm
 - Add RPC "reversehex" to reverse hex string
+- Support pow-hash algorithm on aarch64
 
 ### Improvements
 
 - Clear dbs when add new fork
+- Support aarch64 platform build
 
 ### Fixs
 
