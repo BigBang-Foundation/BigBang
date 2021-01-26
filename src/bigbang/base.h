@@ -18,6 +18,7 @@
 #include "crypto.h"
 #include "destination.h"
 #include "error.h"
+#include "event.h"
 #include "key.h"
 #include "param.h"
 #include "peer.h"
@@ -467,13 +468,18 @@ public:
         bool fSSL;
         std::string strHost;
         int nPort;
-        std::string strURL;
+        std::string strBlockURL;
+        std::string strTxURL;
         std::set<uint256> registerForks;
     } LiveClientInfo;
 
     IPusher()
       : IIOModule("pusher") {}
     virtual void InsertNewClient(const std::string& ipport, const LiveClientInfo& client) = 0;
+    virtual int64 GetNonce() const = 0;
+    virtual int64 GetFixedNonce() const = 0;
+    virtual bool GetLatestEventId(const uint256& hashFork, int64& nEventId) const = 0;
+    virtual bool GetTxEvents(const uint256& hashFork, int64 nStartEventId, int64 num, std::vector<CRPCModEventUpdateTx>& events) = 0;
 };
 
 class IRecovery : public xengine::IBase

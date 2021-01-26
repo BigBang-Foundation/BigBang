@@ -165,7 +165,7 @@ void CService::NotifyBlockChainUpdate(const CBlockChainUpdate& update)
     }
 
     uint64 nNonce = 0;
-    CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, update.hashFork, 0);
+    CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, update.hashFork, CDestination(), 0, (uint8)CHANGE_STATE::STATE_ADDED);
     pUpdateNewBlockEvent->data = update.vBlockAddNew[update.vBlockAddNew.size() - 1];
     pPusher->PostEvent(pUpdateNewBlockEvent);
 }

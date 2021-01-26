@@ -271,11 +271,11 @@ Errno CDispatcher::AddNewTx(const CTransaction& tx, uint64 nNonce)
 
     CAssembledTx assembledTx(tx, -1, destIn, nValueIn);
 
-    CTransactionUpdate updateTransaction;
-    updateTransaction.hashFork = hashFork;
-    updateTransaction.txUpdate = tx;
-    updateTransaction.nChange = assembledTx.GetChange();
-    pService->NotifyTransactionUpdate(updateTransaction);
+    // CTransactionUpdate updateTransaction;
+    // updateTransaction.hashFork = hashFork;
+    // updateTransaction.txUpdate = tx;
+    // updateTransaction.nChange = assembledTx.GetChange();
+    // pService->NotifyTransactionUpdate(updateTransaction);
 
     if (!nNonce)
     {
