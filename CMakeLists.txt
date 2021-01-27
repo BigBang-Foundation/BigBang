@@ -69,7 +69,7 @@ endif()
 if(UNIX AND NOT CYGWIN)
     string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra -Werror -Wno-char-subscripts -Wno-unused-parameter -Wno-sign-compare -Wno-reorder -Wno-unused-local-typedefs -Wno-implicit-fallthrough -Wno-overloaded-virtual -Wno-strict-aliasing -Wno-narrowing")
     if (APPLE)
-        string(APPEND CMAKE_CXX_FLAGS " -fvisibility-inlines-hidden -fvisibility=hidden -Wno-unknown-warning-option -Wno-tautological-overlap-compare")
+        string(APPEND CMAKE_CXX_FLAGS " -fvisibility-inlines-hidden -fvisibility=hidden -Wno-unknown-warning-option -Wno-tautological-overlap-compare -Wno-format")
     endif()
 elseif(MSVC)
     # C4018: 'expression' : signed/unsigned mismatch
