@@ -17,6 +17,263 @@ namespace storage
 {
 
 #define ADDRESS_TXINDEX_FLUSH_INTERVAL (600)
+#define ADDRESS_TXINDEX_HISTORY_TRANS_HEIGHT 100000
+
+//////////////////////////////
+// CForkHistoryAddressTxIndexDB
+
+CForkHistoryAddressTxIndexDB::CForkHistoryAddressTxIndexDB()
+  : nPrevTransferHeight(0), fModifyAddressBf(false)
+{
+}
+
+CForkHistoryAddressTxIndexDB::~CForkHistoryAddressTxIndexDB()
+{
+    Deinitialize();
+}
+
+bool CForkHistoryAddressTxIndexDB::Initialize(const boost::filesystem::path& pathDB)
+{
+    CLevelDBArguments args;
+    args.path = (pathDB / "index").string();
+    args.syncwrite = false;
+    CLevelDBEngine* engine = new CLevelDBEngine(args);
+
+    if (!Open(engine))
+    {
+        delete engine;
+        return false;
+    }
+
+    if (!tsAddrTxIndexChunk.Initialize(pathDB, "hisaddrtxindex"))
+    {
+        Close();
+        return false;
+    }
+
+    pathAddressBf = boost::filesystem::path(pathDB / "hisaddrtxindex/addressbf.dat");
+    if (is_regular_file(pathAddressBf))
+    {
+        try
+        {
+            vector<unsigned char> vBfData;
+            CFileStream fs(pathAddressBf.string().c_str());
+            fs >> vBfData;
+            bfAddress.SetData(vBfData);
+        }
+        catch (std::exception& e)
+        {
+            StdError(__PRETTY_FUNCTION__, e.what());
+            Deinitialize();
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void CForkHistoryAddressTxIndexDB::Deinitialize()
+{
+    PushHisAddressBfData();
+    tsAddrTxIndexChunk.Deinitialize();
+    Close();
+    bfAddress.Reset();
+}
+
+int CForkHistoryAddressTxIndexDB::GetPrevTransferHeight()
+{
+    return nPrevTransferHeight;
+}
+
+void CForkHistoryAddressTxIndexDB::SetPrevTransferHeight(int nHeightIn)
+{
+    nPrevTransferHeight = nHeightIn;
+}
+
+bool CForkHistoryAddressTxIndexDB::RemoveAll()
+{
+    if (!CKVDB::RemoveAll())
+    {
+        return false;
+    }
+    return true;
+}
+
+bool CForkHistoryAddressTxIndexDB::AddAddressTxIndex(const uint32 nBeginHeight, const uint32 nEndHeight, const map<CDestination, vector<CHisAddrTxIndex>>& mapAddNew)
+{
+    vector<CDestination> vAddress;
+    vector<vector<CHisAddrTxIndex>> vBatchWrite;
+
+    vAddress.reserve(mapAddNew.size());
+    vBatchWrite.reserve(mapAddNew.size());
+
+    for (const auto& vd : mapAddNew)
+    {
+        vAddress.push_back(vd.first);
+        vBatchWrite.push_back(vd.second);
+    }
+
+    vector<CDiskPos> vPos;
+    if (!tsAddrTxIndexChunk.WriteBatch(vBatchWrite, vPos))
+    {
+        return false;
+    }
+
+    if (!TxnBegin())
+    {
+        return false;
+    }
+
+    uint64 nHeightSect = ((uint64)nBeginHeight << 32 | nEndHeight);
+    for (size_t i = 0; i < vAddress.size(); i++)
+    {
+        Write(make_pair(vAddress[i], BSwap64(nHeightSect)), vPos[i]);
+    }
+
+    if (!TxnCommit())
+    {
+        return false;
+    }
+
+    for (size_t i = 0; i < vAddress.size(); i++)
+    {
+        try
+        {
+            xengine::CBufStream ss;
+            ss << vAddress[i];
+            bfAddress.Add((const unsigned char*)ss.GetData(), ss.GetSize());
+            fModifyAddressBf = true;
+        }
+        catch (std::exception& e)
+        {
+            StdError(__PRETTY_FUNCTION__, e.what());
+        }
+    }
+    return true;
+}
+
+void CForkHistoryAddressTxIndexDB::PushHisAddressBfData()
+{
+    if (fModifyAddressBf)
+    {
+        fModifyAddressBf = false;
+        FILE* fp = fopen(pathAddressBf.string().c_str(), "w");
+        if (fp == nullptr)
+        {
+            return;
+        }
+        fclose(fp);
+        fp = nullptr;
+
+        if (is_regular_file(pathAddressBf))
+        {
+            vector<unsigned char> vBfData;
+            bfAddress.GetData(vBfData);
+            try
+            {
+                CFileStream fs(pathAddressBf.string().c_str());
+                fs << vBfData;
+            }
+            catch (std::exception& e)
+            {
+                StdError(__PRETTY_FUNCTION__, e.what());
+            }
+        }
+    }
+}
+
+bool CForkHistoryAddressTxIndexDB::IsHisAddressBfExist(const CDestination& dest)
+{
+    try
+    {
+        xengine::CBufStream ss;
+        ss << dest;
+        if (bfAddress.Test((const unsigned char*)ss.GetData(), ss.GetSize()))
+        {
+            return true;
+        }
+    }
+    catch (std::exception& e)
+    {
+        StdError(__PRETTY_FUNCTION__, e.what());
+    }
+    return false;
+}
+
+bool CForkHistoryAddressTxIndexDB::LoadWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, vector<pair<uint64, CDiskPos>>& vTxIndexPos)
+{
+    pair<CDestination, uint64> key;
+    CDiskPos value;
+    ssKey >> key;
+    ssValue >> value;
+    vTxIndexPos.push_back(make_pair(BSwap64(key.second), value));
+    return true;
+}
+
+bool CForkHistoryAddressTxIndexDB::GetHistoryAddressTxIndex(const CDestination& dest, const int nPrevHeightIn, const uint64 nPrevTxSeqIn, const int64 nOffsetIn, const int64 nCountIn, vector<CHisAddrTxIndex>& vAddrTxIndex)
+{
+    vector<pair<uint64, CDiskPos>> vTxIndexPos;
+    if (!WalkThrough(boost::bind(&CForkHistoryAddressTxIndexDB::LoadWalker, this, _1, _2, boost::ref(vTxIndexPos)), dest, true))
+    {
+        return false;
+    }
+    uint64 nCurPos = 0;
+    for (const auto& vd : vTxIndexPos)
+    {
+        if (nPrevHeightIn < -1 || nPrevTxSeqIn == -1)
+        {
+            vector<CHisAddrTxIndex> vTxIndex;
+            if (!tsAddrTxIndexChunk.Read(vTxIndex, vd.second))
+            {
+                return false;
+            }
+            if (nOffsetIn < 0)
+            {
+                vAddrTxIndex.insert(vAddrTxIndex.end(), vTxIndex.begin(), vTxIndex.end());
+            }
+            else
+            {
+                for (const CHisAddrTxIndex& index : vTxIndex)
+                {
+                    if (nCurPos++ >= nOffsetIn)
+                    {
+                        vAddrTxIndex.push_back(index);
+                        if (nCountIn > 0 && vAddrTxIndex.size() >= nCountIn)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            uint32 nBeginHeight = vd.first >> 32;
+            //uint32 nEndHeight = vd.first & 0xFFFFFFFF;
+            if (nBeginHeight >= nPrevHeightIn)
+            {
+                vector<CHisAddrTxIndex> vTxIndex;
+                if (!tsAddrTxIndexChunk.Read(vTxIndex, vd.second))
+                {
+                    return false;
+                }
+                int64 nPrevHeightSeq = (((int64)nPrevHeightIn << 32) | (nPrevTxSeqIn & 0xFFFFFFFFL));
+                for (const CHisAddrTxIndex& index : vTxIndex)
+                {
+                    if (index.nHeightSeq >= nPrevHeightSeq)
+                    {
+                        vAddrTxIndex.push_back(index);
+                        if (nCountIn > 0 && vAddrTxIndex.size() >= nCountIn)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
 
 //////////////////////////////
 // CGetAddressTxIndexWalker
@@ -68,21 +325,39 @@ bool CGetAddressTxIndexWalker::Walk(const CAddrTxIndex& key, const CAddrTxInfo& 
 //////////////////////////////
 // CForkAddressTxIndexDB
 
-CForkAddressTxIndexDB::CForkAddressTxIndexDB(const boost::filesystem::path& pathDB)
+CForkAddressTxIndexDB::CForkAddressTxIndexDB()
+{
+}
+
+CForkAddressTxIndexDB::~CForkAddressTxIndexDB()
+{
+    Deinitialize();
+}
+
+bool CForkAddressTxIndexDB::Initialize(const boost::filesystem::path& pathDB)
 {
     CLevelDBArguments args;
     args.path = pathDB.string();
     args.syncwrite = false;
     CLevelDBEngine* engine = new CLevelDBEngine(args);
 
-    if (!CKVDB::Open(engine))
+    if (!Open(engine))
     {
         delete engine;
+        return false;
     }
+
+    if (!dbHistory.Initialize(pathDB))
+    {
+        Close();
+        return false;
+    }
+    return true;
 }
 
-CForkAddressTxIndexDB::~CForkAddressTxIndexDB()
+void CForkAddressTxIndexDB::Deinitialize()
 {
+    dbHistory.Deinitialize();
     Close();
     dblCache.Clear();
 }
@@ -184,6 +459,22 @@ bool CForkAddressTxIndexDB::ReadAddressTxIndex(const CAddrTxIndex& key, CAddrTxI
 
 int64 CForkAddressTxIndexDB::RetrieveAddressTxIndex(const CDestination& dest, const int nPrevHeight, const uint64 nPrevTxSeq, const int64 nOffset, const int64 nCount, map<CAddrTxIndex, CAddrTxInfo>& mapAddrTxIndex)
 {
+    vector<CHisAddrTxIndex> vAddrTxIndex;
+    if (dbHistory.IsHisAddressBfExist(dest))
+    {
+        if (!dbHistory.GetHistoryAddressTxIndex(dest, nPrevHeight, nPrevTxSeq, nOffset, nCount, vAddrTxIndex))
+        {
+            return -1;
+        }
+        for (const CHisAddrTxIndex& hat : vAddrTxIndex)
+        {
+            CAddrTxIndex index(dest, hat.nHeightSeq, hat.txid);
+            CAddrTxInfo info(hat.nDirection, hat.destPeer, hat.nTxType, hat.nTimeStamp, hat.nLockUntil, hat.nAmount, hat.nTxFee);
+            mapAddrTxIndex.insert(make_pair(index, info));
+        }
+        return vAddrTxIndex.size();
+    }
+
     if ((nPrevHeight < -1 || nPrevTxSeq == -1) && nOffset == -1)
     {
         // last count tx
@@ -358,6 +649,18 @@ bool CForkAddressTxIndexDB::LoadWalker(CBufStream& ssKey, CBufStream& ssValue,
     return walker.Walk(key, value);
 }
 
+bool CForkAddressTxIndexDB::TransferWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, CForkAddressTxIndexDBWalker& walker)
+{
+    CAddrTxIndex key;
+    CAddrTxInfo value;
+    ssKey >> key;
+
+    ssValue >> value;
+    key.nHeightSeq = BSwap64(key.nHeightSeq);
+
+    return walker.Walk(key, value);
+}
+
 bool CForkAddressTxIndexDB::Flush()
 {
     xengine::CUpgradeLock ulock(rwLower);
@@ -408,6 +711,98 @@ bool CForkAddressTxIndexDB::Flush()
     return true;
 }
 
+bool CForkAddressTxIndexDB::TransferHistoryData(const int nEndHeight, const int nTransferAddrCountIn, CAddrTxIndex& lastTransferKey, map<CDestination, vector<CHisAddrTxIndex>>& mapAddrHisTxIndexOut)
+{
+    class CTransferWalker : public CForkAddressTxIndexDBWalker
+    {
+    public:
+        CTransferWalker(const int nEndHeightIn, const int nGetAddressCountIn, map<CDestination, vector<CHisAddrTxIndex>>& mapAddrHisTxIndexIn)
+          : nEndHeight(nEndHeightIn), nGetAddressCount(nGetAddressCountIn), mapAddrHisTxIndex(mapAddrHisTxIndexIn) {}
+
+        bool Walk(const CAddrTxIndex& key, const CAddrTxInfo& value)
+        {
+            if (!destLast.IsNull())
+            {
+                if (key.dest != destLast || key.GetHeight() >= nEndHeight)
+                {
+                    if (mapAddrHisTxIndex.size() >= nGetAddressCount)
+                    {
+                        lastKey = key;
+                        return false;
+                    }
+                }
+            }
+            if (key.GetHeight() < nEndHeight)
+            {
+                mapAddrHisTxIndex[key.dest].push_back(CHisAddrTxIndex(key.nHeightSeq, key.txid, value.nDirection, value.destPeer,
+                                                                      value.nTxType, value.nTimeStamp, value.nLockUntil, value.nAmount, value.nTxFee));
+                destLast = key.dest;
+            }
+            return true;
+        }
+
+    protected:
+        const int nEndHeight;
+        const int nGetAddressCount;
+
+    public:
+        CAddrTxIndex lastKey;
+        CDestination destLast;
+        map<CDestination, vector<CHisAddrTxIndex>>& mapAddrHisTxIndex;
+    };
+
+    CTransferWalker walker(nEndHeight, nTransferAddrCountIn, mapAddrHisTxIndexOut);
+    if (lastTransferKey.IsNull())
+    {
+        if (!WalkThrough(boost::bind(&CForkAddressTxIndexDB::TransferWalker, this, _1, _2, boost::ref(walker))))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        if (!WalkThrough(boost::bind(&CForkAddressTxIndexDB::TransferWalker, this, _1, _2, boost::ref(walker)), lastTransferKey, false))
+        {
+            return false;
+        }
+    }
+    lastTransferKey = walker.lastKey;
+    return true;
+}
+
+bool CForkAddressTxIndexDB::TransferHistoryTxIndex(const int nCurChainHeightIn, const int nTransferAddrCount)
+{
+    int nPrevTransferHeight = dbHistory.GetPrevTransferHeight();
+    if (nCurChainHeightIn < ADDRESS_TXINDEX_HISTORY_TRANS_HEIGHT * 2
+        || nCurChainHeightIn - nPrevTransferHeight < ADDRESS_TXINDEX_HISTORY_TRANS_HEIGHT * 2)
+    {
+        return true;
+    }
+    int nEndHeight = (nCurChainHeightIn / ADDRESS_TXINDEX_HISTORY_TRANS_HEIGHT - 1) * ADDRESS_TXINDEX_HISTORY_TRANS_HEIGHT;
+
+    map<CDestination, vector<CHisAddrTxIndex>> mapAddrHisTxIndex;
+    if (!TransferHistoryData(nEndHeight, nTransferAddrCount, cacheLastTransferKey, mapAddrHisTxIndex))
+    {
+        return true;
+    }
+
+    if (mapAddrHisTxIndex.empty() || cacheLastTransferKey.IsNull())
+    {
+        dbHistory.SetPrevTransferHeight(nEndHeight);
+        cacheLastTransferKey.SetNull();
+        return true;
+    }
+
+    dbHistory.AddAddressTxIndex(nEndHeight - ADDRESS_TXINDEX_HISTORY_TRANS_HEIGHT, nEndHeight, mapAddrHisTxIndex);
+
+    return false;
+}
+
+void CForkAddressTxIndexDB::PushHisAddressBfData()
+{
+    dbHistory.PushHisAddressBfData();
+}
+
 //////////////////////////////
 // CAddressTxIndexDB
 
@@ -415,6 +810,7 @@ CAddressTxIndexDB::CAddressTxIndexDB()
 {
     pThreadFlush = nullptr;
     fStopFlush = true;
+    nCurChainHeight = 0;
 }
 
 bool CAddressTxIndexDB::Initialize(const boost::filesystem::path& pathData, const bool fFlush)
@@ -488,8 +884,8 @@ bool CAddressTxIndexDB::AddNewFork(const uint256& hashFork)
         return true;
     }
 
-    std::shared_ptr<CForkAddressTxIndexDB> spAddress(new CForkAddressTxIndexDB(pathAddress / hashFork.GetHex()));
-    if (spAddress == nullptr || !spAddress->IsValid())
+    std::shared_ptr<CForkAddressTxIndexDB> spAddress(new CForkAddressTxIndexDB());
+    if (spAddress == nullptr || !spAddress->Initialize(pathAddress / hashFork.GetHex()))
     {
         return false;
     }
@@ -532,6 +928,14 @@ bool CAddressTxIndexDB::UpdateAddressTxIndex(const uint256& hashFork, const vect
     {
         StdLog("CAddressTxIndexDB", "UpdateAddressTxIndex: find fork fail, fork: %s", hashFork.GetHex().c_str());
         return false;
+    }
+    if (!vAddNew.empty())
+    {
+        int nNewHeight = vAddNew[0].first.GetHeight();
+        if (nNewHeight > nCurChainHeight)
+        {
+            nCurChainHeight = nNewHeight;
+        }
     }
     return it->second->UpdateAddressTxIndex(vAddNew, vRemove);
 }
@@ -648,9 +1052,32 @@ void CAddressTxIndexDB::FlushProc()
                     vAddressDB.push_back((*it).second);
                 }
             }
-            for (int i = 0; i < vAddressDB.size(); i++)
+            for (size_t i = 0; i < vAddressDB.size(); i++)
             {
                 vAddressDB[i]->Flush();
+            }
+
+            while (!fStopFlush)
+            {
+                bool fSynAll = true;
+                for (size_t i = 0; i < vAddressDB.size(); i++)
+                {
+                    if (!vAddressDB[i]->TransferHistoryTxIndex(nCurChainHeight, 100))
+                    {
+                        fSynAll = false;
+                    }
+                }
+                if (fSynAll)
+                {
+                    break;
+                }
+                timeout = boost::get_system_time();
+                condFlush.timed_wait(lock, timeout);
+            }
+
+            for (size_t i = 0; i < vAddressDB.size(); i++)
+            {
+                vAddressDB[i]->PushHisAddressBfData();
             }
         }
     }

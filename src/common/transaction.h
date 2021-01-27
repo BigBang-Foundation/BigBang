@@ -622,6 +622,17 @@ public:
     CAddrTxIndex(const CDestination& destIn, const int nHeightIn, const int nBlockSeqIn, const int nTxSeqIn, const uint256& txidIn)
       : dest(destIn), nHeightSeq(((int64)nHeightIn << 32) | ((nBlockSeqIn << 24) | nTxSeqIn)), txid(txidIn) {}
 
+    bool IsNull()
+    {
+        return dest.IsNull();
+    }
+    void SetNull()
+    {
+        dest.SetNull();
+        nHeightSeq = 0;
+        txid = uint64(0);
+    }
+
     int GetHeight() const
     {
         return (int)(nHeightSeq >> 32);
@@ -736,6 +747,55 @@ protected:
     template <typename O>
     void Serialize(xengine::CStream& s, O& opt)
     {
+        s.Serialize(nDirection, opt);
+        s.Serialize(destPeer, opt);
+        s.Serialize(nTxType, opt);
+        s.Serialize(nTimeStamp, opt);
+        s.Serialize(nLockUntil, opt);
+        s.Serialize(nAmount, opt);
+        s.Serialize(nTxFee, opt);
+    }
+};
+
+class CHisAddrTxIndex
+{
+    friend class xengine::CStream;
+
+public:
+    int64 nHeightSeq;
+    uint256 txid;
+    int nDirection;
+    CDestination destPeer;
+    int nTxType;
+    uint32 nTimeStamp;
+    uint32 nLockUntil;
+    int64 nAmount;
+    int64 nTxFee;
+
+public:
+    CHisAddrTxIndex() {}
+    CHisAddrTxIndex(const int64 nHeightSeqIn, const uint256& txidIn, const int nDirectionIn, const CDestination& destPeerIn,
+                    const int nTxTypeIn, const uint32 nTimeStampIn, const uint32 nLockUntilIn, const int64 nAmountIn, const int64 nTxFeeIn)
+      : nHeightSeq(nHeightSeqIn), txid(txidIn), nDirection(nDirectionIn), destPeer(destPeerIn),
+        nTxType(nTxTypeIn), nTimeStamp(nTimeStampIn), nLockUntil(nLockUntilIn), nAmount(nAmountIn), nTxFee(nTxFeeIn)
+    {
+    }
+
+    int GetHeight() const
+    {
+        return (int)(nHeightSeq >> 32);
+    }
+    int GetSeq() const
+    {
+        return (int)(nHeightSeq & 0xFFFFFFFFL);
+    }
+
+protected:
+    template <typename O>
+    void Serialize(xengine::CStream& s, O& opt)
+    {
+        s.Serialize(nHeightSeq, opt);
+        s.Serialize(txid, opt);
         s.Serialize(nDirection, opt);
         s.Serialize(destPeer, opt);
         s.Serialize(nTxType, opt);

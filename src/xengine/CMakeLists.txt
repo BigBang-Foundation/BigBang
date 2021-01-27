@@ -19,6 +19,8 @@ set(sources
     stream/circular.cpp     stream/circular.h
     stream/stream.cpp       stream/stream.h
     base/base.cpp           base/base.h
+    bloomfilter/MurmurHash3.cpp bloomfilter/MurmurHash3.h
+    bloomfilter/bloomfilter.h
     docker/config.cpp       docker/config.h
     docker/docker.cpp       docker/docker.h
     netio/nethost.cpp       netio/nethost.h

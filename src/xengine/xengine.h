@@ -34,6 +34,7 @@
 #include <stream/datastream.h>
 #include <stream/stream.h>
 #include <structure/tree.h>
+#include <bloomfilter/bloomfilter.h>
 #include <type.h>
 #include <util.h>
 

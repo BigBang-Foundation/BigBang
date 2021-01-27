@@ -7,6 +7,7 @@
 
 #include <boost/thread/thread.hpp>
 
+#include "timeseries.h"
 #include "transaction.h"
 #include "xengine.h"
 
@@ -14,6 +15,36 @@ namespace bigbang
 {
 namespace storage
 {
+
+//////////////////////////////
+// CForkHistoryAddressTxIndexDB
+
+class CForkHistoryAddressTxIndexDB : public xengine::CKVDB
+{
+public:
+    CForkHistoryAddressTxIndexDB();
+    ~CForkHistoryAddressTxIndexDB();
+    bool Initialize(const boost::filesystem::path& pathDB);
+    void Deinitialize();
+    bool RemoveAll();
+    int GetPrevTransferHeight();
+    void SetPrevTransferHeight(int nHeightIn);
+
+    bool AddAddressTxIndex(const uint32 nBeginHeight, const uint32 nEndHeight, const std::map<CDestination, std::vector<CHisAddrTxIndex>>& mapAddNew);
+    void PushHisAddressBfData();
+    bool IsHisAddressBfExist(const CDestination& dest);
+    bool GetHistoryAddressTxIndex(const CDestination& dest, const int nPrevHeightIn, const uint64 nPrevTxSeqIn, const int64 nOffsetIn, const int64 nCountIn, std::vector<CHisAddrTxIndex>& vAddrTxIndex);
+
+protected:
+    bool LoadWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, std::vector<std::pair<uint64, CDiskPos>>& vTxIndexPos);
+
+protected:
+    boost::filesystem::path pathAddressBf;
+    CTimeSeriesChunk tsAddrTxIndexChunk;
+    int nPrevTransferHeight;
+    xengine::CBloomFilter<0x1000000> bfAddress;
+    bool fModifyAddressBf;
+};
 
 //////////////////////////////
 // CForkAddressTxIndexDBWalker
@@ -82,8 +113,10 @@ class CForkAddressTxIndexDB : public xengine::CKVDB
     };
 
 public:
-    CForkAddressTxIndexDB(const boost::filesystem::path& pathDB);
+    CForkAddressTxIndexDB();
     ~CForkAddressTxIndexDB();
+    bool Initialize(const boost::filesystem::path& pathDB);
+    void Deinitialize();
     bool RemoveAll();
     bool UpdateAddressTxIndex(const std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddNew, const std::vector<CAddrTxIndex>& vRemove);
     bool RepairAddressTxIndex(const std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddUpdate, const std::vector<CAddrTxIndex>& vRemove);
@@ -98,18 +131,27 @@ public:
     }
     bool WalkThroughAddressTxIndex(CForkAddressTxIndexDBWalker& walker, const CDestination& dest = CDestination(), const int nPrevHeight = -2, const uint64 nPrevTxSeq = -1);
     bool Flush();
+    bool TransferHistoryData(const int nEndHeight, const int nTransferAddrCountIn, CAddrTxIndex& lastTransferKey, std::map<CDestination, std::vector<CHisAddrTxIndex>>& mapAddrHisTxIndexOut);
+    bool TransferHistoryTxIndex(const int nCurChainHeightIn, const int nTransferAddrCount = 1);
+    void PushHisAddressBfData();
 
 protected:
     bool CopyWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue,
                     CForkAddressTxIndexDB& dbAddressTxIndex);
     bool LoadWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue,
                     CForkAddressTxIndexDBWalker& walker, const MapType& mapUpper, const MapType& mapLower);
+    bool TransferWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, CForkAddressTxIndexDBWalker& walker);
 
 protected:
     xengine::CRWAccess rwUpper;
     xengine::CRWAccess rwLower;
     CDblMap dblCache;
+    CForkHistoryAddressTxIndexDB dbHistory;
+    CAddrTxIndex cacheLastTransferKey;
 };
+
+//////////////////////////////
+// CAddressTxIndexDB
 
 class CAddressTxIndexDB
 {
@@ -144,6 +186,7 @@ protected:
     boost::condition_variable condFlush;
     boost::thread* pThreadFlush;
     bool fStopFlush;
+    int nCurChainHeight;
 };
 
 } // namespace storage
