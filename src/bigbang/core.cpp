@@ -219,7 +219,7 @@ static const int32 CHANGE_DPOS_CHAIN_TRUST_HEIGHT = 565620;
 
 // New DeFi reward type excluded blacklist address tokens
 #ifdef BIGBANG_TESTNET
-static const int32 DEFI_REWARD_EXCLUDED_BLACKLIST_TOKENS = 0;
+static const int32 DEFI_REWARD_EXCLUDED_BLACKLIST_TOKENS = 327407;
 #else
 static const int32 DEFI_REWARD_EXCLUDED_BLACKLIST_TOKENS = 640798;
 #endif
