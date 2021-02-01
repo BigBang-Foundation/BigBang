@@ -1,19 +1,8 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "timeseries.h"
-
-/*#ifndef WIN32
-#include <unistd.h>
-#else
-#include <fcntl.h>
-#include <io.h>
-#include <share.h>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#endif*/
 
 using namespace std;
 using namespace boost::filesystem;
@@ -52,6 +41,15 @@ bool CTimeSeriesBase::Initialize(const path& pathLocationIn, const string& strPr
     strPrefix = strPrefixIn;
     nLastFile = 1;
 
+    for (;;)
+    {
+        path last = pathLocation / FileName(nLastFile + 1);
+        if (!exists(last))
+        {
+            break;
+        }
+        nLastFile++;
+    }
     return CheckDiskSpace();
 }
 
@@ -83,7 +81,7 @@ bool CTimeSeriesBase::GetFilePath(uint32 nFile, string& strPath)
     return false;
 }
 
-bool CTimeSeriesBase::GetLastFilePath(uint32& nFile, std::string& strPath)
+bool CTimeSeriesBase::GetLastFilePath(uint32& nFile, std::string& strPath, const uint32 nWriteDataSize)
 {
     for (;;)
     {
@@ -97,7 +95,7 @@ bool CTimeSeriesBase::GetLastFilePath(uint32& nFile, std::string& strPath)
             }
             fclose(fp);
         }
-        if (is_regular_file(last) && file_size(last) < MAX_FILE_SIZE - MAX_CHUNK_SIZE - 8)
+        if (is_regular_file(last) && file_size(last) + nWriteDataSize + 8 <= MAX_FILE_SIZE)
         {
             nFile = nLastFile;
             strPath = last.string();
@@ -125,34 +123,6 @@ bool CTimeSeriesBase::RemoveFollowUpFile(uint32 nBeginFile)
 
 bool CTimeSeriesBase::TruncateFile(const string& pathFile, uint32 nOffset)
 {
-    /*#ifndef WIN32
-    FILE* fp = fopen(pathFile.c_str(), "wb");
-    if (fp)
-    {
-        if (ftruncate(fileno(fp), nOffset) != 0)
-        {
-            xengine::StdError("TimeSeriesBase", "TruncateFile: ftruncate fail");
-            fclose(fp);
-            return false;
-        }
-        fclose(fp);
-    }
-#else
-    int fh, result;
-    if (_sopen_s(&fh, pathFile.c_str(), _O_RDWR | _O_CREAT, _SH_DENYNO, _S_IREAD | _S_IWRITE) != 0)
-    {
-        xengine::StdError("TimeSeriesBase", "TruncateFile: open file fail");
-        return false;
-    }
-    if ((result = _chsize(fh, nOffset)) != 0)
-    {
-        xengine::StdError("TimeSeriesBase", "TruncateFile: _chsize fail, result: %d", result);
-        _close(fh);
-        return false;
-    }
-    _close(fh);
-#endif*/
-
     string strTempFilePath = pathFile + ".temp";
     boost::filesystem::rename(path(pathFile), path(strTempFilePath));
 

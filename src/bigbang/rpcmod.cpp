@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -300,6 +300,8 @@ CRPCMod::CRPCMod()
         ("listunspentold", &CRPCMod::RPCListUnspentOld)
         //
         ("getdefirelation", &CRPCMod::RPCGetDeFiRelation)
+        //
+        ("reversehex", &CRPCMod::RPCReverseHex)
         /* Mint */
         ("getwork", &CRPCMod::RPCGetWork)
         //
@@ -2742,6 +2744,11 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
             throw CRPCException(RPC_INVALID_PARAMETER, (string("DeFi param supplycycle must be [1, ") + to_string(100 * YEAR_HEIGHT) + "]").c_str());
         }
 
+        if (profile.defi.nSupplyCycle % profile.defi.nRewardCycle != 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param nSupplyCycle must be divisible by nRewardCycle");
+        }
+
         profile.defi.nCoinbaseType = spParam->defi.nCoinbasetype;
         if (profile.defi.nCoinbaseType == FIXED_DEFI_COINBASE_TYPE)
         {
@@ -2763,7 +2770,7 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
                 throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param initcoinbasepercent must be [1, 10000]");
             }
 
-            if ((profile.defi.nDecayCycle / profile.defi.nSupplyCycle) * profile.defi.nSupplyCycle != profile.defi.nDecayCycle)
+            if (profile.defi.nDecayCycle % profile.defi.nSupplyCycle != 0)
             {
                 throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param decaycycle must be divisible by supplycycle");
             }
@@ -2782,7 +2789,7 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
                 {
                     throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param key of mapcoinbasepercent means height, must be larger than 0");
                 }
-                if ((key / profile.defi.nSupplyCycle) * profile.defi.nSupplyCycle != key)
+                if (key % profile.defi.nSupplyCycle != 0)
                 {
                     throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param key of mapcoinbasePercent must be divisible by supplycycle");
                 }
@@ -3567,6 +3574,32 @@ CRPCResultPtr CRPCMod::RPCListUnspentOld(CRPCParamPtr param)
     spResult->dTotal = dTotal;
 
     return spResult;
+}
+
+CRPCResultPtr CRPCMod::RPCReverseHex(rpc::CRPCParamPtr param)
+{
+    // reversehex <"hex">
+    auto spParam = CastParamPtr<CReverseHexParam>(param);
+
+    string strHex = spParam->strHex;
+    if (strHex.empty() || (strHex.size() % 2 != 0))
+    {
+        throw CRPCException(RPC_INVALID_PARAMS, "hex string size is not even");
+    }
+
+    regex r(R"([^0-9a-fA-F]+)");
+    smatch sm;
+    if (regex_search(strHex, sm, r))
+    {
+        throw CRPCException(RPC_INVALID_PARAMS, string("invalid hex string: ") + sm.str());
+    }
+
+    for (auto itBegin = strHex.begin(), itEnd = strHex.end() - 2; itBegin < itEnd; itBegin += 2, itEnd -= 2)
+    {
+        swap_ranges(itBegin, itBegin + 2, itEnd);
+    }
+
+    return MakeCReverseHexResultPtr(strHex);
 }
 
 // /* Mint */

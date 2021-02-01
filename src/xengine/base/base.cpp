@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -253,11 +253,12 @@ const string IBase::GetWarnings()
 
 const std::string IBase::GetEpString(const boost::asio::ip::tcp::endpoint& ep)
 {
+    boost::system::error_code ec;
     if (ep.address().is_v6())
     {
-        return string("[") + ep.address().to_string() + string("]:") + to_string(ep.port());
+        return string("[") + ep.address().to_string(ec) + string("]:") + to_string(ep.port());
     }
-    return ep.address().to_string() + string(":") + to_string(ep.port());
+    return ep.address().to_string(ec) + string(":") + to_string(ep.port());
 }
 
 } // namespace xengine
