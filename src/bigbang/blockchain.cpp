@@ -2443,14 +2443,17 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
     }
 
     // blacklist
-    const set<CDestination> setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, nHeight);
-    for (auto& dest : setBlacklist)
+    if (nHeight >= 270710)
     {
-        auto iter = mapAddressAmount.find(dest);
-        if (iter != mapAddressAmount.end())
+        const set<CDestination> setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, nHeight);
+        for (auto& dest : setBlacklist)
         {
-            nInvalidSupply += iter->second;
-            mapAddressAmount.erase(iter);
+            auto iter = mapAddressAmount.find(dest);
+            if (iter != mapAddressAmount.end())
+            {
+                nInvalidSupply += iter->second;
+                mapAddressAmount.erase(iter);
+            }
         }
     }
 
