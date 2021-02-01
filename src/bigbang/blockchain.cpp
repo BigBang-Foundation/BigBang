@@ -2444,7 +2444,7 @@ CDeFiRewardSet CBlockChain::ComputeDeFiSection(const uint256& forkid, const uint
 
     // blacklist
     set<CDestination> setBlacklist;
-    if (nHeight >= 270710)
+    if (nHeight >= 270700)
     {
         setBlacklist = pCoreProtocol->GetDeFiBlacklist(forkid, nHeight);
         for (auto& dest : setBlacklist)
