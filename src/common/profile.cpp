@@ -29,6 +29,17 @@ void CDeFiProfile::Load(const std::vector<unsigned char>& vchProfile)
 }
 
 //////////////////////////////
+// CUEEProfile
+
+void CUEEProfile::Save(vector<unsigned char>& vchProfile) const
+{
+}
+
+void CUEEProfile::Load(const vector<unsigned char>& vchProfile)
+{
+}
+
+//////////////////////////////
 // CProfile
 
 bool CProfile::Save(std::vector<unsigned char>& vchProfile)

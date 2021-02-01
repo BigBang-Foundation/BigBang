@@ -25,6 +25,7 @@ enum
     PROFILE_JOINTHEIGHT = 10,
     PROFILE_FORKTYPE = 11,
     PROFILE_DEFI = 12,
+    PROFILE_UEE = 13,
     PROFILE_MAX,
 };
 
@@ -32,6 +33,7 @@ enum
 {
     FORK_TYPE_COMMON = 0,
     FORK_TYPE_DEFI = 1,
+    FORK_TYPE_UEE = 2,
 };
 
 enum
@@ -87,6 +89,53 @@ public:
     void Load(const std::vector<unsigned char>& vchProfile);
 };
 
+class CUEERule
+{
+public:
+    int nFormula;             // Calculation formula, 1: formula1, 2: formula2
+    uint64 nCoefficient;      // Initial coefficient
+    int nDecayPeriodType;     // Decay period type, 0: no attenuation, 1: high attenuation, 2: circulation attenuation
+    int nDecayPeriodValue;    // Decay period value
+    int nDecayAmplitudeValue; // Decay amplitude value
+
+    enum
+    {
+        UEER_FORMULA_1 = 1,
+        UEER_FORMULA_2 = 2
+    };
+
+    enum
+    {
+        UEER_DPT_NO_ATTENUATION = 0,
+        UEER_DPT_HIGH_ATTENUATION = 1,
+        UEER_DPT_CIRULATION_ATTENUATION = 2
+    };
+};
+
+class CUEEProfile
+{
+public:
+    int64 nMaxSupply;                        // The max U element energy supply in this fork
+    std::map<std::string, CUEERule> mapRule; // Table of mining rules
+
+    CUEEProfile()
+    {
+        SetNull();
+    }
+    virtual void SetNull()
+    {
+        nMaxSupply = 0;
+        mapRule.clear();
+    }
+    bool IsNull() const
+    {
+        return nMaxSupply == 0;
+    }
+
+    void Save(std::vector<unsigned char>& vchProfile) const;
+    void Load(const std::vector<unsigned char>& vchProfile);
+};
+
 class CProfile
 {
 public:
@@ -103,6 +152,7 @@ public:
     int nJointHeight;
     int nForkType;
     CDeFiProfile defi;
+    CUEEProfile uee;
 
 public:
     enum
