@@ -850,6 +850,10 @@
                 "type": "uint",
                 "desc": "block time"
             },
+            "size": {
+                "type": "uint",
+                "desc": "block serilize size"
+            },
             "bits": {
                 "type": "uint",
                 "desc": "nBits"
@@ -4953,8 +4957,7 @@
             "name": "hex",
             "desc": "reversed hex string"
         },
-        "example": [
-            {
+        "example": [{
                 "request": "bigbang-cli reversehex e8e3770e774d5ad84a8ea65ed08cc7c5c30b42e045623604d5c5c6be95afb4f9",
                 "response": "f9b4af95bec6c5d504366245e0420bc3c5c78cd05ea68e4ad85a4d770e77e3e8"
             },

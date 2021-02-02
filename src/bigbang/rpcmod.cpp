@@ -4318,6 +4318,7 @@ Cblockdatadetail CRPCMod::BlockDetailToJSON(const uint256& hashFork, const CBloc
     data.strHash = block.GetHash().ToString();
     data.strPrev = block.hashPrev.GetHex();
     data.nVersion = block.nVersion;
+    data.nSize = GetSerializeSize((CBlock)block);
     data.nType = block.nType;
     data.nTime = block.GetBlockTime();
     data.strSig = ToHexString(block.vchSig);
@@ -4650,6 +4651,7 @@ Cblockdatadetail CPusher::BlockDetailToJSON(const uint256& hashFork, const CBloc
     data.strHash = block.GetHash().ToString();
     data.strPrev = block.hashPrev.GetHex();
     data.nVersion = block.nVersion;
+    data.nSize = GetSerializeSize((CBlock)block);
     data.nType = block.nType;
     data.nTime = block.GetBlockTime();
     data.strSig = ToHexString(block.vchSig);
