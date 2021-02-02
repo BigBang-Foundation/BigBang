@@ -4126,7 +4126,7 @@ CRPCResultPtr CRPCMod::RPCReport(rpc::CRPCParamPtr param)
 
     pPusher->InsertNewClient(spParam->strIpport, client);
 
-    StdWarn("CRPCMod", "Inserted Client ipport: %s, url: %s", spParam->strIpport.c_str());
+    StdDebug("CRPCMod", "Inserted Client ipport: %s, blockurl: %s, txurl: %s", spParam->strIpport.c_str(), spParam->strBlockurl.c_str(), spParam->strTxurl.c_str());
     spResult->strIpport = spParam->strIpport;
     return spResult;
 }
@@ -4698,10 +4698,10 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
         {
             const std::string& ipport = client.first;
             int64 nTimeStamp = client.second.timestamp;
-            StdDebug("CPusher", "Update New Block ipport: %s", ipport.c_str());
+            StdDebug("CPusher", "Update New Block ipport: %s url: %s", ipport.c_str(), client.second.strBlockURL.c_str());
             if (GetTime() - nTimeStamp > 60 * 2)
             {
-                StdDebug("CPusher", "Timeout IPORT: %s", ipport.c_str());
+                StdDebug("CPusher", "Timeout IPORT: %s url: %s", ipport.c_str(), client.second.strBlockURL.c_str());
                 deletes.push_back(ipport);
                 continue;
             }
@@ -4719,8 +4719,9 @@ bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
             message.nReqId = client.second.nNonce;
             message.block = block;
             PushBlock(message);
-            StdDebug("CPusher", "Pushed New Block: Host: %s, Port: %d, blockheight: %d, blockHash: %s, type: %d, fork: %s",
-                     client.second.strHost.c_str(), client.second.nPort, block.GetBlockHeight(), block.GetHash().ToString().c_str(), block.nType, hashFork.ToString().c_str());
+            StdDebug("CPusher", "Pushed New Block: Host: %s, Port: %d, blockheight: %d, blockHash: %s, type: %d, fork: %s, url: %s",
+                     client.second.strHost.c_str(), client.second.nPort, block.GetBlockHeight(), block.GetHash().ToString().c_str(), block.nType,
+                     hashFork.ToString().c_str(), message.client.strBlockURL.c_str());
         }
 
         RemoveClients(deletes);
@@ -4773,7 +4774,7 @@ bool CPusher::HandleEvent(CRPCModEventUpdateTx& event)
         {
             const std::string& ipport = client.first;
             int64 nTimeStamp = client.second.timestamp;
-            StdDebug("CPusher", "Update Changed Tx ipport: %s", ipport.c_str());
+            StdDebug("CPusher", "Update Changed Tx ipport: %s url: %s", ipport.c_str(), client.second.strTxURL.c_str());
             if (GetTime() - nTimeStamp > 60 * 2)
             {
                 StdDebug("CPusher", "Timeout IPORT: %s", ipport.c_str());
@@ -4798,8 +4799,9 @@ bool CPusher::HandleEvent(CRPCModEventUpdateTx& event)
             message.tx = tx;
             PushTransaction(message);
 
-            StdDebug("CPusher", "Pushed changed tx event: Host: %s, Port: %d, tx timestamp: %d, txHash: %s, type: %d, fork: %s",
-                     client.second.strHost.c_str(), client.second.nPort, tx.GetTxTime(), tx.GetHash().ToString().c_str(), tx.nType, hashFork.ToString().c_str());
+            StdDebug("CPusher", "Pushed changed tx event: Host: %s, Port: %d, tx timestamp: %d, txHash: %s, type: %d, tx state: %d, fork: %s, url: %s",
+                     client.second.strHost.c_str(), client.second.nPort, tx.GetTxTime(), tx.GetHash().ToString().c_str(), tx.nType, message.nState,
+                     hashFork.ToString().c_str(), message.client.strTxURL.c_str());
         }
 
         RemoveClients(deletes);
@@ -4919,6 +4921,7 @@ bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, cons
         { "Accept", "application/json" },
         { "User-Agent", "bigbang-data-sync-rpc/" }
     };
+    StdDebug("CPusher", "GetResponse post path: %s", path.c_str());
     if (auto res = cli.Post(path.c_str(), headers, content, "application/json"))
     {
         if (res->status == 200)
