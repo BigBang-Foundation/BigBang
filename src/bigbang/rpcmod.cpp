@@ -429,7 +429,7 @@ void CRPCMod::HandleHalt()
     IIOModule::HandleHalt();
 }
 
-std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask, bool fNewHttp)
+std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask)
 {
     bool fArray;
     std::string strResult;
@@ -447,12 +447,9 @@ std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::func
                 throw CRPCException(RPC_METHOD_NOT_FOUND, "Method not found");
             }
 
-            if (!fNewHttp)
+            if (fWriteRPCLog)
             {
-                if (fWriteRPCLog)
-                {
-                    Debug("request : %s ", lmdMask(spReq->Serialize()).c_str());
-                }
+                Debug("request : %s ", lmdMask(spReq->Serialize()).c_str());
             }
 
             spResult = (this->*(*it).second)(spReq->spParam);
@@ -4481,8 +4478,20 @@ void CRPCMod::HttpServerThreadFunc()
         auto lmdMask = [](const std::string& data) -> std::string {
             return data;
         };
-        std::string content = this->CallRPCFromJSON(req.body, lmdMask, true);
+
+        if (this->fWriteRPCLog)
+        {
+            Debug("new http server request: %s ", req.body.c_str());
+        }
+
+        std::string content = this->CallRPCFromJSON(req.body, lmdMask);
         content.append("\n");
+
+        if (this->fWriteRPCLog)
+        {
+            Debug("new http server response: %s ", lmdMask(content).c_str());
+        }
+
         res.set_header("Connection", "Keep-Alive");
         res.set_header("Server", "bigbang-data-sync-rpc");
         res.set_content(content.c_str(), "application/json");

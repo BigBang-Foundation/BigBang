@@ -31,7 +31,7 @@ public:
     //bool HandleEvent(xengine::CEventHttpGetRsp& event) override;
     // bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
     // bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
-    std::string CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask, bool fNewHttp = false);
+    std::string CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask);
 
 protected:
     bool HandleInitialize() override;
