@@ -1030,7 +1030,7 @@ Errno CService::SelectCoinsByUnspent(const CDestination& dest, const uint256& ha
         {
             continue;
         }
-        if (out.nTxType == CTransaction::TX_DEFI_REWARD && nDestTemplateType == TEMPLATE_DEXMATCH)
+        if (out.nTxType == CTransaction::TX_DEFI_REWARD && nDestTemplateType == TEMPLATE_DEXMATCH) // Remedies for previous problems
         {
             continue;
         }

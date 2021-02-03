@@ -738,7 +738,7 @@ bool CCheckForkTxPool::AddTx(const uint256& txid, const CAssembledTx& tx)
         StdError("check", "TxPool AddTx: Add unspent 0 fail, txid: %s.", txid.GetHex().c_str());
         return false;
     }
-    if (!tx.IsMintTx() && tx.nType != CTransaction::TX_DEFI_REWARD)
+    if (!tx.IsMintTx())
     {
         if (!Unspent(CTxOutPoint(txid, 1), tx.GetOutput(1)))
         {
@@ -1110,7 +1110,7 @@ bool CCheckBlockFork::AddBlockTx(const CTransaction& txIn, const CTxContxt& cont
         StdLog("check", "AddBlockTx: add block unspent 0 fail, txid: %s.", txid.GetHex().c_str());
         return false;
     }
-    if (!txIn.IsMintTx() && txIn.nType != CTransaction::TX_DEFI_REWARD)
+    if (!txIn.IsMintTx())
     {
         if (!AddBlockUnspent(CTxOutPoint(txid, 1), CTxOut(txIn, contxtIn.destIn, contxtIn.GetValueIn()), txIn.nType, nHeight))
         {
@@ -1174,7 +1174,7 @@ bool CCheckBlockFork::RemoveBlockTx(const CTransaction& txIn, const CTxContxt& c
         }
     }
 
-    if (!txIn.IsMintTx() && txIn.nType != CTransaction::TX_DEFI_REWARD)
+    if (!txIn.IsMintTx())
     {
         CTxOut output1(txIn, contxtIn.destIn, contxtIn.GetValueIn());
         if (!output1.IsNull())

@@ -199,7 +199,7 @@ void CBlockView::RemoveTx(const uint256& txid, const CTransaction& tx, const int
 
     if (fAddrTxIndexIn)
     {
-        if (tx.IsMintTx() || tx.nType == CTransaction::TX_DEFI_REWARD)
+        if (tx.IsMintTx())
         {
             vAddrTxRemove.push_back(CAddrTxIndex(tx.sendTo, nHeight, nBlockSeq, nTxSeq, txid));
         }
@@ -3015,7 +3015,7 @@ bool CBlockBase::GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, vector<
             if (fCfgAddrTxIndex)
             {
                 const CTxContxt& txContxt = block.vTxContxt[i];
-                if (tx.nType == CTransaction::TX_DEFI_REWARD)
+                if (tx.IsTxMintTx())
                 {
                     CAddrTxInfo txToInfo(CAddrTxInfo::TXI_DIRECTION_TO, CDestination(), tx);
                     vAddrTxNew.push_back(make_pair(CAddrTxIndex(tx.sendTo, nHeight, nBlockSeq, i + 1, txid), txToInfo));

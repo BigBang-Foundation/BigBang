@@ -103,37 +103,6 @@ void CDelegateContext::ChangeTxSet(const CTxSetChange& change)
 
 void CDelegateContext::AddNewTx(const CAssembledTx& tx)
 {
-    /*if (tx.sendTo == destDelegate)
-    {
-        if ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION) && tx.destIn == destOwner)
-        {
-            uint256 txid = tx.GetHash();
-            CDelegateTx& delegateTx = mapTx[txid];
-
-            delegateTx = CDelegateTx(tx);
-            mapUnspent.insert(make_pair(CTxOutPoint(txid, 0), &delegateTx));
-        }
-        else if (tx.nType == CTransaction::TX_CERT && tx.destIn == destDelegate)
-        {
-            uint256 txid = tx.GetHash();
-            CDelegateTx& delegateTx = mapTx[txid];
-
-            delegateTx = CDelegateTx(tx);
-            mapUnspent.insert(make_pair(CTxOutPoint(txid, 0), &delegateTx));
-            if (delegateTx.nChange != 0)
-            {
-                mapUnspent.insert(make_pair(CTxOutPoint(txid, 1), &delegateTx));
-            }
-        }
-    }
-    if (tx.destIn == destDelegate)
-    {
-        for (const CTxIn& txin : tx.vInput)
-        {
-            mapUnspent.erase(txin.prevout);
-        }
-    }*/
-
     bool fAddTx = false;
     if (tx.sendTo == destDelegate)
     {

@@ -27,7 +27,6 @@
 #include "template/template.h"
 #include "transaction.h"
 #include "uint256.h"
-#include "wallettx.h"
 
 namespace bigbang
 {
@@ -75,6 +74,10 @@ public:
     virtual bool IsRefVacantHeight(uint32 nBlockHeight) = 0;
     virtual int GetRefVacantHeight() = 0;
     virtual const std::set<CDestination> GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) = 0;
+    virtual int GetUeeRewardTxSize() = 0;
+    virtual bool CreateUeeRewardTx(const CTransaction& txUeeData, const CDestination& destIn, const uint256& hashFork, const int nHeight,
+                                   const int64 nBlockTime, const int64 nMoneySupply, CTransaction& txUeeReward)
+        = 0;
 };
 
 class IBlockChain : public xengine::IBase

@@ -13,7 +13,7 @@
 #include <xengine.h>
 
 #include "key.h"
-#include "wallettx.h"
+#include "transaction.h"
 
 namespace bigbang
 {

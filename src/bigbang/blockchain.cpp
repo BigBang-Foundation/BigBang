@@ -560,8 +560,9 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
 
     // verify tx
     uint256 mintHeightTxid;
-    for (const CTransaction& tx : block.vtx)
+    for (int i = 0; i < block.vtx.size(); i++)
     {
+        const CTransaction& tx = block.vtx[i];
         uint256 txid = tx.GetHash();
         CTxContxt txContxt;
         err = GetTxContxt(view, tx, txContxt);
@@ -604,8 +605,28 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
                 return ERR_TRANSACTION_INVALID;
             }
         }
+        if (tx.nType == CTransaction::TX_UEE_REWARD)
+        {
+            if (i == 0)
+            {
+                Log("AddNewBlock verify uee reward tx fail1, txid: %s, block: %s", txid.ToString().c_str(), hash.ToString().c_str());
+                return ERR_TRANSACTION_INVALID;
+            }
+            CTransaction txReward;
+            if (!pCoreProtocol->CreateUeeRewardTx(block.vtx[i - 1], txContxt.destIn, forkid, block.GetBlockHeight(),
+                                                  block.GetBlockTime(), pIndexPrev->GetMoneySupply(), txReward))
+            {
+                Log("AddNewBlock verify uee reward tx fail2, txid: %s, block: %s", txid.ToString().c_str(), hash.ToString().c_str());
+                return ERR_TRANSACTION_INVALID;
+            }
+            if (txReward.GetHash() != txid)
+            {
+                Log("AddNewBlock verify uee reward tx fail3, txid: %s, block: %s", txid.ToString().c_str(), hash.ToString().c_str());
+                return ERR_TRANSACTION_INVALID;
+            }
+        }
 
-        if (tx.nType != CTransaction::TX_DEFI_REWARD)
+        if (tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_UEE_REWARD)
         {
             err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, block.GetBlockHeight(), forkid, profile);
             if (err != OK)

@@ -318,14 +318,14 @@ public:
     bool GetAddressUnspent(const CDestination& dest, const uint256& hashChainLastBlock, std::map<CTxOutPoint, CUnspentOut>& mapUnspent);
     void GetBlockTxList(std::vector<CTransaction>& vtx, int64& nTotalTxFee, const int64 nBlockTime, const std::size_t nMaxSize, const uint256& hashFork, const int nHeight,
                         std::map<CDestination, int>& mapVoteCert, const std::map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight,
-                        std::vector<std::pair<uint256, std::vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock);
+                        std::vector<std::pair<uint256, std::vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock, const int64 nMoneySupply);
 
 private:
     void GetAllPrevTxLink(const CPooledTxLink& link, std::vector<CPooledTxLink>& prevLinks, CPooledCertTxLinkSet& setCertTxLink);
     bool AddArrangeBlockTx(std::vector<CTransaction>& vtx, int64& nTotalTxFee, const int64 nBlockTime, const std::size_t nMaxSize, std::size_t& nTotalSize,
                            const uint256& hashFork, const int nHeight, std::map<CDestination, int>& mapVoteCert, std::set<uint256>& setUnTx, CPooledTx* ptx,
                            const std::map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight,
-                           std::vector<std::pair<uint256, std::vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock);
+                           std::vector<std::pair<uint256, std::vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock, const int64 nMoneySupply);
 
     bool AddAddressUnspent(const uint256& txid, const CPooledTx& tx);
 

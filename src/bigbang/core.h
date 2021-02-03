@@ -51,6 +51,9 @@ public:
     virtual bool IsRefVacantHeight(uint32 nBlockHeight) override;
     virtual int GetRefVacantHeight() override;
     virtual const std::set<CDestination> GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) override;
+    virtual int GetUeeRewardTxSize() override;
+    virtual bool CreateUeeRewardTx(const CTransaction& txUeeData, const CDestination& destIn, const uint256& hashFork, const int nHeight,
+                                   const int64 nBlockTime, const int64 nMoneySupply, CTransaction& txUeeReward) override;
 
 protected:
     bool HandleInitialize() override;
@@ -62,6 +65,8 @@ protected:
     Errno VerifyDexOrderTx(const CTransaction& tx, const CDestination& destIn, int64 nValueIn, int nHeight);
     Errno VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, int nHeight);
     Errno VerifyDeFiRelationTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const uint256& fork);
+    Errno VerifyUeeDataTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const uint256& fork);
+    Errno VerifySendToUeeSignTx(const CTransaction& tx, const CDestination& destIn, int nHeight);
 
 protected:
     uint256 hashGenesisBlock;

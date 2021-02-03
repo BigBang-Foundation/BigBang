@@ -95,7 +95,7 @@ public:
     int nFormula;             // Calculation formula, 1: formula1, 2: formula2
     uint64 nCoefficient;      // Initial coefficient
     int nDecayPeriodType;     // Decay period type, 0: no attenuation, 1: high attenuation, 2: circulation attenuation
-    int nDecayPeriodValue;    // Decay period value
+    uint64 nDecayPeriodValue; // Decay period value, decay period type is 2, unit of value is token
     int nDecayAmplitudeValue; // Decay amplitude value
 
     enum
@@ -115,7 +115,7 @@ public:
 class CUEEProfile
 {
 public:
-    int64 nMaxSupply;                        // The max U element energy supply in this fork
+    int64 nMaxSupply;                        // The max U element energy supply in this fork, -1 means no upper limit, unit is token
     std::map<std::string, CUEERule> mapRule; // Table of mining rules
 
     CUEEProfile()

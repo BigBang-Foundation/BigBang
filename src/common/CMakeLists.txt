@@ -21,13 +21,14 @@ set(template
     template/dexorder.h     template/dexorder.cpp 
     template/dexmatch.h     template/dexmatch.cpp 
     template/dexbbcmap.h    template/dexbbcmap.cpp 
+    template/ueesign.h      template/ueesign.cpp 
+    template/pledge.h       template/pledge.cpp 
 )
 
 set(sources
     defs.h          defs.cpp
     destination.h   destination.cpp 
     transaction.h 
-    wallettx.h 
     proof.h
     profile.h       profile.cpp
     block.h

@@ -302,7 +302,7 @@ void CTxPoolView::GetAllPrevTxLink(const CPooledTxLink& link, vector<CPooledTxLi
 bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFee, const int64 nBlockTime, const size_t nMaxSize, size_t& nTotalSize,
                                     const uint256& hashFork, const int nHeight, map<CDestination, int>& mapVoteCert, set<uint256>& setUnTx, CPooledTx* ptx,
                                     const map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight,
-                                    vector<pair<uint256, vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock)
+                                    vector<pair<uint256, vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock, const int64 nMoneySupply)
 {
     const CTransaction& tx = *static_cast<CTransaction*>(ptx);
     if (ptx->GetTxTime() <= nBlockTime)
@@ -407,29 +407,42 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
                 }
             }
         }
-        if (nTotalSize + ptx->nSerializeSize > nMaxSize)
+        if (ptx->nType == CTransaction::TX_UEE_DATA)
         {
-            return false;
+            if (nTotalSize + ptx->nSerializeSize + pCorePro->GetUeeRewardTxSize() > nMaxSize)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if (nTotalSize + ptx->nSerializeSize > nMaxSize)
+            {
+                return false;
+            }
         }
 
-        if (!fIsDposHeight)
+        if (!fIsDposHeight || ptx->nType == CTransaction::TX_CERT || ptx->nTxFee >= CalcMinTxFee(ptx->vchData.size(), NEW_MIN_TX_FEE))
         {
             vtx.push_back(tx);
             nTotalSize += ptx->nSerializeSize;
             nTotalTxFee += ptx->nTxFee;
+
+            if (ptx->nType == CTransaction::TX_UEE_DATA)
+            {
+                CTransaction txUeeReward;
+                txUeeReward.SetNull();
+                if (pCorePro->CreateUeeRewardTx(tx, ptx->destIn, hashFork, nHeight, nBlockTime, nMoneySupply, txUeeReward))
+                {
+                    vtx.push_back(txUeeReward);
+                    nTotalSize += GetSerializeSize(txUeeReward);
+                    nTotalTxFee += txUeeReward.nTxFee;
+                }
+            }
         }
         else
         {
-            if (ptx->nType == CTransaction::TX_CERT || ptx->nTxFee >= CalcMinTxFee(ptx->vchData.size(), NEW_MIN_TX_FEE))
-            {
-                vtx.push_back(tx);
-                nTotalSize += ptx->nSerializeSize;
-                nTotalTxFee += ptx->nTxFee;
-            }
-            else
-            {
-                setUnTx.insert(ptx->GetHash());
-            }
+            setUnTx.insert(ptx->GetHash());
         }
     }
     else
@@ -466,7 +479,7 @@ bool CTxPoolView::AddAddressUnspent(const uint256& txid, const CPooledTx& tx)
 
 void CTxPoolView::GetBlockTxList(vector<CTransaction>& vtx, int64& nTotalTxFee, const int64 nBlockTime, const size_t nMaxSize, const uint256& hashFork, const int nHeight,
                                  map<CDestination, int>& mapVoteCert, const map<CDestination, int64>& mapVote, const int64 nMinEnrollAmount, const bool fIsDposHeight,
-                                 vector<pair<uint256, vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock)
+                                 vector<pair<uint256, vector<CTxIn>>>& vTxRemove, ICoreProtocol* pCorePro, const uint256& hashLastBlock, const int64 nMoneySupply)
 {
     size_t nTotalSize = 0;
     set<uint256> setUnTx;
@@ -494,7 +507,7 @@ void CTxPoolView::GetBlockTxList(vector<CTransaction>& vtx, int64& nTotalTxFee, 
         {
             if (!AddArrangeBlockTx(vtx, nTotalTxFee, nBlockTime, nMaxSize, nTotalSize, hashFork, nHeight,
                                    mapVoteCert, setUnTx, i.ptx, mapVote, nMinEnrollAmount, fIsDposHeight,
-                                   vTxRemove, pCorePro, hashLastBlock))
+                                   vTxRemove, pCorePro, hashLastBlock, nMoneySupply))
             {
                 return;
             }
@@ -514,7 +527,7 @@ void CTxPoolView::GetBlockTxList(vector<CTransaction>& vtx, int64& nTotalTxFee, 
         {
             if (!AddArrangeBlockTx(vtx, nTotalTxFee, nBlockTime, nMaxSize, nTotalSize, hashFork, nHeight,
                                    mapVoteCert, setUnTx, i.ptx, mapVote, nMinEnrollAmount, fIsDposHeight,
-                                   vTxRemove, pCorePro, hashLastBlock))
+                                   vTxRemove, pCorePro, hashLastBlock, nMoneySupply))
             {
                 return;
             }
@@ -722,7 +735,7 @@ Errno CTxPool::Push(const CTransaction& tx, uint256& hashFork, CDestination& des
         return ERR_ALREADY_HAVE;
     }
 
-    if (tx.IsMintTx() || tx.nType == CTransaction::TX_DEFI_REWARD)
+    if (tx.IsMintTx())
     {
         StdError("CTxPool", "Push: tx is mint, txid: %s", txid.GetHex().c_str());
         return ERR_TRANSACTION_INVALID;
@@ -1082,9 +1095,16 @@ void CTxPool::CacheArrangeBlockTx(const uint256& hashFork, int64 nBlockTime, con
         }
     }
 
+    CBlockStatus status;
+    if (!pBlockChain->GetBlockStatus(hashLastBlock, status))
+    {
+        StdError("CTxPool", "Cache arrange block tx: GetBlockStatus fail");
+        return;
+    }
+
     mapPoolView[hashFork].GetBlockTxList(vtx, nTotalTxFee, nBlockTime, nMaxSize, hashFork, nHeight, mapVoteCert,
                                          mapVote, nMinEnrollAmount, pCoreProtocol->IsDposHeight(nHeight), vTxRemove,
-                                         pCoreProtocol, hashLastBlock);
+                                         pCoreProtocol, hashLastBlock, status.nMoneySupply);
 }
 
 bool CTxPool::FetchInputs(const uint256& hashFork, const CTransaction& tx, vector<CTxOut>& vUnspent)
@@ -1156,8 +1176,8 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
         {
             const CTransaction& tx = block.vtx[i];
             const CTxContxt& txContxt = block.vTxContxt[i];
-            // defi
-            if (tx.nType == CTransaction::TX_DEFI_REWARD)
+
+            if (tx.IsTxMintTx())
             {
                 change.vTxAddNew.push_back(CAssembledTx(tx, nBlockHeight));
                 continue;
@@ -1212,8 +1232,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             const CTransaction& tx = block.vtx[i];
             uint256 txid = tx.GetHash();
 
-            // defi
-            if (tx.nType == CTransaction::TX_DEFI_REWARD)
+            if (tx.IsTxMintTx())
             {
                 txView.InvalidateSpent(CTxOutPoint(txid, 0), viewInvolvedTx);
                 vTxRemove.push_back(make_pair(txid, tx.vInput));

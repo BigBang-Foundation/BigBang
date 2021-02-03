@@ -738,8 +738,32 @@ bool CWallet::SignDestination(const CDestination& destIn, const CTransaction& tx
         {
             StdError("CWallet", "Sign destination: PubKey SignPubKey fail, txid: %s, destIn: %s",
                      tx.GetHash().GetHex().c_str(), CAddress(destIn).ToString().c_str());
+            return false;
         }
-        return fCompleted;
+        if (tx.nType == CTransaction::TX_UEE_DATA)
+        {
+            if (vchSignExtraData.empty())
+            {
+                StdError("CWallet", "Sign destination: uee data tx extra data error, txid: %s", tx.GetHash().GetHex().c_str());
+                return false;
+            }
+            vector<uint8> vad;
+            vector<uint8> vas;
+            try
+            {
+                xengine::CIDataStream ids(vchSignExtraData);
+                ids >> vad >> vas;
+            }
+            catch (const std::exception& e)
+            {
+                StdError("CWallet", "Sign destination: uee data tx extra data error, err: %s, txid: %s", e.what(), tx.GetHash().GetHex().c_str());
+                return false;
+            }
+            vector<uint8> vchPreSig = move(vchSig);
+            xengine::CODataStream ods(vchSig);
+            ods << vad << vas << vchPreSig;
+        }
+        return true;
     }
 
     if (destIn.IsTemplate())

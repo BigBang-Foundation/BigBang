@@ -141,7 +141,16 @@ public:
     }
     bool IsMintTx() const
     {
+        return (nType == TX_GENESIS || nType == TX_STAKE || nType == TX_WORK
+                || nType == TX_DEFI_REWARD || nType == TX_UEE_REWARD);
+    }
+    bool IsBlockMintTx() const
+    {
         return (nType == TX_GENESIS || nType == TX_STAKE || nType == TX_WORK);
+    }
+    bool IsTxMintTx() const
+    {
+        return (nType == TX_DEFI_REWARD || nType == TX_UEE_REWARD);
     }
     bool IsDeFiRelation() const
     {
@@ -165,6 +174,10 @@ public:
             return std::string("defi-relation");
         else if (nTxType == TX_DEFI_MINT_HEIGHT)
             return std::string("defi-mint-height");
+        else if (nTxType == TX_UEE_REWARD)
+            return std::string("uee-reward");
+        else if (nTxType == TX_UEE_DATA)
+            return std::string("uee-data");
         return std::string("undefined");
     }
     std::string GetTypeString() const
@@ -589,6 +602,11 @@ public:
         nBlockHeight(nBlockHeightIn), nTxSeq(nTxSeqIn), destFrom(destFromIn), destTo(destToIn), nAmount(nAoumtIn), nTxFee(nTxFeeIn), nSize(nSizeIn) {}
 
     bool IsMintTx() const
+    {
+        return (nTxType == CTransaction::TX_GENESIS || nTxType == CTransaction::TX_STAKE || nTxType == CTransaction::TX_WORK
+                || nTxType == CTransaction::TX_DEFI_REWARD || nTxType == CTransaction::TX_UEE_REWARD);
+    }
+    bool IsBlockMintTx() const
     {
         return (nTxType == CTransaction::TX_GENESIS || nTxType == CTransaction::TX_STAKE || nTxType == CTransaction::TX_WORK);
     }

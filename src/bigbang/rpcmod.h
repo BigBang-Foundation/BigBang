@@ -130,6 +130,7 @@ private:
     rpc::CRPCResultPtr RPCMakeOrigin(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSignRawTransactionWithWallet(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSendRawTransaction(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCSignTransactionData(rpc::CRPCParamPtr param);
     /* Util */
     rpc::CRPCResultPtr RPCVerifyMessage(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCMakeKeyPair(rpc::CRPCParamPtr param);

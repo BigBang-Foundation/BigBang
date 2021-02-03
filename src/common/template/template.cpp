@@ -59,6 +59,8 @@ static const CTypeInfoSet setTypeInfo = {
     { TEMPLATE_DEXORDER, new CTemplateDexOrder, "dexorder" },
     { TEMPLATE_DEXMATCH, new CTemplateDexMatch, "dexmatch" },
     { TEMPLATE_DEXBBCMAP, new CTemplateDexBbcMap, "dexbbcmap" },
+    { TEMPLATE_UEESIGN, new CTemplateDexBbcMap, "ueesign" },
+    { TEMPLATE_PLEDGE, new CTemplateDexBbcMap, "pledge" },
 };
 
 static const CTypeInfo* GetTypeInfoByType(uint16 nTypeIn)

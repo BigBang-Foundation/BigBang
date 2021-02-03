@@ -331,6 +331,36 @@
                     }
                 }
             },
+            "ueesign": {
+                "type": "object",
+                "desc": "a u element energy sign template",
+                "condition": "type=ueesign",
+                "content": {
+                    "owner": {
+                        "type": "string",
+                        "desc": "owner address"
+                    },
+                    "admin": {
+                        "type": "string",
+                        "desc": "admin address"
+                    }
+                }
+            },
+            "pledge": {
+                "type": "object",
+                "desc": "a pledge template",
+                "condition": "type=pledge",
+                "content": {
+                    "owner": {
+                        "type": "string",
+                        "desc": "owner address"
+                    },
+                    "aid": {
+                        "type": "string",
+                        "desc": "app id"
+                    }
+                }
+            },
             "synctx": {
                 "type": "bool",
                 "desc": "sync tx or not",
@@ -611,6 +641,36 @@
                     "owner": {
                         "type": "string",
                         "desc": "owner address"
+                    }
+                }
+            },
+            "ueesign": {
+                "type": "object",
+                "desc": "a u element energy sign template",
+                "condition": "type=ueesign",
+                "content": {
+                    "owner": {
+                        "type": "string",
+                        "desc": "owner address"
+                    },
+                    "admin": {
+                        "type": "string",
+                        "desc": "admin address"
+                    }
+                }
+            },
+            "pledge": {
+                "type": "object",
+                "desc": "a pledge template",
+                "condition": "type=pledge",
+                "content": {
+                    "owner": {
+                        "type": "string",
+                        "desc": "owner address"
+                    },
+                    "aid": {
+                        "type": "string",
+                        "desc": "app id"
                     }
                 }
             },
@@ -2412,7 +2472,9 @@
             "bigbang-cli addnewtemplate vote '{\"delegate\": \"20m01802pgptaswc5b2dq09kmj10ns88bn69q0msrnz64mtypx4xm5sff\", \"owner\": \"1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda\"}'",
             "bigbang-cli addnewtemplate dexorder '{\"seller_address\":\"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"coinpair\":\"BBC/MKF\",\"price\":10,\"fee\": 0.002,\"recv_address\":\"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"valid_height\": 300,\"match_address\": \"15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd\",\"deal_address\": \"1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb\",\"timestamp\":1234}'",
             "bigbang-cli addnewtemplate dexmatch '{\"match_address\": \"15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd\",\"coinpair\":\"BBC/MKF\",\"final_price\":10,\"match_amount\": 15,\"fee\": 0.002,\"secret_hash\":\"41f73534701f620ee8f48ecd61bb422fa9243ccc6ddda5e806f5858121c47268\",\"secret_enc\": \"42f30c39231e1a518e437df6a71e26535ef65f852fb879157bf9903b7d8065edc66eacec81eaef841c1052978b01340e\",\"seller_order_address\": \"2140c6rd39hpdmgv9m1m80h738gz4f2c0kmpvn707p04c7x1kcb8gawj6\",\"seller_address\": \"1jv78wjv22hmzcwv07bkkphnkj51y0kjc7g9rwdm05erwmr2n8tvh8yjn\",\"seller_deal_address\": \"1f2b2n3asbm2rb99fk1c4wp069d0z91enxdz8kmqmq7f0w8tzw64hdevb\",\"seller_valid_height\": 300,\"buyer_address\": \"1njqk8wmenyvqs4cz7d8b9pjc6tsdhxtzza050a2n02eqpfcr22ggqg47\",\"buyer_amount\": \"150\",\"buyer_secret_hash\":\"dfa313257be0216a498d2eb6e5a1939eb6168d4a9e3356cc20fb957d030b1ac5\",\"buyer_valid_height\":320}'",
-            "bigbang-cli addnewtemplate dexbbcmap '{\"owner\": \"1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda\"}'"
+            "bigbang-cli addnewtemplate dexbbcmap '{\"owner\": \"1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda\"}'",
+            "bigbang-cli addnewtemplate ueesign '{\"owner\": \"1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda\",\"admin\": \"15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd\"}'",
+            "bigbang-cli addnewtemplate pledge '{\"owner\": \"1j6x8vdkkbnxe8qwjggfan9c8m8zhmez7gm3pznsqxgch3eyrwxby8eda\",\"aid\": \"123456\"}'"
         ],
         "error": [
             "{\"code\":-6,\"message\":\"Invalid parameters,failed to make template\"}",
@@ -2877,7 +2939,7 @@
                 },
                 "type": {
                     "type": "uint",
-                    "desc": "0(default): common token tx, 2: defi relation tx, 3: defi mint height tx",
+                    "desc": "0(default): common token tx, 2: defi relation tx, 3: defi mint height tx, 4: uee data tx",
                     "default": 0,
                     "required": false,
                     "opt": "type"
@@ -2899,6 +2961,18 @@
                     "desc": "lock height",
                     "required": false,
                     "opt": "lh"
+                },
+                "appenddata": {
+                    "type": "string",
+                    "desc": "append data",
+                    "required": false,
+                    "opt": "ad"
+                },
+                "appendsign": {
+                    "type": "string",
+                    "desc": "append sign",
+                    "required": false,
+                    "opt": "as"
                 }
             }
         },
@@ -3003,7 +3077,7 @@
                 },
                 "type": {
                     "type": "uint",
-                    "desc": "0(default): common token tx, 2: defi relation tx, 3: defi mint height tx",
+                    "desc": "0(default): common token tx, 2: defi relation tx, 3: defi mint height tx, 4: uee data tx",
                     "default": 0,
                     "required": false,
                     "opt": "type"
@@ -3107,6 +3181,18 @@
                     "desc": "sign secret",
                     "required": false,
                     "opt": "sec"
+                },
+                "appenddata": {
+                    "type": "string",
+                    "desc": "append data",
+                    "required": false,
+                    "opt": "ad"
+                },
+                "appendsign": {
+                    "type": "string",
+                    "desc": "append sign",
+                    "required": false,
+                    "opt": "as"
                 }
             }
         },
@@ -4516,6 +4602,44 @@
         "error": [
             "{\"code\":-8,\"message\":\"Raw tx decode failed\"}",
             "{\"code\":-10,\"message\":\"Tx rejected : xxx\"}"
+        ]
+    },
+    "signtransactiondata": {
+        "type": "command",
+        "name": "SignTransactionData",
+        "desc": "Sign transaction data offline using pubkey address.",
+        "request": {
+            "type": "object",
+            "content": {
+                "address": {
+                    "type": "string",
+                    "desc": "hex address string of pubkey address used to sign offline transaction"
+                },
+                "txdata": {
+                    "type": "string",
+                    "desc": "hex string of transaction binary data"
+                }
+            }
+        },
+        "response": {
+            "type": "string",
+            "name": "signdata",
+            "desc": "sign raw data"
+        },
+        "example": [
+            {
+                "request": "bigbang-cli signtransactiondata 15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd 0100000086b2fe5f0000000091d2b15e9aeeb57483889873bd0aea1273c8e5bb8df436c2bd4e850600000000013d793fedf94f1abdf68d081e0f8f5c4647ec2fc0953d4b7a8064e4ab73b2fe5f0001acaf34728eafb77c919f3b50b4da4c36b2d8f75ffa80502855009d7b3d9810a1002d31010000000010270000000000000000",
+                "response": "15d4268f5b04328a5ce3434c0ad97f4ce97cabd6f65a534944cf337fa0b504dd82e03d366bdd46db82bae97c627e92bb2ab74c1913bd0a18e325a049f564a805"
+            },
+            {
+                "request": "curl -d '{\"id\":3,\"method\":\"signtransactiondata\",\"jsonrpc\":\"2.0\",\"params\":{\"address\":\"15cx56x0gtv44bkt21yryg4m6nn81wtc7gkf6c9vwpvq1cgmm8jm7m5kd\",\"txdata\":\"0100000086b2fe5f0000000091d2b15e9aeeb57483889873bd0aea1273c8e5bb8df436c2bd4e850600000000013d793fedf94f1abdf68d081e0f8f5c4647ec2fc0953d4b7a8064e4ab73b2fe5f0001acaf34728eafb77c919f3b50b4da4c36b2d8f75ffa80502855009d7b3d9810a1002d31010000000010270000000000000000\"}}' http://127.0.0.1:19902",
+                "response": "{\"id\":3,\"jsonrpc\":\"2.0\",\"result\":\"15d4268f5b04328a5ce3434c0ad97f4ce97cabd6f65a534944cf337fa0b504dd82e03d366bdd46db82bae97c627e92bb2ab74c1913bd0a18e325a049f564a805\"}"
+            }
+        ],
+        "error": [
+            "{\"code\":-8,\"message\":\"Raw tx decode failed\"}",
+            "{\"code\":-10,\"message\":\"Tx rejected : xxx\"}",
+            "{\"code\":-401,\"message\":\"Failed to sign message\"}"
         ]
     },
     "reversehex": {

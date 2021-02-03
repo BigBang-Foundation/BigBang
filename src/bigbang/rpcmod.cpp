@@ -136,7 +136,7 @@ static CWalletTxData TxInfoToJSON(const CTxInfo& tx, const bool fSendFromIn)
     data.strType = CTransaction::GetTypeStringStatic(tx.nTxType);
     data.nTime = (boost::int64_t)tx.nTimeStamp;
     data.fSend = fSendFromIn;
-    if (!tx.IsMintTx() && tx.nTxType != CTransaction::TX_DEFI_REWARD)
+    if (!tx.IsMintTx())
     {
         data.strFrom = CAddress(tx.destFrom).ToString();
     }
@@ -270,6 +270,8 @@ CRPCMod::CRPCMod()
         ("signrawtransactionwithwallet", &CRPCMod::RPCSignRawTransactionWithWallet)
         //
         ("sendrawtransaction", &CRPCMod::RPCSendRawTransaction)
+        //
+        ("signtransactiondata", &CRPCMod::RPCSignTransactionData)
         /* Util */
         ("verifymessage", &CRPCMod::RPCVerifyMessage)
         //
@@ -1832,7 +1834,10 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
     }
 
     uint16 nType = (uint16)spParam->nType;
-    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION && nType != CTransaction::TX_DEFI_MINT_HEIGHT)
+    if (nType != CTransaction::TX_TOKEN
+        && nType != CTransaction::TX_DEFI_RELATION
+        && nType != CTransaction::TX_DEFI_MINT_HEIGHT
+        && nType != CTransaction::TX_UEE_DATA)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid tx type");
     }
@@ -1966,6 +1971,26 @@ CRPCResultPtr CRPCMod::RPCSendFrom(CRPCParamPtr param)
         }
     }
 
+    if (nType == CTransaction::TX_UEE_DATA)
+    {
+        if (!spParam->strAppenddata.IsValid() || !spParam->strAppendsign.IsValid())
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid appenddata or appendsign for uee data tx");
+        }
+        vector<uint8> vad = ParseHexString(spParam->strAppenddata);
+        if (vad.empty())
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid appenddata");
+        }
+        vector<uint8> vas = ParseHexString(spParam->strAppendsign);
+        if (vas.size() != 64)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid appendsign");
+        }
+        CODataStream ods(vchSignExtraData);
+        ods << vad << vas;
+    }
+
     if (from.IsTemplate() && from.GetTemplateId().GetType() == TEMPLATE_PAYMENT)
     {
         txNew.vchSig.clear();
@@ -2056,7 +2081,10 @@ CRPCResultPtr CRPCMod::RPCCreateTransaction(CRPCParamPtr param)
     }
 
     uint16 nType = (uint16)spParam->nType;
-    if (nType != CTransaction::TX_TOKEN && nType != CTransaction::TX_DEFI_RELATION && nType != CTransaction::TX_DEFI_MINT_HEIGHT)
+    if (nType != CTransaction::TX_TOKEN
+        && nType != CTransaction::TX_DEFI_RELATION
+        && nType != CTransaction::TX_DEFI_MINT_HEIGHT
+        && nType != CTransaction::TX_UEE_DATA)
     {
         throw CRPCException(RPC_INVALID_PARAMETER, "Invalid tx type");
     }
@@ -2176,6 +2204,26 @@ CRPCResultPtr CRPCMod::RPCSignTransaction(CRPCParamPtr param)
         vector<uint8> vss = ParseHexString(spParam->strSign_S);
         CODataStream ds(vchSignExtraData);
         ds << vsm << vss;
+    }
+
+    if (rawTx.nType == CTransaction::TX_UEE_DATA)
+    {
+        if (!spParam->strAppenddata.IsValid() || !spParam->strAppendsign.IsValid())
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid appenddata or appendsign for uee data tx");
+        }
+        vector<uint8> vad = ParseHexString(spParam->strAppenddata);
+        if (vad.empty())
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid appenddata");
+        }
+        vector<uint8> vas = ParseHexString(spParam->strAppendsign);
+        if (vas.size() != 64)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid appendsign");
+        }
+        CODataStream ods(vchSignExtraData);
+        ods << vad << vas;
     }
 
     vector<uint8> vchFromData;
@@ -3014,6 +3062,33 @@ CRPCResultPtr CRPCMod::RPCSendRawTransaction(rpc::CRPCParamPtr param)
     }
 
     return MakeCSendRawTransactionResultPtr(rawTx.GetHash().GetHex());
+}
+
+CRPCResultPtr CRPCMod::RPCSignTransactionData(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CSignTransactionDataParam>(param);
+
+    CAddress addr(spParam->strAddress);
+    vector<unsigned char> txData = ParseHexString(spParam->strTxdata);
+    CBufStream ss;
+    ss.Write((char*)&txData[0], txData.size());
+    CTransaction rawTx;
+    try
+    {
+        ss >> rawTx;
+    }
+    catch (const std::exception& e)
+    {
+        throw CRPCException(RPC_DESERIALIZATION_ERROR, "Signed offline raw tx decode failed");
+    }
+
+    vector<unsigned char> vchSig;
+    if (!pService->SignSignature(addr.GetPubKey(), rawTx.GetSignatureHash(), vchSig))
+    {
+        throw CRPCException(RPC_WALLET_ERROR, "Failed to sign message");
+    }
+
+    return MakeCSignTransactionDataResultPtr(ToHexString(vchSig));
 }
 
 /* Util */

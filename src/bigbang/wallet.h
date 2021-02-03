@@ -11,81 +11,11 @@
 #include "base.h"
 #include "util.h"
 #include "walletdb.h"
-#include "wallettx.h"
 
 namespace bigbang
 {
 
 using namespace xengine;
-
-class CWalletCoins
-{
-public:
-    CWalletCoins()
-      : nTotalValue(0) {}
-    void Push(const CWalletTxOut& out)
-    {
-        if (!out.IsNull())
-        {
-            if (setCoins.insert(out).second)
-            {
-                nTotalValue += out.GetAmount();
-                out.AddRef();
-            }
-        }
-    }
-    void Pop(const CWalletTxOut& out)
-    {
-        if (!out.IsNull())
-        {
-            if (setCoins.erase(out))
-            {
-                nTotalValue -= out.GetAmount();
-                out.Release();
-            }
-        }
-    }
-
-public:
-    int64 nTotalValue;
-    std::set<CWalletTxOut> setCoins;
-};
-
-class CWalletUnspent
-{
-public:
-    void Clear()
-    {
-        mapWalletCoins.clear();
-    }
-    void Push(const uint256& hashFork, std::shared_ptr<CWalletTx>& spWalletTx, int n)
-    {
-        mapWalletCoins[hashFork].Push(CWalletTxOut(spWalletTx, n));
-    }
-    void Pop(const uint256& hashFork, std::shared_ptr<CWalletTx>& spWalletTx, int n)
-    {
-        mapWalletCoins[hashFork].Pop(CWalletTxOut(spWalletTx, n));
-    }
-    CWalletCoins& GetCoins(const uint256& hashFork)
-    {
-        return mapWalletCoins[hashFork];
-    }
-    void Dup(const uint256& hashFrom, const uint256& hashTo)
-    {
-        std::map<uint256, CWalletCoins>::iterator it = mapWalletCoins.find(hashFrom);
-        if (it != mapWalletCoins.end())
-        {
-            CWalletCoins& coin = mapWalletCoins[hashTo];
-            for (const CWalletTxOut& out : (*it).second.setCoins)
-            {
-                coin.Push(out);
-            }
-        }
-    }
-
-public:
-    std::map<uint256, CWalletCoins> mapWalletCoins;
-};
 
 class CWalletKeyStore
 {
