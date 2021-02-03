@@ -5,6 +5,7 @@
 #ifndef COMMON_PROFILE_H
 #define COMMON_PROFILE_H
 
+#include <stream/stream.h>
 #include <string>
 #include <vector>
 
@@ -91,25 +92,60 @@ public:
 
 class CUEERule
 {
+    friend class xengine::CStream;
+
 public:
     int nFormula;             // Calculation formula, 1: formula1, 2: formula2
     uint64 nCoefficient;      // Initial coefficient
     int nDecayPeriodType;     // Decay period type, 0: no attenuation, 1: high attenuation, 2: circulation attenuation
     uint64 nDecayPeriodValue; // Decay period value, decay period type is 2, unit of value is token
-    int nDecayAmplitudeValue; // Decay amplitude value
+    int nDecayAmplitudeValue; // Decay amplitude value, range: 0-100
 
     enum
     {
         UEER_FORMULA_1 = 1,
         UEER_FORMULA_2 = 2
     };
-
     enum
     {
         UEER_DPT_NO_ATTENUATION = 0,
         UEER_DPT_HIGH_ATTENUATION = 1,
         UEER_DPT_CIRULATION_ATTENUATION = 2
     };
+
+    CUEERule()
+    {
+        SetNull();
+    }
+    CUEERule(const int nFormulaIn, const uint64 nCoefficientIn, const int nDecayPeriodTypeIn, const uint64 nDecayPeriodValueIn, const int nDecayAmplitudeValueIn)
+      : nFormula(nFormulaIn), nCoefficient(nCoefficientIn), nDecayPeriodType(nDecayPeriodTypeIn), nDecayPeriodValue(nDecayPeriodValueIn), nDecayAmplitudeValue(nDecayAmplitudeValueIn)
+    {
+    }
+    virtual ~CUEERule() = default;
+
+    virtual void SetNull()
+    {
+        nFormula = 0;
+        nCoefficient = 0;
+        nDecayPeriodType = 0;
+        nDecayPeriodValue = 0;
+        nDecayAmplitudeValue = 0;
+    }
+    bool IsNull() const
+    {
+        return nFormula == 0;
+    }
+
+protected:
+    template <typename O>
+    void Serialize(xengine::CStream& s, O& opt)
+    {
+        s.Serialize(nFormula, opt);
+        s.Serialize(nCoefficient, opt);
+        s.Serialize(nDecayPeriodType, opt);
+        s.Serialize(nDecayPeriodValue, opt);
+        s.Serialize(nDecayAmplitudeValue, opt);
+    }
 };
 
 class CUEEProfile
@@ -129,7 +165,7 @@ public:
     }
     bool IsNull() const
     {
-        return nMaxSupply == 0;
+        return (nMaxSupply == 0 || mapRule.empty());
     }
 
     void Save(std::vector<unsigned char>& vchProfile) const;
@@ -180,6 +216,7 @@ public:
         strSymbol.clear();
         nForkType = FORK_TYPE_COMMON;
         defi.SetNull();
+        uee.SetNull();
     }
     bool IsNull() const
     {

@@ -809,6 +809,42 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
             }
         }
     }
+    // check uee param
+    else if (forkProfile.nForkType == FORK_TYPE_UEE)
+    {
+        const CUEEProfile& uee = forkProfile.uee;
+        if (uee.nMaxSupply < -1 || (uee.nMaxSupply >= 0 && !MoneyRange(uee.nMaxSupply * COIN)))
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nMaxSupply is out of range");
+        }
+        if (uee.mapRule.empty())
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param rule is empty");
+        }
+        for (const auto& vd : uee.mapRule)
+        {
+            if (vd.second.nFormula < 1 || vd.second.nFormula > 2)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nFormula is out of range, rule name: %s", vd.first.c_str());
+            }
+            if (vd.second.nCoefficient == 0)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nCoefficient is out of range, rule name: %s", vd.first.c_str());
+            }
+            if (vd.second.nDecayPeriodType < 0 || vd.second.nDecayPeriodType > 2)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nDecayPeriodType is out of range, rule name: %s", vd.first.c_str());
+            }
+            if (vd.second.nDecayPeriodValue == 0)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nDecayPeriodValue is out of range, rule name: %s", vd.first.c_str());
+            }
+            if (vd.second.nDecayAmplitudeValue < 0 || vd.second.nDecayAmplitudeValue > 100)
+            {
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nDecayAmplitudeValue is out of range, rule name: %s", vd.first.c_str());
+            }
+        }
+    }
     return OK;
 }
 

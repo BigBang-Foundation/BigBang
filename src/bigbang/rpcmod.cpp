@@ -741,6 +741,18 @@ CRPCResultPtr CRPCMod::RPCListFork(CRPCParamPtr param)
                     displayProfile.defi.vecMapcoinbasepercent.push_back(coinbasepercent);
                 }
             }
+            else if (profile.nForkType == FORK_TYPE_UEE)
+            {
+                displayProfile.strForktype = "uee";
+                displayProfile.uee.nMaxsupply = profile.uee.nMaxSupply;
+
+                for (const auto& vd : profile.uee.mapRule)
+                {
+                    CListForkResult::CProfile::CUee::CRule rule(vd.first, vd.second.nFormula, vd.second.nCoefficient, vd.second.nDecayPeriodType,
+                                                                vd.second.nDecayPeriodValue, vd.second.nDecayAmplitudeValue);
+                    displayProfile.uee.vecRule.push_back(rule);
+                }
+            }
             else
             {
                 displayProfile.strForktype = "common";
@@ -2877,6 +2889,62 @@ CRPCResultPtr CRPCMod::RPCMakeOrigin(CRPCParamPtr param)
                 throw CRPCException(RPC_INVALID_PARAMETER, "DeFi param times * maxsupply is more than 15 digits. It will lose precision");
             }
             profile.defi.mapPromotionTokenTimes.insert(std::make_pair(nToken, nTimes));
+        }
+    }
+    else if (spParam->strForktype == "uee")
+    {
+        profile.nForkType = FORK_TYPE_UEE;
+        if (!spParam->uee.nMaxsupply.IsValid())
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "uee param maxsupply is invalid");
+        }
+        profile.uee.nMaxSupply = spParam->uee.nMaxsupply;
+        if (profile.uee.nMaxSupply < 0)
+        {
+            profile.uee.nMaxSupply = -1;
+        }
+        if (!spParam->uee.vecRule.IsValid() || spParam->uee.vecRule.size() == 0)
+        {
+            throw CRPCException(RPC_INVALID_PARAMETER, "uee param rule is invalid");
+        }
+        for (auto it = spParam->uee.vecRule.begin(); it != spParam->uee.vecRule.end(); ++it)
+        {
+            if (!it->strRulename.IsValid())
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "uee param rulename is invalid");
+            }
+            string strName = it->strRulename;
+            if (strName.empty())
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "uee param rulename is empty");
+            }
+            if (strName.size() > 256)
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "uee param rulename is too big");
+            }
+            if (!it->nFormula.IsValid() || it->nFormula < 1 || it->nFormula > 2)
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "uee param formula is invalid");
+            }
+            if (!it->nCoefficient.IsValid() || it->nCoefficient <= 0)
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "uee param coefficient is invalid");
+            }
+            if (!it->nDecayperiodtype.IsValid() || it->nDecayperiodtype < 0 || it->nDecayperiodtype > 2)
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "uee param decayperiodtype is invalid");
+            }
+            if (!it->nDecayperiodvalue.IsValid() || it->nDecayperiodvalue <= 0)
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "uee param decayperiodvalue is invalid");
+            }
+            if (!it->nDecayamplitudevalue.IsValid() || it->nDecayamplitudevalue < 0 || it->nDecayamplitudevalue > 100)
+            {
+                throw CRPCException(RPC_INVALID_PARAMETER, "uee param decayamplitudevalue is invalid");
+            }
+            CUEERule ruleUee(it->nFormula, it->nCoefficient, it->nDecayperiodtype,
+                             it->nDecayperiodvalue, it->nDecayamplitudevalue);
+            profile.uee.mapRule.insert(make_pair(strName, ruleUee));
         }
     }
     else

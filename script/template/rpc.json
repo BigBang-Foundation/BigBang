@@ -1286,6 +1286,53 @@
                             "type": "string",
                             "desc": "fork params, a json object"
                         },
+                        "uee": {
+                            "type": "object",
+                            "desc": "Fork UEE Parameters",
+                            "condition": "forktype=uee",
+                            "content": {
+                                "maxsupply": {
+                                    "type": "int",
+                                    "desc": "The max U element energy supply in this fork, -1 means no upper limit, unit is token"
+                                },
+                                "rule": {
+                                    "type": "array",
+                                    "desc": "reward rule",
+                                    "content": {
+                                        "element": {
+                                            "type": "object",
+                                            "desc": "reward rule",
+                                            "content": {
+                                                "rulename": {
+                                                    "type": "string",
+                                                    "desc": "rule name"
+                                                },
+                                                "formula": {
+                                                    "type": "int",
+                                                    "desc": "calculation formula, 1: formula1, 2: formula2"
+                                                },
+                                                "coefficient": {
+                                                    "type": "int",
+                                                    "desc": "initial coefficient"
+                                                },
+                                                "decayperiodtype": {
+                                                    "type": "int",
+                                                    "desc": "decay period type, 0: no attenuation, 1: high attenuation, 2: circulation attenuation"
+                                                },
+                                                "decayperiodvalue": {
+                                                    "type": "int",
+                                                    "desc": "Decay period value, decay period type is 2, unit of value is token"
+                                                },
+                                                "decayamplitudevalue": {
+                                                    "type": "int",
+                                                    "desc": "Decay amplitude value, range: 0-100"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
                         "defi": {
                             "type": "object",
                             "desc": "Fork DeFi Parameters",
@@ -3471,6 +3518,53 @@
                     "desc": "fork type. 'defi': DeFi fork, other: common fork",
                     "required": false,
                     "default": ""
+                },
+                "uee": {
+                    "type": "object",
+                    "desc": "Fork UEE Parameters",
+                    "condition": "forktype=uee",
+                    "content": {
+                        "maxsupply": {
+                            "type": "int",
+                            "desc": "The max U element energy supply in this fork, -1 means no upper limit, unit is token"
+                        },
+                        "rule": {
+                            "type": "array",
+                            "desc": "reward rule",
+                            "content": {
+                                "element": {
+                                    "type": "object",
+                                    "desc": "reward rule",
+                                    "content": {
+                                        "rulename": {
+                                            "type": "string",
+                                            "desc": "rule name"
+                                        },
+                                        "formula": {
+                                            "type": "int",
+                                            "desc": "calculation formula, 1: formula1, 2: formula2"
+                                        },
+                                        "coefficient": {
+                                            "type": "int",
+                                            "desc": "initial coefficient"
+                                        },
+                                        "decayperiodtype": {
+                                            "type": "int",
+                                            "desc": "decay period type, 0: no attenuation, 1: high attenuation, 2: circulation attenuation"
+                                        },
+                                        "decayperiodvalue": {
+                                            "type": "int",
+                                            "desc": "Decay period value, decay period type is 2, unit of value is token"
+                                        },
+                                        "decayamplitudevalue": {
+                                            "type": "int",
+                                            "desc": "Decay amplitude value, range: 0-100"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 },
                 "defi": {
                     "type": "object",

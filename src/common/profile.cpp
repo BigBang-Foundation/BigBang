@@ -33,10 +33,40 @@ void CDeFiProfile::Load(const std::vector<unsigned char>& vchProfile)
 
 void CUEEProfile::Save(vector<unsigned char>& vchProfile) const
 {
+    uint32 nRuleCount = mapRule.size();
+    xengine::CBufStream ss;
+    ss << nMaxSupply << nRuleCount;
+    for (const auto& vd : mapRule)
+    {
+        ss << vd.first << vd.second;
+    }
+    vchProfile.assign(ss.GetData(), ss.GetData() + ss.GetSize());
 }
 
 void CUEEProfile::Load(const vector<unsigned char>& vchProfile)
 {
+    if (vchProfile.empty())
+    {
+        throw std::runtime_error(std::string("uee profile vchProfile is empty"));
+    }
+    xengine::CBufStream ss;
+    try
+    {
+        ss.Write((char*)&(vchProfile[0]), vchProfile.size());
+        uint32 nRuleCount;
+        ss >> nMaxSupply >> nRuleCount;
+        for (uint32 i = 0; i < nRuleCount; i++)
+        {
+            string strName;
+            CUEERule ruleUee;
+            ss >> strName >> ruleUee;
+            mapRule.insert(make_pair(strName, ruleUee));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(std::string("uee profile data error, err: ") + e.what());
+    }
 }
 
 //////////////////////////////
@@ -76,6 +106,12 @@ bool CProfile::Save(std::vector<unsigned char>& vchProfile)
                 vector<unsigned char> vchDeFi;
                 defi.Save(vchDeFi);
                 encoder.Push(PROFILE_DEFI, vchDeFi);
+            }
+            else if (nForkType == FORK_TYPE_UEE)
+            {
+                vector<unsigned char> vchUee;
+                uee.Save(vchUee);
+                encoder.Push(PROFILE_UEE, vchUee);
             }
         }
 
@@ -163,6 +199,14 @@ bool CProfile::Load(const vector<unsigned char>& vchProfile)
                 if (decoder.Get(PROFILE_DEFI, vchDeFi))
                 {
                     defi.Load(vchDeFi);
+                }
+            }
+            else if (nForkType == FORK_TYPE_UEE)
+            {
+                vector<unsigned char> vchUee;
+                if (decoder.Get(PROFILE_UEE, vchUee))
+                {
+                    uee.Load(vchUee);
                 }
             }
         }
