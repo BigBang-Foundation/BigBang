@@ -1818,10 +1818,12 @@ int CCoreProtocol::GetUeeRewardTxSize()
 {
     CTransaction tx;
     tx.SetNull();
+    uint256 txidUeeData(uint64(0));
+    tx.vchData.assign(txidUeeData.begin(), txidUeeData.end());
     return GetSerializeSize(tx);
 }
 
-bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const CDestination& destIn, const uint256& hashFork, const int nHeight,
+bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const uint256& hashFork, const int nHeight,
                                       const int64 nBlockTime, const int64 nMoneySupply, CTransaction& txUeeReward)
 {
     const uint256 txidUeeData = txUeeData.GetHash();
@@ -2014,14 +2016,22 @@ bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const CDest
                 ueeRule.nFormula, nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
         return false;
     }
+    if (nRewardAmount <= NEW_MIN_TX_FEE)
+    {
+        StdDebug("Core", "Create uee reward tx: reward is too smal, reward: %ld, height: %d, uee data txid: %s, fork: %s",
+                 nRewardAmount, nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
+        return false;
+    }
 
     txUeeReward.hashAnchor = hashFork;
     txUeeReward.nType = CTransaction::TX_UEE_REWARD;
     txUeeReward.nTimeStamp = nBlockTime;
     txUeeReward.nLockUntil = 0;
-    txUeeReward.sendTo = destIn;
+    txUeeReward.sendTo = txUeeData.sendTo;
     txUeeReward.nTxFee = NEW_MIN_TX_FEE;
-    txUeeReward.nAmount = nRewardAmount;
+    txUeeReward.nAmount = nRewardAmount - txUeeReward.nTxFee;
+    txUeeReward.vchData.assign(txidUeeData.begin(), txidUeeData.end());
+
     return true;
 }
 
@@ -2400,7 +2410,8 @@ Errno CCoreProtocol::VerifyUeeDataTx(const CTransaction& tx, const CDestination&
     auto ptrUeeSign = CTemplate::CreateTemplatePtr(TEMPLATE_UEESIGN, vAdminTemplateData);
     if (ptrUeeSign == nullptr)
     {
-        StdLog("Core", "Verify uee data tx: create uee sign template fail, tx: %s", tx.GetHash().GetHex().c_str());
+        StdLog("Core", "Verify uee data tx: create uee sign template fail, tx: %s, len: %ld, hex: %s",
+               tx.GetHash().GetHex().c_str(), vAdminTemplateData.size(), ToHexString(vAdminTemplateData).c_str());
         return ERR_TRANSACTION_INVALID;
     }
     auto objUeeSign = boost::dynamic_pointer_cast<CTemplateUeeSign>(ptrUeeSign);

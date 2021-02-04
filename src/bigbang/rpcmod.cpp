@@ -713,7 +713,6 @@ CRPCResultPtr CRPCMod::RPCListFork(CRPCParamPtr param)
             displayProfile.strCreatetxid = forkContext.txidEmbedded.GetHex();
             displayProfile.nForkheight = forkContext.nJointHeight;
             displayProfile.strParentfork = forkContext.hashParent.GetHex();
-            displayProfile.strForktype = profile.nForkType == FORK_TYPE_DEFI ? "defi" : "common";
             if (profile.nForkType == FORK_TYPE_DEFI)
             {
                 displayProfile.strForktype = "defi";

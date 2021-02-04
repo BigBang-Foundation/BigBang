@@ -75,7 +75,7 @@ public:
     virtual int GetRefVacantHeight() = 0;
     virtual const std::set<CDestination> GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) = 0;
     virtual int GetUeeRewardTxSize() = 0;
-    virtual bool CreateUeeRewardTx(const CTransaction& txUeeData, const CDestination& destIn, const uint256& hashFork, const int nHeight,
+    virtual bool CreateUeeRewardTx(const CTransaction& txUeeData, const uint256& hashFork, const int nHeight,
                                    const int64 nBlockTime, const int64 nMoneySupply, CTransaction& txUeeReward)
         = 0;
 };

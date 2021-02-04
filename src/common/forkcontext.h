@@ -32,7 +32,7 @@ public:
     int nJointHeight;
     CDestination destOwner;
     int nForkType;
-    std::vector<unsigned char> vchDeFi;
+    std::vector<unsigned char> vchSubParam;
 
 public:
     enum
@@ -65,7 +65,11 @@ public:
         nForkType = profile.nForkType;
         if (nForkType == FORK_TYPE_DEFI)
         {
-            profile.defi.Save(vchDeFi);
+            profile.defi.Save(vchSubParam);
+        }
+        else if (nForkType == FORK_TYPE_UEE)
+        {
+            profile.uee.Save(vchSubParam);
         }
     }
     virtual ~CForkContext() = default;
@@ -86,7 +90,7 @@ public:
         strSymbol.clear();
         destOwner.SetNull();
         nForkType = FORK_TYPE_COMMON;
-        vchDeFi.clear();
+        vchSubParam.clear();
     }
     bool IsNull() const
     {
@@ -137,8 +141,14 @@ public:
         if (profile.nForkType == FORK_TYPE_DEFI)
         {
             CDeFiProfile defi;
-            defi.Load(vchDeFi);
+            defi.Load(vchSubParam);
             profile.defi = defi;
+        }
+        else if (profile.nForkType == FORK_TYPE_UEE)
+        {
+            CUEEProfile uee;
+            uee.Load(vchSubParam);
+            profile.uee = uee;
         }
         return profile;
     }
@@ -160,7 +170,7 @@ public:
                 && a.nJointHeight == b.nJointHeight
                 && a.destOwner == b.destOwner
                 && a.nForkType == b.nForkType
-                && a.vchDeFi == b.vchDeFi);
+                && a.vchSubParam == b.vchSubParam);
     }
     friend bool operator!=(const CForkContext& a, const CForkContext& b)
     {
@@ -188,9 +198,9 @@ protected:
         if (s.GetSize() > 0)
         {
             s.Serialize(nForkType, opt);
-            if (nForkType == FORK_TYPE_DEFI)
+            if (nForkType == FORK_TYPE_DEFI || nForkType == FORK_TYPE_UEE)
             {
-                s.Serialize(vchDeFi, opt);
+                s.Serialize(vchSubParam, opt);
             }
         }
     }

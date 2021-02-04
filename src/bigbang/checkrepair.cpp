@@ -2083,8 +2083,8 @@ bool CCheckBlockWalker::CheckRepairFork()
         {
             CProfile profile = ctxt.GetProfile();
             profile.defi.nMintHeight = mt->second.nMintHeight;
-            ctxt.vchDeFi.clear();
-            profile.defi.Save(ctxt.vchDeFi);
+            ctxt.vchSubParam.clear();
+            profile.defi.Save(ctxt.vchSubParam);
         }
 
         bool fCheckRet = true;
@@ -2199,6 +2199,7 @@ CBlockIndex* CCheckBlockWalker::AddNewIndex(const uint256& hash, const CBlock& b
         if (mi == mapBlockIndex.end())
         {
             StdError("check", "AddNewIndex: insert fail, block: %s", hash.GetHex().c_str());
+            delete pIndexNew;
             return nullptr;
         }
         pIndexNew->phashBlock = &((*mi).first);
@@ -2216,7 +2217,23 @@ CBlockIndex* CCheckBlockWalker::AddNewIndex(const uint256& hash, const CBlock& b
                 pIndexNew->pOrigin = pIndexPrev->pOrigin;
                 nRandBeacon ^= pIndexNew->pOrigin->nRandBeacon;
             }
-            nMoneySupply += pIndexPrev->nMoneySupply;
+            int64 nPrevMoneySupply = pIndexPrev->nMoneySupply;
+            if (pIndexNew->IsOrigin())
+            {
+                CProfile profile;
+                if (!profile.Load(block.vchProof))
+                {
+                    StdError("check", "AddNewIndex: Load profile fail, block: %s", hash.GetHex().c_str());
+                    mapBlockIndex.erase(hash);
+                    delete pIndexNew;
+                    return nullptr;
+                }
+                if (profile.IsIsolated())
+                {
+                    nPrevMoneySupply = 0;
+                }
+            }
+            nMoneySupply += nPrevMoneySupply;
             nChainTrust += pIndexPrev->nChainTrust;
         }
         pIndexNew->nMoneySupply = nMoneySupply;

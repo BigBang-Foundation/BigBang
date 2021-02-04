@@ -17,12 +17,14 @@
 #include "fork.h"
 #include "multisig.h"
 #include "payment.h"
+#include "pledge.h"
 #include "proof.h"
 #include "rpc/auto_protocol.h"
 #include "stream/datastream.h"
 #include "template.h"
 #include "templateid.h"
 #include "transaction.h"
+#include "ueesign.h"
 #include "vote.h"
 #include "weighted.h"
 
@@ -59,8 +61,8 @@ static const CTypeInfoSet setTypeInfo = {
     { TEMPLATE_DEXORDER, new CTemplateDexOrder, "dexorder" },
     { TEMPLATE_DEXMATCH, new CTemplateDexMatch, "dexmatch" },
     { TEMPLATE_DEXBBCMAP, new CTemplateDexBbcMap, "dexbbcmap" },
-    { TEMPLATE_UEESIGN, new CTemplateDexBbcMap, "ueesign" },
-    { TEMPLATE_PLEDGE, new CTemplateDexBbcMap, "pledge" },
+    { TEMPLATE_UEESIGN, new CTemplateUeeSign, "ueesign" },
+    { TEMPLATE_PLEDGE, new CTemplatePledge, "pledge" },
 };
 
 static const CTypeInfo* GetTypeInfoByType(uint16 nTypeIn)

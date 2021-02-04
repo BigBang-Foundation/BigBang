@@ -33,6 +33,7 @@ bool CTemplateUeeSign::GetSignDestination(const CTransaction& tx, const uint256&
 {
     if (!CTemplate::GetSignDestination(tx, hashFork, nHeight, vchSig, setSubDest, vchSubSig))
     {
+        StdLog("CTemplateUeeSign", "GetSignDestination: GetSignDestination fail");
         return false;
     }
     setSubDest.clear();
@@ -50,10 +51,12 @@ bool CTemplateUeeSign::ValidateParam() const
 {
     if (!destOwner.IsPubKey())
     {
+        StdLog("CTemplateUeeSign", "ValidateParam: destOwner is not pubkey");
         return false;
     }
     if (!destAdmin.IsPubKey())
     {
+        StdLog("CTemplateUeeSign", "ValidateParam: destAdmin is not pubkey");
         return false;
     }
     return true;
@@ -78,17 +81,20 @@ bool CTemplateUeeSign::SetTemplateData(const bigbang::rpc::CTemplateRequest& obj
 {
     if (obj.strType != GetTypeName(TEMPLATE_UEESIGN))
     {
+        StdLog("CTemplateUeeSign", "SetTemplateData: GetTypeName fail");
         return false;
     }
 
     if (!destInstance.ParseString(obj.ueesign.strOwner))
     {
+        StdLog("CTemplateUeeSign", "SetTemplateData: ParseString strOwner fail");
         return false;
     }
     destOwner = destInstance;
 
     if (!destInstance.ParseString(obj.ueesign.strAdmin))
     {
+        StdLog("CTemplateUeeSign", "SetTemplateData: ParseString strAdmin fail");
         return false;
     }
     destAdmin = destInstance;
@@ -107,15 +113,3 @@ bool CTemplateUeeSign::VerifyTxSignature(const uint256& hash, const uint16 nType
 {
     return destOwner.VerifyTxSignature(hash, nType, hashAnchor, destTo, vchSig, nForkHeight, fCompleted);
 }
-/*
-bool CTemplateUeeSign::BuildUeeSignTxSignature(const vector<uint8>& vchSignExtraData, const vector<uint8>& vchPreSig, vector<uint8>& vchSig) const
-{
-    vector<uint8_t> vchTempSigData;
-    xengine::CODataStream odsStream(vchTempSigData);
-    odsStream << vchSignExtraData << vchPreSig;
-
-    vchSig = vchData;
-    vchSig.insert(vchSig.end(), vchTempSigData.begin(), vchTempSigData.end());
-    return true;
-}
-*/

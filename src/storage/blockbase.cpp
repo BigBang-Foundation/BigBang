@@ -2286,8 +2286,8 @@ bool CBlockBase::UpdateDeFiMintHeight(const uint256& hashFork, boost::shared_ptr
         // update fork context
         CForkContext ctxt;
         RetrieveForkContext(hashFork, ctxt);
-        ctxt.vchDeFi.clear();
-        newProfile.defi.Save(ctxt.vchDeFi);
+        ctxt.vchSubParam.clear();
+        newProfile.defi.Save(ctxt.vchSubParam);
         if (!dbBlock.AddNewForkContext(ctxt))
         {
             StdError("sht", "add new error!");
@@ -2764,7 +2764,23 @@ CBlockIndex* CBlockBase::AddNewIndex(const uint256& hash, const CBlock& block, u
                 pIndexNew->pOrigin = pIndexPrev->pOrigin;
                 nRandBeacon ^= pIndexNew->pOrigin->nRandBeacon;
             }
-            nMoneySupply += pIndexPrev->nMoneySupply;
+            int64 nPrevMoneySupply = pIndexPrev->nMoneySupply;
+            if (pIndexNew->IsOrigin())
+            {
+                CProfile profile;
+                if (!profile.Load(block.vchProof))
+                {
+                    StdError("CBlockBase", "AddNewIndex: Load profile fail, block: %s", hash.GetHex().c_str());
+                    mapIndex.erase(hash);
+                    delete pIndexNew;
+                    return nullptr;
+                }
+                if (profile.IsIsolated())
+                {
+                    nPrevMoneySupply = 0;
+                }
+            }
+            nMoneySupply += nPrevMoneySupply;
             nChainTrust += pIndexPrev->nChainTrust;
         }
         pIndexNew->nMoneySupply = nMoneySupply;

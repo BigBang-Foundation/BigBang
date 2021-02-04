@@ -613,7 +613,7 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
                 return ERR_TRANSACTION_INVALID;
             }
             CTransaction txReward;
-            if (!pCoreProtocol->CreateUeeRewardTx(block.vtx[i - 1], txContxt.destIn, forkid, block.GetBlockHeight(),
+            if (!pCoreProtocol->CreateUeeRewardTx(block.vtx[i - 1], forkid, block.GetBlockHeight(),
                                                   block.GetBlockTime(), pIndexPrev->GetMoneySupply(), txReward))
             {
                 Log("AddNewBlock verify uee reward tx fail2, txid: %s, block: %s", txid.ToString().c_str(), hash.ToString().c_str());

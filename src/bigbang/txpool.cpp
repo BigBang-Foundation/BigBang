@@ -432,7 +432,7 @@ bool CTxPoolView::AddArrangeBlockTx(vector<CTransaction>& vtx, int64& nTotalTxFe
             {
                 CTransaction txUeeReward;
                 txUeeReward.SetNull();
-                if (pCorePro->CreateUeeRewardTx(tx, ptx->destIn, hashFork, nHeight, nBlockTime, nMoneySupply, txUeeReward))
+                if (pCorePro->CreateUeeRewardTx(tx, hashFork, nHeight, nBlockTime, nMoneySupply, txUeeReward))
                 {
                     vtx.push_back(txUeeReward);
                     nTotalSize += GetSerializeSize(txUeeReward);

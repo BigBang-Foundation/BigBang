@@ -103,15 +103,15 @@ bool CProfile::Save(std::vector<unsigned char>& vchProfile)
 
             if (nForkType == FORK_TYPE_DEFI)
             {
-                vector<unsigned char> vchDeFi;
-                defi.Save(vchDeFi);
-                encoder.Push(PROFILE_DEFI, vchDeFi);
+                vector<unsigned char> vchData;
+                defi.Save(vchData);
+                encoder.Push(PROFILE_DEFI, vchData);
             }
             else if (nForkType == FORK_TYPE_UEE)
             {
-                vector<unsigned char> vchUee;
-                uee.Save(vchUee);
-                encoder.Push(PROFILE_UEE, vchUee);
+                vector<unsigned char> vchData;
+                uee.Save(vchData);
+                encoder.Push(PROFILE_UEE, vchData);
             }
         }
 
@@ -195,18 +195,18 @@ bool CProfile::Load(const vector<unsigned char>& vchProfile)
         {
             if (nForkType == FORK_TYPE_DEFI)
             {
-                vector<unsigned char> vchDeFi;
-                if (decoder.Get(PROFILE_DEFI, vchDeFi))
+                vector<unsigned char> vchData;
+                if (decoder.Get(PROFILE_DEFI, vchData))
                 {
-                    defi.Load(vchDeFi);
+                    defi.Load(vchData);
                 }
             }
             else if (nForkType == FORK_TYPE_UEE)
             {
-                vector<unsigned char> vchUee;
-                if (decoder.Get(PROFILE_UEE, vchUee))
+                vector<unsigned char> vchData;
+                if (decoder.Get(PROFILE_UEE, vchData))
                 {
-                    uee.Load(vchUee);
+                    uee.Load(vchData);
                 }
             }
         }

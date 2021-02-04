@@ -52,7 +52,7 @@ public:
     virtual int GetRefVacantHeight() override;
     virtual const std::set<CDestination> GetDeFiBlacklist(const uint256& hashFork, const int32 nHeight) override;
     virtual int GetUeeRewardTxSize() override;
-    virtual bool CreateUeeRewardTx(const CTransaction& txUeeData, const CDestination& destIn, const uint256& hashFork, const int nHeight,
+    virtual bool CreateUeeRewardTx(const CTransaction& txUeeData, const uint256& hashFork, const int nHeight,
                                    const int64 nBlockTime, const int64 nMoneySupply, CTransaction& txUeeReward) override;
 
 protected:

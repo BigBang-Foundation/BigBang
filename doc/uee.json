@@ -1,0 +1,45 @@
+{
+    "input": {
+        "makeorigin": {
+            "amount": 20000000,
+            "uee": {
+                "maxsupply": 1000000000,
+                "rule": [
+                    {
+                        "rulename": "rule1",
+                        "formula": 1,
+                        "coefficient": 200,
+                        "decayperiodtype": 1,
+                        "decayperiodvalue": 20,
+                        "decayamplitudevalue": 50
+                    },
+                    {
+                        "rulename": "rule2",
+                        "formula": 2,
+                        "coefficient": 500,
+                        "decayperiodtype": 2,
+                        "decayperiodvalue": 2000,
+                        "decayamplitudevalue": 60
+                    }
+                ]
+            },
+            "name": "uee-test",
+            "symbol": "UEEA"
+        },
+        "uee-rule1": {
+            "rule": "rule1",
+            "signaddress": "21g0f96thcqf3qjgybyj0jnyg971c69znwkne9a56q0ydd2p6tzermj4d",
+            "param1": "6601",
+            "param2": "1001",
+            "var1": 200
+        },
+        "uee-rule2": {
+            "rule": "rule2",
+            "signaddress": "21g0f96thcqf3qjgybyj0jnyg971c69znwkne9a56q0ydd2p6tzermj4d",
+            "param1": "6601",
+            "param2": "1001",
+            "var1": 200,
+            "var2": 200
+        }
+    }
+}

@@ -132,14 +132,26 @@ public:
     }
     int64 GetBlockMint(int64 nValueIn) const
     {
-        return (txMint.nAmount - nValueIn);
+        int64 nTotalMint = txMint.nAmount;
+        for (const CTransaction& tx : vtx)
+        {
+            if (tx.IsTxMintTx())
+            {
+                nTotalMint += tx.nAmount;
+                nTotalMint += tx.nTxFee;
+            }
+        }
+        return (nTotalMint - nValueIn);
     }
     int64 GetBlockMint() const
     {
         int64 nTotalTxFee = 0;
         for (const CTransaction& tx : vtx)
         {
-            nTotalTxFee += tx.nTxFee;
+            if (!tx.IsTxMintTx())
+            {
+                nTotalTxFee += tx.nTxFee;
+            }
         }
         return GetBlockMint(nTotalTxFee);
     }
