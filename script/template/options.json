@@ -419,6 +419,35 @@
             "opt": "dnseed",
             "format": "-dnseed=<address>:<port>",
             "desc": "DNSeed address list(<address> can be IPv4 or IPv6 or domain name, default <port>: 9906, IPv6 format: [ip]:port)"
+        },
+        {
+            "name": "fP2PonTLS",
+            "type": "bool",
+            "opt": "p2pontls",
+            "default": true,
+            "format": "-p2pontls",
+            "desc": "Configure access to p2p network going on TLS(default: 1)"
+        },
+        {
+            "name": "strRootCAPath",
+            "type": "string",
+            "opt": "rootcapath",
+            "format": "-rootcapath=<path>",
+            "desc": "Set root CA file path as <path>"
+        },
+        {
+            "name": "strCAPath",
+            "type": "string",
+            "opt": "capath",
+            "format": "-capath=<path>",
+            "desc": "Set CA file path as <path>"
+        },
+        {
+            "name": "strKeyPath",
+            "type": "string",
+            "opt": "keypath",
+            "format": "-keypath=<path>",
+            "desc": "Set private key file path as <path>"
         }
     ]
 }
