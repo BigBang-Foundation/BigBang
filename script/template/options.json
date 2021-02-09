@@ -424,7 +424,7 @@
             "name": "fP2PonTLS",
             "type": "bool",
             "opt": "p2pontls",
-            "default": true,
+            "default": false,
             "format": "-p2pontls",
             "desc": "Configure access to p2p network going on TLS(default: 1)"
         },

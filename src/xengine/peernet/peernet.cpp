@@ -34,17 +34,46 @@ CPeerNet::~CPeerNet()
         delete pGarbagePeer;
         pGarbagePeer = nullptr;
     }
+
+    for (auto i : mapProfile)
+    {
+        delete i.second.pSSLContext;
+    }
+    mapProfile.clear();
 }
 
 void CPeerNet::ConfigNetwork(CPeerNetConfig& config)
 {
     confNetwork = config;
+    CPeerNetProfile profile;
+    if (confNetwork.optSSL.fEnable)
+    {
+        for (auto host : confNetwork.vecService)
+        {
+            boost::system::error_code ec;
+            profile.pSSLContext = new boost::asio::ssl::context(boost::asio::ssl::context::sslv23);
+            if (profile.pSSLContext == nullptr)
+            {
+                Error("Failed to alloc ssl context for %s:%u", host.epListen.address().to_string(ec).c_str(),
+                      host.epListen.port());//todo
+            }
+            if (!confNetwork.optSSL.SetupSSLContext(*profile.pSSLContext))
+            {
+                Error("Failed to setup ssl context for %s:%u", host.epListen.address().to_string(ec).c_str(),
+                      host.epListen.port());//todo
+                delete profile.pSSLContext;
+            }
+
+            mapProfile[host.epListen] = profile;
+        }
+    }
 }
 
 void CPeerNet::HandlePeerClose(CPeer* pPeer)
 {
     RemovePeer(pPeer, CEndpointManager::HOST_CLOSE);
 }
+
 void CPeerNet::HandlePeerViolate(CPeer* pPeer)
 {
     AddProtocolInvalidPeer(pPeer);
@@ -549,6 +578,24 @@ bool CPeerNet::HandleEvent(CEventPeerNetClose& eventClose)
     }
     RemovePeer(pPeer, eventClose.data);
     return true;
+}
+
+CIOClient* CPeerNet::CreateIOClient(CIOContainer* pContainer)
+{
+    map<tcp::endpoint, CPeerNetProfile>::iterator it;
+    it = mapProfile.find(pContainer->GetServiceEndpoint());
+    if (confNetwork.optSSL.fEnable && (*it).second.pSSLContext != nullptr)
+    {
+        return new CSSLClient(pContainer, GetIoService(), *(*it).second.pSSLContext);
+    }
+    else if (!confNetwork.optSSL.fEnable)
+    {
+        return CIOProc::CreateIOClient(pContainer);
+    }
+    else
+    {
+        return nullptr;
+    }
 }
 
 } // namespace xengine

@@ -327,7 +327,7 @@ bool CIOOutBound::ConnectTo(const tcp::endpoint& epRemote, int64 nTimeout)
 bool CIOOutBound::ConnectToByBindAddress(const tcp::endpoint& epLocal, const tcp::endpoint& epRemote, int64 nTimeout)
 {
     CIOClient* pClient = ClientAlloc();
-    if (pClient == NULL)
+    if (pClient == nullptr)
     {
         return false;
     }
@@ -602,6 +602,47 @@ void CIOSSLOutBound::HandleConnect(CIOClient* pClient, const tcp::endpoint epRem
         }
         pIOProc->ClientFailToConnect(epRemote);
     }
+}
+
+CIOSSLInBound::CIOSSLInBound(CIOProc* pIOProcIn)
+    : CIOContainer(pIOProcIn), acceptorService(pIOProcIn->GetIoService()), nAcceptCount(0)
+{
+}
+
+CIOSSLInBound::~CIOSSLInBound()
+{
+    acceptorService.close();
+}
+bool CIOSSLInBound::Invoke(const tcp::endpoint& epListen, std::size_t nMaxConnection, const vector<std::string>& vAllowMask)
+{
+    return false;
+}
+
+void CIOSSLInBound::Halt()
+{
+}
+
+const boost::asio::ip::tcp::endpoint CIOSSLInBound::GetServiceEndpoint()
+{
+    return CIOContainer::GetServiceEndpoint();
+}
+
+//void CIOSSLInBound::IOInAccept()
+//{
+//}
+
+bool CIOSSLInBound::BuildWhiteList(const vector<std::string>& vAllowMask)
+{
+    return false;
+}
+
+bool CIOSSLInBound::IsAllowedRemote(const tcp::endpoint& ep)
+{
+    return false;
+}
+
+void CIOSSLInBound::HandleAccept(CIOClient* pClient, const boost::system::error_code& err)
+{
 }
 
 } // namespace xengine

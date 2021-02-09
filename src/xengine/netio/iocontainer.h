@@ -123,6 +123,30 @@ public:
     std::string strPeerName;
 };
 
+class CIOSSLInBound : public CIOContainer
+{
+public:
+    CIOSSLInBound(CIOProc* pIOProcIn, boost::asio::ip::tcp::acceptor acceptorService);
+    CIOSSLInBound(CIOProc* pIOProcIn);
+    ~CIOSSLInBound();
+    bool Invoke(const boost::asio::ip::tcp::endpoint& epListen, std::size_t nMaxConnection,
+                const std::vector<std::string>& vAllowMask = std::vector<std::string>());
+    void Halt();
+    const boost::asio::ip::tcp::endpoint GetServiceEndpoint() override;
+//    void IOInAccept() override;
+
+protected:
+    bool BuildWhiteList(const std::vector<std::string>& vAllowMask);
+    bool IsAllowedRemote(const boost::asio::ip::tcp::endpoint& ep);
+    void HandleAccept(CIOClient* pClient, const boost::system::error_code& err);
+
+protected:
+    boost::asio::ip::tcp::acceptor acceptorService;
+    boost::asio::ip::tcp::endpoint epService;
+    std::vector<boost::regex> vWhiteList;
+    int nAcceptCount;
+};
+
 class CIOSSLOutBound : public CIOContainer
 {
 public:

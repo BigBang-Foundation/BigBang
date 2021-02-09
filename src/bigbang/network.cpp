@@ -6,11 +6,14 @@
 
 #include <boost/any.hpp>
 #include <boost/bind.hpp>
+#include <boost/filesystem.hpp>
 
 #include "version.h"
 
 using namespace std;
 using namespace xengine;
+using namespace boost::filesystem;
+
 using boost::asio::ip::tcp;
 
 namespace bigbang
@@ -40,6 +43,28 @@ bool CNetwork::HandleInitialize()
               FormatSubVersion(), !NetworkConfig()->vConnectTo.empty(), pCoreProtocol->GetGenesisBlockHash());
 
     CPeerNetConfig config;
+    config.optSSL.fEnable = NetworkConfig()->fP2PonTLS;
+    if (NetworkConfig()->fP2PonTLS)
+    {
+        if (NetworkConfig()->strRootCAPath.empty() || NetworkConfig()->strCAPath.empty() || NetworkConfig()->strKeyPath.empty())
+        {
+            Error("Option of P2P on TLS set to enable but no settings are provided.");
+            return false;
+        }
+        path rootCADir(NetworkConfig()->strRootCAPath);
+        path CADir(NetworkConfig()->strCAPath);
+        path keyDir(NetworkConfig()->strKeyPath);
+        if (!exists(rootCADir) || !exists(CADir) || !exists(keyDir))
+        {
+            Error("Option of P2P on TLS set to enable but certificate(s) do not exist.");
+            return false;
+        }
+        config.optSSL.fVerifyPeer = true;
+        config.optSSL.strPathCA = NetworkConfig()->strRootCAPath;
+        config.optSSL.strPathCert = NetworkConfig()->strCAPath;
+        config.optSSL.strPathPK = NetworkConfig()->strKeyPath;
+    }
+
     if (NetworkConfig()->fListen || NetworkConfig()->fListen4)
     {
         if (NetworkConfig()->strListenAddressv4.empty())

@@ -34,11 +34,22 @@ public:
     std::size_t nMaxInBounds;
 };
 
+class CPeerNetProfile
+{
+public:
+    CPeerNetProfile()
+        : pSSLContext(nullptr) {}
+
+public:
+    boost::asio::ssl::context* pSSLContext;
+};
+
 class CPeerNetConfig
 {
 public:
     std::vector<CPeerService> vecService;
     std::vector<CNetHost> vecNode;
+    CIOSSLOption optSSL;
     CNetHost gateWayAddr;
     std::size_t nMaxOutBounds;
     unsigned short nPortDefault;
@@ -67,6 +78,7 @@ protected:
     bool ClientConnected(CIOClient* pClient) override;
     void ClientFailToConnect(const boost::asio::ip::tcp::endpoint& epRemote) override;
     void HostResolved(const CNetHost& host, const boost::asio::ip::tcp::endpoint& ep) override;
+    CIOClient* CreateIOClient(CIOContainer* pContainer) override;
     CPeer* AddNewPeer(CIOClient* pClient, bool fInBound);
     void RewardPeer(CPeer* pPeer, const CEndpointManager::Bonus& bonus);
     void RemovePeer(CPeer* pPeer, const CEndpointManager::CloseReason& reason);
@@ -105,6 +117,7 @@ protected:
     CPeerNetConfig confNetwork;
     boost::asio::ip::address localIP;
     std::set<boost::asio::ip::address> setProtocolInvalidIP;
+    std::map<boost::asio::ip::tcp::endpoint, CPeerNetProfile> mapProfile;
 
 private:
     CEndpointManager epMngr;
