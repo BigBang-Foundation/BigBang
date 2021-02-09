@@ -151,7 +151,7 @@ void CPeerNet::HeartBeat()
                 }
                 else
                 {
-                    fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);
+                    fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);    //todo
                 }
             }
             else if (epRemote.address().is_v6() && !confNetwork.strSocketBindLocalIpV6.empty())
@@ -165,12 +165,19 @@ void CPeerNet::HeartBeat()
                 }
                 else
                 {
-                    fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);
+                    fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);    //todo
                 }
             }
             else
             {
-                fRet = Connect(epRemote, CONNECT_TIMEOUT);
+                if (confNetwork.optSSL.fEnable)
+                {
+                    fRet = SSLConnect(epRemote, CONNECT_TIMEOUT, confNetwork.optSSL);
+                }
+                else
+                {
+                    fRet = Connect(epRemote, CONNECT_TIMEOUT);
+                }
             }
             if (!fRet)
             {
@@ -584,17 +591,13 @@ CIOClient* CPeerNet::CreateIOClient(CIOContainer* pContainer)
 {
     map<tcp::endpoint, CPeerNetProfile>::iterator it;
     it = mapProfile.find(pContainer->GetServiceEndpoint());
-    if (confNetwork.optSSL.fEnable && (*it).second.pSSLContext != nullptr)
+    if ( it != mapProfile.end() && confNetwork.optSSL.fEnable && (*it).second.pSSLContext != nullptr)
     {
         return new CSSLClient(pContainer, GetIoService(), *(*it).second.pSSLContext);
     }
-    else if (!confNetwork.optSSL.fEnable)
-    {
-        return CIOProc::CreateIOClient(pContainer);
-    }
     else
     {
-        return nullptr;
+        return CIOProc::CreateIOClient(pContainer);
     }
 }
 

@@ -153,7 +153,6 @@ bool CIOInBound::Invoke(const tcp::endpoint& epListen, size_t nMaxConnection, co
         acceptorService.bind(epListen, ec);
         if (ec)
         {
-            boost::system::error_code ec;
             throw runtime_error((string("IOInBound tcp bind fail, addr: ") + epListen.address().to_string(ec) + string(":") + to_string(epListen.port()) + string(", cause: ") + ec.message()).c_str());
         }
 

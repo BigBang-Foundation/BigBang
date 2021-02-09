@@ -120,7 +120,7 @@ bool CIOProc::HandleInvoke()
 {
     if (!ioOutBound.Invoke(GetMaxOutBoundCount()))
     {
-        Error("Failed to invoke IOOutBoun");
+        Error("Failed to invoke IOOutBound");
         return false;
     }
 
