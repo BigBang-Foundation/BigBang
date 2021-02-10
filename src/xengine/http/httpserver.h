@@ -44,7 +44,7 @@ public:
 public:
     IIOModule* pIOModule;
     boost::asio::ssl::context* pSSLContext;
-    std::map<std::string, std::string> mapAuthrizeUser;
+    std::map<std::string, std::string> mapAuthorizeUser;
     std::vector<std::string> vAllowMask;
     unsigned int nMaxConnections;
 };

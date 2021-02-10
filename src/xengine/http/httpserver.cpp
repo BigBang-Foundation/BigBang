@@ -189,7 +189,7 @@ bool CHttpServer::CreateProfile(const CHttpHostConfig& confHost)
     {
         string strAuthBase64;
         util.Base64Encode((*it).first + ":" + (*it).second, strAuthBase64);
-        profile.mapAuthrizeUser[string("Basic ") + strAuthBase64] = (*it).first;
+        profile.mapAuthorizeUser[string("Basic ") + strAuthBase64] = (*it).first;
     }
 
     if (confHost.optSSL.fEnable)
@@ -307,11 +307,11 @@ void CHttpServer::HandleClientRecv(CHttpClient* pHttpClient, MAPIKeyValue& mapHe
     ssPayload >> *pEventHttpReq;
 
     req.strUser = "";
-    if (!pHttpProfile->mapAuthrizeUser.empty())
+    if (!pHttpProfile->mapAuthorizeUser.empty())
     {
         map<string, string>::iterator it;
-        it = pHttpProfile->mapAuthrizeUser.find(mapHeader["authorization"]);
-        if (it == pHttpProfile->mapAuthrizeUser.end())
+        it = pHttpProfile->mapAuthorizeUser.find(mapHeader["authorization"]);
+        if (it == pHttpProfile->mapAuthorizeUser.end())
         {
             RespondError(pHttpClient, 401);
             delete pEventHttpReq;
