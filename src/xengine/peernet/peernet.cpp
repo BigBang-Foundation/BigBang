@@ -151,7 +151,14 @@ void CPeerNet::HeartBeat()
                 }
                 else
                 {
-                    fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);    //todo
+                    if (confNetwork.optSSL.fEnable)
+                    {
+                        fRet = SSLConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT, confNetwork.optSSL);
+                    }
+                    else
+                    {
+                        fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);
+                    }
                 }
             }
             else if (epRemote.address().is_v6() && !confNetwork.strSocketBindLocalIpV6.empty())
@@ -165,7 +172,14 @@ void CPeerNet::HeartBeat()
                 }
                 else
                 {
-                    fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);    //todo
+                    if (confNetwork.optSSL.fEnable)
+                    {
+                        fRet = SSLConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT, confNetwork.optSSL);
+                    }
+                    else
+                    {
+                        fRet = ConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT);
+                    }
                 }
             }
             else
