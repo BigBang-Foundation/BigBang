@@ -5,7 +5,6 @@
 #include "ioproc.h"
 
 #include <boost/bind.hpp>
-#include <xengine.h>
 
 using namespace std;
 using boost::asio::ip::tcp;

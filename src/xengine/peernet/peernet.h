@@ -60,8 +60,8 @@ public:
 class CPeerNet : public CIOProc, virtual public CPeerEventListener
 {
 public:
-    CPeerNet(const std::string& ownKeyIn);
-    ~CPeerNet();
+    explicit CPeerNet(const std::string& ownKeyIn);
+    ~CPeerNet() override;
     void ConfigNetwork(CPeerNetConfig& config);
     void HandlePeerClose(CPeer* pPeer);
     void HandlePeerViolate(CPeer* pPeer);
@@ -74,11 +74,11 @@ protected:
     void HeartBeat() override;
     void Timeout(uint64 nNonce, uint32 nTimerId, const std::string& strFunctionIn) override;
     std::size_t GetMaxOutBoundCount() override;
+    CIOClient* CreateIOClient(CIOContainer* pContainer) override;
     bool ClientAccepted(const boost::asio::ip::tcp::endpoint& epService, CIOClient* pClient, std::string& strFailCause) override;
     bool ClientConnected(CIOClient* pClient) override;
     void ClientFailToConnect(const boost::asio::ip::tcp::endpoint& epRemote) override;
     void HostResolved(const CNetHost& host, const boost::asio::ip::tcp::endpoint& ep) override;
-    CIOClient* CreateIOClient(CIOContainer* pContainer) override;
     CPeer* AddNewPeer(CIOClient* pClient, bool fInBound);
     void RewardPeer(CPeer* pPeer, const CEndpointManager::Bonus& bonus);
     void RemovePeer(CPeer* pPeer, const CEndpointManager::CloseReason& reason);

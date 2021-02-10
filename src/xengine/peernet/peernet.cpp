@@ -35,7 +35,7 @@ CPeerNet::~CPeerNet()
         pGarbagePeer = nullptr;
     }
 
-    for (auto i : mapProfile)
+    for (const auto& i : mapProfile)
     {
         delete i.second.pSSLContext;
     }
@@ -54,13 +54,13 @@ void CPeerNet::ConfigNetwork(CPeerNetConfig& config)
             profile.pSSLContext = new boost::asio::ssl::context(boost::asio::ssl::context::sslv23);
             if (profile.pSSLContext == nullptr)
             {
-                Error("Failed to alloc ssl context for %s:%u", host.epListen.address().to_string(ec).c_str(),
-                      host.epListen.port());//todo
+                Error("Failed to alloc ssl context for [%s:%u]", host.epListen.address().to_string(ec).c_str(),
+                      host.epListen.port());
             }
             if (!confNetwork.optSSL.SetupSSLContext(*profile.pSSLContext))
             {
-                Error("Failed to setup ssl context for %s:%u", host.epListen.address().to_string(ec).c_str(),
-                      host.epListen.port());//todo
+                Error("Failed to setup ssl context for [%s:%u]", host.epListen.address().to_string(ec).c_str(),
+                      host.epListen.port());
                 delete profile.pSSLContext;
             }
 
@@ -209,6 +209,20 @@ void CPeerNet::Timeout(uint64 nNonce, uint32 nTimerId, const std::string& strFun
 std::size_t CPeerNet::GetMaxOutBoundCount()
 {
     return confNetwork.nMaxOutBounds;
+}
+
+CIOClient* CPeerNet::CreateIOClient(CIOContainer* pContainer)
+{
+    map<tcp::endpoint, CPeerNetProfile>::iterator it;
+    it = mapProfile.find(pContainer->GetServiceEndpoint());
+    if ( it != mapProfile.end() && confNetwork.optSSL.fEnable && (*it).second.pSSLContext != nullptr)
+    {
+        return new CSSLClient(pContainer, GetIoService(), *(*it).second.pSSLContext);
+    }
+    else
+    {
+        return CIOProc::CreateIOClient(pContainer);
+    }
 }
 
 bool CPeerNet::ClientAccepted(const tcp::endpoint& epService, CIOClient* pClient, std::string& strFailCause)
@@ -585,20 +599,6 @@ bool CPeerNet::HandleEvent(CEventPeerNetClose& eventClose)
     }
     RemovePeer(pPeer, eventClose.data);
     return true;
-}
-
-CIOClient* CPeerNet::CreateIOClient(CIOContainer* pContainer)
-{
-    map<tcp::endpoint, CPeerNetProfile>::iterator it;
-    it = mapProfile.find(pContainer->GetServiceEndpoint());
-    if ( it != mapProfile.end() && confNetwork.optSSL.fEnable && (*it).second.pSSLContext != nullptr)
-    {
-        return new CSSLClient(pContainer, GetIoService(), *(*it).second.pSSLContext);
-    }
-    else
-    {
-        return CIOProc::CreateIOClient(pContainer);
-    }
 }
 
 } // namespace xengine

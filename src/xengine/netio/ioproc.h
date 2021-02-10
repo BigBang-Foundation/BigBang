@@ -107,7 +107,6 @@ private:
     boost::asio::io_service ioService;
     boost::asio::io_service::strand ioStrand;
     boost::asio::ip::tcp::resolver resolverHost;
-    bool fTLS;
     std::map<boost::asio::ip::tcp::endpoint, CIOInBound*> mapService;
     CIOOutBound ioOutBound;
     CIOSSLOutBound ioSSLOutBound;
