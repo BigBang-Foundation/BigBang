@@ -426,28 +426,28 @@
             "opt": "p2pontls",
             "default": false,
             "format": "-p2pontls",
-            "desc": "Configure access to p2p network going on TLS(default: 1)"
+            "desc": "Configure access to P2P network whether or going on TLS(default: false)"
         },
         {
             "name": "strRootCAPath",
             "type": "string",
             "opt": "rootcapath",
             "format": "-rootcapath=<path>",
-            "desc": "Set root CA file path as <path>"
+            "desc": "Set root CA file path as <path> for node to join P2P network"
         },
         {
             "name": "strCAPath",
             "type": "string",
             "opt": "capath",
             "format": "-capath=<path>",
-            "desc": "Set CA file path as <path>"
+            "desc": "Set CA file path as <path> for node to join P2P network"
         },
         {
             "name": "strKeyPath",
             "type": "string",
             "opt": "keypath",
             "format": "-keypath=<path>",
-            "desc": "Set private key file path as <path>"
+            "desc": "Set private key file path as <path> for node to join P2P network"
         }
     ]
 }
