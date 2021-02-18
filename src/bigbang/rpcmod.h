@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -9,6 +9,8 @@
 #include <boost/function.hpp>
 #include <boost/regex.hpp>
 #include <boost/thread.hpp>
+#include <boost/thread/locks.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <unordered_map>
 
 #include "base.h"
@@ -108,6 +110,7 @@ private:
     rpc::CRPCResultPtr RPCGetForkHeight(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetVotes(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListDelegate(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCGetDeFiRelation(rpc::CRPCParamPtr param);
     /* Wallet */
     rpc::CRPCResultPtr RPCListKey(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCGetNewKey(rpc::CRPCParamPtr param);
@@ -150,7 +153,7 @@ private:
     rpc::CRPCResultPtr RPCAesDecrypt(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListUnspent(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCListUnspentOld(rpc::CRPCParamPtr param);
-    rpc::CRPCResultPtr RPCGetDeFiRelation(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCReverseHex(rpc::CRPCParamPtr param);
     /* Mint */
     rpc::CRPCResultPtr RPCGetWork(rpc::CRPCParamPtr param);
     rpc::CRPCResultPtr RPCSubmitWork(rpc::CRPCParamPtr param);
@@ -162,6 +165,9 @@ private:
     rpc::CRPCResultPtr RPCGetBlocks(rpc::CRPCParamPtr param);
     /*call LWS Server for test PushBlock*/
     rpc::CRPCResultPtr RPCPushBlock(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCPushTxEvent(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCGetFullTx(rpc::CRPCParamPtr param);
+    rpc::CRPCResultPtr RPCGetTxEvents(rpc::CRPCParamPtr param);
 
 protected:
     // bool CalcForkPoints(const uint256& forkHash);
@@ -199,12 +205,28 @@ public:
         CBlockEx block;
     } PushBlockMessage;
 
+    typedef struct _PushTxEventMessage
+    {
+        LiveClientInfo client;
+        uint64 nNonce;
+        int nReqId;
+        uint256 hashFork;
+        CDestination destFrom;
+        CTransaction tx;
+        uint64 nEventId;
+        uint8 nState;
+    } PushTxMessage;
+
     CPusher();
     ~CPusher();
     void InsertNewClient(const std::string& ipport, const LiveClientInfo& client) override;
     bool HandleEvent(xengine::CEventHttpGetRsp& event) override;
     bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
-    //bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
+    bool HandleEvent(CRPCModEventUpdateTx& event) override;
+    int64 GetNonce() const override;
+    int64 GetFixedNonce() const override;
+    bool GetLatestEventId(const uint256& hashFork, int64& nEventId) const override;
+    bool GetTxEvents(const uint256& hashFork, int64 nStartEventId, int64 num, std::vector<CRPCModEventUpdateTx>& events) override;
 
 protected:
     const CRPCServerConfig* RPCServerConfig();
@@ -214,22 +236,28 @@ protected:
     bool HandleInvoke() override;
     void HandleHalt() override;
 
-    bool CallRPC(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const uint256& hashFork, const CBlockEx& block, int nReqId);
-    bool GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, uint64 nNonce, const std::string& content, std::string& response);
+    bool CallRPC(const PushBlockMessage& message);
+    bool CallRPC(const PushTxMessage& message);
+    bool GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, const std::string& content, std::string& response);
     rpc::Cblockdatadetail BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block);
     void RemoveClients(const std::vector<std::string>& clients);
     void RemoveClient(const std::string& client);
     void RemoveClient(uint64 nNonce);
 
     void PushBlock(const PushBlockMessage& message);
+    void PushTransaction(const PushTxMessage& message);
 
 protected:
     ICoreProtocol* pCoreProtocol;
     IService* pService;
 
 private:
-    boost::mutex mMutex;
-    std::map<std::string, LiveClientInfo> mapRPCClient; //  IP:PORT -> LiveClientInfo
+    mutable boost::shared_mutex mMutex;
+    std::map<std::string, LiveClientInfo> mapRPCClient;                  //  IP:PORT -> LiveClientInfo
+    std::map<uint256, std::list<CRPCModEventUpdateTx>> mapTxEventStream; // hashFork -> Tx Event Stream
+    std::map<uint256, std::set<int64>> mapTxEventId;                     // hashFork -> Tx Event ID
+    int64 nNonce;
+    const int64 nFixedNonce;
 };
 
 } // namespace bigbang

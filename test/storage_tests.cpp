@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -25,7 +25,7 @@ BOOST_AUTO_TEST_CASE(filetest)
     cout << GetLocalTime() << "  file test.........." << endl;
     int64 nBeginTime = GetTime();
 
-    std::string fullpath = boost::filesystem::initial_path<boost::filesystem::path>().string() + "/test/block/block_000001.dat";  
+    std::string fullpath = boost::filesystem::initial_path<boost::filesystem::path>().string() + "/test/block/block_000001.dat";
     std::cout << "block file path: " << fullpath << std::endl;
 
     try
@@ -104,9 +104,9 @@ BOOST_AUTO_TEST_CASE(fileread)
 {
     cout << GetLocalTime() << "  start...." << endl;
 
-    std::string fullpath = boost::filesystem::initial_path<boost::filesystem::path>().string() + "/test/block/block_000001.dat";  
+    std::string fullpath = boost::filesystem::initial_path<boost::filesystem::path>().string() + "/test/block/block_000001.dat";
     std::cout << "block file path: " << fullpath << std::endl;
-    
+
     FILE* f = fopen(fullpath.c_str(), "rb");
     BOOST_CHECK(f != nullptr);
     fseek(f, 0, SEEK_END);

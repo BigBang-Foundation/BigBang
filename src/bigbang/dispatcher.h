@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -34,7 +34,6 @@ protected:
     void ActivateFork(const uint256& hashFork, const uint64& nNonce);
     bool ProcessForkTx(const uint256& txid, const CTransaction& tx);
     void CheckSubForkLastBlock(const uint256& hashFork);
-    void SyncForkHeight(int nPrimaryHeight);
 
 protected:
     ICoreProtocol* pCoreProtocol;

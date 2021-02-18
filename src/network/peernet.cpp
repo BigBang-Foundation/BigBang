@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -448,8 +448,9 @@ bool CBbPeerNet::HandlePeerRecvMessage(CPeer* pPeer, int nChannel, int nCommand,
                 {
                     CAddress& addr = vAddr[i];
                     tcp::endpoint ep;
+                    boost::system::error_code ec;
                     addr.ssEndpoint.GetEndpoint(ep);
-                    if ((i == 0 && ep.address().to_string() == NODE_DEFAULT_GATEWAY) || (fHaveGateway && ep == epGateway))
+                    if ((i == 0 && ep.address().to_string(ec) == NODE_DEFAULT_GATEWAY) || (fHaveGateway && ep == epGateway))
                     {
                         continue;
                     }
@@ -458,7 +459,7 @@ bool CBbPeerNet::HandlePeerRecvMessage(CPeer* pPeer, int nChannel, int nCommand,
                         && !setDNSeed.count(ep)
                         && !setProtocolInvalidIP.count(ep.address()))
                     {
-                        AddNewNode(ep, ep.address().to_string(), boost::any(addr.nService));
+                        AddNewNode(ep, ep.address().to_string(ec), boost::any(addr.nService));
                     }
                 }
 

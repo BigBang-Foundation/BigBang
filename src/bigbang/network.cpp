@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -49,8 +49,14 @@ bool CNetwork::HandleInitialize()
         }
         else
         {
-            config.vecService.push_back(CPeerService(tcp::endpoint(boost::asio::ip::address::from_string(NetworkConfig()->strListenAddressv4), NetworkConfig()->nPort),
-                                                     NetworkConfig()->nMaxInBounds));
+            boost::system::error_code ec;
+            boost::asio::ip::address addr(boost::asio::ip::address_v4::from_string(NetworkConfig()->strListenAddressv4, ec));
+            if (ec)
+            {
+                Error("strListenAddressv4 param error, addr: %s, err: %s", NetworkConfig()->strListenAddressv4.c_str(), ec.message().c_str());
+                return false;
+            }
+            config.vecService.push_back(CPeerService(tcp::endpoint(addr, NetworkConfig()->nPort), NetworkConfig()->nMaxInBounds));
             config.strSocketBindLocalIpV4 = NetworkConfig()->strListenAddressv4;
         }
     }
@@ -58,13 +64,18 @@ bool CNetwork::HandleInitialize()
     {
         if (NetworkConfig()->strListenAddressv6.empty())
         {
-            config.vecService.push_back(CPeerService(tcp::endpoint(tcp::v6(), NetworkConfig()->nPort),
-                                                     NetworkConfig()->nMaxInBounds));
+            config.vecService.push_back(CPeerService(tcp::endpoint(tcp::v6(), NetworkConfig()->nPort), NetworkConfig()->nMaxInBounds));
         }
         else
         {
-            config.vecService.push_back(CPeerService(tcp::endpoint(boost::asio::ip::address::from_string(NetworkConfig()->strListenAddressv6), NetworkConfig()->nPort),
-                                                     NetworkConfig()->nMaxInBounds));
+            boost::system::error_code ec;
+            boost::asio::ip::address addr(boost::asio::ip::address_v6::from_string(NetworkConfig()->strListenAddressv6, ec));
+            if (ec)
+            {
+                Error("strListenAddressv6 param error, addr: %s, err: %s", NetworkConfig()->strListenAddressv6.c_str(), ec.message().c_str());
+                return false;
+            }
+            config.vecService.push_back(CPeerService(tcp::endpoint(addr, NetworkConfig()->nPort), NetworkConfig()->nMaxInBounds));
             config.strSocketBindLocalIpV6 = NetworkConfig()->strListenAddressv6;
         }
     }

@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -18,6 +18,7 @@
 #include "crypto.h"
 #include "destination.h"
 #include "error.h"
+#include "event.h"
 #include "key.h"
 #include "param.h"
 #include "peer.h"
@@ -63,6 +64,7 @@ public:
     virtual bool IsDposHeight(int height) = 0;
     virtual bool IsDPoSNewTrustHeight(int height) = 0;
     virtual bool IsNewDiffPowHeight(int height) = 0;
+    virtual bool IsNewDeFiRewardHeight(int height) = 0;
     virtual bool DPoSConsensusCheckRepeated(int height) = 0;
     virtual int64 GetPrimaryMintWorkReward(const CBlockIndex* pIndexPrev) = 0;
     virtual void GetDelegatedBallot(const uint256& nAgreement, const std::size_t nWeight, const std::map<CDestination, size_t>& mapBallot,
@@ -466,13 +468,18 @@ public:
         bool fSSL;
         std::string strHost;
         int nPort;
-        std::string strURL;
+        std::string strBlockURL;
+        std::string strTxURL;
         std::set<uint256> registerForks;
     } LiveClientInfo;
 
     IPusher()
       : IIOModule("pusher") {}
     virtual void InsertNewClient(const std::string& ipport, const LiveClientInfo& client) = 0;
+    virtual int64 GetNonce() const = 0;
+    virtual int64 GetFixedNonce() const = 0;
+    virtual bool GetLatestEventId(const uint256& hashFork, int64& nEventId) const = 0;
+    virtual bool GetTxEvents(const uint256& hashFork, int64 nStartEventId, int64 num, std::vector<CRPCModEventUpdateTx>& events) = 0;
 };
 
 class IRecovery : public xengine::IBase

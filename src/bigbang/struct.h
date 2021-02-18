@@ -1,4 +1,4 @@
-/// Copyright (c) 2019-2020 The Bigbang developers
+/// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -187,6 +187,7 @@ public:
     void SetNull()
     {
         hashFork = 0;
+        opCode = 0;
     }
     bool IsNull() const
     {
@@ -194,6 +195,7 @@ public:
     }
 
 public:
+    uint8 opCode;
     uint256 hashFork;
     int64 nChange;
     CTransaction txUpdate;

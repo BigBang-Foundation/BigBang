@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -203,7 +203,7 @@ Errno CDispatcher::AddNewBlock(const CBlock& block, uint64 nNonce)
         return ERR_SYS_DATABASE_ERROR;
     }
 
-    if (!block.IsOrigin() && (!block.IsVacant() || pCoreProtocol->IsRefVacantHeight(block.GetBlockHeight())))
+    if (!block.IsOrigin())
     {
         pNetChannel->BroadcastBlockInv(updateBlockChain.hashFork, block.GetHash());
         pDataStat->AddP2pSynSendStatData(updateBlockChain.hashFork, 1, block.vtx.size());
@@ -271,11 +271,11 @@ Errno CDispatcher::AddNewTx(const CTransaction& tx, uint64 nNonce)
 
     CAssembledTx assembledTx(tx, -1, destIn, nValueIn);
 
-    CTransactionUpdate updateTransaction;
-    updateTransaction.hashFork = hashFork;
-    updateTransaction.txUpdate = tx;
-    updateTransaction.nChange = assembledTx.GetChange();
-    pService->NotifyTransactionUpdate(updateTransaction);
+    // CTransactionUpdate updateTransaction;
+    // updateTransaction.hashFork = hashFork;
+    // updateTransaction.txUpdate = tx;
+    // updateTransaction.nChange = assembledTx.GetChange();
+    // pService->NotifyTransactionUpdate(updateTransaction);
 
     if (!nNonce)
     {
@@ -387,11 +387,6 @@ void CDispatcher::UpdatePrimaryBlock(const CBlock& block, const CBlockChainUpdat
         pBlockMakerUpdate->data.nMintType = block.txMint.nType;
         pBlockMaker->PostEvent(pBlockMakerUpdate);
     }
-
-    if (!pCoreProtocol->IsRefVacantHeight(updateBlockChain.nLastBlockHeight - 1))
-    {
-        SyncForkHeight(updateBlockChain.nLastBlockHeight);
-    }
 }
 
 void CDispatcher::ActivateFork(const uint256& hashFork, const uint64& nNonce)
@@ -479,7 +474,7 @@ void CDispatcher::CheckSubForkLastBlock(const uint256& hashFork)
 
         for (auto& block : updateBlockChain.vBlockAddNew)
         {
-            if (!block.IsOrigin() && (!block.IsVacant() || pCoreProtocol->IsRefVacantHeight(block.GetBlockHeight())))
+            if (!block.IsOrigin())
             {
                 pNetChannel->BroadcastBlockInv(updateBlockChain.hashFork, block.GetHash());
                 pDataStat->AddP2pSynSendStatData(updateBlockChain.hashFork, 1, block.vtx.size());
@@ -497,46 +492,6 @@ void CDispatcher::CheckSubForkLastBlock(const uint256& hashFork)
         for (const uint256& hashFork : vDeactive)
         {
             pNetChannel->UnsubscribeFork(hashFork);
-        }
-    }
-}
-
-void CDispatcher::SyncForkHeight(int nPrimaryHeight)
-{
-    map<uint256, CForkStatus> mapForkStatus;
-    pBlockChain->GetValidForkStatus(mapForkStatus);
-    for (map<uint256, CForkStatus>::iterator it = mapForkStatus.begin(); it != mapForkStatus.end(); ++it)
-    {
-        const uint256& hashFork = (*it).first;
-        CForkStatus& status = (*it).second;
-        if (!pNetChannel->IsForkSynchronized(hashFork))
-        {
-            continue;
-        }
-
-        vector<int64> vTimeStamp;
-        int nDepth = nPrimaryHeight - status.nLastBlockHeight;
-
-        if (nDepth > 1 && hashFork != pCoreProtocol->GetGenesisBlockHash()
-            && pBlockChain->GetLastBlockTime(pCoreProtocol->GetGenesisBlockHash(), nDepth, vTimeStamp))
-        {
-            uint256 hashPrev = status.hashLastBlock;
-            for (int nHeight = status.nLastBlockHeight + 1; nHeight < nPrimaryHeight; nHeight++)
-            {
-                CBlock block;
-                block.nType = CBlock::BLOCK_VACANT;
-                block.hashPrev = hashPrev;
-                block.nTimeStamp = vTimeStamp[nPrimaryHeight - nHeight];
-
-                Errno err = AddNewBlock(block);
-                if (err != OK && err != ERR_ALREADY_HAVE)
-                {
-                    StdError("Dispatcher", "SyncForkHeight: Add new block failed, error: [%d] %s, block: %s",
-                             err, ErrorString(err), block.GetHash().GetHex().c_str());
-                    break;
-                }
-                hashPrev = block.GetHash();
-            }
         }
     }
 }

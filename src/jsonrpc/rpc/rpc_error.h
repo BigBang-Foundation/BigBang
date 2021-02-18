@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -71,7 +71,10 @@ enum RPCErrorCode
     RPC_WALLET_ALREADY_UNLOCKED = -409,     //!< Wallet is already unlocked
     RPC_WALLET_INVALID_LABEL_NAME = -410,   //!< Invalid label name
     RPC_WALLET_INVALID_PASSPHRASE = -411,   //!< Invalid passphrase
-    RPC_WALLET_REMOVE_KEY_ERROR = -412      //!< Error remove key
+    RPC_WALLET_REMOVE_KEY_ERROR = -412,      //!< Error remove key
+
+    //! Data Sync Errors
+    RPC_DATA_SYNC_NONCE_ERROR = -500
 };
 
 /**

@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020 The Bigbang developers
+// Copyright (c) 2019-2021 The Bigbang developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <boost/range/adaptor/reversed.hpp>
 #include <deque>
+
+#include "event.h"
 
 using namespace std;
 using namespace xengine;
@@ -631,6 +633,7 @@ CTxPool::CTxPool()
 {
     pCoreProtocol = nullptr;
     pBlockChain = nullptr;
+    pPusher = nullptr;
     nLastSequenceNumber = 0;
 }
 
@@ -652,6 +655,12 @@ bool CTxPool::HandleInitialize()
         return false;
     }
 
+    if (!GetObject("pusher", pPusher))
+    {
+        Error("Failed to request pusher");
+        return false;
+    }
+
     return true;
 }
 
@@ -659,6 +668,7 @@ void CTxPool::HandleDeinitialize()
 {
     pCoreProtocol = nullptr;
     pBlockChain = nullptr;
+    pPusher = nullptr;
 }
 
 bool CTxPool::HandleInvoke()
@@ -1176,6 +1186,7 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             {
                 if (txView.Exists(txid))
                 {
+                    CDestination destFrom = txView.Get(txid)->destIn;
                     txView.Remove(txid);
                     if (tx.nType == CTransaction::TX_CERT)
                     {
@@ -1186,6 +1197,8 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
                         txView.relation.RemoveRelation(tx.sendTo);
                     }
                     mapTx.erase(txid);
+                    StdDebug("CTxPool::NotifyTxChanged", "Notify Tx Changed: fork: %s, txid: %s Removed", update.hashFork.ToString().c_str(), tx.GetHash().ToString().c_str());
+                    NotifyTxChanged(update.hashFork, destFrom, tx, (uint8)CHANGE_STATE::STATE_REMOVED);
                     change.mapTxUpdate.insert(make_pair(txid, nBlockHeight));
                 }
                 else
@@ -1299,7 +1312,11 @@ bool CTxPool::SynchronizeBlockChain(const CBlockChainUpdate& update, CTxSetChang
             {
                 txView.relation.RemoveRelation(it->second.sendTo);
             }
+            CDestination destFrom = it->second.destIn;
+            CPooledTx tx = it->second;
             mapTx.erase(it);
+            StdDebug("CTxPool::NotifyTxChanged", "Notify Tx Changed: fork: %s, txid: %s Removed", update.hashFork.ToString().c_str(), tx.GetHash().ToString().c_str());
+            NotifyTxChanged(update.hashFork, destFrom, tx, (uint8)CHANGE_STATE::STATE_REMOVED);
         }
     }
     change.vTxRemove.insert(change.vTxRemove.end(), vTxRemove.rbegin(), vTxRemove.rend());
@@ -1562,6 +1579,9 @@ Errno CTxPool::AddNew(CTxPoolView& txView, const uint256& txid, const CTransacti
     {
         certTxDest.AddCertTx(tx.sendTo, txid);
     }
+    CDestination destFrom = txView.Get(txid)->destIn;
+    StdDebug("CTxPool::NotifyTxChanged", "Notify Tx Changed: fork: %s, txid: %s Added", hashFork.ToString().c_str(), tx.GetHash().ToString().c_str());
+    NotifyTxChanged(hashFork, destFrom, tx, (uint8)CHANGE_STATE::STATE_ADDED);
     return OK;
 }
 
@@ -1598,9 +1618,26 @@ void CTxPool::RemoveTx(const uint256& txid)
             certTxDest.RemoveCertTx(mi->ptx->sendTo, mi->hashTX);
         }
         mapTx.erase(mi->hashTX);
+        StdDebug("CTxPool::NotifyTxChanged", "Notify Tx Changed: fork: %s, txid: %s Removed", hashFork.ToString().c_str(), *(mi->ptx)->GetHash().ToString().c_str());
+        NotifyTxChanged(hashFork, mi->ptx->destIn, *(mi->ptx), (uint8)CHANGE_STATE::STATE_REMOVED);
     }
 
     StdTrace("CTxPool", "RemoveTx success, txid: %s", txid.GetHex().c_str());
+}
+
+void CTxPool::NotifyTxChanged(const uint256& hashFork, const CDestination& destFrom, const CTransaction& tx, uint8 nState)
+{
+    static std::map<uint256, uint64> mapEventID;
+    if (mapEventID.find(hashFork) == mapEventID.end())
+    {
+        mapEventID[hashFork] = 0;
+    }
+    uint64& nEventID = mapEventID[hashFork];
+    CRPCModEventUpdateTx* pUpdateTxEvent = new CRPCModEventUpdateTx(nEventID, hashFork, destFrom, 0, nState);
+    pUpdateTxEvent->data = tx;
+    pPusher->PostEvent(pUpdateTxEvent);
+    nEventID = (nEventID + 1) % 100000;
+    StdDebug("CTxPool::NotifyTxChanged", "Notify Tx Changed: fork: %s, txid: %s, tx state: %d", hashFork.ToString().c_str(), tx.GetHash().ToString().c_str(), nState);
 }
 
 } // namespace bigbang
