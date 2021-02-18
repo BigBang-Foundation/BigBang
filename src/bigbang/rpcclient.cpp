@@ -54,7 +54,6 @@ CRPCClient::CRPCClient(bool fConsole)
     thrDispatch("rpcclient", boost::bind(fConsole ? &CRPCClient::LaunchConsole : &CRPCClient::LaunchCommand, this)), isConsoleRunning(false)
 {
     nLastNonce = 0;
-    //pHttpGet = nullptr;
 }
 
 CRPCClient::~CRPCClient()
@@ -63,17 +62,11 @@ CRPCClient::~CRPCClient()
 
 bool CRPCClient::HandleInitialize()
 {
-    // if (!GetObject("httpget", pHttpGet))
-    // {
-    //     cerr << "Failed to request httpget\n";
-    //     return false;
-    // }
     return true;
 }
 
 void CRPCClient::HandleDeinitialize()
 {
-    //pHttpGet = nullptr;
 }
 
 bool CRPCClient::HandleInvoke()
@@ -115,65 +108,6 @@ const CRPCClientConfig* CRPCClient::Config()
     return dynamic_cast<const CRPCClientConfig*>(IBase::Config());
 }
 
-bool CRPCClient::HandleEvent(CEventHttpGetRsp& event)
-{
-    try
-    {
-        CHttpRsp& rsp = event.data;
-
-        if (rsp.nStatusCode < 0)
-        {
-
-            const char* strErr[] = { "", "connect failed", "invalid nonce", "activate failed",
-                                     "disconnected", "no response", "resolve failed",
-                                     "internal failure", "aborted" };
-            throw runtime_error(rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
-        }
-        if (rsp.nStatusCode == 401)
-        {
-            throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
-        }
-        else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
-        {
-            ostringstream oss;
-            oss << "server returned HTTP error " << rsp.nStatusCode;
-            throw runtime_error(oss.str());
-        }
-        else if (rsp.strContent.empty())
-        {
-            throw runtime_error("no response from server");
-        }
-
-        // Parse reply
-        if (Config()->fDebug)
-        {
-            cout << "response: " << rsp.strContent;
-        }
-
-        auto spResp = DeserializeCRPCResp("", rsp.strContent);
-        if (spResp->IsError())
-        {
-            // Error
-            cerr << spResp->spError->Serialize(true) << endl;
-            cerr << strServerHelpTips << endl;
-        }
-        else if (spResp->IsSuccessful())
-        {
-            cout << spResp->spResult->Serialize(true) << endl;
-        }
-        else
-        {
-            cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
-        }
-    }
-    catch (exception& e)
-    {
-        cerr << e.what() << endl;
-    }
-    ioComplt.Completed(false);
-    return true;
-}
-
 bool CRPCClient::GetResponse(uint64 nNonce, const std::string& content)
 {
     if (Config()->fDebug)
@@ -195,21 +129,51 @@ bool CRPCClient::GetResponse(uint64 nNonce, const std::string& content)
     }
     if (auto res = cli.Post(path.c_str(), headers, content + "\n", "application/json"))
     {
-        if (res->status == 200)
+        try
         {
-            StdDebug("CRPCClient", "status 200 with body: %s", res->body.c_str());
-            return true;
+            if (res->status == 401)
+            {
+                throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
+            }
+            else if (res->status > 400 && res->status != 404 && res->status != 500)
+            {
+                ostringstream oss;
+                oss << "server returned HTTP error " << res->status;
+                throw runtime_error(oss.str());
+            }
+            else if (res->body.empty())
+            {
+                throw runtime_error("no response from server");
+            }
+        }
+        catch (const std::exception& e)
+        {
+            cerr << e.what() << endl;
+            return false;
+        }
+
+        auto spResp = DeserializeCRPCResp("", res->body);
+        if (spResp->IsError())
+        {
+            // Error
+            cerr << spResp->spError->Serialize(true) << endl;
+            cerr << strServerHelpTips << endl;
+        }
+        else if (spResp->IsSuccessful())
+        {
+            cout << spResp->spResult->Serialize(true) << endl;
         }
         else
         {
-            StdDebug("CRPCClient", "status not 200 with body: %s", res->body.c_str());
-            return true;
+            cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
         }
+        return true;
     }
     else
     {
         auto err = res.error();
         StdWarn("CRPCClient", "httpclient returned error %d", (int)err);
+        cerr << "Http Client error: " << (int)err;
         return false;
     }
 }
@@ -318,14 +282,6 @@ void CRPCClient::LaunchCommand()
 
 void CRPCClient::CancelCommand()
 {
-    // if (pHttpGet)
-    // {
-    //     CEventHttpAbort eventAbort(0);
-    //     CHttpAbort& httpAbort = eventAbort.data;
-    //     httpAbort.strIOModule = GetOwnKey();
-    //     httpAbort.vNonce.push_back(1);
-    //     pHttpGet->DispatchEvent(&eventAbort);
-    // }
 }
 
 void CRPCClient::EnterLoop()

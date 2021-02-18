@@ -4455,6 +4455,7 @@ void CRPCMod::HttpServerThreadFunc()
             res.set_header("Connection", "close");
             res.set_header("Server", "bigbang-rpc");
             res.set_content(content.c_str(), "application/json");
+            res.status = 404;
             return;
         }
 
@@ -4469,6 +4470,7 @@ void CRPCMod::HttpServerThreadFunc()
             res.set_header("Connection", "close");
             res.set_header("Server", "bigbang-rpc");
             res.set_content(content.c_str(), "application/json");
+            res.status = 404;
             return;
         }
 
