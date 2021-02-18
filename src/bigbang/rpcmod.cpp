@@ -4325,634 +4325,636 @@ bool CRPCMod::IsAllowedRemote(const std::string& remoteAddress)
         StdError(__PRETTY_FUNCTION__, e.what());
     }
     return (vWhiteList.empty());
-    CRPCResultPtr CRPCMod::RPCPushTxEvent(rpc::CRPCParamPtr param)
+}
+
+CRPCResultPtr CRPCMod::RPCPushTxEvent(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CPushTxEventParam>(param);
+    StdDebug("CRPCMod::CSH", "Push Transaction event called hash: %s", spParam->transaction.strTxid.c_str());
+    return MakeCPushTxEventResultPtr(spParam->transaction.strTxid);
+}
+
+CRPCResultPtr CRPCMod::RPCGetFullTx(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CGetFullTxParam>(param);
+    uint256 hashFork;
+    if (!GetForkHashOfDef(spParam->strFork, hashFork))
     {
-        auto spParam = CastParamPtr<CPushTxEventParam>(param);
-        StdDebug("CRPCMod::CSH", "Push Transaction event called hash: %s", spParam->transaction.strTxid.c_str());
-        return MakeCPushTxEventResultPtr(spParam->transaction.strTxid);
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
     }
 
-    CRPCResultPtr CRPCMod::RPCGetFullTx(rpc::CRPCParamPtr param)
+    if (!pService->HaveFork(hashFork))
     {
-        auto spParam = CastParamPtr<CGetFullTxParam>(param);
-        uint256 hashFork;
-        if (!GetForkHashOfDef(spParam->strFork, hashFork))
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
-        }
-
-        if (!pService->HaveFork(hashFork))
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
-        }
-
-        std::vector<std::pair<uint256, size_t>> vTxPool;
-        pService->GetTxPool(hashFork, vTxPool);
-
-        auto spResult = MakeCGetFullTxResultPtr();
-
-        int64 nEventId = 0;
-        if (!pPusher->GetLatestEventId(hashFork, nEventId))
-        {
-            spResult->nNonce = pPusher->GetFixedNonce();
-        }
-        else
-        {
-            spResult->nNonce = pPusher->GetNonce();
-        }
-
-        spResult->nEventid = nEventId;
-
-        for (const auto& tx : vTxPool)
-        {
-            const uint256& txid = tx.first;
-            CTransaction tempTx;
-            uint256 tempHashFork;
-            int nHeight = -1;
-            uint256 hashBlock;
-            CDestination destIn;
-            if (!pService->GetTransaction(txid, tempTx, tempHashFork, nHeight, hashBlock, destIn))
-            {
-                throw CRPCException(RPC_INVALID_REQUEST, "No information available about transaction from GetTxPool");
-            }
-
-            int nDepth = nHeight < 0 ? 0 : pService->GetForkHeight(hashFork) - nHeight;
-            if (hashFork != pCoreProtocol->GetGenesisBlockHash())
-            {
-                nDepth = nDepth * 30;
-            }
-
-            spResult->vecTx.push_back(TxToJSON(txid, tempTx, hashFork, hashBlock, nDepth, CAddress(destIn).ToString()));
-        }
-
-        return spResult;
+        throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
-    CRPCResultPtr CRPCMod::RPCGetTxEvents(rpc::CRPCParamPtr param)
+    std::vector<std::pair<uint256, size_t>> vTxPool;
+    pService->GetTxPool(hashFork, vTxPool);
+
+    auto spResult = MakeCGetFullTxResultPtr();
+
+    int64 nEventId = 0;
+    if (!pPusher->GetLatestEventId(hashFork, nEventId))
     {
-        auto spParam = CastParamPtr<CGetTxEventsParam>(param);
-        uint256 hashFork;
-        if (!GetForkHashOfDef(spParam->strFork, hashFork))
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
-        }
-
-        if (!pService->HaveFork(hashFork))
-        {
-            throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
-        }
-
-        if (pPusher->GetNonce() != spParam->nNonce)
-        {
-            throw CRPCException(RPC_DATA_SYNC_NONCE_ERROR, "Nonce error");
-        }
-
-        auto spResult = MakeCGetTxEventsResultPtr();
-
-        std::vector<CRPCModEventUpdateTx> txEvents;
+        spResult->nNonce = pPusher->GetFixedNonce();
+    }
+    else
+    {
         spResult->nNonce = pPusher->GetNonce();
-        if (!pPusher->GetTxEvents(hashFork, spParam->nEventid, spParam->nNum, txEvents))
-        {
-            spResult->nNonce = pPusher->GetFixedNonce();
-        }
-
-        for (const auto& txEvent : txEvents)
-        {
-            CGetTxEventsResult::CEvents event;
-            event.nEventid = txEvent.nNonce;
-            event.nEventtype = txEvent.nState;
-            event.strTxid = txEvent.data.GetHash().ToString();
-            event.transaction = TxToJSON(txEvent.data.GetHash(), txEvent.data, hashFork, uint256(), 0, CAddress(txEvent.destFrom).ToString());
-            spResult->vecEvents.push_back(event);
-        }
-
-        return spResult;
     }
 
-    void CRPCMod::HttpServerThreadFunc()
+    spResult->nEventid = nEventId;
+
+    for (const auto& tx : vTxPool)
     {
-        auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
-
-        if (!pConfig->vRPCAllowIP.empty() && !BuildWhiteList(pConfig->vRPCAllowIP))
-        {
-            StdError("RPCMod", "Http Server Build White List failed.");
-            bigbang::CBbEntry::GetInstance().Stop();
-            return;
-        }
-
-        using namespace httplib;
-        Server svr;
-        svr.set_keep_alive_max_count(pConfig->nRPCMaxConnections);
-        svr.Post("/", [this](const Request& req, Response& res) {
-            if (!IsAllowedRemote(req.remote_addr))
-            {
-                char msg[512] = { 0 };
-                snprintf(msg, sizeof(msg), "{\"code\": %d, \"message\": \"remote address: %s is not allowed in table.\"}", (int)RPC_FORBIDDEN_BY_SAFE_MODE, req.remote_addr.c_str());
-                std::string content(msg);
-                content.append("\n");
-                res.set_header("Connection", "close");
-                res.set_header("Server", "bigbang-rpc");
-                res.set_content(content.c_str(), "application/json");
-                return;
-            }
-
-            std::string strVersion = req.get_header_value("BigBang-Version");
-            if (!strVersion.empty() && !this->CheckVersion(strVersion))
-            {
-                char msg[512] = { 0 };
-                snprintf(msg, sizeof(msg), "{\"code\": %d, \"message\": \"out of date version: client version is %s but server version is %s\"}",
-                         (int)RPC_VERSION_OUT_OF_DATE, strVersion.c_str(), VERSION_STR.c_str());
-                std::string content(msg);
-                content.append("\n");
-                res.set_header("Connection", "close");
-                res.set_header("Server", "bigbang-rpc");
-                res.set_content(content.c_str(), "application/json");
-                return;
-            }
-
-            auto lmdMask = [](const std::string& data) -> std::string {
-                return data;
-            };
-
-            if (this->fWriteRPCLog)
-            {
-                Debug("new http server request: %s ", req.body.c_str());
-            }
-
-            std::string content = this->CallRPCFromJSON(req.body, lmdMask);
-            content.append("\n");
-
-            if (this->fWriteRPCLog)
-            {
-                Debug("new http server response: %s ", lmdMask(content).c_str());
-            }
-
-            res.set_header("Connection", "Keep-Alive");
-            res.set_header("Server", "bigbang-rpc");
-            res.set_content(content.c_str(), "application/json");
-        });
-
-        svr.Get("/httpserver/stop", [&svr](const Request& req, Response& res) {
-            if (req.remote_addr != "127.0.0.1" && req.remote_addr != "::1")
-            {
-                return;
-            }
-
-            svr.stop();
-            res.set_header("Server", "bigbang-internal-rpc");
-            res.set_content("Stopped Http Server\n", "text/plain");
-        });
-
-        StdLog("CRPCMod::HttpServerThreadFunc", "Http Server started: %s:%d", pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
-        svr.listen(pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
-    }
-
-    CPusher::CPusher()
-      : pCoreProtocol(nullptr), pService(nullptr), nNonce(0), nFixedNonce(0xFFFFFFFFFFFFFFFF)
-    {
-    }
-
-    CPusher::~CPusher()
-    {
-        pCoreProtocol = nullptr;
-        pService = nullptr;
-    }
-
-    const CRPCServerConfig* CPusher::RPCServerConfig()
-    {
-        return dynamic_cast<const CRPCServerConfig*>(IBase::Config());
-    }
-
-    bool CPusher::HandleInitialize()
-    {
-
-        if (!GetObject("coreprotocol", pCoreProtocol))
-        {
-            Error("Failed to request coreprotocol");
-            return false;
-        }
-
-        if (!GetObject("service", pService))
-        {
-            Error("Failed to request service");
-            return false;
-        }
-
-        return true;
-    }
-
-    void CPusher::HandleDeinitialize()
-    {
-        pCoreProtocol = nullptr;
-        pService = nullptr;
-    }
-
-    bool CPusher::HandleInvoke()
-    {
-        RAND_bytes((unsigned char*)&nNonce, sizeof(nNonce));
-        while (nNonce == nFixedNonce || nNonce == 0)
-        {
-            RAND_bytes((unsigned char*)&nNonce, sizeof(nNonce));
-        }
-
-        return IIOModule::HandleInvoke();
-    }
-
-    void CPusher::HandleHalt()
-    {
-        IIOModule::HandleHalt();
-    }
-
-    void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& client)
-    {
-        boost::unique_lock<boost::shared_mutex> lock(mMutex);
-        mapRPCClient[ipport] = client;
-    }
-
-    int64 CPusher::GetNonce() const
-    {
-        return nNonce;
-    }
-
-    int64 CPusher::GetFixedNonce() const
-    {
-        return nFixedNonce;
-    }
-
-    bool CPusher::GetLatestEventId(const uint256& hashFork, int64& nEventId) const
-    {
-        boost::shared_lock<boost::shared_mutex> lock(mMutex);
-        const auto iter = mapTxEventStream.find(hashFork);
-        if (iter == mapTxEventStream.end())
-        {
-            StdDebug("CPusher::GetLatestEventId", "Cannot find hashFork: %s", hashFork.ToString().c_str());
-            return false;
-        }
-        else
-        {
-            if (!iter->second.empty())
-            {
-                nEventId = (int64)iter->second.end()->nNonce;
-                return true;
-            }
-            else
-            {
-                StdDebug("CPusher::GetLatestEventId", "Events list is empty: %s", hashFork.ToString().c_str());
-                return false;
-            }
-        }
-    }
-
-    bool CPusher::GetTxEvents(const uint256& hashFork, int64 nStartEventId, int64 num, std::vector<CRPCModEventUpdateTx>& events)
-    {
-        boost::shared_lock<boost::shared_mutex> lock(mMutex);
-        const auto iter = mapTxEventStream.find(hashFork);
-        if (iter == mapTxEventStream.end())
-        {
-            StdDebug("CPusher::GetTxEvents", "Cannot find hashFork: %s", hashFork.ToString().c_str());
-            return false;
-        }
-        else
-        {
-            if (!iter->second.empty())
-            {
-                auto find_iter = std::find_if(iter->second.begin(), iter->second.end(), [nStartEventId](const CRPCModEventUpdateTx& event) {
-                    return (int64)event.nNonce == nStartEventId;
-                });
-
-                if (find_iter == iter->second.end())
-                {
-                    StdDebug("CPusher::GetTxEvents", "Cannot find start event id: %d", nStartEventId);
-                    return false;
-                }
-
-                int64 count = 0;
-                while (find_iter != iter->second.end() && count < num)
-                {
-                    events.push_back(*find_iter);
-                    count++;
-                    find_iter++;
-                }
-                return true;
-            }
-            else
-            {
-                StdDebug("CPusher::GetTxEvents", "Events list is empty: %s", hashFork.ToString().c_str());
-                return false;
-            }
-        }
-    }
-
-    Cblockdatadetail CPusher::BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block)
-    {
-        Cblockdatadetail data;
-
-        data.strHash = block.GetHash().ToString();
-        data.strPrev = block.hashPrev.GetHex();
-        data.nVersion = block.nVersion;
-        data.nSize = GetSerializeSize(block);
-        data.nType = block.nType;
-        data.nTime = block.GetBlockTime();
-        data.strSig = ToHexString(block.vchSig);
-        data.strProof = ToHexString(block.vchProof);
-        if (block.hashPrev != 0)
-        {
-            data.strPrev = block.hashPrev.GetHex();
-        }
-
+        const uint256& txid = tx.first;
+        CTransaction tempTx;
         uint256 tempHashFork;
-        int tempHeight = 0;
-        pService->GetBlockLocation(block.GetHash(), tempHashFork, tempHeight);
-        data.strFork = tempHashFork.ToString();
-        data.nHeight = block.GetBlockHeight();
-        int nDepth = pService->GetForkHeight(tempHashFork) - block.GetBlockHeight();
+        int nHeight = -1;
+        uint256 hashBlock;
+        CDestination destIn;
+        if (!pService->GetTransaction(txid, tempTx, tempHashFork, nHeight, hashBlock, destIn))
+        {
+            throw CRPCException(RPC_INVALID_REQUEST, "No information available about transaction from GetTxPool");
+        }
+
+        int nDepth = nHeight < 0 ? 0 : pService->GetForkHeight(hashFork) - nHeight;
         if (hashFork != pCoreProtocol->GetGenesisBlockHash())
         {
             nDepth = nDepth * 30;
         }
-        data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, tempHashFork, block.GetHash(), nDepth, CAddress().ToString());
-        if (block.IsProofOfWork())
-        {
-            CProofOfHashWorkCompact proof;
-            proof.Load(block.vchProof);
-            data.nBits = proof.nBits;
-        }
-        else
-        {
-            data.nBits = 0;
-        }
-        for (int i = 0; i < block.vtx.size(); i++)
-        {
-            const CTransaction& tx = block.vtx[i];
-            data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, tempHashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
-        }
-        return data;
+
+        spResult->vecTx.push_back(TxToJSON(txid, tempTx, hashFork, hashBlock, nDepth, CAddress(destIn).ToString()));
     }
 
-    bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock & event)
+    return spResult;
+}
+
+CRPCResultPtr CRPCMod::RPCGetTxEvents(rpc::CRPCParamPtr param)
+{
+    auto spParam = CastParamPtr<CGetTxEventsParam>(param);
+    uint256 hashFork;
+    if (!GetForkHashOfDef(spParam->strFork, hashFork))
     {
-        const CBlockEx& block = event.data;
-        const uint256& hashFork = event.hashFork;
-        StdDebug("CPusher", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
-        std::vector<std::string> deletes;
-
-        static uint64 nNonce = 10;
-        {
-            decltype(mapRPCClient) tempMap;
-            {
-                boost::shared_lock<boost::shared_mutex> lock(mMutex);
-                tempMap = mapRPCClient;
-            }
-
-            for (const auto& client : tempMap)
-            {
-                const std::string& ipport = client.first;
-                int64 nTimeStamp = client.second.timestamp;
-                StdDebug("CPusher", "Update New Block ipport: %s url: %s", ipport.c_str(), client.second.strBlockURL.c_str());
-                if (GetTime() - nTimeStamp > 60 * 2)
-                {
-                    StdDebug("CPusher", "Timeout IPORT: %s url: %s", ipport.c_str(), client.second.strBlockURL.c_str());
-                    deletes.push_back(ipport);
-                    continue;
-                }
-
-                if (client.second.registerForks.count(hashFork) == 0)
-                {
-                    StdDebug("CPusher", "No register fork: %s", hashFork.ToString().c_str());
-                    continue;
-                }
-
-                PushBlockMessage message;
-                message.client = client.second;
-                message.hashFork = hashFork;
-                message.nNonce = nNonce;
-                message.nReqId = client.second.nNonce;
-                message.block = block;
-                PushBlock(message);
-                StdDebug("CPusher", "Pushed New Block: Host: %s, Port: %d, blockheight: %d, blockHash: %s, type: %d, fork: %s, url: %s",
-                         client.second.strHost.c_str(), client.second.nPort, block.GetBlockHeight(), block.GetHash().ToString().c_str(), block.nType,
-                         hashFork.ToString().c_str(), message.client.strBlockURL.c_str());
-            }
-
-            RemoveClients(deletes);
-        }
-
-        return true;
+        throw CRPCException(RPC_INVALID_PARAMETER, "Invalid fork");
     }
 
-    bool CPusher::HandleEvent(CRPCModEventUpdateTx & event)
+    if (!pService->HaveFork(hashFork))
     {
-        const CTransaction& tx = event.data;
-        const uint256& hashFork = event.hashFork;
-        StdDebug("CPusher", "Update New Tx hash: %s forkHash: %s", tx.GetHash().ToString().c_str(), hashFork.ToString().c_str());
-
-        bool isExists = false;
-        {
-            boost::shared_lock<boost::shared_mutex> lock(mMutex);
-            isExists = mapTxEventId[hashFork].count(event.nNonce) > 0 ? true : false;
-        }
-
-        if (isExists)
-        {
-            // Clean history event stream log
-            boost::unique_lock<boost::shared_mutex> lock(mMutex);
-            mapTxEventStream[hashFork].clear();
-        }
-        else
-        {
-            boost::unique_lock<boost::shared_mutex> lock(mMutex);
-            mapTxEventId[hashFork].insert(event.nNonce);
-        }
-
-        // save event to event stream log
-        {
-            boost::unique_lock<boost::shared_mutex> lock(mMutex);
-            mapTxEventStream[hashFork].push_back(event);
-        }
-
-        std::vector<std::string> deletes;
-
-        static uint64 nNonce = 11;
-        {
-            decltype(mapRPCClient) tempMap;
-            {
-                boost::shared_lock<boost::shared_mutex> lock(mMutex);
-                tempMap = mapRPCClient;
-            }
-
-            for (const auto& client : tempMap)
-            {
-                const std::string& ipport = client.first;
-                int64 nTimeStamp = client.second.timestamp;
-                StdDebug("CPusher", "Update Changed Tx ipport: %s url: %s", ipport.c_str(), client.second.strTxURL.c_str());
-                if (GetTime() - nTimeStamp > 60 * 2)
-                {
-                    StdDebug("CPusher", "Timeout IPORT: %s", ipport.c_str());
-                    deletes.push_back(ipport);
-                    continue;
-                }
-
-                if (client.second.registerForks.count(hashFork) == 0)
-                {
-                    StdDebug("CPusher", "No register fork: %s", hashFork.ToString().c_str());
-                    continue;
-                }
-
-                PushTxMessage message;
-                message.client = client.second;
-                message.hashFork = hashFork;
-                message.destFrom = event.destFrom;
-                message.nNonce = nNonce;
-                message.nState = event.nState;
-                message.nEventId = event.nNonce;
-                message.nReqId = client.second.nNonce;
-                message.tx = tx;
-                PushTransaction(message);
-
-                StdDebug("CPusher", "Pushed changed tx event: Host: %s, Port: %d, tx timestamp: %d, txHash: %s, type: %d, tx state: %d, fork: %s, url: %s",
-                         client.second.strHost.c_str(), client.second.nPort, tx.GetTxTime(), tx.GetHash().ToString().c_str(), tx.nType, message.nState,
-                         hashFork.ToString().c_str(), message.client.strTxURL.c_str());
-            }
-
-            RemoveClients(deletes);
-        }
-
-        return true;
+        throw CRPCException(RPC_INVALID_PARAMETER, "Unknown fork");
     }
 
-    void CPusher::RemoveClient(const std::string& client)
+    if (pPusher->GetNonce() != spParam->nNonce)
     {
-        mapRPCClient.erase(client);
+        throw CRPCException(RPC_DATA_SYNC_NONCE_ERROR, "Nonce error");
     }
 
-    void CPusher::RemoveClients(const std::vector<std::string>& clients)
+    auto spResult = MakeCGetTxEventsResultPtr();
+
+    std::vector<CRPCModEventUpdateTx> txEvents;
+    spResult->nNonce = pPusher->GetNonce();
+    if (!pPusher->GetTxEvents(hashFork, spParam->nEventid, spParam->nNum, txEvents))
     {
-        for (const std::string& client : clients)
-        {
-            RemoveClient(client);
-        }
+        spResult->nNonce = pPusher->GetFixedNonce();
     }
 
-    void CPusher::RemoveClient(uint64 nNonce)
+    for (const auto& txEvent : txEvents)
     {
-        std::string removeClient;
-        for (const auto& client : mapRPCClient)
-        {
-            if (client.second.nNonce == nNonce)
-            {
-                removeClient = client.first;
-            }
-        }
-        if (!removeClient.empty())
-        {
-            RemoveClient(removeClient);
-        }
+        CGetTxEventsResult::CEvents event;
+        event.nEventid = txEvent.nNonce;
+        event.nEventtype = txEvent.nState;
+        event.strTxid = txEvent.data.GetHash().ToString();
+        event.transaction = TxToJSON(txEvent.data.GetHash(), txEvent.data, hashFork, uint256(), 0, CAddress(txEvent.destFrom).ToString());
+        spResult->vecEvents.push_back(event);
     }
 
-    void CPusher::PushBlock(const PushBlockMessage& message)
+    return spResult;
+}
+
+void CRPCMod::HttpServerThreadFunc()
+{
+    auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
+
+    if (!pConfig->vRPCAllowIP.empty() && !BuildWhiteList(pConfig->vRPCAllowIP))
     {
-        CallRPC(message);
+        StdError("RPCMod", "Http Server Build White List failed.");
+        bigbang::CBbEntry::GetInstance().Stop();
+        return;
     }
 
-    bool CPusher::CallRPC(const PushBlockMessage& message)
-    {
-        try
+    using namespace httplib;
+    Server svr;
+    svr.set_keep_alive_max_count(pConfig->nRPCMaxConnections);
+    svr.Post("/", [this](const Request& req, Response& res) {
+        if (!IsAllowedRemote(req.remote_addr))
         {
-            Cblockdatadetail data = BlockDetailToJSON(message.hashFork, message.block);
-            auto spParam = MakeCPushBlockParamPtr(data);
-            CRPCReqPtr spReq = MakeCRPCReqPtr(message.client.nNonce, spParam->Method(), spParam);
-            std::string response;
-            return GetResponse(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strBlockURL, spReq->Serialize(), response);
+            char msg[512] = { 0 };
+            snprintf(msg, sizeof(msg), "{\"code\": %d, \"message\": \"remote address: %s is not allowed in table.\"}", (int)RPC_FORBIDDEN_BY_SAFE_MODE, req.remote_addr.c_str());
+            std::string content(msg);
+            content.append("\n");
+            res.set_header("Connection", "close");
+            res.set_header("Server", "bigbang-rpc");
+            res.set_content(content.c_str(), "application/json");
+            return;
         }
-        catch (const std::exception& e)
-        {
-            //cerr << e.what() << endl;
-            StdError("CPusher", "CallRPC Exception: %s", e.what());
-            return false;
-        }
-        catch (...)
-        {
-            //cerr << "Unknown error" << endl;
-            StdError("CPusher", "CallRPC Exception: Unknown error");
-            return false;
-        }
-        return false;
-    }
 
-    void CPusher::PushTransaction(const PushTxMessage& message)
-    {
-        CallRPC(message);
-    }
-
-    bool CPusher::CallRPC(const PushTxMessage& message)
-    {
-        try
+        std::string strVersion = req.get_header_value("BigBang-Version");
+        if (!strVersion.empty() && !this->CheckVersion(strVersion))
         {
-            CTransactionData data = TxToJSON(message.tx.GetHash(), message.tx, message.hashFork, uint256(), 0, CAddress(message.destFrom).ToString());
-            auto spParam = MakeCPushTxEventParamPtr();
-            spParam->nNonce = nNonce;
-            spParam->nEventid = message.nEventId;
-            spParam->nEventtype = message.nState;
-            spParam->strFork = message.hashFork.ToString();
-            spParam->strTxid = message.tx.GetHash().ToString();
-            spParam->transaction = data;
-            CRPCReqPtr spReq = MakeCRPCReqPtr(message.client.nNonce, spParam->Method(), spParam);
-            std::string response;
-            return GetResponse(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strTxURL, spReq->Serialize(), response);
+            char msg[512] = { 0 };
+            snprintf(msg, sizeof(msg), "{\"code\": %d, \"message\": \"out of date version: client version is %s but server version is %s\"}",
+                     (int)RPC_VERSION_OUT_OF_DATE, strVersion.c_str(), VERSION_STR.c_str());
+            std::string content(msg);
+            content.append("\n");
+            res.set_header("Connection", "close");
+            res.set_header("Server", "bigbang-rpc");
+            res.set_content(content.c_str(), "application/json");
+            return;
         }
-        catch (const std::exception& e)
-        {
-            //cerr << e.what() << endl;
-            StdError("CPusher", "CallRPC Exception: %s", e.what());
-            return false;
-        }
-        catch (...)
-        {
-            //cerr << "Unknown error" << endl;
-            StdError("CPusher", "CallRPC Exception: Unknown error");
-            return false;
-        }
-        return false;
-    }
 
-    bool CPusher::HandleEvent(xengine::CEventHttpGetRsp & event)
-    {
-        return true;
-    }
-
-    bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, const std::string& content, std::string& response)
-    {
-
-        httplib::Client cli(strHost, nPort);
-        std::string path = (strURL.find_first_of('/') == 0) ? strURL : (std::string("/") + strURL);
-        httplib::Headers headers = {
-            { "Accept-Encoding", "gzip, deflate" },
-            { "Connection", "Keep-Alive" },
-            { "Accept", "application/json" },
-            { "User-Agent", "bigbang-data-sync-rpc/" }
+        auto lmdMask = [](const std::string& data) -> std::string {
+            return data;
         };
-        StdDebug("CPusher", "GetResponse post path: %s", path.c_str());
-        if (auto res = cli.Post(path.c_str(), headers, content, "application/json"))
+
+        if (this->fWriteRPCLog)
         {
-            if (res->status == 200)
+            Debug("new http server request: %s ", req.body.c_str());
+        }
+
+        std::string content = this->CallRPCFromJSON(req.body, lmdMask);
+        content.append("\n");
+
+        if (this->fWriteRPCLog)
+        {
+            Debug("new http server response: %s ", lmdMask(content).c_str());
+        }
+
+        res.set_header("Connection", "Keep-Alive");
+        res.set_header("Server", "bigbang-rpc");
+        res.set_content(content.c_str(), "application/json");
+    });
+
+    svr.Get("/httpserver/stop", [&svr](const Request& req, Response& res) {
+        if (req.remote_addr != "127.0.0.1" && req.remote_addr != "::1")
+        {
+            return;
+        }
+
+        svr.stop();
+        res.set_header("Server", "bigbang-internal-rpc");
+        res.set_content("Stopped Http Server\n", "text/plain");
+    });
+
+    StdLog("CRPCMod::HttpServerThreadFunc", "Http Server started: %s:%d", pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
+    svr.listen(pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
+}
+
+CPusher::CPusher()
+  : pCoreProtocol(nullptr), pService(nullptr), nNonce(0), nFixedNonce(0xFFFFFFFFFFFFFFFF)
+{
+}
+
+CPusher::~CPusher()
+{
+    pCoreProtocol = nullptr;
+    pService = nullptr;
+}
+
+const CRPCServerConfig* CPusher::RPCServerConfig()
+{
+    return dynamic_cast<const CRPCServerConfig*>(IBase::Config());
+}
+
+bool CPusher::HandleInitialize()
+{
+
+    if (!GetObject("coreprotocol", pCoreProtocol))
+    {
+        Error("Failed to request coreprotocol");
+        return false;
+    }
+
+    if (!GetObject("service", pService))
+    {
+        Error("Failed to request service");
+        return false;
+    }
+
+    return true;
+}
+
+void CPusher::HandleDeinitialize()
+{
+    pCoreProtocol = nullptr;
+    pService = nullptr;
+}
+
+bool CPusher::HandleInvoke()
+{
+    RAND_bytes((unsigned char*)&nNonce, sizeof(nNonce));
+    while (nNonce == nFixedNonce || nNonce == 0)
+    {
+        RAND_bytes((unsigned char*)&nNonce, sizeof(nNonce));
+    }
+
+    return IIOModule::HandleInvoke();
+}
+
+void CPusher::HandleHalt()
+{
+    IIOModule::HandleHalt();
+}
+
+void CPusher::InsertNewClient(const std::string& ipport, const LiveClientInfo& client)
+{
+    boost::unique_lock<boost::shared_mutex> lock(mMutex);
+    mapRPCClient[ipport] = client;
+}
+
+int64 CPusher::GetNonce() const
+{
+    return nNonce;
+}
+
+int64 CPusher::GetFixedNonce() const
+{
+    return nFixedNonce;
+}
+
+bool CPusher::GetLatestEventId(const uint256& hashFork, int64& nEventId) const
+{
+    boost::shared_lock<boost::shared_mutex> lock(mMutex);
+    const auto iter = mapTxEventStream.find(hashFork);
+    if (iter == mapTxEventStream.end())
+    {
+        StdDebug("CPusher::GetLatestEventId", "Cannot find hashFork: %s", hashFork.ToString().c_str());
+        return false;
+    }
+    else
+    {
+        if (!iter->second.empty())
+        {
+            nEventId = (int64)iter->second.end()->nNonce;
+            return true;
+        }
+        else
+        {
+            StdDebug("CPusher::GetLatestEventId", "Events list is empty: %s", hashFork.ToString().c_str());
+            return false;
+        }
+    }
+}
+
+bool CPusher::GetTxEvents(const uint256& hashFork, int64 nStartEventId, int64 num, std::vector<CRPCModEventUpdateTx>& events)
+{
+    boost::shared_lock<boost::shared_mutex> lock(mMutex);
+    const auto iter = mapTxEventStream.find(hashFork);
+    if (iter == mapTxEventStream.end())
+    {
+        StdDebug("CPusher::GetTxEvents", "Cannot find hashFork: %s", hashFork.ToString().c_str());
+        return false;
+    }
+    else
+    {
+        if (!iter->second.empty())
+        {
+            auto find_iter = std::find_if(iter->second.begin(), iter->second.end(), [nStartEventId](const CRPCModEventUpdateTx& event) {
+                return (int64)event.nNonce == nStartEventId;
+            });
+
+            if (find_iter == iter->second.end())
             {
-                response = res->body;
-                StdDebug("CPusher", "status 200 with body: %s", res->body.c_str());
-                return true;
-            }
-            else
-            {
-                response = res->body;
-                StdDebug("CPusher", "status not 200 with body: %s", res->body.c_str());
+                StdDebug("CPusher::GetTxEvents", "Cannot find start event id: %d", nStartEventId);
                 return false;
             }
+
+            int64 count = 0;
+            while (find_iter != iter->second.end() && count < num)
+            {
+                events.push_back(*find_iter);
+                count++;
+                find_iter++;
+            }
+            return true;
         }
         else
         {
-            auto err = res.error();
-            StdWarn("CPusher", "httpclient returned error %d", (int)err);
+            StdDebug("CPusher::GetTxEvents", "Events list is empty: %s", hashFork.ToString().c_str());
             return false;
         }
     }
+}
+
+Cblockdatadetail CPusher::BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block)
+{
+    Cblockdatadetail data;
+
+    data.strHash = block.GetHash().ToString();
+    data.strPrev = block.hashPrev.GetHex();
+    data.nVersion = block.nVersion;
+    data.nSize = GetSerializeSize(block);
+    data.nType = block.nType;
+    data.nTime = block.GetBlockTime();
+    data.strSig = ToHexString(block.vchSig);
+    data.strProof = ToHexString(block.vchProof);
+    if (block.hashPrev != 0)
+    {
+        data.strPrev = block.hashPrev.GetHex();
+    }
+
+    uint256 tempHashFork;
+    int tempHeight = 0;
+    pService->GetBlockLocation(block.GetHash(), tempHashFork, tempHeight);
+    data.strFork = tempHashFork.ToString();
+    data.nHeight = block.GetBlockHeight();
+    int nDepth = pService->GetForkHeight(tempHashFork) - block.GetBlockHeight();
+    if (hashFork != pCoreProtocol->GetGenesisBlockHash())
+    {
+        nDepth = nDepth * 30;
+    }
+    data.txmint = TxToJSON(block.txMint.GetHash(), block.txMint, tempHashFork, block.GetHash(), nDepth, CAddress().ToString());
+    if (block.IsProofOfWork())
+    {
+        CProofOfHashWorkCompact proof;
+        proof.Load(block.vchProof);
+        data.nBits = proof.nBits;
+    }
+    else
+    {
+        data.nBits = 0;
+    }
+    for (int i = 0; i < block.vtx.size(); i++)
+    {
+        const CTransaction& tx = block.vtx[i];
+        data.vecTx.push_back(TxToJSON(tx.GetHash(), tx, tempHashFork, block.GetHash(), nDepth, CAddress(block.vTxContxt[i].destIn).ToString()));
+    }
+    return data;
+}
+
+bool CPusher::HandleEvent(CRPCModEventUpdateNewBlock& event)
+{
+    const CBlockEx& block = event.data;
+    const uint256& hashFork = event.hashFork;
+    StdDebug("CPusher", "Update New Block hash: %s forkHash: %s", block.GetHash().ToString().c_str(), hashFork.ToString().c_str());
+    std::vector<std::string> deletes;
+
+    static uint64 nNonce = 10;
+    {
+        decltype(mapRPCClient) tempMap;
+        {
+            boost::shared_lock<boost::shared_mutex> lock(mMutex);
+            tempMap = mapRPCClient;
+        }
+
+        for (const auto& client : tempMap)
+        {
+            const std::string& ipport = client.first;
+            int64 nTimeStamp = client.second.timestamp;
+            StdDebug("CPusher", "Update New Block ipport: %s url: %s", ipport.c_str(), client.second.strBlockURL.c_str());
+            if (GetTime() - nTimeStamp > 60 * 2)
+            {
+                StdDebug("CPusher", "Timeout IPORT: %s url: %s", ipport.c_str(), client.second.strBlockURL.c_str());
+                deletes.push_back(ipport);
+                continue;
+            }
+
+            if (client.second.registerForks.count(hashFork) == 0)
+            {
+                StdDebug("CPusher", "No register fork: %s", hashFork.ToString().c_str());
+                continue;
+            }
+
+            PushBlockMessage message;
+            message.client = client.second;
+            message.hashFork = hashFork;
+            message.nNonce = nNonce;
+            message.nReqId = client.second.nNonce;
+            message.block = block;
+            PushBlock(message);
+            StdDebug("CPusher", "Pushed New Block: Host: %s, Port: %d, blockheight: %d, blockHash: %s, type: %d, fork: %s, url: %s",
+                     client.second.strHost.c_str(), client.second.nPort, block.GetBlockHeight(), block.GetHash().ToString().c_str(), block.nType,
+                     hashFork.ToString().c_str(), message.client.strBlockURL.c_str());
+        }
+
+        RemoveClients(deletes);
+    }
+
+    return true;
+}
+
+bool CPusher::HandleEvent(CRPCModEventUpdateTx& event)
+{
+    const CTransaction& tx = event.data;
+    const uint256& hashFork = event.hashFork;
+    StdDebug("CPusher", "Update New Tx hash: %s forkHash: %s", tx.GetHash().ToString().c_str(), hashFork.ToString().c_str());
+
+    bool isExists = false;
+    {
+        boost::shared_lock<boost::shared_mutex> lock(mMutex);
+        isExists = mapTxEventId[hashFork].count(event.nNonce) > 0 ? true : false;
+    }
+
+    if (isExists)
+    {
+        // Clean history event stream log
+        boost::unique_lock<boost::shared_mutex> lock(mMutex);
+        mapTxEventStream[hashFork].clear();
+    }
+    else
+    {
+        boost::unique_lock<boost::shared_mutex> lock(mMutex);
+        mapTxEventId[hashFork].insert(event.nNonce);
+    }
+
+    // save event to event stream log
+    {
+        boost::unique_lock<boost::shared_mutex> lock(mMutex);
+        mapTxEventStream[hashFork].push_back(event);
+    }
+
+    std::vector<std::string> deletes;
+
+    static uint64 nNonce = 11;
+    {
+        decltype(mapRPCClient) tempMap;
+        {
+            boost::shared_lock<boost::shared_mutex> lock(mMutex);
+            tempMap = mapRPCClient;
+        }
+
+        for (const auto& client : tempMap)
+        {
+            const std::string& ipport = client.first;
+            int64 nTimeStamp = client.second.timestamp;
+            StdDebug("CPusher", "Update Changed Tx ipport: %s url: %s", ipport.c_str(), client.second.strTxURL.c_str());
+            if (GetTime() - nTimeStamp > 60 * 2)
+            {
+                StdDebug("CPusher", "Timeout IPORT: %s", ipport.c_str());
+                deletes.push_back(ipport);
+                continue;
+            }
+
+            if (client.second.registerForks.count(hashFork) == 0)
+            {
+                StdDebug("CPusher", "No register fork: %s", hashFork.ToString().c_str());
+                continue;
+            }
+
+            PushTxMessage message;
+            message.client = client.second;
+            message.hashFork = hashFork;
+            message.destFrom = event.destFrom;
+            message.nNonce = nNonce;
+            message.nState = event.nState;
+            message.nEventId = event.nNonce;
+            message.nReqId = client.second.nNonce;
+            message.tx = tx;
+            PushTransaction(message);
+
+            StdDebug("CPusher", "Pushed changed tx event: Host: %s, Port: %d, tx timestamp: %d, txHash: %s, type: %d, tx state: %d, fork: %s, url: %s",
+                     client.second.strHost.c_str(), client.second.nPort, tx.GetTxTime(), tx.GetHash().ToString().c_str(), tx.nType, message.nState,
+                     hashFork.ToString().c_str(), message.client.strTxURL.c_str());
+        }
+
+        RemoveClients(deletes);
+    }
+
+    return true;
+}
+
+void CPusher::RemoveClient(const std::string& client)
+{
+    mapRPCClient.erase(client);
+}
+
+void CPusher::RemoveClients(const std::vector<std::string>& clients)
+{
+    for (const std::string& client : clients)
+    {
+        RemoveClient(client);
+    }
+}
+
+void CPusher::RemoveClient(uint64 nNonce)
+{
+    std::string removeClient;
+    for (const auto& client : mapRPCClient)
+    {
+        if (client.second.nNonce == nNonce)
+        {
+            removeClient = client.first;
+        }
+    }
+    if (!removeClient.empty())
+    {
+        RemoveClient(removeClient);
+    }
+}
+
+void CPusher::PushBlock(const PushBlockMessage& message)
+{
+    CallRPC(message);
+}
+
+bool CPusher::CallRPC(const PushBlockMessage& message)
+{
+    try
+    {
+        Cblockdatadetail data = BlockDetailToJSON(message.hashFork, message.block);
+        auto spParam = MakeCPushBlockParamPtr(data);
+        CRPCReqPtr spReq = MakeCRPCReqPtr(message.client.nNonce, spParam->Method(), spParam);
+        std::string response;
+        return GetResponse(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strBlockURL, spReq->Serialize(), response);
+    }
+    catch (const std::exception& e)
+    {
+        //cerr << e.what() << endl;
+        StdError("CPusher", "CallRPC Exception: %s", e.what());
+        return false;
+    }
+    catch (...)
+    {
+        //cerr << "Unknown error" << endl;
+        StdError("CPusher", "CallRPC Exception: Unknown error");
+        return false;
+    }
+    return false;
+}
+
+void CPusher::PushTransaction(const PushTxMessage& message)
+{
+    CallRPC(message);
+}
+
+bool CPusher::CallRPC(const PushTxMessage& message)
+{
+    try
+    {
+        CTransactionData data = TxToJSON(message.tx.GetHash(), message.tx, message.hashFork, uint256(), 0, CAddress(message.destFrom).ToString());
+        auto spParam = MakeCPushTxEventParamPtr();
+        spParam->nNonce = nNonce;
+        spParam->nEventid = message.nEventId;
+        spParam->nEventtype = message.nState;
+        spParam->strFork = message.hashFork.ToString();
+        spParam->strTxid = message.tx.GetHash().ToString();
+        spParam->transaction = data;
+        CRPCReqPtr spReq = MakeCRPCReqPtr(message.client.nNonce, spParam->Method(), spParam);
+        std::string response;
+        return GetResponse(message.client.fSSL, message.client.strHost, message.client.nPort, message.client.strTxURL, spReq->Serialize(), response);
+    }
+    catch (const std::exception& e)
+    {
+        //cerr << e.what() << endl;
+        StdError("CPusher", "CallRPC Exception: %s", e.what());
+        return false;
+    }
+    catch (...)
+    {
+        //cerr << "Unknown error" << endl;
+        StdError("CPusher", "CallRPC Exception: Unknown error");
+        return false;
+    }
+    return false;
+}
+
+bool CPusher::HandleEvent(xengine::CEventHttpGetRsp& event)
+{
+    return true;
+}
+
+bool CPusher::GetResponse(bool fSSL, const std::string& strHost, int nPort, const std::string& strURL, const std::string& content, std::string& response)
+{
+
+    httplib::Client cli(strHost, nPort);
+    std::string path = (strURL.find_first_of('/') == 0) ? strURL : (std::string("/") + strURL);
+    httplib::Headers headers = {
+        { "Accept-Encoding", "gzip, deflate" },
+        { "Connection", "Keep-Alive" },
+        { "Accept", "application/json" },
+        { "User-Agent", "bigbang-data-sync-rpc/" }
+    };
+    StdDebug("CPusher", "GetResponse post path: %s", path.c_str());
+    if (auto res = cli.Post(path.c_str(), headers, content, "application/json"))
+    {
+        if (res->status == 200)
+        {
+            response = res->body;
+            StdDebug("CPusher", "status 200 with body: %s", res->body.c_str());
+            return true;
+        }
+        else
+        {
+            response = res->body;
+            StdDebug("CPusher", "status not 200 with body: %s", res->body.c_str());
+            return false;
+        }
+    }
+    else
+    {
+        auto err = res.error();
+        StdWarn("CPusher", "httpclient returned error %d", (int)err);
+        return false;
+    }
+}
 
 } // namespace bigbang
