@@ -12,6 +12,7 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 
+#include "http/httplib.h"
 #include "version.h"
 
 using namespace std;
@@ -53,7 +54,7 @@ CRPCClient::CRPCClient(bool fConsole)
     thrDispatch("rpcclient", boost::bind(fConsole ? &CRPCClient::LaunchConsole : &CRPCClient::LaunchCommand, this)), isConsoleRunning(false)
 {
     nLastNonce = 0;
-    pHttpGet = nullptr;
+    //pHttpGet = nullptr;
 }
 
 CRPCClient::~CRPCClient()
@@ -62,17 +63,17 @@ CRPCClient::~CRPCClient()
 
 bool CRPCClient::HandleInitialize()
 {
-    if (!GetObject("httpget", pHttpGet))
-    {
-        cerr << "Failed to request httpget\n";
-        return false;
-    }
+    // if (!GetObject("httpget", pHttpGet))
+    // {
+    //     cerr << "Failed to request httpget\n";
+    //     return false;
+    // }
     return true;
 }
 
 void CRPCClient::HandleDeinitialize()
 {
-    pHttpGet = nullptr;
+    //pHttpGet = nullptr;
 }
 
 bool CRPCClient::HandleInvoke()
@@ -180,49 +181,37 @@ bool CRPCClient::GetResponse(uint64 nNonce, const std::string& content)
         cout << "request: " << content << endl;
     }
 
-    CEventHttpGet eventHttpGet(nNonce);
-    CHttpReqData& httpReqData = eventHttpGet.data;
-    httpReqData.strIOModule = GetOwnKey();
-    httpReqData.nTimeout = Config()->nRPCConnectTimeout;
-
-    if (Config()->fRPCSSLEnable)
+    httplib::Client cli(Config()->strRPCConnect, Config()->nRPCPort);
+    std::string path = std::string("/") + to_string(VERSION);
+    httplib::Headers headers = {
+        { "Connection", "Keep-Alive" },
+        { "Accept", "application/json" },
+        { "User-Agent", "bigbang-json-rpc/" }
+    };
+    StdDebug("CRPCClient", "GetResponse post path: %s", path.c_str());
+    if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
     {
-        httpReqData.strProtocol = "https";
-        httpReqData.fVerifyPeer = Config()->fRPCSSLVerify;
-        httpReqData.strPathCA = Config()->strRPCCAFile;
-        httpReqData.strPathCert = Config()->strRPCCertFile;
-        httpReqData.strPathPK = Config()->strRPCPKFile;
+        cli.set_basic_auth(Config()->strRPCUser.c_str(), Config()->strRPCPass.c_str());
+    }
+    if (auto res = cli.Post(path.c_str(), headers, content + "\n", "application/json"))
+    {
+        if (res->status == 200)
+        {
+            StdDebug("CRPCClient", "status 200 with body: %s", res->body.c_str());
+            return true;
+        }
+        else
+        {
+            StdDebug("CRPCClient", "status not 200 with body: %s", res->body.c_str());
+            return true;
+        }
     }
     else
     {
-        httpReqData.strProtocol = "http";
+        auto err = res.error();
+        StdWarn("CRPCClient", "httpclient returned error %d", (int)err);
+        return false;
     }
-
-    CNetHost host(Config()->strRPCConnect, Config()->nRPCPort);
-    httpReqData.mapHeader["host"] = host.ToString();
-    httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
-    httpReqData.mapHeader["method"] = "POST";
-    httpReqData.mapHeader["accept"] = "application/json";
-    httpReqData.mapHeader["content-type"] = "application/json";
-    httpReqData.mapHeader["user-agent"] = string("bigbang-json-rpc/");
-    httpReqData.mapHeader["connection"] = "Keep-Alive";
-    if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
-    {
-        string strAuth;
-        CHttpUtil().Base64Encode(Config()->strRPCUser + ":" + Config()->strRPCPass, strAuth);
-        httpReqData.mapHeader["authorization"] = string("Basic ") + strAuth;
-    }
-
-    httpReqData.strContent = content + "\n";
-
-    ioComplt.Reset();
-
-    if (!pHttpGet->DispatchEvent(&eventHttpGet))
-    {
-        throw runtime_error("failed to send json request");
-    }
-    bool fResult = false;
-    return (ioComplt.WaitForComplete(fResult) && fResult);
 }
 
 bool CRPCClient::CallRPC(CRPCParamPtr spParam, int nReqId)
@@ -329,14 +318,14 @@ void CRPCClient::LaunchCommand()
 
 void CRPCClient::CancelCommand()
 {
-    if (pHttpGet)
-    {
-        CEventHttpAbort eventAbort(0);
-        CHttpAbort& httpAbort = eventAbort.data;
-        httpAbort.strIOModule = GetOwnKey();
-        httpAbort.vNonce.push_back(1);
-        pHttpGet->DispatchEvent(&eventAbort);
-    }
+    // if (pHttpGet)
+    // {
+    //     CEventHttpAbort eventAbort(0);
+    //     CHttpAbort& httpAbort = eventAbort.data;
+    //     httpAbort.strIOModule = GetOwnKey();
+    //     httpAbort.vNonce.push_back(1);
+    //     pHttpGet->DispatchEvent(&eventAbort);
+    // }
 }
 
 void CRPCClient::EnterLoop()

@@ -4472,6 +4472,12 @@ void CRPCMod::HttpServerThreadFunc()
             return;
         }
 
+        std::string strAuthorization = req.get_header_value("Authorization");
+        if (!strAuthorization.empty() && strAuthorization.find("Basic") != std::string::npos)
+        {
+            // TODO
+        }
+
         auto lmdMask = [](const std::string& data) -> std::string {
             return data;
         };
