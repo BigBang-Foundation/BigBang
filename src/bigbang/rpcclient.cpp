@@ -116,11 +116,12 @@ bool CRPCClient::GetResponse(uint64 nNonce, const std::string& content)
     }
 
     httplib::Client cli(Config()->strRPCConnect, Config()->nRPCPort);
-    std::string path = std::string("/") + to_string(VERSION);
+    std::string path = std::string("/");
     httplib::Headers headers = {
         { "Connection", "Keep-Alive" },
         { "Accept", "application/json" },
-        { "User-Agent", "bigbang-json-rpc/" }
+        { "User-Agent", "bigbang-json-rpc/" },
+        { "BigBang-Version", to_string(VERSION) }
     };
     StdDebug("CRPCClient", "GetResponse post path: %s", path.c_str());
     if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
@@ -173,7 +174,7 @@ bool CRPCClient::GetResponse(uint64 nNonce, const std::string& content)
     {
         auto err = res.error();
         StdWarn("CRPCClient", "httpclient returned error %d", (int)err);
-        cerr << "Http Client error: " << (int)err;
+        cerr << "Http Client error: " << (int)err << endl;
         return false;
     }
 }
