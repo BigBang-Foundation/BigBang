@@ -426,7 +426,15 @@
             "opt": "p2pontls",
             "default": false,
             "format": "-p2pontls",
-            "desc": "Configure access to P2P network whether or going on TLS(default: false)"
+            "desc": "Configure access to P2P network whether or not going on TLS(default: false)"
+        },
+        {
+            "name": "fVerifyPeer",
+            "type": "bool",
+            "opt": "verifypeer",
+            "default": false,
+            "format": "-verifypeer",
+            "desc": "Configure whether or not verify peer when using TLS channel(default: false)"
         },
         {
             "name": "strRootCAPath",
@@ -448,6 +456,13 @@
             "opt": "keypath",
             "format": "-keypath=<path>",
             "desc": "Set private key file path as <path> for node to join P2P network"
+        },
+        {
+            "name": "strP2PCiphers",
+            "type": "string",
+            "opt": "p2pciphers",
+            "format": "-p2pciphers=<ciphers>",
+            "desc": "Set P2P acceptable ciphers (default: TLSv1+HIGH:!SSLv2:!aNULL:!eNULL:!AH:!3DES:@STRENGTH)"
         }
     ]
 }

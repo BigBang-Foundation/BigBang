@@ -59,10 +59,11 @@ bool CNetwork::HandleInitialize()
             Error("Option of P2P on TLS set to enable but certificate(s) do not exist.");
             return false;
         }
-        config.optSSL.fVerifyPeer = true;
+        config.optSSL.fVerifyPeer = NetworkConfig()->fVerifyPeer;
         config.optSSL.strPathCA = NetworkConfig()->strRootCAPath;
         config.optSSL.strPathCert = NetworkConfig()->strCAPath;
         config.optSSL.strPathPK = NetworkConfig()->strKeyPath;
+        config.optSSL.strCiphers = NetworkConfig()->strP2PCiphers;
     }
 
     if (NetworkConfig()->fListen || NetworkConfig()->fListen4)
