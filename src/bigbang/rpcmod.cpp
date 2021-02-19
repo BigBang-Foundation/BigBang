@@ -4477,7 +4477,7 @@ void CRPCMod::HttpServerThreadFunc()
         std::string strAuthorization = req.get_header_value("Authorization");
         if (!strAuthorization.empty() && strAuthorization.find("Basic") != std::string::npos)
         {
-            // TODO
+            std::string base64 = strAuthorization.substr(strAuthorization.find_first_not_of("Basic"));
         }
 
         auto lmdMask = [](const std::string& data) -> std::string {
