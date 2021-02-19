@@ -148,10 +148,7 @@ public:
         int64 nTotalTxFee = 0;
         for (const CTransaction& tx : vtx)
         {
-            if (!tx.IsTxMintTx())
-            {
-                nTotalTxFee += tx.nTxFee;
-            }
+            nTotalTxFee += tx.nTxFee;
         }
         return GetBlockMint(nTotalTxFee);
     }

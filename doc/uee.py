@@ -515,7 +515,7 @@ def dpos():
 
 
 # create fork
-def create_uee_fork(prev, amount, name, symbol, uee):
+def create_fork(prev, amount, name, symbol, uee):
     prev = getblockhash(0)[0]
     forkid, data = makeorigin(
         prev, genesis_addr, amount, name, symbol, 0, 0, 'uee', uee)
@@ -539,8 +539,8 @@ def print_mode():
         print("###### Unknown mode")
 
 
-# create node
-def create_node(path):
+# create uee fork
+def create_uee_fork(path):
     input = {}
     # load json
     with open(path, 'r') as r:
@@ -553,7 +553,7 @@ def create_node(path):
 
     fork = input['makeorigin']
     print("fork json: {}".format(fork))
-    forkid = create_uee_fork(getblockhash(0), fork['amount'],
+    forkid = create_fork(getblockhash(0), fork['amount'],
                          fork['name'], fork['symbol'], fork['uee'])
 
     print("create forkid: {}".format(forkid))
@@ -565,13 +565,20 @@ def create_node(path):
             break
         time.sleep(10)
         
-    print("create fork success ,forkid: {}".format(forkid))
+    print("create fork success, forkid: {}".format(forkid))
 
+    importprivkey("cb412ba9b0910e0a53a33afce3ae42a833889521d97079da9e9f83679623eca9")
+    ueesignaddress = addueesigntemplate("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm","1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0")
+    print("addueesigntemplate success ,ueesignaddress: {}".format(ueesignaddress))
+
+    unlockkey("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm")
+    txid = sendfrom("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm", ueesignaddress, 1, forkid)
+    print("sendfrom success, txid: {}".format(txid))
 
 # send uee rule1 tx
 def send_uee_rule1_tx(path):
-    importprivkey("cb412ba9b0910e0a53a33afce3ae42a833889521d97079da9e9f83679623eca9")
-    addueesigntemplate("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm","1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0")
+    #importprivkey("cb412ba9b0910e0a53a33afce3ae42a833889521d97079da9e9f83679623eca9")
+    #addueesigntemplate("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm","1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0")
     unlockkey("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm")
     unlockkey("1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0")
 
@@ -585,10 +592,39 @@ def send_uee_rule1_tx(path):
     if ueeforkid == "null":
         raise Exception('No create uee fork')
     
-    rule1 = bytesToHexString(b"{\"rule\":\"rule1\",\"signaddress\": \"21g0f96thcqf3qjgybyj0jnyg971c69znwkne9a56q0ydd2p6tzermj4d\",\"param1\": \"6601\",\"param2\": \"1001\",\"var1\": 200}")
-    print(rule1)
+    rule = bytesToHexString(b"{\"rule\":\"rule1\",\"signaddress\": \"21g0f96thcqf3qjgybyj0jnyg971c69znwkne9a56q0ydd2p6tzermj4d\",\"param1\": \"6601\",\"param2\": \"1001\",\"var1\": 3}")
+    #print(rule)
 
-    txdata = createtransaction("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm", "1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm", 1, ueeforkid, 5, rule1)
+    txdata = createtransaction("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm", "1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm", 1, ueeforkid, 5, rule)
+
+    admin_sign_data = signtransactiondata("1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0", txdata)
+
+    send_txdata = signtransaction(txdata, "01498b63009dfb70f7ee0902ba95cc171f7d7a97ff16d89fd96e1f1b9e7d5f91da0183416fd0e61ce54524e5d06ad63e0937bccfe61381d6e789101030e6f7c9f8ed", admin_sign_data)
+
+    send_txid = sendtransaction(send_txdata)
+
+    print('send success, txid: {}'.format(send_txid))
+
+# send uee rule2 tx
+def send_uee_rule2_tx(path):
+    #importprivkey("cb412ba9b0910e0a53a33afce3ae42a833889521d97079da9e9f83679623eca9")
+    #addueesigntemplate("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm","1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0")
+    unlockkey("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm")
+    unlockkey("1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0")
+
+    forklist = listfork()
+    ueeforkid = "null"
+    for fork in forklist:
+        if fork["forktype"]=="uee":
+            ueeforkid = fork["fork"]
+            break
+
+    if ueeforkid == "null":
+        raise Exception('No create uee fork')
+    
+    rule = bytesToHexString(b"{\"rule\":\"rule2\",\"signaddress\": \"21g0f96thcqf3qjgybyj0jnyg971c69znwkne9a56q0ydd2p6tzermj4d\",\"param1\": \"6601\",\"param2\": \"1001\",\"var1\": 2,\"var2\": 4}")
+
+    txdata = createtransaction("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm", "1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm", 1, ueeforkid, 5, rule)
 
     admin_sign_data = signtransactiondata("1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0", txdata)
 
@@ -615,16 +651,39 @@ if __name__ == "__main__":
     print('work path: {}'.format(path))
 
     calltype = 0
+    callcount = 1
     if len(sys.argv) >= 3:
-        if sys.argv[2] == '-createnode':
+        if sys.argv[2] == '-sendueetx1':
+            calltype = 0
+            if len(sys.argv) >= 4:
+                callcount = int(sys.argv[3])
+        elif sys.argv[2] == '-sendueetx2':
             calltype = 1
+            if len(sys.argv) >= 4:
+                callcount = int(sys.argv[3])
+        elif sys.argv[2] == '-sendueetx0':
+            calltype = 2
+            if len(sys.argv) >= 4:
+                callcount = int(sys.argv[3])
+        elif sys.argv[2] == '-createfork':
+            calltype = 3
         elif sys.argv[2] == '-test':
             calltype = 9
 
-    if calltype == 1:
-        create_node(path)
+    if calltype == 0:
+        for i in range(0, callcount):
+            send_uee_rule1_tx(path)
+    elif calltype == 1:
+        for i in range(0, callcount):
+            send_uee_rule2_tx(path)
+    elif calltype == 2:
+        for i in range(0, callcount):
+            send_uee_rule1_tx(path)
+            send_uee_rule2_tx(path)
+    elif calltype == 3:
+        create_uee_fork(path)
     elif calltype == 9:
         test(path)
     else:
-        send_uee_rule1_tx(path)
+        test(path)
         

@@ -65,8 +65,10 @@ protected:
     Errno VerifyDexOrderTx(const CTransaction& tx, const CDestination& destIn, int64 nValueIn, int nHeight);
     Errno VerifyDexMatchTx(const CTransaction& tx, int64 nValueIn, int nHeight);
     Errno VerifyDeFiRelationTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const uint256& fork);
-    Errno VerifyUeeDataTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const uint256& fork);
-    Errno VerifySendToUeeSignTx(const CTransaction& tx, const CDestination& destIn, int nHeight);
+    Errno VerifyUeeDataTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const uint256& fork, const bool fPrevLastBlock, const uint256& hashPrevBlock);
+    Errno VerifySendToUeeSignTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const CProfile& profile);
+    bool ParseUeeData(const std::vector<uint8>& vUeeData, std::string& strRule, std::string& strSignAddress, double& nVar1, double& nVar2, bool& fVar2Enable);
+    bool VerifyUeeSignAddress(const CDestination& destUeeSign, int nHeight, const uint256& hashFork, const bool fPrevLastBlock, const uint256& hashPrevBlock);
 
 protected:
     uint256 hashGenesisBlock;

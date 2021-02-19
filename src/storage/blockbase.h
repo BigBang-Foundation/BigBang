@@ -383,6 +383,7 @@ public:
     bool GetLastRefBlockHash(const uint256& hashFork, const uint256& hashBlock, uint256& hashRefBlock, bool& fOrigin);
     bool GetPrimaryHeightBlockTime(const uint256& hashLastBlock, int nHeight, uint256& hashBlock, int64& nTime);
     bool VerifyPrimaryHeightRefBlockTime(const int nHeight, const int64 nTime);
+    int64 GetUeeSignBalance(const uint256& hashFork, const uint256& hashBlock, const CDestination& destUeeSign);
 
 protected:
     CBlockIndex* GetIndex(const uint256& hash) const;
@@ -399,6 +400,7 @@ protected:
     bool LoadForkProfile(const CBlockIndex* pIndexOrigin, CProfile& profile);
     bool VerifyDelegateVote(const uint256& hash, CBlockEx& block, int64 nMinEnrollAmount, CDelegateContext& ctxtDelegate);
     bool UpdateDelegate(const uint256& hash, CBlockEx& block, const CDiskPos& posBlock, CDelegateContext& ctxtDelegate);
+    bool UpdateUeeSignTx(const uint256& hashFork, const uint256& hashBlock, const CBlockEx& block);
     bool GetTxUnspent(const uint256 fork, const CTxOutPoint& out, CTxOut& unspent);
     bool GetTxNewIndex(CBlockView& view, CBlockIndex* pIndexNew, std::vector<std::pair<uint256, CTxIndex>>& vTxNew, std::vector<std::pair<CAddrTxIndex, CAddrTxInfo>>& vAddrTxNew);
     bool IsValidBlock(CBlockIndex* pForkLast, const uint256& hashBlock);

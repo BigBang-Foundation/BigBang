@@ -186,6 +186,21 @@ bool CForkDB::ListActiveFork(map<uint256, uint256>& mapActiveFork)
     return true;
 }
 
+bool CForkDB::AddUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nTxIndex, const uint256& txid, const int64 nBalance)
+{
+    return Write(make_pair(string("ueesign"), CUeeSignKey(hashFork, destUeeSign, hashBlock, nTxIndex)), make_pair(txid, nBalance));
+}
+
+bool CForkDB::ListUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, vector<tuple<uint256, int, uint256, int64>>& vUeeSignTx)
+{
+    if (!WalkThrough(boost::bind(&CForkDB::LoadUeeSignTxWalker, this, _1, _2, boost::ref(vUeeSignTx)), make_pair(string("ueesign"), CQueryUeeSignKey(hashFork, destUeeSign)), true))
+    {
+        StdError("CForkDB", "ListUeeSignTx: Walk through ueesign fail");
+        return false;
+    }
+    return true;
+}
+
 void CForkDB::Clear()
 {
     RemoveAll();
@@ -240,6 +255,28 @@ bool CForkDB::LoadValidForkWalker(CBufStream& ssKey, CBufStream& ssValue, map<ui
     }
     StdError("CForkDB", "LoadValidForkWalker: strPrefix error, strPrefix: %s", strPrefix.c_str());
     return false;
+}
+
+bool CForkDB::LoadUeeSignTxWalker(xengine::CBufStream& ssKey, xengine::CBufStream& ssValue, vector<tuple<uint256, int, uint256, int64>>& vUeeSignTx)
+{
+    string strPrefix;
+    ssKey >> strPrefix;
+
+    if (strPrefix == "ueesign")
+    {
+        uint256 hashFork;
+        CDestination destUeeSign;
+        uint256 hashBlock;
+        int nTxIndex;
+        uint256 txid;
+        int64 nBalance;
+        ssKey >> hashFork >> destUeeSign >> hashBlock >> nTxIndex;
+        ssValue >> txid >> nBalance;
+        vUeeSignTx.push_back(make_tuple(hashBlock, nTxIndex, txid, nBalance));
+        return true;
+    }
+    StdError("CForkDB", "LoadUeeSignTxWalker: strPrefix error, strPrefix: %s", strPrefix.c_str());
+    return true;
 }
 
 } // namespace storage

@@ -230,10 +230,11 @@ static const int32 DEFI_REWARD_EXCLUDED_BLACKLIST_TOKENS = 640798;
 
 // U element energy start height
 #ifdef BIGBANG_TESTNET
-static const int32 UEE_START_HEIGHT = 0;
+static const int32 UEE_FORK_START_HEIGHT = 1;
 #else
-static const int32 UEE_START_HEIGHT = 880000;
+static const int32 UEE_FORK_START_HEIGHT = 880000;
 #endif
+static const int64 UEE_FORK_MIN_SIGN_AMOUNT = 1 * COIN;
 
 namespace bigbang
 {
@@ -812,6 +813,10 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
     // check uee param
     else if (forkProfile.nForkType == FORK_TYPE_UEE)
     {
+        if (block.GetBlockHeight() < UEE_FORK_START_HEIGHT)
+        {
+            return DEBUG(ERR_BLOCK_INVALID_FORK, "uee fork height is out of range");
+        }
         const CUEEProfile& uee = forkProfile.uee;
         if (uee.nMaxSupply < -1 || (uee.nMaxSupply >= 0 && !MoneyRange(uee.nMaxSupply * COIN)))
         {
@@ -825,7 +830,7 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
         {
             if (vd.second.nFormula < 1 || vd.second.nFormula > 2)
             {
-                return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nFormula is out of range, rule name: %s", vd.first.c_str());
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nFormula is out of range, nFormula: %d, rule name: %s", vd.second.nFormula, vd.first.c_str());
             }
             if (vd.second.nCoefficient == 0)
             {
@@ -833,7 +838,7 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
             }
             if (vd.second.nDecayPeriodType < 0 || vd.second.nDecayPeriodType > 2)
             {
-                return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nDecayPeriodType is out of range, rule name: %s", vd.first.c_str());
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nDecayPeriodType is out of range, nDecayPeriodType: %d, rule name: %s", vd.second.nDecayPeriodType, vd.first.c_str());
             }
             if (vd.second.nDecayPeriodValue == 0)
             {
@@ -841,7 +846,7 @@ Errno CCoreProtocol::ValidateOrigin(const CBlock& block, const CProfile& parentP
             }
             if (vd.second.nDecayAmplitudeValue < 0 || vd.second.nDecayAmplitudeValue > 100)
             {
-                return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nDecayAmplitudeValue is out of range, rule name: %s", vd.first.c_str());
+                return DEBUG(ERR_BLOCK_INVALID_FORK, "uee param nDecayAmplitudeValue is out of range, nDecayAmplitudeValue: %d, rule name: %s", vd.second.nDecayAmplitudeValue, vd.first.c_str());
             }
         }
     }
@@ -1019,7 +1024,17 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
     }
     if (tx.nType == CTransaction::TX_UEE_DATA)
     {
-        return VerifyUeeDataTx(tx, destIn, nBlockHeight, fork);
+        CBlockStatus status;
+        if (!pBlockChain->GetLastBlockStatus(fork, status))
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "uee tx get last block fail");
+        }
+        bool fPrevLastBlock = true;
+        if (pIndexPrev->GetBlockHash() != status.hashBlock)
+        {
+            fPrevLastBlock = false;
+        }
+        return VerifyUeeDataTx(tx, destIn, nBlockHeight, fork, fPrevLastBlock, pIndexPrev->GetBlockHash());
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -1080,13 +1095,16 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         return DEBUG(ERR_TRANSACTION_INVALID, "invalid sendto dex match tx");
     }
 
-    if (nSendToTemplateType == TEMPLATE_UEESIGN && profile.nForkType != FORK_TYPE_UEE)
+    if (nSendToTemplateType == TEMPLATE_UEESIGN)
     {
-        return DEBUG(ERR_TRANSACTION_INVALID, "ueesign template must be in uee fork");
-    }
-    if (nSendToTemplateType == TEMPLATE_UEESIGN && VerifySendToUeeSignTx(tx, destIn, nBlockHeight) != OK)
-    {
-        return DEBUG(ERR_TRANSACTION_INVALID, "invalid sendto ueesign tx");
+        if (profile.nForkType != FORK_TYPE_UEE)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "ueesign template must be in uee fork");
+        }
+        if (VerifySendToUeeSignTx(tx, destIn, nBlockHeight, profile) != OK)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "invalid sendto ueesign tx");
+        }
     }
 
     vector<uint8> vchSig;
@@ -1203,7 +1221,7 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
     }
     if (tx.nType == CTransaction::TX_UEE_DATA)
     {
-        return VerifyUeeDataTx(tx, destIn, nForkHeight + 1, fork);
+        return VerifyUeeDataTx(tx, destIn, nForkHeight + 1, fork, true, uint256(uint64(0)));
     }
 
     if (tx.nType == CTransaction::TX_CERT)
@@ -1264,13 +1282,16 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         return DEBUG(ERR_TRANSACTION_INVALID, "invalid sendto dex match tx");
     }
 
-    if (nSendToTemplateType == TEMPLATE_UEESIGN && profile.nForkType != FORK_TYPE_UEE)
+    if (nSendToTemplateType == TEMPLATE_UEESIGN)
     {
-        return DEBUG(ERR_TRANSACTION_INVALID, "ueesign template must be in uee fork");
-    }
-    if (nSendToTemplateType == TEMPLATE_UEESIGN && VerifySendToUeeSignTx(tx, destIn, nForkHeight + 1) != OK)
-    {
-        return DEBUG(ERR_TRANSACTION_INVALID, "invalid sendto ueesign tx");
+        if (profile.nForkType != FORK_TYPE_UEE)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "ueesign template must be in uee fork");
+        }
+        if (VerifySendToUeeSignTx(tx, destIn, nForkHeight + 1, profile) != OK)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "invalid sendto ueesign tx");
+        }
     }
 
     // record destIn in vchSig
@@ -1839,6 +1860,12 @@ bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const uint2
                 nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
         return false;
     }
+    if (txUeeData.vchSig.empty())
+    {
+        StdWarn("Core", "Create uee reward tx: vchSig is empty, height: %d, uee data txid: %s, fork: %s",
+                nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
+        return false;
+    }
 
     CProfile profile;
     if (!pBlockChain->GetForkProfile(hashFork, profile))
@@ -1860,37 +1887,14 @@ bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const uint2
         return false;
     }
 
-    string strUeeData;
-    strUeeData.assign((char*)&(txUeeData.vchData[0]), (char*)&(txUeeData.vchData[0]) + txUeeData.vchData.size());
-
-    json_spirit::Value valUD;
-    if (!json_spirit::read_string(strUeeData, valUD, 64))
+    std::string strRule;
+    std::string strSignAddress;
+    double nVar1, nVar2;
+    bool fVar2Enable;
+    if (!ParseUeeData(txUeeData.vchData, strRule, strSignAddress, nVar1, nVar2, fVar2Enable))
     {
-        StdWarn("Core", "Create uee reward tx: parse uee data fail, height: %d, uee data txid: %s, fork: %s, vchData(hex): %s",
-                nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str(), ToHexString(txUeeData.vchData).c_str());
-        return false;
-    }
-    if (valUD.type() != json_spirit::obj_type)
-    {
-        StdWarn("Core", "Create uee reward tx: uee data json type error, height: %d, uee data txid: %s, fork: %s, vchData: %s",
-                nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str(), strUeeData.c_str());
-        return false;
-    }
-    const json_spirit::Object& objBody = valUD.get_obj();
-
-    json_spirit::Value valSignAddress = find_value(objBody, "signaddress");
-    if (valSignAddress.type() != json_spirit::str_type)
-    {
-        StdWarn("Core", "Create uee reward tx: signaddress param error, height: %d, uee data txid: %s, fork: %s, vchData: %s",
-                nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str(), strUeeData.c_str());
-        return false;
-    }
-    string strSignAddress = valSignAddress.get_str();
-
-    if (txUeeData.vchSig.empty())
-    {
-        StdWarn("Core", "Create uee reward tx: vchSig is empty, height: %d, uee data txid: %s, fork: %s",
-                nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
+        StdDebug("Core", "Create uee reward tx: parse uee data fail, height: %d, uee data txid: %s, fork: %s",
+                 nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
         return false;
     }
 
@@ -1919,19 +1923,11 @@ bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const uint2
     }
     if (ptrUeeSign->GetTemplateId() != CAddress(strSignAddress).GetTemplateId())
     {
-        StdWarn("Core", "Create uee reward tx: uee sign template id error, sign address: %s, height: %d, uee data txid: %s, fork: %s",
-                strSignAddress.c_str(), nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
+        StdWarn("Core", "Create uee reward tx: uee sign template id error, vchData address: %s, vchSign address: %s, height: %d, uee data txid: %s, fork: %s",
+                strSignAddress.c_str(), CAddress(CDestination(ptrUeeSign->GetTemplateId())).ToString().c_str(),
+                nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
         return false;
     }
-
-    json_spirit::Value valRule = find_value(objBody, "rule");
-    if (valRule.type() != json_spirit::str_type)
-    {
-        StdWarn("Core", "Create uee reward tx: rule param error, height: %d, uee data txid: %s, fork: %s, vchData: %s",
-                nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str(), strUeeData.c_str());
-        return false;
-    }
-    string strRule = valRule.get_str();
 
     auto it = profile.uee.mapRule.find(strRule);
     if (it == profile.uee.mapRule.end())
@@ -1950,8 +1946,13 @@ bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const uint2
     case CUEERule::UEER_DPT_HIGH_ATTENUATION:
     {
         int nHeightDiff = nHeight - CBlock::GetBlockHeightByHash(hashFork);
-        while (nHeightDiff >= ueeRule.nDecayPeriodValue && nCoefficient > 0)
+        while (nHeightDiff >= ueeRule.nDecayPeriodValue && nCoefficient > 1)
         {
+            if (ueeRule.nDecayAmplitudeValue >= 100)
+            {
+                nCoefficient = 0;
+                break;
+            }
             nCoefficient = nCoefficient - nCoefficient * ueeRule.nDecayAmplitudeValue / 100;
             nHeightDiff -= ueeRule.nDecayPeriodValue;
         }
@@ -1959,11 +1960,16 @@ bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const uint2
     }
     case CUEERule::UEER_DPT_CIRULATION_ATTENUATION:
     {
-        int64 nSurplusMoneySupply = nMoneySupply;
-        while (nSurplusMoneySupply >= ueeRule.nDecayPeriodValue * COIN && nCoefficient > 0)
+        int64 nSurplusMoneySupply = nMoneySupply / COIN;
+        while (nSurplusMoneySupply >= ueeRule.nDecayPeriodValue && nCoefficient > 1)
         {
+            if (ueeRule.nDecayAmplitudeValue >= 100)
+            {
+                nCoefficient = 0;
+                break;
+            }
             nCoefficient = nCoefficient - nCoefficient * ueeRule.nDecayAmplitudeValue / 100;
-            nSurplusMoneySupply -= ueeRule.nDecayPeriodValue * COIN;
+            nSurplusMoneySupply -= ueeRule.nDecayPeriodValue;
         }
         break;
     }
@@ -1978,37 +1984,18 @@ bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const uint2
     {
     case CUEERule::UEER_FORMULA_1:
     {
-        json_spirit::Value valVar1 = find_value(objBody, "var1");
-        if (valVar1.type() != json_spirit::int_type && valVar1.type() != json_spirit::real_type)
-        {
-            StdWarn("Core", "Create uee reward tx: var1 error, height: %d, uee data txid: %s, fork: %s, vchData: %s",
-                    nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str(), strUeeData.c_str());
-            return false;
-        }
-        double nVar1 = valVar1.get_real();
-        nRewardAmount = nVar1 * nCoefficient * COIN;
+        nRewardAmount = nVar1 * nCoefficient;
         break;
     }
     case CUEERule::UEER_FORMULA_2:
     {
-        json_spirit::Value valVar1 = find_value(objBody, "var1");
-        if (valVar1.type() != json_spirit::int_type && valVar1.type() != json_spirit::real_type)
+        if (!fVar2Enable)
         {
-            StdWarn("Core", "Create uee reward tx: var1 error, height: %d, uee data txid: %s, fork: %s, vchData: %s",
-                    nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str(), strUeeData.c_str());
+            StdWarn("Core", "Create uee reward tx: var2 param error, height: %d, uee data txid: %s, fork: %s",
+                    nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
             return false;
         }
-        double nVar1 = valVar1.get_real();
-
-        json_spirit::Value valVar2 = find_value(objBody, "var2");
-        if (valVar2.type() != json_spirit::int_type && valVar2.type() != json_spirit::real_type)
-        {
-            StdWarn("Core", "Create uee reward tx: var2 error, height: %d, uee data txid: %s, fork: %s, vchData: %s",
-                    nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str(), strUeeData.c_str());
-            return false;
-        }
-        double nVar2 = valVar2.get_real();
-        nRewardAmount = nVar1 * nCoefficient * COIN / nVar2;
+        nRewardAmount = nVar1 * nCoefficient / nVar2;
         break;
     }
     default:
@@ -2018,8 +2005,8 @@ bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const uint2
     }
     if (nRewardAmount <= NEW_MIN_TX_FEE)
     {
-        StdDebug("Core", "Create uee reward tx: reward is too smal, reward: %ld, height: %d, uee data txid: %s, fork: %s",
-                 nRewardAmount, nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
+        StdDebug("Core", "Create uee reward tx: reward is too smal, reward: %ld, formula: %d, coefficient: %lu, var1: %f, var2: %f, moneysupply: %lu, height: %d, uee data txid: %s, fork: %s",
+                 nRewardAmount, ueeRule.nFormula, nCoefficient, nVar1, nVar2, nMoneySupply / COIN, nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
         return false;
     }
 
@@ -2031,7 +2018,6 @@ bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const uint2
     txUeeReward.nTxFee = NEW_MIN_TX_FEE;
     txUeeReward.nAmount = nRewardAmount - txUeeReward.nTxFee;
     txUeeReward.vchData.assign(txidUeeData.begin(), txidUeeData.end());
-
     return true;
 }
 
@@ -2369,7 +2355,7 @@ Errno CCoreProtocol::VerifyDeFiRelationTx(const CTransaction& tx, const CDestina
     return OK;
 }
 
-Errno CCoreProtocol::VerifyUeeDataTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const uint256& fork)
+Errno CCoreProtocol::VerifyUeeDataTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const uint256& fork, const bool fPrevLastBlock, const uint256& hashPrevBlock)
 {
     if (tx.sendTo != destIn)
     {
@@ -2414,6 +2400,13 @@ Errno CCoreProtocol::VerifyUeeDataTx(const CTransaction& tx, const CDestination&
                tx.GetHash().GetHex().c_str(), vAdminTemplateData.size(), ToHexString(vAdminTemplateData).c_str());
         return ERR_TRANSACTION_INVALID;
     }
+    CDestination destUeeSign(ptrUeeSign->GetTemplateId());
+    if (!VerifyUeeSignAddress(destUeeSign, nHeight, fork, fPrevLastBlock, hashPrevBlock))
+    {
+        StdLog("Core", "Verify uee data tx: verify uee sign address fail, tx: %s", tx.GetHash().GetHex().c_str());
+        return ERR_TRANSACTION_INVALID;
+    }
+
     auto objUeeSign = boost::dynamic_pointer_cast<CTemplateUeeSign>(ptrUeeSign);
     if (!objUeeSign->destAdmin.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vAdminSignData, nHeight, fork))
     {
@@ -2428,7 +2421,7 @@ Errno CCoreProtocol::VerifyUeeDataTx(const CTransaction& tx, const CDestination&
     return OK;
 }
 
-Errno CCoreProtocol::VerifySendToUeeSignTx(const CTransaction& tx, const CDestination& destIn, int nHeight)
+Errno CCoreProtocol::VerifySendToUeeSignTx(const CTransaction& tx, const CDestination& destIn, int nHeight, const CProfile& profile)
 {
     auto ptrUeeSign = CTemplate::CreateTemplatePtr(TEMPLATE_UEESIGN, tx.vchSig);
     if (ptrUeeSign == nullptr)
@@ -2442,7 +2435,117 @@ Errno CCoreProtocol::VerifySendToUeeSignTx(const CTransaction& tx, const CDestin
         StdLog("Core", "Verify uee sign tx: from address is not owner address, tx: %s", tx.GetHash().GetHex().c_str());
         return ERR_TRANSACTION_INVALID;
     }
+    if (destIn != profile.destOwner)
+    {
+        StdLog("Core", "Verify uee sign tx: from address is not fork owner address, tx: %s", tx.GetHash().GetHex().c_str());
+        return ERR_TRANSACTION_INVALID;
+    }
+    if (tx.nAmount < UEE_FORK_MIN_SIGN_AMOUNT)
+    {
+        StdLog("Core", "Verify uee sign tx: amount not enough, amount: %lu, tx: %s", tx.nAmount, tx.GetHash().GetHex().c_str());
+        return ERR_TRANSACTION_INVALID;
+    }
     return OK;
+}
+
+bool CCoreProtocol::ParseUeeData(const std::vector<uint8>& vUeeData, std::string& strRule, std::string& strSignAddress, double& nVar1, double& nVar2, bool& fVar2Enable)
+{
+    try
+    {
+        string strUeeData;
+        strUeeData.assign((char*)&(vUeeData[0]), (char*)&(vUeeData[0]) + vUeeData.size());
+
+        json_spirit::Value valUD;
+        if (!json_spirit::read_string(strUeeData, valUD, 64))
+        {
+            StdWarn("Core", "Parse uee data: parse fail, vchData(hex): %s", ToHexString(vUeeData).c_str());
+            return false;
+        }
+        if (valUD.type() != json_spirit::obj_type)
+        {
+            StdWarn("Core", "Parse uee data: uee data json type error, vchData: %s", strUeeData.c_str());
+            return false;
+        }
+        const json_spirit::Object& objBody = valUD.get_obj();
+
+        json_spirit::Value valRule = find_value(objBody, "rule");
+        if (valRule.is_null() || valRule.type() != json_spirit::str_type)
+        {
+            StdWarn("Core", "Parse uee data: rule param error, vchData: %s", strUeeData.c_str());
+            return false;
+        }
+        strRule = valRule.get_str();
+
+        json_spirit::Value valSignAddress = find_value(objBody, "signaddress");
+        if (valSignAddress.is_null() || valSignAddress.type() != json_spirit::str_type)
+        {
+            StdWarn("Core", "Parse uee data: signaddress param error, vchData: %s", strUeeData.c_str());
+            return false;
+        }
+        strSignAddress = valSignAddress.get_str();
+
+        json_spirit::Value valVar1 = find_value(objBody, "var1");
+        if (valVar1.is_null() || (valVar1.type() != json_spirit::int_type && valVar1.type() != json_spirit::real_type))
+        {
+            StdWarn("Core", "Parse uee data: var1 param error, vchData: %s", strUeeData.c_str());
+            return false;
+        }
+        nVar1 = valVar1.get_real();
+
+        json_spirit::Value valVar2 = find_value(objBody, "var2");
+        if (valVar2.is_null() || (valVar2.type() != json_spirit::int_type && valVar2.type() != json_spirit::real_type))
+        {
+            StdWarn("Core", "Parse uee data: var2 param error, vchData: %s", strUeeData.c_str());
+            fVar2Enable = false;
+        }
+        else
+        {
+            fVar2Enable = true;
+            nVar2 = valVar2.get_real();
+        }
+    }
+    catch (const std::exception& e)
+    {
+        StdWarn("Core", "Parse uee data: catch error, err: %s", e.what());
+        return false;
+    }
+    return true;
+}
+
+bool CCoreProtocol::VerifyUeeSignAddress(const CDestination& destUeeSign, int nHeight, const uint256& hashFork, const bool fPrevLastBlock, const uint256& hashPrevBlock)
+{
+    if (fPrevLastBlock)
+    {
+        vector<CTxUnspent> vUnspentOnChain;
+        if (pBlockChain->ListForkUnspent(hashFork, destUeeSign, 0, vUnspentOnChain))
+        {
+            int64 nBalance = 0;
+            for (const CTxUnspent& unspent : vUnspentOnChain)
+            {
+                nBalance += unspent.output.nAmount;
+            }
+            if (nBalance >= UEE_FORK_MIN_SIGN_AMOUNT)
+            {
+                return true;
+            }
+            StdLog("Core", "VerifyUeeSignAddress: balance is not enough, balance: %lu", nBalance);
+        }
+        else
+        {
+            StdLog("Core", "VerifyUeeSignAddress: ListForkUnspent fail, dest: %s, forkid: %s",
+                   CAddress(destUeeSign).ToString().c_str(), hashFork.GetHex().c_str());
+        }
+    }
+    else
+    {
+        int64 nBalance = pBlockChain->GetUeeSignBalance(hashFork, hashPrevBlock, destUeeSign);
+        if (nBalance >= UEE_FORK_MIN_SIGN_AMOUNT)
+        {
+            return true;
+        }
+        StdLog("Core", "VerifyUeeSignAddress: balance is not enough, balance: %lu, prev: %s", nBalance, hashPrevBlock.GetHex().c_str());
+    }
+    return false;
 }
 
 ///////////////////////////////

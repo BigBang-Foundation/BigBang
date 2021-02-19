@@ -709,6 +709,8 @@ bool CBlockBase::AddNew(const uint256& hash, CBlockEx& block, CBlockIndex** ppIn
             }
         }
 
+        UpdateUeeSignTx(pIndexNew->GetOriginHash(), hash, block);
+
         *ppIndexNew = pIndexNew;
     }
 
@@ -2969,6 +2971,94 @@ bool CBlockBase::UpdateDelegate(const uint256& hash, CBlockEx& block, const CDis
         return false;
     }
     return true;
+}
+
+bool CBlockBase::UpdateUeeSignTx(const uint256& hashFork, const uint256& hashBlock, const CBlockEx& block)
+{
+    for (size_t i = 0; i < block.vtx.size(); i++)
+    {
+        const CTransaction& tx = block.vtx[i];
+        const CTxContxt& txCxt = block.vTxContxt[i];
+        int64 nBalance = 0;
+        CDestination destUeeSign;
+        CTemplateId tid;
+        if (tx.sendTo.GetTemplateId(tid) && tid.GetType() == TEMPLATE_UEESIGN)
+        {
+            nBalance = tx.nAmount;
+            destUeeSign = tx.sendTo;
+        }
+        else if (txCxt.destIn.GetTemplateId(tid) && tid.GetType() == TEMPLATE_UEESIGN)
+        {
+            nBalance -= (tx.nAmount + tx.nTxFee);
+            destUeeSign = txCxt.destIn;
+        }
+        if (nBalance != 0)
+        {
+            std::vector<std::tuple<uint256, int, uint256, int64>> vUeeSignTx;
+            if (dbBlock.ListUeeSignTx(hashFork, destUeeSign, vUeeSignTx) && !vUeeSignTx.empty())
+            {
+                int nMinHeight = 0x7FFFFFFF;
+                map<uint256, int64> mapUeeSignBlock;
+                for (int64 n = 0; n < vUeeSignTx.size(); n++)
+                {
+                    const uint256& hash = get<0>(vUeeSignTx[n]);
+                    mapUeeSignBlock[hash] = get<3>(vUeeSignTx[n]);
+                    if (CBlock::GetBlockHeightByHash(hash) < nMinHeight)
+                    {
+                        nMinHeight = CBlock::GetBlockHeightByHash(hash);
+                    }
+                }
+                CBlockIndex* pIndex = GetIndex(hashBlock);
+                while (pIndex && pIndex->GetBlockHeight() >= nMinHeight)
+                {
+                    auto it = mapUeeSignBlock.find(pIndex->GetBlockHash());
+                    if (it != mapUeeSignBlock.end())
+                    {
+                        nBalance += it->second;
+                        break;
+                    }
+                    pIndex = pIndex->pPrev;
+                }
+            }
+            if (vUeeSignTx.size() < 32)
+            {
+                dbBlock.AddUeeSignTx(hashFork, destUeeSign, hashBlock, i, tx.GetHash(), nBalance);
+            }
+        }
+    }
+    return true;
+}
+
+int64 CBlockBase::GetUeeSignBalance(const uint256& hashFork, const uint256& hashBlock, const CDestination& destUeeSign)
+{
+    int64 nBalance = 0;
+    std::vector<std::tuple<uint256, int, uint256, int64>> vUeeSignTx;
+    if (dbBlock.ListUeeSignTx(hashFork, destUeeSign, vUeeSignTx) && !vUeeSignTx.empty())
+    {
+        int nMinHeight = 0x7FFFFFFF;
+        map<uint256, int64> mapUeeSignBlock;
+        for (int64 n = 0; n < vUeeSignTx.size(); n++)
+        {
+            const uint256& hash = get<0>(vUeeSignTx[n]);
+            mapUeeSignBlock[hash] = get<3>(vUeeSignTx[n]);
+            if (CBlock::GetBlockHeightByHash(hash) < nMinHeight)
+            {
+                nMinHeight = CBlock::GetBlockHeightByHash(hash);
+            }
+        }
+        CBlockIndex* pIndex = GetIndex(hashBlock);
+        while (pIndex && pIndex->GetBlockHeight() >= nMinHeight)
+        {
+            auto it = mapUeeSignBlock.find(pIndex->GetBlockHash());
+            if (it != mapUeeSignBlock.end())
+            {
+                nBalance += it->second;
+                break;
+            }
+            pIndex = pIndex->pPrev;
+        }
+    }
+    return nBalance;
 }
 
 bool CBlockBase::GetTxUnspent(const uint256 fork, const CTxOutPoint& out, CTxOut& unspent)

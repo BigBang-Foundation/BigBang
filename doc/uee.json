@@ -1,14 +1,14 @@
 {
     "input": {
         "makeorigin": {
-            "amount": 20000000,
+            "amount": 20000,
             "uee": {
                 "maxsupply": 1000000000,
                 "rule": [
                     {
                         "rulename": "rule1",
                         "formula": 1,
-                        "coefficient": 200,
+                        "coefficient": 20000000000,
                         "decayperiodtype": 1,
                         "decayperiodvalue": 20,
                         "decayamplitudevalue": 50
@@ -16,9 +16,9 @@
                     {
                         "rulename": "rule2",
                         "formula": 2,
-                        "coefficient": 500,
+                        "coefficient": 500000000,
                         "decayperiodtype": 2,
-                        "decayperiodvalue": 2000,
+                        "decayperiodvalue": 30000,
                         "decayamplitudevalue": 60
                     }
                 ]

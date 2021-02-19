@@ -337,6 +337,16 @@ int64 CBlockDB::RetrieveAddressTxList(const uint256& hashFork, const CDestinatio
     return -1;
 }
 
+bool CBlockDB::AddUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nTxIndex, const uint256& txid, const int64 nBalance)
+{
+    return dbFork.AddUeeSignTx(hashFork, destUeeSign, hashBlock, nTxIndex, txid, nBalance);
+}
+
+bool CBlockDB::ListUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, vector<tuple<uint256, int, uint256, int64>>& vUeeSignTx)
+{
+    return dbFork.ListUeeSignTx(hashFork, destUeeSign, vUeeSignTx);
+}
+
 bool CBlockDB::LoadFork()
 {
     vector<pair<uint256, uint256>> vFork;

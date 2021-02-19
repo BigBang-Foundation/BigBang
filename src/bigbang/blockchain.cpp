@@ -2559,4 +2559,9 @@ int64 CBlockChain::GetAddressTxList(const uint256& hashFork, const CDestination&
     return cntrBlock.RetrieveAddressTxList(hashFork, dest, nPrevHeight, nPrevTxSeq, nOffset, nCount, vTx);
 }
 
+int64 CBlockChain::GetUeeSignBalance(const uint256& hashFork, const uint256& hashBlock, const CDestination& destUeeSign)
+{
+    return cntrBlock.GetUeeSignBalance(hashFork, hashBlock, destUeeSign);
+}
+
 } // namespace bigbang
