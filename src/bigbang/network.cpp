@@ -131,7 +131,10 @@ bool CNetwork::HandleInitialize()
                                boost::any(uint64(network::NODE_NETWORK)));
     }
 
-    ConfigNetwork(config);
+    if (!ConfigNetwork(config))
+    {
+        return false;
+    }
 
     return network::CBbPeerNet::HandleInitialize();
 }

@@ -62,7 +62,7 @@ class CPeerNet : public CIOProc, virtual public CPeerEventListener
 public:
     explicit CPeerNet(const std::string& ownKeyIn);
     ~CPeerNet() override;
-    void ConfigNetwork(CPeerNetConfig& config);
+    bool ConfigNetwork(CPeerNetConfig& config);
     void HandlePeerClose(CPeer* pPeer);
     void HandlePeerViolate(CPeer* pPeer);
     void HandlePeerError(CPeer* pPeer);

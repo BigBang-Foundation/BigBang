@@ -39,15 +39,18 @@ CPeerNet::~CPeerNet()
     {
         delete i.second.pSSLContext;
     }
-    mapProfile.clear();
+    if (!mapProfile.empty())
+    {
+        mapProfile.clear();
+    }
 }
 
-void CPeerNet::ConfigNetwork(CPeerNetConfig& config)
+bool CPeerNet::ConfigNetwork(CPeerNetConfig& config)
 {
     confNetwork = config;
-    CPeerNetProfile profile;
     if (confNetwork.optSSL.fEnable)
     {
+        CPeerNetProfile profile;
         for (auto host : confNetwork.vecService)
         {
             boost::system::error_code ec;
@@ -56,17 +59,28 @@ void CPeerNet::ConfigNetwork(CPeerNetConfig& config)
             {
                 Error("Failed to alloc ssl context for [%s:%u]", host.epListen.address().to_string(ec).c_str(),
                       host.epListen.port());
+                if (!mapProfile.empty())
+                {
+                    mapProfile.clear();
+                }
+                return false;
             }
             if (!confNetwork.optSSL.SetupSSLContext(*profile.pSSLContext))
             {
                 Error("Failed to setup ssl context for [%s:%u]", host.epListen.address().to_string(ec).c_str(),
                       host.epListen.port());
                 delete profile.pSSLContext;
+                if (!mapProfile.empty())
+                {
+                    mapProfile.clear();
+                }
+                return false;
             }
 
             mapProfile[host.epListen] = profile;
         }
     }
+    return true;
 }
 
 void CPeerNet::HandlePeerClose(CPeer* pPeer)
