@@ -4445,7 +4445,7 @@ void CRPCMod::HttpServerThreadFunc()
     using namespace httplib;
     Server svr;
     svr.set_keep_alive_max_count(pConfig->nRPCMaxConnections);
-    svr.Post("/", [this](const Request& req, Response& res) {
+    svr.Post("/", [this, &pConfig](const Request& req, Response& res) {
         if (!IsAllowedRemote(req.remote_addr))
         {
             char msg[512] = { 0 };
@@ -4477,7 +4477,14 @@ void CRPCMod::HttpServerThreadFunc()
         std::string strAuthorization = req.get_header_value("Authorization");
         if (!strAuthorization.empty() && strAuthorization.find("Basic") != std::string::npos)
         {
-            std::string base64 = strAuthorization.substr(strAuthorization.find_first_not_of("Basic"));
+            std::string auth = pConfig->strRPCUser + std::string(":") + pConfig->strRPCPass;
+            std::string authBase64;
+            CHttpUtil().Base64Encode(auth, authBase64);
+            if (strAuthorization != (std::string("Basic ") + authBase64))
+            {
+                res.status = 401;
+                return;
+            }
         }
 
         auto lmdMask = [](const std::string& data) -> std::string {
