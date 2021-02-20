@@ -49,7 +49,8 @@ class CPeerNetConfig
 public:
     std::vector<CPeerService> vecService;
     std::vector<CNetHost> vecNode;
-    CIOSSLOption optSSL;
+    CIOSSLOption optSSLIn;
+    CIOSSLOption optSSLOut;
     CNetHost gateWayAddr;
     std::size_t nMaxOutBounds;
     unsigned short nPortDefault;

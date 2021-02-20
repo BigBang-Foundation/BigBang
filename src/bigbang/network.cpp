@@ -43,27 +43,49 @@ bool CNetwork::HandleInitialize()
               FormatSubVersion(), !NetworkConfig()->vConnectTo.empty(), pCoreProtocol->GetGenesisBlockHash());
 
     CPeerNetConfig config;
-    config.optSSL.fEnable = NetworkConfig()->fP2PonTLS;
-    if (NetworkConfig()->fP2PonTLS)
+    config.optSSLIn.fEnable = NetworkConfig()->fP2PonTLSIn;
+    if (NetworkConfig()->fP2PonTLSIn)
     {
-        if (NetworkConfig()->strRootCAPath.empty() || NetworkConfig()->strCAPath.empty() || NetworkConfig()->strKeyPath.empty())
+        if (NetworkConfig()->strRootCAPathIn.empty() || NetworkConfig()->strCAPathIn.empty() || NetworkConfig()->strKeyPathIn.empty())
         {
-            Error("Option of P2P on TLS set to enable but no settings are provided.");
+            Error("Option of P2P on TLS [in] set to enable but no settings are provided.");
             return false;
         }
-        path rootCADir(NetworkConfig()->strRootCAPath);
-        path CADir(NetworkConfig()->strCAPath);
-        path keyDir(NetworkConfig()->strKeyPath);
+        path rootCADir(NetworkConfig()->strRootCAPathIn);
+        path CADir(NetworkConfig()->strCAPathIn);
+        path keyDir(NetworkConfig()->strKeyPathIn);
         if (!exists(rootCADir) || !exists(CADir) || !exists(keyDir))
         {
-            Error("Option of P2P on TLS set to enable but certificate(s) do not exist.");
+            Error("Option of P2P on TLS [in] set to enable but certificate(s) do not exist.");
             return false;
         }
-        config.optSSL.fVerifyPeer = NetworkConfig()->fVerifyPeer;
-        config.optSSL.strPathCA = NetworkConfig()->strRootCAPath;
-        config.optSSL.strPathCert = NetworkConfig()->strCAPath;
-        config.optSSL.strPathPK = NetworkConfig()->strKeyPath;
-        config.optSSL.strCiphers = NetworkConfig()->strP2PCiphers;
+        config.optSSLIn.fVerifyPeer = NetworkConfig()->fVerifyPeerIn;
+        config.optSSLIn.strPathCA = NetworkConfig()->strRootCAPathIn;
+        config.optSSLIn.strPathCert = NetworkConfig()->strCAPathIn;
+        config.optSSLIn.strPathPK = NetworkConfig()->strKeyPathIn;
+        config.optSSLIn.strCiphers = NetworkConfig()->strP2PCiphersIn;
+    }
+    config.optSSLOut.fEnable = NetworkConfig()->fP2PonTLSOut;
+    if (NetworkConfig()->fP2PonTLSOut)
+    {
+        if (NetworkConfig()->strRootCAPathOut.empty() || NetworkConfig()->strCAPathOut.empty() || NetworkConfig()->strKeyPathOut.empty())
+        {
+            Error("Option of P2P on TLS [out] set to enable but no settings are provided.");
+            return false;
+        }
+        path rootCADir(NetworkConfig()->strRootCAPathOut);
+        path CADir(NetworkConfig()->strCAPathOut);
+        path keyDir(NetworkConfig()->strKeyPathOut);
+        if (!exists(rootCADir) || !exists(CADir) || !exists(keyDir))
+        {
+            Error("Option of P2P on TLS [out] set to enable but certificate(s) do not exist.");
+            return false;
+        }
+        config.optSSLOut.fVerifyPeer = NetworkConfig()->fVerifyPeerOut;
+        config.optSSLOut.strPathCA = NetworkConfig()->strRootCAPathOut;
+        config.optSSLOut.strPathCert = NetworkConfig()->strCAPathOut;
+        config.optSSLOut.strPathPK = NetworkConfig()->strKeyPathOut;
+        config.optSSLOut.strCiphers = NetworkConfig()->strP2PCiphersOut;
     }
 
     if (NetworkConfig()->fListen || NetworkConfig()->fListen4)

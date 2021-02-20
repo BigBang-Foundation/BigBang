@@ -48,7 +48,7 @@ CPeerNet::~CPeerNet()
 bool CPeerNet::ConfigNetwork(CPeerNetConfig& config)
 {
     confNetwork = config;
-    if (confNetwork.optSSL.fEnable)
+    if (confNetwork.optSSLIn.fEnable)
     {
         CPeerNetProfile profile;
         for (auto host : confNetwork.vecService)
@@ -65,7 +65,7 @@ bool CPeerNet::ConfigNetwork(CPeerNetConfig& config)
                 }
                 return false;
             }
-            if (!confNetwork.optSSL.SetupSSLContext(*profile.pSSLContext))
+            if (!confNetwork.optSSLIn.SetupSSLContext(*profile.pSSLContext))
             {
                 Error("Failed to setup ssl context for [%s:%u]", host.epListen.address().to_string(ec).c_str(),
                       host.epListen.port());
@@ -165,9 +165,9 @@ void CPeerNet::HeartBeat()
                 }
                 else
                 {
-                    if (confNetwork.optSSL.fEnable)
+                    if (confNetwork.optSSLOut.fEnable)
                     {
-                        fRet = SSLConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT, confNetwork.optSSL);
+                        fRet = SSLConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT, confNetwork.optSSLOut);
                     }
                     else
                     {
@@ -186,9 +186,9 @@ void CPeerNet::HeartBeat()
                 }
                 else
                 {
-                    if (confNetwork.optSSL.fEnable)
+                    if (confNetwork.optSSLOut.fEnable)
                     {
-                        fRet = SSLConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT, confNetwork.optSSL);
+                        fRet = SSLConnectByBindAddress(epLocal, epRemote, CONNECT_TIMEOUT, confNetwork.optSSLOut);
                     }
                     else
                     {
@@ -198,9 +198,9 @@ void CPeerNet::HeartBeat()
             }
             else
             {
-                if (confNetwork.optSSL.fEnable)
+                if (confNetwork.optSSLOut.fEnable)
                 {
-                    fRet = SSLConnect(epRemote, CONNECT_TIMEOUT, confNetwork.optSSL);
+                    fRet = SSLConnect(epRemote, CONNECT_TIMEOUT, confNetwork.optSSLOut);
                 }
                 else
                 {
@@ -243,7 +243,7 @@ CIOClient* CPeerNet::CreateIOClient(CIOContainer* pContainer)
 {
     map<tcp::endpoint, CPeerNetProfile>::iterator it;
     it = mapProfile.find(pContainer->GetServiceEndpoint());
-    if ( it != mapProfile.end() && confNetwork.optSSL.fEnable && (*it).second.pSSLContext != nullptr)
+    if ( it != mapProfile.end() && confNetwork.optSSLIn.fEnable && (*it).second.pSSLContext != nullptr)
     {
         return new CSSLClient(pContainer, GetIoService(), *(*it).second.pSSLContext);
     }

@@ -421,48 +421,92 @@
             "desc": "DNSeed address list(<address> can be IPv4 or IPv6 or domain name, default <port>: 9906, IPv6 format: [ip]:port)"
         },
         {
-            "name": "fP2PonTLS",
+            "name": "fP2PonTLSIn",
             "type": "bool",
-            "opt": "p2pontls",
+            "opt": "p2pontlsin",
             "default": false,
-            "format": "-p2pontls",
-            "desc": "Configure access to P2P network whether or not going on TLS(default: false)"
+            "format": "-p2pontlsin",
+            "desc": "Configure access to P2P network whether or not going on TLS(default: false) [in]"
         },
         {
-            "name": "fVerifyPeer",
+            "name": "fVerifyPeerIn",
             "type": "bool",
-            "opt": "verifypeer",
+            "opt": "verifypeerin",
             "default": false,
-            "format": "-verifypeer",
-            "desc": "Configure whether or not verify peer when using TLS channel(default: false)"
+            "format": "-verifypeerin",
+            "desc": "Configure whether or not verify peer when using TLS channel(default: false) [in]"
         },
         {
-            "name": "strRootCAPath",
+            "name": "strRootCAPathIn",
             "type": "string",
-            "opt": "rootcapath",
-            "format": "-rootcapath=<path>",
-            "desc": "Set root CA file path as <path> for node to join P2P network"
+            "opt": "rootcapathin",
+            "format": "-rootcapathin=<path>",
+            "desc": "Set root CA file path as <path> for node to join P2P network [in]"
         },
         {
-            "name": "strCAPath",
+            "name": "strCAPathIn",
             "type": "string",
-            "opt": "capath",
-            "format": "-capath=<path>",
-            "desc": "Set CA file path as <path> for node to join P2P network"
+            "opt": "capathin",
+            "format": "-capathin=<path>",
+            "desc": "Set CA file path as <path> for node to join P2P network [in]"
         },
         {
-            "name": "strKeyPath",
+            "name": "strKeyPathIn",
             "type": "string",
-            "opt": "keypath",
-            "format": "-keypath=<path>",
-            "desc": "Set private key file path as <path> for node to join P2P network"
+            "opt": "keypathin",
+            "format": "-keypathin=<path>",
+            "desc": "Set private key file path as <path> for node to join P2P network [in]"
         },
         {
-            "name": "strP2PCiphers",
+            "name": "strP2PCiphersIn",
             "type": "string",
-            "opt": "p2pciphers",
-            "format": "-p2pciphers=<ciphers>",
-            "desc": "Set P2P acceptable ciphers (default: TLSv1+HIGH:!SSLv2:!aNULL:!eNULL:!AH:!3DES:@STRENGTH)"
+            "opt": "p2pciphersin",
+            "format": "-p2pciphersin=<ciphers>",
+            "desc": "Set P2P acceptable ciphers (default: TLSv1+HIGH:!SSLv2:!aNULL:!eNULL:!AH:!3DES:@STRENGTH) [in]"
+        },
+        {
+            "name": "fP2PonTLSOut",
+            "type": "bool",
+            "opt": "p2pontlsout",
+            "default": false,
+            "format": "-p2pontlsout",
+            "desc": "Configure access to P2P network whether or not going on TLS(default: false) [out]"
+        },
+        {
+            "name": "fVerifyPeerOut",
+            "type": "bool",
+            "opt": "verifypeerout",
+            "default": false,
+            "format": "-verifypeerout",
+            "desc": "Configure whether or not verify peer when using TLS channel(default: false) [out]"
+        },
+        {
+            "name": "strRootCAPathOut",
+            "type": "string",
+            "opt": "rootcapathout",
+            "format": "-rootcapathout=<path>",
+            "desc": "Set root CA file path as <path> for node to join P2P network [out]"
+        },
+        {
+            "name": "strCAPathOut",
+            "type": "string",
+            "opt": "capathout",
+            "format": "-capathout=<path>",
+            "desc": "Set CA file path as <path> for node to join P2P network [out]"
+        },
+        {
+            "name": "strKeyPathOut",
+            "type": "string",
+            "opt": "keypathout",
+            "format": "-keypathout=<path>",
+            "desc": "Set private key file path as <path> for node to join P2P network [out]"
+        },
+        {
+            "name": "strP2PCiphersOut",
+            "type": "string",
+            "opt": "p2pciphersout",
+            "format": "-p2pciphersout=<ciphers>",
+            "desc": "Set P2P acceptable ciphers (default: TLSv1+HIGH:!SSLv2:!aNULL:!eNULL:!AH:!3DES:@STRENGTH) [out]"
         }
     ]
 }
