@@ -12,13 +12,15 @@
 #include <boost/format.hpp>
 #include <boost/range/adaptor/reversed.hpp>
 #include <boost/regex.hpp>
+#include <cstdio>
 #include <regex>
 //#include <algorithm>
 
-#include "json/httplib.h"
 #include "json/json.hpp"
 
 #include "address.h"
+#include "entry.h"
+#include "http/httplib.h"
 #include "rpc/auto_protocol.h"
 #include "template/fork.h"
 #include "template/proof.h"
@@ -169,14 +171,12 @@ namespace bigbang
 
 CRPCMod::CRPCMod()
   : IIOModule("rpcmod"),
-    thrHttpServer("3rdhttpserver", boost::bind(&CRPCMod::HttpServerThreadFunc, this))
+    thrHttpServer("httpserver", boost::bind(&CRPCMod::HttpServerThreadFunc, this))
 {
-    pHttpServer = nullptr;
     pCoreProtocol = nullptr;
     pService = nullptr;
     pDataStat = nullptr;
     pForkManager = nullptr;
-    // pHttpGet = nullptr;
     pPusher = nullptr;
 
     std::map<std::string, RPCFunc> temp_map = boost::assign::map_list_of
@@ -336,12 +336,6 @@ CRPCMod::~CRPCMod()
 
 bool CRPCMod::HandleInitialize()
 {
-    if (!GetObject("httpserver", pHttpServer))
-    {
-        Error("Failed to request httpserver");
-        return false;
-    }
-
     if (!GetObject("coreprotocol", pCoreProtocol))
     {
         Error("Failed to request coreprotocol");
@@ -377,7 +371,6 @@ bool CRPCMod::HandleInitialize()
 
 void CRPCMod::HandleDeinitialize()
 {
-    pHttpServer = nullptr;
     pCoreProtocol = nullptr;
     pService = nullptr;
     pDataStat = nullptr;
@@ -404,8 +397,8 @@ void CRPCMod::HandleHalt()
 
     auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
 
-    httplib::Client cli(pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
-    std::string path = std::string("/") + "stop";
+    httplib::Client cli(pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
+    std::string path = std::string("/httpserver/stop");
     if (auto res = cli.Get(path.c_str()))
     {
         if (res->status == 200)
@@ -490,83 +483,12 @@ std::string CRPCMod::CallRPCFromJSON(const std::string& content, const std::func
         // no result means no return
     }
 
-    return strResult;
-}
-
-bool CRPCMod::HandleEvent(CEventHttpReq& eventHttpReq)
-{
-    auto lmdMask = [](const string& data) -> string {
-        //remove all sensible information such as private key
-        // or passphrass from log content
-
-        //log for debug mode
-        boost::regex ptnSec(R"raw(("privkey"|"passphrase"|"oldpassphrase"|"signsecret"|"privkeyaddress")(\s*:\s*)(".*?"))raw", boost::regex::perl);
-        return boost::regex_replace(data, ptnSec, string(R"raw($1$2"***")raw"));
-    };
-
-    uint64 nNonce = eventHttpReq.nNonce;
-
-    string strResult;
-    try
-    {
-        // check version
-        string strVersion = eventHttpReq.data.mapHeader["url"].substr(1);
-        if (!strVersion.empty())
-        {
-            if (!CheckVersion(strVersion))
-            {
-                throw CRPCException(RPC_VERSION_OUT_OF_DATE,
-                                    string("Out of date version. Server version is v") + VERSION_STR
-                                        + ", but client version is v" + strVersion);
-            }
-        }
-
-        strResult = CallRPCFromJSON(eventHttpReq.data.strContent, lmdMask);
-    }
-    catch (CRPCException& e)
-    {
-        auto spError = MakeCRPCErrorPtr(e);
-        CRPCResp resp(e.valData, spError);
-        strResult = resp.Serialize();
-    }
-    catch (exception& e)
-    {
-        cout << "error: " << e.what() << endl;
-        auto spError = MakeCRPCErrorPtr(RPC_MISC_ERROR, e.what());
-        CRPCResp resp(Value(), spError);
-        strResult = resp.Serialize();
-    }
-
     if (fWriteRPCLog)
     {
         Debug("response : %s ", lmdMask(strResult).c_str());
     }
 
-    // no result means no return
-    if (!strResult.empty())
-    {
-        JsonReply(nNonce, strResult);
-    }
-
-    return true;
-}
-
-bool CRPCMod::HandleEvent(CEventHttpBroken& eventHttpBroken)
-{
-    (void)eventHttpBroken;
-    return true;
-}
-
-void CRPCMod::JsonReply(uint64 nNonce, const std::string& result)
-{
-    CEventHttpRsp eventHttpRsp(nNonce);
-    eventHttpRsp.data.nStatusCode = 200;
-    eventHttpRsp.data.mapHeader["content-type"] = "application/json";
-    eventHttpRsp.data.mapHeader["connection"] = "Keep-Alive";
-    eventHttpRsp.data.mapHeader["server"] = "bigbang-rpc";
-    eventHttpRsp.data.strContent = result + "\n";
-
-    pHttpServer->DispatchEvent(&eventHttpRsp);
+    return strResult;
 }
 
 bool CRPCMod::CheckWalletError(Errno err)
@@ -4364,6 +4286,47 @@ CRPCResultPtr CRPCMod::RPCPushBlock(rpc::CRPCParamPtr param)
     return MakeCPushBlockResultPtr(spParam->block.strHash);
 }
 
+bool CRPCMod::BuildWhiteList(const std::vector<std::string>& vAllowMask)
+{
+    const boost::regex expr("(\\*)|(\\?)|(\\.)");
+    const string fmt = "(?1.*)(?2.)(?3\\\\.)";
+    vWhiteList.clear();
+    try
+    {
+        for (const string& mask : vAllowMask)
+        {
+            string strRegex = boost::regex_replace(mask, expr, fmt,
+                                                   boost::match_default | boost::format_all);
+            vWhiteList.push_back(boost::regex(strRegex));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        StdError(__PRETTY_FUNCTION__, e.what());
+        return false;
+    }
+    return true;
+}
+
+bool CRPCMod::IsAllowedRemote(const std::string& remoteAddress)
+{
+    try
+    {
+        for (const boost::regex& expr : vWhiteList)
+        {
+            if (boost::regex_match(remoteAddress, expr))
+            {
+                return true;
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        StdError(__PRETTY_FUNCTION__, e.what());
+    }
+    return (vWhiteList.empty());
+}
+
 CRPCResultPtr CRPCMod::RPCPushTxEvent(rpc::CRPCParamPtr param)
 {
     auto spParam = CastParamPtr<CPushTxEventParam>(param);
@@ -4472,10 +4435,58 @@ void CRPCMod::HttpServerThreadFunc()
 {
     auto pConfig = dynamic_cast<const CRPCServerConfig*>(IBase::Config());
 
+    if (!pConfig->vRPCAllowIP.empty() && !BuildWhiteList(pConfig->vRPCAllowIP))
+    {
+        StdError("RPCMod", "Http Server Build White List failed.");
+        bigbang::CBbEntry::GetInstance().Stop();
+        return;
+    }
+
     using namespace httplib;
     Server svr;
+    svr.set_keep_alive_max_count(pConfig->nRPCMaxConnections);
+    svr.Post("/", [this, &pConfig](const Request& req, Response& res) {
+        if (!IsAllowedRemote(req.remote_addr))
+        {
+            char msg[512] = { 0 };
+            snprintf(msg, sizeof(msg), "{\"error\": {\"code\": %d, \"message\": \"remote address: %s is not allowed in table.\"}}", (int)RPC_FORBIDDEN_BY_SAFE_MODE, req.remote_addr.c_str());
+            std::string content(msg);
+            content.append("\n");
+            res.set_header("Connection", "close");
+            res.set_header("Server", "bigbang-rpc");
+            res.set_content(content.c_str(), "application/json");
+            res.status = 404;
+            return;
+        }
 
-    svr.Post("/sync/rpc", [this](const Request& req, Response& res) {
+        std::string strVersion = req.get_header_value("BigBang-Version");
+        if (!strVersion.empty() && !this->CheckVersion(strVersion))
+        {
+            char msg[512] = { 0 };
+            snprintf(msg, sizeof(msg), "{ \"error\": {\"code\": %d, \"message\": \"out of date version: client version is %s but server version is %s\"}}",
+                     (int)RPC_VERSION_OUT_OF_DATE, strVersion.c_str(), VERSION_STR.c_str());
+            std::string content(msg);
+            content.append("\n");
+            res.set_header("Connection", "close");
+            res.set_header("Server", "bigbang-rpc");
+            res.set_content(content.c_str(), "application/json");
+            res.status = 404;
+            return;
+        }
+
+        std::string strAuthorization = req.get_header_value("Authorization");
+        if (!strAuthorization.empty() && strAuthorization.find("Basic") != std::string::npos)
+        {
+            std::string auth = pConfig->strRPCUser + std::string(":") + pConfig->strRPCPass;
+            std::string authBase64;
+            CHttpUtil().Base64Encode(auth, authBase64);
+            if (strAuthorization != (std::string("Basic ") + authBase64))
+            {
+                res.status = 401;
+                return;
+            }
+        }
+
         auto lmdMask = [](const std::string& data) -> std::string {
             return data;
         };
@@ -4494,18 +4505,23 @@ void CRPCMod::HttpServerThreadFunc()
         }
 
         res.set_header("Connection", "Keep-Alive");
-        res.set_header("Server", "bigbang-data-sync-rpc");
+        res.set_header("Server", "bigbang-rpc");
         res.set_content(content.c_str(), "application/json");
     });
 
-    svr.Get("/stop", [&svr](const Request& req, Response& res) {
+    svr.Get("/httpserver/stop", [&svr](const Request& req, Response& res) {
+        if (req.remote_addr != "127.0.0.1" && req.remote_addr != "::1")
+        {
+            return;
+        }
+
         svr.stop();
-        res.set_header("Server", "bigbang-data-sync-rpc");
-        res.set_content("Stopped Http Server", "text/plain");
+        res.set_header("Server", "bigbang-internal-rpc");
+        res.set_content("Stopped Http Server\n", "text/plain");
     });
 
-    StdLog("CRPCMod::HttpServerThreadFunc", "Http Server started: %s:%d", pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
-    svr.listen(pConfig->strHttpHost.c_str(), pConfig->nHttpPort);
+    StdLog("CRPCMod::HttpServerThreadFunc", "Http Server started: %s:%d", pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
+    svr.listen(pConfig->epRPC.address().to_string().c_str(), pConfig->nRPCPort);
 }
 
 CPusher::CPusher()

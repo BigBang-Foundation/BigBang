@@ -92,12 +92,6 @@ public:
     std::vector<uint64> vNonce;
 };
 
-class CHttpBroken
-{
-public:
-    bool fEventStream;
-};
-
 } // namespace xengine
 
 #endif //XENGINE_HTTP_HTTPTYPE_H

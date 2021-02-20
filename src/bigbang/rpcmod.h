@@ -7,6 +7,7 @@
 
 #include "json/json_spirit.h"
 #include <boost/function.hpp>
+#include <boost/regex.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/locks.hpp>
 #include <boost/thread/shared_mutex.hpp>
@@ -20,18 +21,16 @@
 namespace bigbang
 {
 
-class CRPCMod : public xengine::IIOModule, virtual public xengine::CHttpEventListener //, virtual public CRPCModEventListener
+class CRPCMod : public xengine::IIOModule //, virtual public CRPCModEventListener
 {
 public:
     typedef rpc::CRPCResultPtr (CRPCMod::*RPCFunc)(rpc::CRPCParamPtr param);
     CRPCMod();
     ~CRPCMod();
-    bool HandleEvent(xengine::CEventHttpReq& eventHttpReq) override;
-    bool HandleEvent(xengine::CEventHttpBroken& eventHttpBroken) override;
-    //bool HandleEvent(xengine::CEventHttpGetRsp& event) override;
     // bool HandleEvent(CRPCModEventUpdateNewBlock& event) override;
     // bool HandleEvent(CRPCModEventUpdateNewTx& event) override;
     std::string CallRPCFromJSON(const std::string& content, const std::function<std::string(const std::string& data)>& lmdMask);
+    bool CheckVersion(std::string& strVersion);
 
 protected:
     bool HandleInitialize() override;
@@ -82,7 +81,6 @@ protected:
     }
     bool CheckWalletError(Errno err);
     void ListDestination(std::vector<CDestination>& vDestination);
-    bool CheckVersion(std::string& strVersion);
     std::string GetWidthString(const std::string& strIn, int nWidth);
     std::string GetWidthString(uint64 nCount, int nWidth);
 
@@ -177,9 +175,10 @@ protected:
     // bool GetBlocks(const uint256& forkHash, const uint256& startHash, int32 n, std::vector<CBlockEx>& blocks);
     rpc::Cblockdatadetail BlockDetailToJSON(const uint256& hashFork, const CBlockEx& block);
     void HttpServerThreadFunc();
+    bool BuildWhiteList(const std::vector<std::string>& vAllowMask);
+    bool IsAllowedRemote(const std::string& remoteAddress);
 
 protected:
-    xengine::IIOProc* pHttpServer;
     ICoreProtocol* pCoreProtocol;
     IService* pService;
     IDataStat* pDataStat;
@@ -190,7 +189,7 @@ protected:
 
 private:
     std::map<std::string, RPCFunc> mapRPCFunc;
-
+    std::vector<boost::regex> vWhiteList;
     bool fWriteRPCLog;
 };
 

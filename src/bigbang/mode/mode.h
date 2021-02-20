@@ -168,7 +168,7 @@ public:
                 EModuleType::DISPATCHER,
                 EModuleType::DELEGATEDCHANNEL,
                 EModuleType::SERVICE,
-                EModuleType::HTTPSERVER,
+                // EModuleType::HTTPSERVER,
                 EModuleType::RPCMODE,
                 EModuleType::BLOCKMAKER,
                 EModuleType::DATASTAT,

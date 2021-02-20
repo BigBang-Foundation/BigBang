@@ -12,6 +12,7 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 
+#include "http/httplib.h"
 #include "version.h"
 
 using namespace std;
@@ -53,7 +54,6 @@ CRPCClient::CRPCClient(bool fConsole)
     thrDispatch("rpcclient", boost::bind(fConsole ? &CRPCClient::LaunchConsole : &CRPCClient::LaunchCommand, this)), isConsoleRunning(false)
 {
     nLastNonce = 0;
-    pHttpGet = nullptr;
 }
 
 CRPCClient::~CRPCClient()
@@ -62,17 +62,11 @@ CRPCClient::~CRPCClient()
 
 bool CRPCClient::HandleInitialize()
 {
-    if (!GetObject("httpget", pHttpGet))
-    {
-        cerr << "Failed to request httpget\n";
-        return false;
-    }
     return true;
 }
 
 void CRPCClient::HandleDeinitialize()
 {
-    pHttpGet = nullptr;
 }
 
 bool CRPCClient::HandleInvoke()
@@ -114,42 +108,52 @@ const CRPCClientConfig* CRPCClient::Config()
     return dynamic_cast<const CRPCClientConfig*>(IBase::Config());
 }
 
-bool CRPCClient::HandleEvent(CEventHttpGetRsp& event)
+bool CRPCClient::GetResponse(uint64 nNonce, const std::string& content)
 {
-    try
+    if (Config()->fDebug)
     {
-        CHttpRsp& rsp = event.data;
+        cout << "request: " << content << endl;
+    }
 
-        if (rsp.nStatusCode < 0)
+    httplib::Client cli(Config()->strRPCConnect, Config()->nRPCPort);
+    std::string path = std::string("/");
+    httplib::Headers headers = {
+        { "Connection", "Keep-Alive" },
+        { "Accept", "application/json" },
+        { "User-Agent", "bigbang-json-rpc/" },
+        { "BigBang-Version", to_string(VERSION) }
+    };
+    StdDebug("CRPCClient", "GetResponse post path: %s", path.c_str());
+    if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
+    {
+        cli.set_basic_auth(Config()->strRPCUser.c_str(), Config()->strRPCPass.c_str());
+    }
+    if (auto res = cli.Post(path.c_str(), headers, content + "\n", "application/json"))
+    {
+        try
         {
+            if (res->status == 401)
+            {
+                throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
+            }
+            else if (res->status > 400 && res->status != 404 && res->status != 500)
+            {
+                ostringstream oss;
+                oss << "server returned HTTP error " << res->status;
+                throw runtime_error(oss.str());
+            }
+            else if (res->body.empty())
+            {
+                throw runtime_error("no response from server");
+            }
+        }
+        catch (const std::exception& e)
+        {
+            cerr << e.what() << endl;
+            return false;
+        }
 
-            const char* strErr[] = { "", "connect failed", "invalid nonce", "activate failed",
-                                     "disconnected", "no response", "resolve failed",
-                                     "internal failure", "aborted" };
-            throw runtime_error(rsp.nStatusCode >= HTTPGET_ABORTED ? strErr[-rsp.nStatusCode] : "unknown error");
-        }
-        if (rsp.nStatusCode == 401)
-        {
-            throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
-        }
-        else if (rsp.nStatusCode > 400 && rsp.nStatusCode != 404 && rsp.nStatusCode != 500)
-        {
-            ostringstream oss;
-            oss << "server returned HTTP error " << rsp.nStatusCode;
-            throw runtime_error(oss.str());
-        }
-        else if (rsp.strContent.empty())
-        {
-            throw runtime_error("no response from server");
-        }
-
-        // Parse reply
-        if (Config()->fDebug)
-        {
-            cout << "response: " << rsp.strContent;
-        }
-
-        auto spResp = DeserializeCRPCResp("", rsp.strContent);
+        auto spResp = DeserializeCRPCResp("", res->body);
         if (spResp->IsError())
         {
             // Error
@@ -164,65 +168,15 @@ bool CRPCClient::HandleEvent(CEventHttpGetRsp& event)
         {
             cerr << "server error: neither error nor result. resp: " << spResp->Serialize(true) << endl;
         }
-    }
-    catch (exception& e)
-    {
-        cerr << e.what() << endl;
-    }
-    ioComplt.Completed(false);
-    return true;
-}
-
-bool CRPCClient::GetResponse(uint64 nNonce, const std::string& content)
-{
-    if (Config()->fDebug)
-    {
-        cout << "request: " << content << endl;
-    }
-
-    CEventHttpGet eventHttpGet(nNonce);
-    CHttpReqData& httpReqData = eventHttpGet.data;
-    httpReqData.strIOModule = GetOwnKey();
-    httpReqData.nTimeout = Config()->nRPCConnectTimeout;
-
-    if (Config()->fRPCSSLEnable)
-    {
-        httpReqData.strProtocol = "https";
-        httpReqData.fVerifyPeer = Config()->fRPCSSLVerify;
-        httpReqData.strPathCA = Config()->strRPCCAFile;
-        httpReqData.strPathCert = Config()->strRPCCertFile;
-        httpReqData.strPathPK = Config()->strRPCPKFile;
+        return true;
     }
     else
     {
-        httpReqData.strProtocol = "http";
+        auto err = res.error();
+        StdWarn("CRPCClient", "httpclient returned error %d", (int)err);
+        cerr << "Http Client error: " << (int)err << endl;
+        return false;
     }
-
-    CNetHost host(Config()->strRPCConnect, Config()->nRPCPort);
-    httpReqData.mapHeader["host"] = host.ToString();
-    httpReqData.mapHeader["url"] = "/" + to_string(VERSION);
-    httpReqData.mapHeader["method"] = "POST";
-    httpReqData.mapHeader["accept"] = "application/json";
-    httpReqData.mapHeader["content-type"] = "application/json";
-    httpReqData.mapHeader["user-agent"] = string("bigbang-json-rpc/");
-    httpReqData.mapHeader["connection"] = "Keep-Alive";
-    if (!Config()->strRPCPass.empty() || !Config()->strRPCUser.empty())
-    {
-        string strAuth;
-        CHttpUtil().Base64Encode(Config()->strRPCUser + ":" + Config()->strRPCPass, strAuth);
-        httpReqData.mapHeader["authorization"] = string("Basic ") + strAuth;
-    }
-
-    httpReqData.strContent = content + "\n";
-
-    ioComplt.Reset();
-
-    if (!pHttpGet->DispatchEvent(&eventHttpGet))
-    {
-        throw runtime_error("failed to send json request");
-    }
-    bool fResult = false;
-    return (ioComplt.WaitForComplete(fResult) && fResult);
 }
 
 bool CRPCClient::CallRPC(CRPCParamPtr spParam, int nReqId)
@@ -329,14 +283,6 @@ void CRPCClient::LaunchCommand()
 
 void CRPCClient::CancelCommand()
 {
-    if (pHttpGet)
-    {
-        CEventHttpAbort eventAbort(0);
-        CHttpAbort& httpAbort = eventAbort.data;
-        httpAbort.strIOModule = GetOwnKey();
-        httpAbort.vNonce.push_back(1);
-        pHttpGet->DispatchEvent(&eventAbort);
-    }
 }
 
 void CRPCClient::EnterLoop()

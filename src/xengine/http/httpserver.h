@@ -49,76 +49,76 @@ public:
     unsigned int nMaxConnections;
 };
 
-class CHttpClient
-{
-public:
-    CHttpClient(CHttpServer* pServerIn, CHttpProfile* pProfileIn,
-                CIOClient* pClientIn, uint64 nNonceIn);
-    ~CHttpClient();
-    CHttpProfile* GetProfile();
-    uint64 GetNonce();
-    bool IsKeepAlive();
-    bool IsEventStream();
-    void KeepAlive();
-    void SetEventStream();
-    void Activate();
-    void SendResponse(std::string& strResponse);
+// class CHttpClient
+// {
+// public:
+//     CHttpClient(CHttpServer* pServerIn, CHttpProfile* pProfileIn,
+//                 CIOClient* pClientIn, uint64 nNonceIn);
+//     ~CHttpClient();
+//     CHttpProfile* GetProfile();
+//     uint64 GetNonce();
+//     bool IsKeepAlive();
+//     bool IsEventStream();
+//     void KeepAlive();
+//     void SetEventStream();
+//     void Activate();
+//     void SendResponse(std::string& strResponse);
 
-protected:
-    void StartReadHeader();
-    void StartReadPayload(std::size_t nLength);
+// protected:
+//     void StartReadHeader();
+//     void StartReadPayload(std::size_t nLength);
 
-    void HandleReadHeader(std::size_t nTransferred);
-    void HandleReadPayload(std::size_t nTransferred);
-    void HandleReadCompleted();
-    void HandleWritenResponse(std::size_t nTransferred);
+//     void HandleReadHeader(std::size_t nTransferred);
+//     void HandleReadPayload(std::size_t nTransferred);
+//     void HandleReadCompleted();
+//     void HandleWritenResponse(std::size_t nTransferred);
 
-protected:
-    CHttpServer* pServer;
-    CHttpProfile* pProfile;
-    CIOClient* pClient;
-    uint64 nNonce;
-    bool fKeepAlive;
-    bool fEventStream;
-    CBufStream ssRecv;
-    CBufStream ssSend;
-    MAPIKeyValue mapHeader;
-    MAPKeyValue mapQuery;
-    MAPIKeyValue mapCookie;
-};
+// protected:
+//     CHttpServer* pServer;
+//     CHttpProfile* pProfile;
+//     CIOClient* pClient;
+//     uint64 nNonce;
+//     bool fKeepAlive;
+//     bool fEventStream;
+//     CBufStream ssRecv;
+//     CBufStream ssSend;
+//     MAPIKeyValue mapHeader;
+//     MAPKeyValue mapQuery;
+//     MAPIKeyValue mapCookie;
+// };
 
-class CHttpServer : public CIOProc, virtual public CHttpEventListener
-{
-public:
-    CHttpServer();
-    virtual ~CHttpServer();
-    CIOClient* CreateIOClient(CIOContainer* pContainer) override;
-    void HandleClientRecv(CHttpClient* pHttpClient, MAPIKeyValue& mapHeader,
-                          MAPKeyValue& mapQuery, MAPIKeyValue& mapCookie,
-                          CBufStream& ssPayload);
-    void HandleClientSent(CHttpClient* pHttpClient);
-    void HandleClientError(CHttpClient* pHttpClient);
-    void AddNewHost(const CHttpHostConfig& confHost);
+// class CHttpServer : public CIOProc, virtual public CHttpEventListener
+// {
+// public:
+//     CHttpServer();
+//     virtual ~CHttpServer();
+//     CIOClient* CreateIOClient(CIOContainer* pContainer) override;
+//     void HandleClientRecv(CHttpClient* pHttpClient, MAPIKeyValue& mapHeader,
+//                           MAPKeyValue& mapQuery, MAPIKeyValue& mapCookie,
+//                           CBufStream& ssPayload);
+//     void HandleClientSent(CHttpClient* pHttpClient);
+//     void HandleClientError(CHttpClient* pHttpClient);
+//     void AddNewHost(const CHttpHostConfig& confHost);
 
-protected:
-    bool HandleInitialize() override;
-    void HandleDeinitialize() override;
-    void EnterLoop() override;
-    void LeaveLoop() override;
+// protected:
+//     bool HandleInitialize() override;
+//     void HandleDeinitialize() override;
+//     void EnterLoop() override;
+//     void LeaveLoop() override;
 
-    bool ClientAccepted(const boost::asio::ip::tcp::endpoint& epService, CIOClient* pClient, std::string& strFailCause) override;
+//     bool ClientAccepted(const boost::asio::ip::tcp::endpoint& epService, CIOClient* pClient, std::string& strFailCause) override;
 
-    bool CreateProfile(const CHttpHostConfig& confHost);
-    CHttpClient* AddNewClient(CIOClient* pClient, CHttpProfile* pHttpProfile);
-    void RemoveClient(CHttpClient* pHttpClient);
-    void RespondError(CHttpClient* pHttpClient, int nStatusCode, const std::string& strError = "");
-    bool HandleEvent(CEventHttpRsp& eventRsp) override;
+//     bool CreateProfile(const CHttpHostConfig& confHost);
+//     CHttpClient* AddNewClient(CIOClient* pClient, CHttpProfile* pHttpProfile);
+//     void RemoveClient(CHttpClient* pHttpClient);
+//     void RespondError(CHttpClient* pHttpClient, int nStatusCode, const std::string& strError = "");
+//     bool HandleEvent(CEventHttpRsp& eventRsp) override;
 
-protected:
-    std::vector<CHttpHostConfig> vecHostConfig;
-    std::map<boost::asio::ip::tcp::endpoint, CHttpProfile> mapProfile;
-    std::map<uint64, CHttpClient*> mapClient;
-};
+// protected:
+//     std::vector<CHttpHostConfig> vecHostConfig;
+//     std::map<boost::asio::ip::tcp::endpoint, CHttpProfile> mapProfile;
+//     std::map<uint64, CHttpClient*> mapClient;
+// };
 
 } // namespace xengine
 
