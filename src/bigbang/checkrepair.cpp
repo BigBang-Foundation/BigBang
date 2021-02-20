@@ -623,6 +623,21 @@ bool CCheckForkManager::IsCheckPoint(const uint256& hashFork, const uint256& has
     return true;
 }
 
+bool CCheckForkManager::AddUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const int nTxIndex, const uint256& txid, const int64 nBalance)
+{
+    return dbFork.AddUeeSignTx(hashFork, destUeeSign, hashBlock, nBlockHeight, nBlockSeq, nTxIndex, txid, nBalance);
+}
+
+bool CCheckForkManager::ListUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, map<uint256, int64>& mapBalance)
+{
+    return dbFork.ListUeeSignAdressBalance(hashFork, destUeeSign, mapBalance);
+}
+
+int64 CCheckForkManager::GetUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, const int nBlockHeight, const int nBlockSeq, const int nTxIndex)
+{
+    return dbFork.GetUeeSignAdressBalance(hashFork, destUeeSign, nBlockHeight, nBlockSeq, nTxIndex);
+}
+
 /////////////////////////////////////////////////////////////////////////
 // CCheckDelegateDB
 
@@ -1386,6 +1401,11 @@ bool CCheckBlockFork::CheckForkAddressTxIndex(const uint256& hashFork, const int
     return true;
 }
 
+bool CCheckBlockFork::IsUeeFork()
+{
+    return (ctxt.nForkType == FORK_TYPE_UEE);
+}
+
 /////////////////////////////////////////////////////////////////////////
 // CCheckBlockWalker
 
@@ -1499,7 +1519,13 @@ bool CCheckBlockWalker::Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset
     auto nt = mapCheckFork.find(hashFork);
     if (nt == mapCheckFork.end())
     {
-        nt = mapCheckFork.insert(make_pair(hashFork, CCheckBlockFork(strDataPath, fOnlyCheck, fCheckAddrTxIndex, objTsBlock, objForkManager, dbAddressTxIndex))).first;
+        CForkContext ctxt;
+        if (!GetForkContext(hashFork, ctxt))
+        {
+            StdError("check", "Block walk: Get fork context fail, fork: %s, prev block: %s.", hashFork.GetHex().c_str(), block.hashPrev.GetHex().c_str());
+            return false;
+        }
+        nt = mapCheckFork.insert(make_pair(hashFork, CCheckBlockFork(strDataPath, fOnlyCheck, fCheckAddrTxIndex, objTsBlock, objForkManager, dbAddressTxIndex, ctxt))).first;
         if (block.IsOrigin() && !block.IsGenesis())
         {
             if (!InheritForkData(block, nt->second))
@@ -1510,6 +1536,19 @@ bool CCheckBlockWalker::Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset
         }
     }
     CCheckBlockFork& checkBlockFork = nt->second;
+    if (checkBlockFork.IsUeeFork())
+    {
+        int nBlockSeq = 0;
+        if (pNewBlockIndex->IsExtended())
+        {
+            nBlockSeq = pNewBlockIndex->GetExtendedSequence();
+        }
+        if (!UpdateUeeSignTx(hashFork, hashBlock, block.GetBlockHeight(), nBlockSeq, block))
+        {
+            StdError("check", "Block walk: Update uee sign tx fail, block: %s.", hashBlock.GetHex().c_str());
+            return false;
+        }
+    }
     if (!checkBlockFork.AddForkBlock(block, pNewBlockIndex))
     {
         StdError("check", "Block walk: Add fork block fail, block: %s.", hashBlock.GetHex().c_str());
@@ -1534,26 +1573,37 @@ bool CCheckBlockWalker::Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset
     return true;
 }
 
+bool CCheckBlockWalker::GetForkContext(const uint256& hashFork, CForkContext& ctxt)
+{
+    uint256 hashLastBlock;
+    if (hashFork == objProofParam.hashGenesisBlock)
+    {
+        hashLastBlock = objProofParam.hashGenesisBlock;
+    }
+    else
+    {
+        auto nt = mapCheckFork.find(objProofParam.hashGenesisBlock);
+        if (nt == mapCheckFork.end() || nt->second.pLast == nullptr)
+        {
+            StdError("check", "Get fork context: Genesis fork not find, genesis fork: %s.",
+                     objProofParam.hashGenesisBlock.GetHex().c_str());
+            return false;
+        }
+        hashLastBlock = nt->second.pLast->GetBlockHash();
+    }
+    if (!objForkManager.GetValidForkContext(hashLastBlock, hashFork, ctxt))
+    {
+        StdError("check", "Get fork context: fork not find or invalid, fork: %s, primary last block: %s.", hashFork.GetHex().c_str(), hashLastBlock.GetHex().c_str());
+        return false;
+    }
+    return true;
+}
+
 bool CCheckBlockWalker::InheritForkData(const CBlockEx& blockOrigin, CCheckBlockFork& subBlockFork)
 {
-    uint256 hashNewOriginBlock = blockOrigin.GetHash();
-
-    auto nt = mapCheckFork.find(objProofParam.hashGenesisBlock);
-    if (nt == mapCheckFork.end() || nt->second.pLast == nullptr)
+    if (!subBlockFork.ctxt.IsIsolated())
     {
-        StdError("check", "Inherit fork data: Genesis fork not find, genesis fork: %s.",
-                 objProofParam.hashGenesisBlock.GetHex().c_str());
-        return false;
-    }
-
-    CForkContext ctxt;
-    if (!objForkManager.GetValidForkContext(nt->second.pLast->GetBlockHash(), hashNewOriginBlock, ctxt))
-    {
-        StdError("check", "Inherit fork data: fork not find or invalid, fork: %s.", hashNewOriginBlock.GetHex().c_str());
-        return false;
-    }
-    if (!ctxt.IsIsolated())
-    {
+        uint256 hashNewOriginBlock = blockOrigin.GetHash();
         auto it = mapBlockIndex.find(blockOrigin.hashPrev);
         if (it == mapBlockIndex.end() || it->second == nullptr)
         {
@@ -2294,6 +2344,16 @@ CBlockIndex* CCheckBlockWalker::AddNewIndex(const uint256& hash, const CBlockOut
     return pIndexNew;
 }
 
+CBlockIndex* CCheckBlockWalker::GetIndex(const uint256& hash)
+{
+    map<uint256, CBlockIndex*>::iterator it = mapBlockIndex.find(hash);
+    if (it == mapBlockIndex.end())
+    {
+        return nullptr;
+    }
+    return it->second;
+}
+
 void CCheckBlockWalker::ClearBlockIndex()
 {
     map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.begin();
@@ -2466,6 +2526,80 @@ bool CCheckBlockWalker::CheckSurplusAddressTxIndex(uint64& nTxIndexCount)
         }
     }
     return true;
+}
+
+bool CCheckBlockWalker::UpdateUeeSignTx(const uint256& hashFork, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const CBlockEx& block)
+{
+    map<CDestination, int64> mapSignAddressBalance;
+    for (size_t i = 0; i < block.vtx.size(); i++)
+    {
+        const CTransaction& tx = block.vtx[i];
+        const CTxContxt& txCxt = block.vTxContxt[i];
+        int64 nBalance = 0;
+        CDestination destUeeSign;
+        CTemplateId tid;
+        if (tx.sendTo.GetTemplateId(tid) && tid.GetType() == TEMPLATE_UEESIGN)
+        {
+            nBalance = tx.nAmount;
+            destUeeSign = tx.sendTo;
+        }
+        else if (txCxt.destIn.GetTemplateId(tid) && tid.GetType() == TEMPLATE_UEESIGN)
+        {
+            nBalance -= (tx.nAmount + tx.nTxFee);
+            destUeeSign = txCxt.destIn;
+        }
+        if (nBalance != 0)
+        {
+            auto it = mapSignAddressBalance.find(destUeeSign);
+            if (it != mapSignAddressBalance.end())
+            {
+                nBalance += it->second;
+            }
+            else
+            {
+                nBalance += GetUeeSignBalance(hashFork, block.hashPrev, destUeeSign);
+            }
+            mapSignAddressBalance[destUeeSign] = nBalance;
+            int64 nDbBalance = objForkManager.GetUeeSignAdressBalance(hashFork, destUeeSign, nBlockHeight, nBlockSeq, i);
+            if (nDbBalance != nBalance)
+            {
+                StdLog("check", "Check uee data tx: check fail, new balance: %ld, db balance: %ld, dest: %s, block: %s, txid: %s, fork: %s",
+                       nBalance, nDbBalance, CAddress(destUeeSign).ToString().c_str(), hashBlock.GetHex().c_str(),
+                       tx.GetHash().GetHex().c_str(), hashFork.GetHex().c_str());
+                if (!fOnlyCheck)
+                {
+                    if (!objForkManager.AddUeeSignTx(hashFork, destUeeSign, hashBlock, nBlockHeight, nBlockSeq, i, tx.GetHash(), nBalance))
+                    {
+                        StdError("check", "Check uee data tx: add uee sign tx fail, new balance: %ld, dest: %s, block: %s, txid: %s, fork: %s",
+                                 nBalance, CAddress(destUeeSign).ToString().c_str(), hashBlock.GetHex().c_str(),
+                                 tx.GetHash().GetHex().c_str(), hashFork.GetHex().c_str());
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+int64 CCheckBlockWalker::GetUeeSignBalance(const uint256& hashFork, const uint256& hashBlock, const CDestination& destUeeSign)
+{
+    map<uint256, int64> mapBalance;
+    if (objForkManager.ListUeeSignAdressBalance(hashFork, destUeeSign, mapBalance) && !mapBalance.empty())
+    {
+        int nMinHeight = CBlock::GetBlockHeightByHash(mapBalance.begin()->first);
+        CBlockIndex* pIndex = GetIndex(hashBlock);
+        while (pIndex && pIndex->GetBlockHeight() >= nMinHeight)
+        {
+            auto it = mapBalance.find(pIndex->GetBlockHash());
+            if (it != mapBalance.end())
+            {
+                return it->second;
+            }
+            pIndex = pIndex->pPrev;
+        }
+    }
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////

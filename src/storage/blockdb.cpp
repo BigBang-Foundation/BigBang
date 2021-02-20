@@ -337,14 +337,14 @@ int64 CBlockDB::RetrieveAddressTxList(const uint256& hashFork, const CDestinatio
     return -1;
 }
 
-bool CBlockDB::AddUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nTxIndex, const uint256& txid, const int64 nBalance)
+bool CBlockDB::AddUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const int nTxIndex, const uint256& txid, const int64 nBalance)
 {
-    return dbFork.AddUeeSignTx(hashFork, destUeeSign, hashBlock, nTxIndex, txid, nBalance);
+    return dbFork.AddUeeSignTx(hashFork, destUeeSign, hashBlock, nBlockHeight, nBlockSeq, nTxIndex, txid, nBalance);
 }
 
-bool CBlockDB::ListUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, vector<tuple<uint256, int, uint256, int64>>& vUeeSignTx)
+bool CBlockDB::ListUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, map<uint256, int64>& mapBalance)
 {
-    return dbFork.ListUeeSignTx(hashFork, destUeeSign, vUeeSignTx);
+    return dbFork.ListUeeSignAdressBalance(hashFork, destUeeSign, mapBalance);
 }
 
 bool CBlockDB::LoadFork()

@@ -263,6 +263,10 @@ public:
     bool GetValidForkContext(const uint256& hashPrimaryLastBlock, const uint256& hashFork, CForkContext& ctxt);
     bool IsCheckPoint(const uint256& hashFork, const uint256& hashBlock);
 
+    bool AddUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const int nTxIndex, const uint256& txid, const int64 nBalance);
+    bool ListUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, std::map<uint256, int64>& mapBalance);
+    int64 GetUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, const int nBlockHeight, const int nBlockSeq, const int nTxIndex);
+
 public:
     string strDataPath;
     bool fTestnet;
@@ -381,9 +385,9 @@ class CCheckBlockFork
 
 public:
     CCheckBlockFork(const string& strPathIn, const bool fOnlyCheckIn, const bool fAddrTxIndexIn, CCheckTsBlock& tsBlockIn,
-                    CCheckForkManager& objForkManagerIn, CAddressTxIndexDB& dbAddressTxIndexIn)
+                    CCheckForkManager& objForkManagerIn, CAddressTxIndexDB& dbAddressTxIndexIn, const CForkContext& ctxtIn)
       : pOrigin(nullptr), pLast(nullptr), fInvalidFork(false), strDataPath(strPathIn), fOnlyCheck(fOnlyCheckIn), fCheckAddrTxIndex(fAddrTxIndexIn),
-        tsBlock(tsBlockIn), objForkManager(objForkManagerIn), dbAddressTxIndex(dbAddressTxIndexIn), nCacheTxInfoBlockCount(0), nMintHeight(-2) {}
+        tsBlock(tsBlockIn), objForkManager(objForkManagerIn), dbAddressTxIndex(dbAddressTxIndexIn), ctxt(ctxtIn), nCacheTxInfoBlockCount(0), nMintHeight(-2) {}
 
     bool AddForkBlock(const CBlockEx& block, CBlockIndex* pBlockIndex);
     CBlockIndex* GetBranch(CBlockIndex* pIndexRef, CBlockIndex* pIndex, vector<CBlockIndex*>& vPath);
@@ -397,6 +401,7 @@ public:
 
     bool InheritCopyData(const CCheckBlockFork& fromParent, const CBlockIndex* pJointBlockIndex);
     bool CheckForkAddressTxIndex(const uint256& hashFork, const int nCheckHeight);
+    bool IsUeeFork();
 
 public:
     string strDataPath;
@@ -408,6 +413,7 @@ public:
     CBlockIndex* pOrigin;
     CBlockIndex* pLast;
     bool fInvalidFork;
+    CForkContext ctxt;
     map<uint256, CCheckTxIndex> mapParentForkBlockTxIndex;
     map<uint256, CCheckTxIndex> mapBlockTxIndex;
     map<uint256, CCheckTxInfo> mapBlockTxInfo;
@@ -433,6 +439,7 @@ public:
 
     bool Walk(const CBlockEx& block, uint32 nFile, uint32 nOffset) override;
 
+    bool GetForkContext(const uint256& hashFork, CForkContext& ctxt);
     bool InheritForkData(const CBlockEx& blockOrigin, CCheckBlockFork& subBlockFork);
     CBlockIndex* AddBlockIndex(const uint256& hashBlock, const CBlockEx& block, CBlockIndex* pIndexPrev, uint32 nFile, uint32 nOffset);
     bool GetBlockTrust(const CBlockEx& block, uint256& nChainTrust, const CBlockIndex* pIndexPrev = nullptr, const CDelegateAgreement& agreement = CDelegateAgreement(), const CBlockIndex* pIndexRef = nullptr, std::size_t nEnrollTrust = 0);
@@ -447,10 +454,13 @@ public:
     bool CheckRepairFork();
     CBlockIndex* AddNewIndex(const uint256& hash, const CBlock& block, uint32 nFile, uint32 nOffset, uint256 nChainTrust);
     CBlockIndex* AddNewIndex(const uint256& hash, const CBlockOutline& objBlockOutline);
+    CBlockIndex* GetIndex(const uint256& hash);
     void ClearBlockIndex();
     bool CheckBlockIndex();
     bool CheckRefBlock();
     bool CheckSurplusAddressTxIndex(uint64& nTxIndexCount);
+    bool UpdateUeeSignTx(const uint256& hashFork, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const CBlockEx& block);
+    int64 GetUeeSignBalance(const uint256& hashFork, const uint256& hashBlock, const CDestination& destUeeSign);
 
 public:
     bool fOnlyCheck;

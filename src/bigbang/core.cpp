@@ -409,25 +409,20 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
         return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "amount overflow %ld", tx.nAmount);
     }
 
-    if (IsDposHeight(nHeight))
+    if (!MoneyRange(tx.nTxFee)
+        || (tx.IsBlockMintTx() && tx.nTxFee != 0)
+        || (tx.IsTxMintTx() && tx.nTxFee != NEW_MIN_TX_FEE))
     {
-        if (!MoneyRange(tx.nTxFee)
-            || (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_DEFI_RELATION && tx.nType != CTransaction::TX_DEFI_MINT_HEIGHT && tx.nType != CTransaction::TX_UEE_REWARD && tx.nType != CTransaction::TX_UEE_DATA && tx.nTxFee != 0)
-            || ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION || tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT || tx.nType == CTransaction::TX_UEE_DATA) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), NEW_MIN_TX_FEE))
-            || ((tx.nType == CTransaction::TX_DEFI_REWARD || tx.nType == CTransaction::TX_UEE_REWARD) && tx.nTxFee != NEW_MIN_TX_FEE))
-        {
-            return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid %ld", tx.nTxFee);
-        }
+        return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid, fee: %ld, txtype: %d", tx.nTxFee, tx.nType);
     }
-    else
+
+    if ((tx.nType == CTransaction::TX_TOKEN
+         || tx.nType == CTransaction::TX_DEFI_RELATION
+         || tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT
+         || tx.nType == CTransaction::TX_UEE_DATA)
+        && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), (IsDposHeight(nHeight) ? NEW_MIN_TX_FEE : OLD_MIN_TX_FEE)))
     {
-        if (!MoneyRange(tx.nTxFee)
-            || (tx.nType != CTransaction::TX_TOKEN && tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_DEFI_RELATION && tx.nType != CTransaction::TX_DEFI_MINT_HEIGHT && tx.nType != CTransaction::TX_UEE_REWARD && tx.nType != CTransaction::TX_UEE_DATA && tx.nTxFee != 0)
-            || ((tx.nType == CTransaction::TX_TOKEN || tx.nType == CTransaction::TX_DEFI_RELATION || tx.nType == CTransaction::TX_DEFI_MINT_HEIGHT || tx.nType == CTransaction::TX_UEE_DATA) && tx.nTxFee < CalcMinTxFee(tx.vchData.size(), OLD_MIN_TX_FEE))
-            || ((tx.nType == CTransaction::TX_DEFI_REWARD || tx.nType == CTransaction::TX_UEE_REWARD) && tx.nTxFee != NEW_MIN_TX_FEE))
-        {
-            return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid %ld", tx.nTxFee);
-        }
+        return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid %ld", tx.nTxFee);
     }
 
     if (nHeight != 0 && !IsDposHeight(nHeight))
@@ -1101,6 +1096,10 @@ Errno CCoreProtocol::VerifyBlockTx(const CTransaction& tx, const CTxContxt& txCo
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "ueesign template must be in uee fork");
         }
+        if (nDestInTemplateType == TEMPLATE_UEESIGN)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "ueesign template cannot be of the same type");
+        }
         if (VerifySendToUeeSignTx(tx, destIn, nBlockHeight, profile) != OK)
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "invalid sendto ueesign tx");
@@ -1287,6 +1286,10 @@ Errno CCoreProtocol::VerifyTransaction(const CTransaction& tx, const vector<CTxO
         if (profile.nForkType != FORK_TYPE_UEE)
         {
             return DEBUG(ERR_TRANSACTION_INVALID, "ueesign template must be in uee fork");
+        }
+        if (nDestInTemplateType == TEMPLATE_UEESIGN)
+        {
+            return DEBUG(ERR_TRANSACTION_INVALID, "ueesign template cannot be of the same type");
         }
         if (VerifySendToUeeSignTx(tx, destIn, nForkHeight + 1, profile) != OK)
         {
@@ -2528,7 +2531,7 @@ bool CCoreProtocol::VerifyUeeSignAddress(const CDestination& destUeeSign, int nH
             {
                 return true;
             }
-            StdLog("Core", "VerifyUeeSignAddress: balance is not enough, balance: %lu", nBalance);
+            StdLog("Core", "VerifyUeeSignAddress: balance is not enough, balance: %ld", nBalance);
         }
         else
         {
@@ -2543,7 +2546,7 @@ bool CCoreProtocol::VerifyUeeSignAddress(const CDestination& destUeeSign, int nH
         {
             return true;
         }
-        StdLog("Core", "VerifyUeeSignAddress: balance is not enough, balance: %lu, prev: %s", nBalance, hashPrevBlock.GetHex().c_str());
+        StdLog("Core", "VerifyUeeSignAddress: balance is not enough, balance: %ld, prev: %s", nBalance, hashPrevBlock.GetHex().c_str());
     }
     return false;
 }
