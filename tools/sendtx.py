@@ -18,8 +18,7 @@ bigbang_bin = '/home/ubuntu/mainnet-test/v2.1-test/bigbang'
 def unlockkey(addr, password):
     json_str = subprocess.check_output(
         [bigbang_bin, datadir, 'unlockkey', addr, password])
-    json_obj = json.loads(json_str)
-    return json_obj
+    return json_str
 
 
 def makekeypair():
@@ -31,16 +30,14 @@ def makekeypair():
 def getpubkeyaddress(pubkey):
     json_str = subprocess.check_output(
         [bigbang_bin, datadir, 'getpubkeyaddress', pubkey])
-    json_obj = json.loads(json_str)
-    return json_obj
+    return json_str
 
 
 def sendfrom(forkid, from_addr, to_addr, value):
     json_str = subprocess.check_output([
         bigbang_bin, datadir, 'sendfrom', forkid_f, from_addr, to_addr, value
     ])
-    json_obj = json.loads(json_str)
-    return json_obj
+    return json_str
 
 
 def main():
@@ -54,7 +51,7 @@ def main():
     for i in range(2000):
         (privkey, pubkey) = makekeypair()
         to_address = getpubkeyaddress(pubkey)
-        txid = sendfrom(forkid, balance_address, to_address, 1000)
+        txid = sendfrom(forkid.strip(), balance_address.strip(), to_address.strip(), 1000)
         if len(txid) > 0:
             print "tx send success, txid: %s, to_addr: %s" % (txid, to_address)
             writer.writerow((forkid, privkey, pubkey, to_address, txid))
