@@ -633,9 +633,9 @@ bool CCheckForkManager::ListUeeSignAdressBalance(const uint256& hashFork, const 
     return dbFork.ListUeeSignAdressBalance(hashFork, destUeeSign, mapBalance);
 }
 
-int64 CCheckForkManager::GetUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, const int nBlockHeight, const int nBlockSeq, const int nTxIndex)
+int64 CCheckForkManager::GetUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const int nTxIndex)
 {
-    return dbFork.GetUeeSignAdressBalance(hashFork, destUeeSign, nBlockHeight, nBlockSeq, nTxIndex);
+    return dbFork.GetUeeSignAdressBalance(hashFork, destUeeSign, hashBlock, nBlockHeight, nBlockSeq, nTxIndex);
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -2560,7 +2560,7 @@ bool CCheckBlockWalker::UpdateUeeSignTx(const uint256& hashFork, const uint256& 
                 nBalance += GetUeeSignBalance(hashFork, block.hashPrev, destUeeSign);
             }
             mapSignAddressBalance[destUeeSign] = nBalance;
-            int64 nDbBalance = objForkManager.GetUeeSignAdressBalance(hashFork, destUeeSign, nBlockHeight, nBlockSeq, i);
+            int64 nDbBalance = objForkManager.GetUeeSignAdressBalance(hashFork, destUeeSign, hashBlock, nBlockHeight, nBlockSeq, i);
             if (nDbBalance != nBalance)
             {
                 StdLog("check", "Check uee data tx: check fail, new balance: %ld, db balance: %ld, dest: %s, block: %s, txid: %s, fork: %s",

@@ -1917,17 +1917,24 @@ bool CCoreProtocol::CreateUeeRewardTx(const CTransaction& txUeeData, const uint2
         return false;
     }
 
-    auto ptrUeeSign = CTemplate::CreateTemplatePtr(TEMPLATE_UEESIGN, vAdminTemplateData);
+    auto ptrUeeSign = CTemplate::Import(vAdminTemplateData);
     if (ptrUeeSign == nullptr)
     {
-        StdWarn("Core", "Create uee reward tx: create uee sign template error, height: %d, uee data txid: %s, fork: %s",
-                nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
+        StdWarn("Core", "Create uee reward tx: create uee sign template error, height: %d, uee data txid: %s, fork: %s, len: %ld, hex: %s",
+                nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str(), vAdminTemplateData.size(), ToHexString(vAdminTemplateData).c_str());
         return false;
     }
-    if (ptrUeeSign->GetTemplateId() != CAddress(strSignAddress).GetTemplateId())
+    CTemplateId tidUeeSign = ptrUeeSign->GetTemplateId();
+    if (tidUeeSign.GetType() != TEMPLATE_UEESIGN)
+    {
+        StdWarn("Core", "Create uee reward tx: create uee sign template type error, template type: %d, height: %d, uee data txid: %s, fork: %s",
+                tidUeeSign.GetType(), nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
+        return false;
+    }
+    if (tidUeeSign != CAddress(strSignAddress).GetTemplateId())
     {
         StdWarn("Core", "Create uee reward tx: uee sign template id error, vchData address: %s, vchSign address: %s, height: %d, uee data txid: %s, fork: %s",
-                strSignAddress.c_str(), CAddress(CDestination(ptrUeeSign->GetTemplateId())).ToString().c_str(),
+                strSignAddress.c_str(), CAddress(CDestination(tidUeeSign)).ToString().c_str(),
                 nHeight, txidUeeData.GetHex().c_str(), hashFork.GetHex().c_str());
         return false;
     }
@@ -2396,29 +2403,36 @@ Errno CCoreProtocol::VerifyUeeDataTx(const CTransaction& tx, const CDestination&
         return ERR_TRANSACTION_INVALID;
     }
 
-    auto ptrUeeSign = CTemplate::CreateTemplatePtr(TEMPLATE_UEESIGN, vAdminTemplateData);
+    auto ptrUeeSign = CTemplate::Import(vAdminTemplateData);
     if (ptrUeeSign == nullptr)
     {
         StdLog("Core", "Verify uee data tx: create uee sign template fail, tx: %s, len: %ld, hex: %s",
                tx.GetHash().GetHex().c_str(), vAdminTemplateData.size(), ToHexString(vAdminTemplateData).c_str());
         return ERR_TRANSACTION_INVALID;
     }
-    CDestination destUeeSign(ptrUeeSign->GetTemplateId());
+    CTemplateId tidUeeSign = ptrUeeSign->GetTemplateId();
+    if (tidUeeSign.GetType() != TEMPLATE_UEESIGN)
+    {
+        StdLog("Core", "Verify uee data tx: create uee sign template type error, template type: %d, tx: %s, len: %ld, hex: %s",
+               tidUeeSign.GetType(), tx.GetHash().GetHex().c_str(), vAdminTemplateData.size(), ToHexString(vAdminTemplateData).c_str());
+        return ERR_TRANSACTION_INVALID;
+    }
+    CDestination destUeeSign(tidUeeSign);
     if (!VerifyUeeSignAddress(destUeeSign, nHeight, fork, fPrevLastBlock, hashPrevBlock))
     {
         StdLog("Core", "Verify uee data tx: verify uee sign address fail, tx: %s", tx.GetHash().GetHex().c_str());
         return ERR_TRANSACTION_INVALID;
     }
 
+    if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vTxSignData, nHeight, fork))
+    {
+        StdLog("Core", "Verify uee data tx: invalid tx signature, tx: %s", tx.GetHash().GetHex().c_str());
+        return ERR_TRANSACTION_SIGNATURE_INVALID;
+    }
     auto objUeeSign = boost::dynamic_pointer_cast<CTemplateUeeSign>(ptrUeeSign);
     if (!objUeeSign->destAdmin.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vAdminSignData, nHeight, fork))
     {
         StdLog("Core", "Verify uee data tx: invalid admin signature, tx: %s", tx.GetHash().GetHex().c_str());
-        return ERR_TRANSACTION_SIGNATURE_INVALID;
-    }
-    if (!destIn.VerifyTxSignature(tx.GetSignatureHash(), tx.nType, tx.hashAnchor, tx.sendTo, vTxSignData, nHeight, fork))
-    {
-        StdLog("Core", "Verify uee data tx: invalid tx signature, tx: %s", tx.GetHash().GetHex().c_str());
         return ERR_TRANSACTION_SIGNATURE_INVALID;
     }
     return OK;
@@ -2498,7 +2512,7 @@ bool CCoreProtocol::ParseUeeData(const std::vector<uint8>& vUeeData, std::string
         json_spirit::Value valVar2 = find_value(objBody, "var2");
         if (valVar2.is_null() || (valVar2.type() != json_spirit::int_type && valVar2.type() != json_spirit::real_type))
         {
-            StdWarn("Core", "Parse uee data: var2 param error, vchData: %s", strUeeData.c_str());
+            //StdWarn("Core", "Parse uee data: var2 param error, vchData: %s", strUeeData.c_str());
             fVar2Enable = false;
         }
         else

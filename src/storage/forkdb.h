@@ -25,12 +25,13 @@ public:
     CDestination destUeeSign;
     int nBlockHeight;
     int nBlockSeq;
+    uint256 hashBlock;
     int nTxIndex;
 
 public:
     CUeeSignKey() {}
-    CUeeSignKey(const uint256& hashForkIn, const CDestination& destUeeSignIn, const int nBlockHeightIn, const int nBlockSeqIn, const int nTxIndexIn)
-      : hashFork(hashForkIn), destUeeSign(destUeeSignIn), nBlockHeight(nBlockHeightIn), nBlockSeq(nBlockSeqIn), nTxIndex(nTxIndexIn) {}
+    CUeeSignKey(const uint256& hashForkIn, const CDestination& destUeeSignIn, const int nBlockHeightIn, const int nBlockSeqIn, const uint256& hashBlockIn, const int nTxIndexIn)
+      : hashFork(hashForkIn), destUeeSign(destUeeSignIn), nBlockHeight(nBlockHeightIn), nBlockSeq(nBlockSeqIn), hashBlock(hashBlockIn), nTxIndex(nTxIndexIn) {}
 
 protected:
     template <typename O>
@@ -40,6 +41,7 @@ protected:
         s.Serialize(destUeeSign, opt);
         s.Serialize(nBlockHeight, opt);
         s.Serialize(nBlockSeq, opt);
+        s.Serialize(hashBlock, opt);
         s.Serialize(nTxIndex, opt);
     }
 };
@@ -71,20 +73,18 @@ class CUeeSignValue
     friend class xengine::CStream;
 
 public:
-    uint256 hashBlock;
     uint256 txid;
     int64 nBalance;
 
 public:
     CUeeSignValue() {}
-    CUeeSignValue(const uint256& hashBlockIn, const uint256& txidIn, const int64 nBalanceIn)
-      : hashBlock(hashBlockIn), txid(txidIn), nBalance(nBalanceIn) {}
+    CUeeSignValue(const uint256& txidIn, const int64 nBalanceIn)
+      : txid(txidIn), nBalance(nBalanceIn) {}
 
 protected:
     template <typename O>
     void Serialize(xengine::CStream& s, O& opt)
     {
-        s.Serialize(hashBlock, opt);
         s.Serialize(txid, opt);
         s.Serialize(nBalance, opt);
     }
@@ -109,7 +109,7 @@ public:
     bool ListActiveFork(std::map<uint256, uint256>& mapActiveFork);
     bool AddUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const int nTxIndex, const uint256& txid, const int64 nBalance);
     bool ListUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, std::map<uint256, int64>& mapBalance);
-    int64 GetUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, const int nBlockHeight, const int nBlockSeq, const int nTxIndex);
+    int64 GetUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const int nTxIndex);
     void Clear();
 
 protected:

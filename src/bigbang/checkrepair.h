@@ -265,7 +265,7 @@ public:
 
     bool AddUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const int nTxIndex, const uint256& txid, const int64 nBalance);
     bool ListUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, std::map<uint256, int64>& mapBalance);
-    int64 GetUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, const int nBlockHeight, const int nBlockSeq, const int nTxIndex);
+    int64 GetUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const int nTxIndex);
 
 public:
     string strDataPath;

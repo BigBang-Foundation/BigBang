@@ -188,7 +188,7 @@ bool CForkDB::ListActiveFork(map<uint256, uint256>& mapActiveFork)
 
 bool CForkDB::AddUeeSignTx(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const int nTxIndex, const uint256& txid, const int64 nBalance)
 {
-    return Write(make_pair(string("ueesign"), CUeeSignKey(hashFork, destUeeSign, nBlockHeight, nBlockSeq, nTxIndex)), CUeeSignValue(hashBlock, txid, nBalance));
+    return Write(make_pair(string("ueesign"), CUeeSignKey(hashFork, destUeeSign, nBlockHeight, nBlockSeq, hashBlock, nTxIndex)), CUeeSignValue(txid, nBalance));
 }
 
 bool CForkDB::ListUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, std::map<uint256, int64>& mapBalance)
@@ -201,10 +201,10 @@ bool CForkDB::ListUeeSignAdressBalance(const uint256& hashFork, const CDestinati
     return true;
 }
 
-int64 CForkDB::GetUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, const int nBlockHeight, const int nBlockSeq, const int nTxIndex)
+int64 CForkDB::GetUeeSignAdressBalance(const uint256& hashFork, const CDestination& destUeeSign, const uint256& hashBlock, const int nBlockHeight, const int nBlockSeq, const int nTxIndex)
 {
     CUeeSignValue value;
-    if (!Read(make_pair(string("ueesign"), CUeeSignKey(hashFork, destUeeSign, nBlockHeight, nBlockSeq, nTxIndex)), value))
+    if (!Read(make_pair(string("ueesign"), CUeeSignKey(hashFork, destUeeSign, nBlockHeight, nBlockSeq, hashBlock, nTxIndex)), value))
     {
         return -1;
     }
@@ -274,9 +274,11 @@ bool CForkDB::LoadUeeSignBalanceWalker(xengine::CBufStream& ssKey, xengine::CBuf
 
     if (strPrefix == "ueesign")
     {
+        CUeeSignKey key;
+        ssKey >> key;
         CUeeSignValue value;
         ssValue >> value;
-        mapBalance[value.hashBlock] = value.nBalance;
+        mapBalance[key.hashBlock] = value.nBalance;
         return true;
     }
     StdError("CForkDB", "LoadUeeSignBalanceWalker: strPrefix error, strPrefix: %s", strPrefix.c_str());

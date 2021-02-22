@@ -577,8 +577,6 @@ def create_uee_fork(path):
 
 # send uee rule1 tx
 def send_uee_rule1_tx(path):
-    #importprivkey("cb412ba9b0910e0a53a33afce3ae42a833889521d97079da9e9f83679623eca9")
-    #addueesigntemplate("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm","1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0")
     unlockkey("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm")
     unlockkey("1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0")
 
@@ -593,13 +591,12 @@ def send_uee_rule1_tx(path):
         raise Exception('No create uee fork')
     
     rule = bytesToHexString(b"{\"rule\":\"rule1\",\"signaddress\": \"21g0f96thcqf3qjgybyj0jnyg971c69znwkne9a56q0ydd2p6tzermj4d\",\"param1\": \"6601\",\"param2\": \"1001\",\"var1\": 3}")
-    #print(rule)
 
     txdata = createtransaction("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm", "1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm", 1, ueeforkid, 5, rule)
 
     admin_sign_data = signtransactiondata("1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0", txdata)
 
-    send_txdata = signtransaction(txdata, "01498b63009dfb70f7ee0902ba95cc171f7d7a97ff16d89fd96e1f1b9e7d5f91da0183416fd0e61ce54524e5d06ad63e0937bccfe61381d6e789101030e6f7c9f8ed", admin_sign_data)
+    send_txdata = signtransaction(txdata, "0c0001498b63009dfb70f7ee0902ba95cc171f7d7a97ff16d89fd96e1f1b9e7d5f91da0183416fd0e61ce54524e5d06ad63e0937bccfe61381d6e789101030e6f7c9f8ed", admin_sign_data)
 
     send_txid = sendtransaction(send_txdata)
 
@@ -607,8 +604,6 @@ def send_uee_rule1_tx(path):
 
 # send uee rule2 tx
 def send_uee_rule2_tx(path):
-    #importprivkey("cb412ba9b0910e0a53a33afce3ae42a833889521d97079da9e9f83679623eca9")
-    #addueesigntemplate("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm","1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0")
     unlockkey("1965p604xzdrffvg90ax9bk0q3xyqn5zz2vc9zpbe3wdswzazj7d144mm")
     unlockkey("1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0")
 
@@ -628,7 +623,7 @@ def send_uee_rule2_tx(path):
 
     admin_sign_data = signtransactiondata("1gd0pzm763kjma975t1ndcfg96yyczsgkg7bef28g20redxy9z3pv6mr0", txdata)
 
-    send_txdata = signtransaction(txdata, "01498b63009dfb70f7ee0902ba95cc171f7d7a97ff16d89fd96e1f1b9e7d5f91da0183416fd0e61ce54524e5d06ad63e0937bccfe61381d6e789101030e6f7c9f8ed", admin_sign_data)
+    send_txdata = signtransaction(txdata, "0c0001498b63009dfb70f7ee0902ba95cc171f7d7a97ff16d89fd96e1f1b9e7d5f91da0183416fd0e61ce54524e5d06ad63e0937bccfe61381d6e789101030e6f7c9f8ed", admin_sign_data)
 
     send_txid = sendtransaction(send_txdata)
 
