@@ -626,7 +626,7 @@ Errno CBlockChain::AddNewBlock(const CBlock& block, CBlockChainUpdate& update)
             }
         }
 
-        if (tx.nType != CTransaction::TX_DEFI_REWARD && tx.nType != CTransaction::TX_UEE_REWARD)
+        if (!tx.IsTxMintTx())
         {
             err = pCoreProtocol->VerifyBlockTx(tx, txContxt, pIndexPrev, block.GetBlockHeight(), forkid, profile);
             if (err != OK)

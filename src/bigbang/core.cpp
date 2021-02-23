@@ -410,7 +410,7 @@ Errno CCoreProtocol::ValidateTransaction(const CTransaction& tx, int nHeight)
     }
 
     if (!MoneyRange(tx.nTxFee)
-        || (tx.IsBlockMintTx() && tx.nTxFee != 0)
+        || ((tx.IsBlockMintTx() || tx.nType == CTransaction::TX_CERT) && tx.nTxFee != 0)
         || (tx.IsTxMintTx() && tx.nTxFee != NEW_MIN_TX_FEE))
     {
         return DEBUG(ERR_TRANSACTION_OUTPUT_INVALID, "txfee invalid, fee: %ld, txtype: %d", tx.nTxFee, tx.nType);
@@ -2545,11 +2545,11 @@ bool CCoreProtocol::VerifyUeeSignAddress(const CDestination& destUeeSign, int nH
             {
                 return true;
             }
-            StdLog("Core", "VerifyUeeSignAddress: balance is not enough, balance: %ld", nBalance);
+            StdLog("Core", "Verify uee sign address: balance is not enough, balance: %.6f", ValueFromToken(nBalance));
         }
         else
         {
-            StdLog("Core", "VerifyUeeSignAddress: ListForkUnspent fail, dest: %s, forkid: %s",
+            StdLog("Core", "Verify uee sign address: ListForkUnspent fail, dest: %s, forkid: %s",
                    CAddress(destUeeSign).ToString().c_str(), hashFork.GetHex().c_str());
         }
     }
@@ -2558,9 +2558,10 @@ bool CCoreProtocol::VerifyUeeSignAddress(const CDestination& destUeeSign, int nH
         int64 nBalance = pBlockChain->GetUeeSignBalance(hashFork, hashPrevBlock, destUeeSign);
         if (nBalance >= UEE_FORK_MIN_SIGN_AMOUNT)
         {
+            StdDebug("Core", "Verify uee sign address: balance is enough, balance: %.6f", ValueFromToken(nBalance));
             return true;
         }
-        StdLog("Core", "VerifyUeeSignAddress: balance is not enough, balance: %ld, prev: %s", nBalance, hashPrevBlock.GetHex().c_str());
+        StdLog("Core", "Verify uee sign address: balance is not enough, balance: %.6f, prev: %s", ValueFromToken(nBalance), hashPrevBlock.GetHex().c_str());
     }
     return false;
 }
