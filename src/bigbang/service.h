@@ -35,6 +35,7 @@ public:
     bool GetForkLastBlock(const uint256& hashFork, int& nLastHeight, uint256& hashLastBlock) override;
     int GetForkType(const uint256& hashFork) override;
     void ListFork(std::vector<std::pair<uint256, CProfile>>& vFork, bool fAll = false) override;
+    bool GetFork(const uint256& hashFork, CProfile& profile) override;
     bool GetForkGenealogy(const uint256& hashFork, std::vector<std::pair<uint256, int>>& vAncestry,
                           std::vector<std::pair<int, uint256>>& vSubline) override;
     bool GetBlockLocation(const uint256& hashBlock, uint256& hashFork, int& nHeight) override;
@@ -44,6 +45,7 @@ public:
     bool GetBlock(const uint256& hashBlock, CBlock& block, uint256& hashFork, int& nHeight) override;
     bool GetBlockEx(const uint256& hashBlock, CBlockEx& block, uint256& hashFork, int& nHeight) override;
     bool GetLastBlockOfHeight(const uint256& hashFork, const int nHeight, uint256& hashBlock, int64& nTime) override;
+    bool GetValidBlocksFromHashes(const uint256& hashFork, const std::vector<uint256>& vBlockHashes, const int num, std::vector<CBlockEx>& blocks) override;
     void GetTxPool(const uint256& hashFork, std::vector<std::pair<uint256, std::size_t>>& vTxPool) override;
     void ListTxPool(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const int64 nGetOffset = 0, const int64 nGetCount = 0) override;
     bool GetTransaction(const uint256& txid, CTransaction& tx, uint256& hashFork, int& nHeight, uint256& hashBlock, CDestination& destIn) override;
@@ -111,6 +113,7 @@ protected:
     IWallet* pWallet;
     CNetwork* pNetwork;
     IForkManager* pForkManager;
+    xengine::IIOModule* pPusher;
     network::INetChannel* pNetChannel;
     mutable boost::shared_mutex rwForkStatus;
     std::map<uint256, CForkStatus> mapForkStatus;

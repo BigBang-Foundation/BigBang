@@ -293,6 +293,7 @@ public:
     bool GetBlockView(const uint256& hash, CBlockView& view, bool fCommitable = false, bool fGetBranchBlock = true);
     bool GetForkBlockView(const uint256& hashFork, CBlockView& view);
     bool CommitBlockView(CBlockView& view, CBlockIndex* pIndexNew);
+    bool GetValidBlocksFromHashes(const uint256& hashFork, const std::vector<uint256>& vBlockHashes, const int num, std::vector<CBlockEx>& blocks);
     bool LoadIndex(CBlockOutline& diskIndex);
     bool LoadTx(CTransaction& tx, uint32 nTxFile, uint32 nTxOffset, uint256& hashFork);
     bool FilterTx(const uint256& hashFork, CTxFilter& filter);

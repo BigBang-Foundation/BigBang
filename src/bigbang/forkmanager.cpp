@@ -374,6 +374,28 @@ int64 CForkManager::ForkLockedCoin(const uint256& hashFork, const uint256& hashB
     return -1;
 }
 
+int CForkManager::GetForkNextMortgageDecayHeight(const uint256& hashFork, const uint256& hashBlock)
+{
+    boost::shared_lock<boost::shared_mutex> rlock(rwAccess);
+
+    const auto it = mapForkSched.find(hashFork);
+    if (it != mapForkSched.end())
+    {
+        int nHeight = GetValidForkCreatedHeight(hashBlock, hashFork);
+        if (nHeight < 0)
+        {
+            return -1;
+        }
+        int nForkValidHeight = CBlock::GetBlockHeightByHash(hashBlock) - nHeight;
+        if (nForkValidHeight < 0)
+        {
+            nForkValidHeight = 0;
+        }
+        return CTemplateFork::NextMortgageHeight(nForkValidHeight);
+    }
+    return -1;
+}
+
 int CForkManager::GetForkCreatedHeight(const uint256& hashFork)
 {
     boost::shared_lock<boost::shared_mutex> rlock(rwAccess);

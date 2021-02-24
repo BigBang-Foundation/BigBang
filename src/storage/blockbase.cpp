@@ -1313,6 +1313,51 @@ bool CBlockBase::CommitBlockView(CBlockView& view, CBlockIndex* pIndexNew)
     return true;
 }
 
+bool CBlockBase::GetValidBlocksFromHashes(const uint256& hashFork, const std::vector<uint256>& vBlockHashes, const int num, std::vector<CBlockEx>& blocks)
+{
+    boost::shared_ptr<CBlockFork> spFork;
+    {
+        CReadLock rlock(rwAccess);
+        spFork = GetFork(hashFork);
+        if (spFork == nullptr)
+        {
+            return false;
+        }
+    }
+
+    spFork->ReadLock();
+    uint256 validBlockHash;
+    CBlockIndex* pIndex = nullptr;
+    for (const uint256& hash : vBlockHashes)
+    {
+        if (RetrieveIndex(hash, &pIndex) && pIndex && pIndex->pNext)
+        {
+            validBlockHash = hash;
+            break;
+        }
+    }
+
+    if (validBlockHash != 0)
+    {
+        int nCount = 0;
+        CBlockIndex* pNextIndex = pIndex->pNext;
+        while (pNextIndex && nCount < num)
+        {
+            CBlockEx block;
+            if (!Retrieve(pNextIndex, block))
+            {
+                return false;
+            }
+            nCount++;
+            pNextIndex = pNextIndex->pNext;
+            blocks.push_back(block);
+        }
+    }
+
+    spFork->ReadUnlock();
+    return (validBlockHash == 0) ? false : true;
+}
+
 bool CBlockBase::LoadIndex(CBlockOutline& outline)
 {
     uint256 hash = outline.GetBlockHash();

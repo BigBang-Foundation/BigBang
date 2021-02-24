@@ -34,7 +34,9 @@ public:
     bool GetBlockHash(const uint256& hashFork, int nHeight, std::vector<uint256>& vBlockHash) override;
     bool GetBlockStatus(const uint256& hashBlock, CBlockStatus& status) override;
     bool GetLastBlockOfHeight(const uint256& hashFork, const int nHeight, uint256& hashBlock, int64& nTime) override;
+    bool GetValidBlocksFromHashes(const uint256& hashFork, const std::vector<uint256>& vBlockHashes, const int num, std::vector<CBlockEx>& blocks) override;
     bool GetLastBlockStatus(const uint256& hashFork, CBlockStatus& status) override;
+
     bool GetLastBlockTime(const uint256& hashFork, int nDepth, std::vector<int64>& vTime) override;
     bool GetBlock(const uint256& hashBlock, CBlock& block) override;
     bool GetBlockEx(const uint256& hashBlock, CBlockEx& block) override;

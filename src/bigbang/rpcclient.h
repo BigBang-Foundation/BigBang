@@ -18,7 +18,7 @@
 namespace bigbang
 {
 
-class CRPCClient : public xengine::IIOModule, virtual public xengine::CHttpEventListener
+class CRPCClient : public xengine::IIOModule
 {
 public:
     CRPCClient(bool fConsole = true);
@@ -33,7 +33,6 @@ protected:
     void HandleHalt() override;
     const CRPCClientConfig* Config();
 
-    bool HandleEvent(xengine::CEventHttpGetRsp& event) override;
     bool GetResponse(uint64 nNonce, const std::string& content);
     bool CallRPC(rpc::CRPCParamPtr spParam, int nReqId);
     bool CallConsoleCommand(const std::vector<std::string>& vCommand);
@@ -45,11 +44,9 @@ protected:
     void LeaveLoop();
 
 protected:
-    xengine::IIOProc* pHttpGet;
     xengine::CThread thrDispatch;
     std::vector<std::string> vArgs;
     uint64 nLastNonce;
-    xengine::CIOCompletion ioComplt;
     std::atomic<bool> isConsoleRunning;
 };
 

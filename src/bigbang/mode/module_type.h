@@ -10,12 +10,12 @@ namespace bigbang
 // module type
 enum class EModuleType
 {
-    LOCK,             // lock file
-    BLOCKMAKER,       // CBlockMaker
-    COREPROTOCOL,     // CCoreProtocol
-    DISPATCHER,       // CDispatcher
-    HTTPGET,          // CHttpGet
-    HTTPSERVER,       // CHttpServer
+    LOCK,         // lock file
+    BLOCKMAKER,   // CBlockMaker
+    COREPROTOCOL, // CCoreProtocol
+    DISPATCHER,   // CDispatcher
+    HTTPGET,      // CHttpGet
+    //HTTPSERVER,       // CHttpServer
     MINER,            // CMiner
     NETCHANNEL,       // CNetChannel
     DELEGATEDCHANNEL, // CDelegatedChannel
@@ -30,6 +30,7 @@ enum class EModuleType
     FORKMANAGER,      // CForkManager
     DATASTAT,         // CDataStat
     RECOVERY,         // CRecovery
+    PUSHER,           // CPusher
 };
 
 } // namespace bigbang

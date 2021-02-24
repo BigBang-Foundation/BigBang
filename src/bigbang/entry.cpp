@@ -271,14 +271,14 @@ bool CBbEntry::InitializeModules(const EModeType& mode)
             }
             break;
         }
-        case EModuleType::HTTPSERVER:
-        {
-            if (!AttachModule(new CHttpServer()))
-            {
-                return false;
-            }
-            break;
-        }
+        // case EModuleType::HTTPSERVER:
+        // {
+        //     if (!AttachModule(new CHttpServer()))
+        //     {
+        //         return false;
+        //     }
+        //     break;
+        // }
         case EModuleType::MINER:
         {
             if (!AttachModule(new CMiner(config.GetConfig()->vecCommand)))
@@ -321,12 +321,12 @@ bool CBbEntry::InitializeModules(const EModeType& mode)
         }
         case EModuleType::RPCMODE:
         {
-            auto pBase = docker.GetObject("httpserver");
-            if (!pBase)
-            {
-                return false;
-            }
-            dynamic_cast<CHttpServer*>(pBase)->AddNewHost(GetRPCHostConfig());
+            // auto pBase = docker.GetObject("httpserver");
+            // if (!pBase)
+            // {
+            //     return false;
+            // }
+            // dynamic_cast<CHttpServer*>(pBase)->AddNewHost(GetRPCHostConfig());
 
             if (!AttachModule(new CRPCMod()))
             {
@@ -395,6 +395,14 @@ bool CBbEntry::InitializeModules(const EModeType& mode)
         case EModuleType::DATASTAT:
         {
             if (!AttachModule(new CDataStat()))
+            {
+                return false;
+            }
+            break;
+        }
+        case EModuleType::PUSHER:
+        {
+            if (!AttachModule(new CPusher()))
             {
                 return false;
             }

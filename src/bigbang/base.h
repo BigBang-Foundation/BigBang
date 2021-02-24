@@ -18,6 +18,7 @@
 #include "crypto.h"
 #include "destination.h"
 #include "error.h"
+#include "event.h"
 #include "key.h"
 #include "param.h"
 #include "peer.h"
@@ -126,6 +127,7 @@ public:
     virtual bool GetBlockHash(const uint256& hashFork, int nHeight, std::vector<uint256>& vBlockHash) = 0;
     virtual bool GetBlockStatus(const uint256& hashBlock, CBlockStatus& status) = 0;
     virtual bool GetLastBlockOfHeight(const uint256& hashFork, const int nHeight, uint256& hashBlock, int64& nTime) = 0;
+    virtual bool GetValidBlocksFromHashes(const uint256& hashFork, const std::vector<uint256>& vBlockHashes, const int num, std::vector<CBlockEx>& blocks) = 0;
     virtual bool GetLastBlockStatus(const uint256& hashFork, CBlockStatus& status) = 0;
     virtual bool GetLastBlockTime(const uint256& hashFork, int nDepth, std::vector<int64>& vTime) = 0;
     virtual bool GetBlock(const uint256& hashBlock, CBlock& block) = 0;
@@ -250,6 +252,7 @@ public:
     virtual void GetValidForkList(std::map<uint256, bool>& mapFork) = 0;
     virtual bool GetSubline(const uint256& hashFork, std::vector<std::pair<int, uint256>>& vSubline) const = 0;
     virtual int64 ForkLockedCoin(const uint256& hashFork, const uint256& hashBlock) = 0;
+    virtual int GetForkNextMortgageDecayHeight(const uint256& hashFork, const uint256& hashBlock) = 0;
     virtual int GetForkCreatedHeight(const uint256& hashFork) = 0;
     virtual bool GetForkContext(const uint256& hashFork, CForkContext& forkContext) = 0;
     const CForkConfig* ForkConfig()
@@ -374,6 +377,7 @@ public:
     virtual bool GetForkLastBlock(const uint256& hashFork, int& nLastHeight, uint256& hashLastBlock) = 0;
     virtual int GetForkType(const uint256& hashFork) = 0;
     virtual void ListFork(std::vector<std::pair<uint256, CProfile>>& vFork, bool fAll = false) = 0;
+    virtual bool GetFork(const uint256& hashFork, CProfile& profile) = 0;
     virtual bool GetForkGenealogy(const uint256& hashFork, std::vector<std::pair<uint256, int>>& vAncestry,
                                   std::vector<std::pair<int, uint256>>& vSubline)
         = 0;
@@ -384,6 +388,7 @@ public:
     virtual bool GetBlock(const uint256& hashBlock, CBlock& block, uint256& hashFork, int& nHeight) = 0;
     virtual bool GetBlockEx(const uint256& hashBlock, CBlockEx& block, uint256& hashFork, int& nHeight) = 0;
     virtual bool GetLastBlockOfHeight(const uint256& hashFork, const int nHeight, uint256& hashBlock, int64& nTime) = 0;
+    virtual bool GetValidBlocksFromHashes(const uint256& hashFork, const std::vector<uint256>& vBlockHashes, const int num, std::vector<CBlockEx>& blocks) = 0;
     virtual void GetTxPool(const uint256& hashFork, std::vector<std::pair<uint256, std::size_t>>& vTxPool) = 0;
     virtual void ListTxPool(const uint256& hashFork, const CDestination& dest, std::vector<CTxInfo>& vTxPool, const int64 nGetOffset = 0, const int64 nGetCount = 0) = 0;
     virtual bool GetTransaction(const uint256& txid, CTransaction& tx, uint256& hashFork, int& nHeight, uint256& hashBlock, CDestination& destIn) = 0;
@@ -451,6 +456,30 @@ public:
     virtual bool AddP2pSynTxSynStatData(const uint256& hashFork, bool fRecv) = 0;
     virtual bool GetBlockMakerStatData(const uint256& hashFork, uint32 nBeginTime, uint32 nGetCount, std::vector<CStatItemBlockMaker>& vStatData) = 0;
     virtual bool GetP2pSynStatData(const uint256& hashFork, uint32 nBeginTime, uint32 nGetCount, std::vector<CStatItemP2pSyn>& vStatData) = 0;
+};
+
+class IPusher : public xengine::IIOModule
+{
+public:
+    typedef struct _LiveClientInfo
+    {
+        int64 timestamp;
+        uint64 nNonce;
+        bool fSSL;
+        std::string strHost;
+        int nPort;
+        std::string strBlockURL;
+        std::string strTxURL;
+        std::set<uint256> registerForks;
+    } LiveClientInfo;
+
+    IPusher()
+      : IIOModule("pusher") {}
+    virtual void InsertNewClient(const std::string& ipport, const LiveClientInfo& client) = 0;
+    virtual int64 GetNonce() const = 0;
+    virtual int64 GetFixedNonce() const = 0;
+    virtual bool GetLatestEventId(const uint256& hashFork, int64& nEventId) const = 0;
+    virtual bool GetTxEvents(const uint256& hashFork, int64 nStartEventId, int64 num, std::vector<CRPCModEventUpdateTx>& events) = 0;
 };
 
 class IRecovery : public xengine::IBase

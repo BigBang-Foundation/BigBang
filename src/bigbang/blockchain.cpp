@@ -343,6 +343,11 @@ bool CBlockChain::GetLastBlockOfHeight(const uint256& hashFork, const int nHeigh
     return true;
 }
 
+bool CBlockChain::GetValidBlocksFromHashes(const uint256& hashFork, const std::vector<uint256>& vBlockHashes, const int num, std::vector<CBlockEx>& blocks)
+{
+    return cntrBlock.GetValidBlocksFromHashes(hashFork, vBlockHashes, num, blocks);
+}
+
 bool CBlockChain::GetLastBlockStatus(const uint256& hashFork, CBlockStatus& status)
 {
     CBlockIndex* pIndex = nullptr;

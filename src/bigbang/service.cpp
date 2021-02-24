@@ -24,7 +24,7 @@ namespace bigbang
 // CService
 
 CService::CService()
-  : pCoreProtocol(nullptr), pBlockChain(nullptr), pTxPool(nullptr), pDispatcher(nullptr), pWallet(nullptr), pNetwork(nullptr), pForkManager(nullptr), pNetChannel(nullptr)
+  : pCoreProtocol(nullptr), pBlockChain(nullptr), pTxPool(nullptr), pDispatcher(nullptr), pWallet(nullptr), pNetwork(nullptr), pForkManager(nullptr), pNetChannel(nullptr), pPusher(nullptr)
 {
 }
 
@@ -82,6 +82,12 @@ bool CService::HandleInitialize()
         return false;
     }
 
+    if (!GetObject("pusher", pPusher))
+    {
+        Error("Failed to request pusher");
+        return false;
+    }
+
     return true;
 }
 
@@ -95,6 +101,7 @@ void CService::HandleDeinitialize()
     pNetwork = nullptr;
     pForkManager = nullptr;
     pNetChannel = nullptr;
+    pPusher = nullptr;
 }
 
 bool CService::HandleInvoke()
@@ -156,6 +163,11 @@ void CService::NotifyBlockChainUpdate(const CBlockChainUpdate& update)
             ++mt;
         }
     }
+
+    uint64 nNonce = 0;
+    CRPCModEventUpdateNewBlock* pUpdateNewBlockEvent = new CRPCModEventUpdateNewBlock(nNonce, update.hashFork, CDestination(), 0, (uint8)CHANGE_STATE::STATE_ADDED);
+    pUpdateNewBlockEvent->data = update.vBlockAddNew[update.vBlockAddNew.size() - 1];
+    pPusher->PostEvent(pUpdateNewBlockEvent);
 }
 
 void CService::NotifyNetworkPeerUpdate(const CNetworkPeerUpdate& update)
@@ -165,7 +177,10 @@ void CService::NotifyNetworkPeerUpdate(const CNetworkPeerUpdate& update)
 
 void CService::NotifyTransactionUpdate(const CTransactionUpdate& update)
 {
-    (void)update;
+    // uint64 nNonce = 0;
+    // CRPCModEventUpdateNewTx* pUpdateNewTxEvent = new CRPCModEventUpdateNewTx(nNonce, update.hashFork, update.nChange);
+    // pUpdateNewTxEvent->data = update.txUpdate;
+    // pRPCMod->PostEvent(pUpdateNewTxEvent);
 }
 
 void CService::Stop()
@@ -298,6 +313,11 @@ void CService::ListFork(std::vector<std::pair<uint256, CProfile>>& vFork, bool f
     }
 }
 
+bool CService::GetFork(const uint256& hashFork, CProfile& profile)
+{
+    return pBlockChain->GetForkProfile(hashFork, profile);
+}
+
 bool CService::GetForkGenealogy(const uint256& hashFork, vector<pair<uint256, int>>& vAncestry, vector<pair<int, uint256>>& vSubline)
 {
     boost::shared_lock<boost::shared_mutex> rlock(rwForkStatus);
@@ -369,6 +389,11 @@ bool CService::GetBlockEx(const uint256& hashBlock, CBlockEx& block, uint256& ha
 bool CService::GetLastBlockOfHeight(const uint256& hashFork, const int nHeight, uint256& hashBlock, int64& nTime)
 {
     return pBlockChain->GetLastBlockOfHeight(hashFork, nHeight, hashBlock, nTime);
+}
+
+bool CService::GetValidBlocksFromHashes(const uint256& hashFork, const std::vector<uint256>& vBlockHashes, const int num, std::vector<CBlockEx>& blocks)
+{
+    return pBlockChain->GetValidBlocksFromHashes(hashFork, vBlockHashes, num, blocks);
 }
 
 void CService::GetTxPool(const uint256& hashFork, vector<pair<uint256, size_t>>& vTxPool)
