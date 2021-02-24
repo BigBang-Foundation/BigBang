@@ -333,6 +333,13 @@ void CNetChannel::BroadcastTxInv(const uint256& hashFork)
 
 void CNetChannel::SubscribeFork(const uint256& hashFork, const uint64& nNonce)
 {
+    CBlockStatus status;
+    if (!pBlockChain->GetLastBlockStatus(hashFork, status))
+    {
+        StdLog("NetChannel", "SubscribeFork: Fork is not enabled, fork: %s", hashFork.GetHex().c_str());
+        return;
+    }
+
     {
         boost::recursive_mutex::scoped_lock scoped_lock(mtxSched);
         if (mapSched.count(hashFork) > 0)
